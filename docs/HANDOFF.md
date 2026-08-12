@@ -72,14 +72,24 @@ stores*, and OBR replicates to every connected client. Four writable shared stor
 
 | Store | Scope | Persists | Natural use |
 |---|---|---|---|
-| Room metadata | whole room | yes | small config |
+| Room metadata | whole room | yes | campaign-scoped state; **PC sheets** |
 | Scene metadata | current scene | yes | initiative order, round counter |
-| **Item metadata** | per token | yes, with the scene | character sheet bound to a token |
-| Player metadata | per player | yes | that player's bennies |
+| **Item metadata** | per token | yes, with the scene | Extra/NPC sheets; volatile combat state |
+| Player metadata | per player | **unverified** | that player's own UI prefs |
 
 Plus `broadcast` (ephemeral, connection-scoped — reaches only who is online *now*, persists
-nothing) and `scene.local` as the non-synced counterpart. **`scene.local`'s sync semantics were
-not confirmed from source** — verify before relying on it.
+nothing) and `scene.local`, which is **resolved**: a full items API (`getItems`/`addItems`/
+`updateItems`/`deleteItems`/`onChange`) for non-synced, non-persisted items. Good for local-only
+overlays.
+
+Two corrections to earlier notes, both read from `@owlbear-rodeo/sdk@3.1.0` on disk:
+
+- **Scene/Room/Player `setMetadata` are the same operation.** `SceneApi.setMetadata` is typed
+  `Metadata` rather than `Partial<Metadata>`, which looked like it might mean *replace*. All three
+  send `{ update }` over the same message bus with identical bodies; merging is host-side.
+- **Player-metadata persistence is not verified.** It was asserted here before; it isn't
+  determinable from a type signature. Assume `player.id` is not stable across rejoins until
+  measured. See `OBR-DEADLANDS-PLAN.md` §2.
 
 `SceneItemsApi.updateItems` uses **Immer draft mutation and ships only changed fields as patches**,
 so two clients editing *different* fields of one token do not clobber each other.
@@ -146,9 +156,10 @@ Power Points, Conviction, Support/Test resolution.
 four state stores, and forces the leader-election decision early. The dice engine — normally the
 risky part — is already done and verified.
 
-Next step Paul was offered and has not yet accepted: spec that slice properly — data shapes in item
-metadata, leader-election approach, and which UI surfaces to use (action popover vs context menu
-vs token badge).
+**Superseded by `OBR-DEADLANDS-PLAN.md`** (2026-08-12). The target narrowed from generic Savage
+Worlds to **Deadlands** specifically, and the first slice changed: sheets split by lifecycle (PCs in
+room metadata, Extras in item metadata), with the Fate Chip pot rather than initiative as the
+mechanic that forces leader election. The tier ladder above still applies underneath.
 
 ---
 
