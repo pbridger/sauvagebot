@@ -3,7 +3,12 @@ import { JavaRandom } from '../src/dice/javaRandom.js';
 import { Tables, Table } from '../src/game/state.js';
 import { interpret } from '../src/bot/interpreter.js';
 import { findCommand, ALL_COMMANDS } from '../src/bot/commands.js';
-import { splitMessage, MESSAGE_LENGTH_LIMIT } from '../src/bot/discord.js';
+import {
+  splitMessage,
+  MESSAGE_LENGTH_LIMIT,
+  buildSlashCommands,
+  SLASH_COMMAND_NAMES,
+} from '../src/bot/discord.js';
 import { Deck, compareCards, cardToString, LOWEST_QUICK_CARD } from '../src/game/cards.js';
 
 function say(content: string, tables = new Tables(), seed = 0) {
@@ -50,13 +55,22 @@ describe('command interpreter', () => {
   });
 
   it('help uses the caller’s prefix, not a hardcoded !', () => {
-    const text = say('~help').publicText;
+    const text = say('~help').privateText;
     expect(text).toContain('~r ');
     expect(text).not.toMatch(/(^|\s)!r\s/);
   });
 
   it('help for a single command', () => {
-    expect(say('~help deal').publicText).toContain('Deals initiative cards');
+    expect(say('~help deal').privateText).toContain('Deals initiative cards');
+  });
+
+  // Paul asked for help to go to DMs *and* a thread. That routing is driven entirely by
+  // isPrivate, so assert it here — the earlier prefix-rendering tests passed while help was
+  // wrongly posting to the channel.
+  it('help is routed privately, not to the channel', () => {
+    const r = say('~help');
+    expect(r.publicText).toBe('');
+    expect(r.privateText).toContain('DICE');
   });
 });
 
@@ -174,6 +188,44 @@ describe('deck', () => {
   it('Improved Level Headed draws three', () => {
     const deck = new Deck(new JavaRandom(13));
     expect(deck.getCardByParams('i').cards).toHaveLength(3);
+  });
+});
+
+describe('slash commands', () => {
+  it('builds valid definitions for every declared name', () => {
+    const built = buildSlashCommands();
+    expect(built).toHaveLength(SLASH_COMMAND_NAMES.length);
+    for (const b of built) {
+      const json = b.toJSON();
+      expect(json.name).toMatch(/^[a-z0-9_-]{1,32}$/);
+      expect(json.description.length).toBeGreaterThan(0);
+      // Discord rejects descriptions over 100 characters.
+      expect(json.description.length).toBeLessThanOrEqual(100);
+      for (const option of json.options ?? []) {
+        expect(option.description.length).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it('every declared slash name resolves to a real command', () => {
+    for (const name of SLASH_COMMAND_NAMES) {
+      expect(findCommand(name), name).toBeDefined();
+    }
+  });
+
+  it('re-registers every name the Java bot had registered globally', () => {
+    // Those registrations outlive the old process, so any name we do not re-register must be
+    // cleared by commands.set() — otherwise it lingers in the picker and times out.
+    const registered = buildSlashCommands().map((b) => b.toJSON().name);
+    for (const name of ['roll', 'deal', 'fight', 'card', 'hold', 'init', 'round', 'drop']) {
+      expect(registered, `Java-era /${name} must still resolve`).toContain(name);
+    }
+  });
+
+  it('registered names all dispatch to a real command', () => {
+    for (const name of buildSlashCommands().map((b) => b.toJSON().name)) {
+      expect(findCommand(name), name).toBeDefined();
+    }
   });
 });
 

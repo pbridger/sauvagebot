@@ -439,7 +439,9 @@ const infoCommands: Command[] = [
     category: 'INFO',
     description: 'Lists commands, or details for one command or category.',
     arguments: ['[<command> or <category>]'],
-    run: (req) => ({ text: renderHelp(req), isPrivate: false }),
+    // Private: delivered to the user's DMs and mirrored into a thread on the command
+    // message, so a long listing does not flood the channel mid-game.
+    run: (req) => ({ text: renderHelp(req), isPrivate: true }),
   },
 ];
 

@@ -12,12 +12,15 @@ import {
   Events,
   GatewayIntentBits,
   Partials,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
   type Message,
   type TextBasedChannel,
 } from 'discord.js';
 import { JavaRandom } from '../dice/javaRandom.js';
 import { Tables } from '../game/state.js';
 import { interpret } from './interpreter.js';
+import { CommandError, findCommand, type CommandRequest } from './commands.js';
 
 export const MESSAGE_LENGTH_LIMIT = 2000;
 /** Discord caps thread names at 100 characters. */
@@ -68,6 +71,9 @@ export function createClient(options: BotOptions): Client {
 
   client.once(Events.ClientReady, (c) => {
     console.log(`Logged in as ${c.user.tag}; prefix "${options.prefix}"`);
+    // The Java bot registered these globally, and global registrations outlive the process. If we
+    // did not re-register (or clear) them they would linger in the picker and time out.
+    void registerSlashCommands(c).catch((e) => console.error('Slash registration failed', e));
   });
 
   client.on(Events.MessageCreate, (message) => {
@@ -75,7 +81,116 @@ export function createClient(options: BotOptions): Client {
     void handleMessage(message, options, random);
   });
 
+  client.on(Events.InteractionCreate, (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+    void handleInteraction(interaction, options, random);
+  });
+
   return client;
+}
+
+/**
+ * Commands exposed as slash commands. Everything remains available via the prefix.
+ *
+ * These are the names Discord will show; `roll` rather than `r` because that is what the Java bot
+ * registered and what players' muscle memory expects. `commands.set()` replaces the global set
+ * wholesale, so any Java-era registration not listed here is cleared rather than left to time out.
+ */
+export const SLASH_COMMAND_NAMES = [
+  'roll',
+  'rh',
+  'fight',
+  'round',
+  'init',
+  'deal',
+  'card',
+  'hold',
+  'drop',
+  'show',
+  'givebenny',
+  'takebenny',
+  'bennies',
+  'help',
+] as const;
+
+export function buildSlashCommands(): SlashCommandBuilder[] {
+  const builders: SlashCommandBuilder[] = [];
+  for (const name of SLASH_COMMAND_NAMES) {
+    const command = findCommand(name);
+    if (!command) continue;
+    // Register under the declared name (which may be an alias, e.g. `roll` for `r`);
+    // findCommand resolves aliases when the interaction comes back.
+    const builder = new SlashCommandBuilder()
+      .setName(name)
+      .setDescription(command.description.slice(0, 100));
+    if (command.arguments.length > 0) {
+      builder.addStringOption((option) =>
+        option
+          .setName('args')
+          .setDescription(command.arguments.join(' ').slice(0, 100))
+          .setRequired(false),
+      );
+    }
+    builders.push(builder);
+  }
+  return builders;
+}
+
+async function registerSlashCommands(client: Client<true>): Promise<void> {
+  const body = buildSlashCommands().map((b) => b.toJSON());
+  await client.application.commands.set(body);
+  console.log(`Registered ${body.length} slash commands`);
+}
+
+async function handleInteraction(
+  interaction: ChatInputCommandInteraction,
+  options: BotOptions,
+  random: JavaRandom,
+): Promise<void> {
+  const command = findCommand(interaction.commandName);
+  if (!command) {
+    await interaction.reply({ content: 'Unknown command.', ephemeral: true });
+    return;
+  }
+
+  const raw = interaction.options.getString('args') ?? '';
+  const args = raw.split(/\s+/).filter((w) => w.length > 0);
+
+  const req: CommandRequest = {
+    args,
+    channelId: interaction.channelId,
+    guildId: interaction.guildId ?? undefined,
+    authorId: interaction.user.id,
+    authorName: interaction.user.username,
+    prefix: options.prefix,
+    tables: options.tables,
+    random,
+  };
+
+  let text: string;
+  let isPrivate = false;
+  try {
+    const result = command.run(req);
+    text = result.text;
+    isPrivate = result.isPrivate === true;
+  } catch (e) {
+    text = e instanceof CommandError ? e.message : `Error: ${String(e)}`;
+    isPrivate = true;
+  }
+
+  const parts = splitMessage(text);
+  const first = parts.shift() ?? '(no output)';
+  try {
+    // Private results become ephemeral replies — the interaction equivalent of a DM.
+    await interaction.reply({ content: first, ephemeral: isPrivate });
+    for (const part of parts) {
+      await interaction.followUp({ content: part, ephemeral: isPrivate });
+    }
+  } catch (error) {
+    console.error('Could not reply to interaction', error);
+  }
+
+  void options.tables.persist().catch((e) => console.error('Failed to persist tables', e));
 }
 
 async function handleMessage(
