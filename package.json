@@ -1,0 +1,31 @@
+{
+  "name": "savagebot-ts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Savage Worlds Discord bot — TypeScript rewrite of alessio29/savagebot",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "antlr": "antlr4ng -Dlanguage=TypeScript -visitor -no-listener -o src/dice/generated grammar/R2.g4",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "node --enable-source-maps dist/main.js",
+    "dev": "tsx watch src/main.ts"
+  },
+  "dependencies": {
+    "antlr4ng": "^3.0.4",
+    "discord.js": "^14.16.3",
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "antlr4ng-cli": "^2.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}
