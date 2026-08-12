@@ -48,6 +48,7 @@ public class SavageBotRunner {
 		}
 
 		ShardManager shardManager = DefaultShardManagerBuilder.createDefault(token)
+				.enableIntents(GatewayIntent.MESSAGE_CONTENT)
 				.addEventListeners(new ParseInputListener(), new DiscordSlashCommandListener())
 				.build();
 
