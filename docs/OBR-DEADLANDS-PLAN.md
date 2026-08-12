@@ -112,10 +112,13 @@ not compression ratios.
   went back to `{}`. An earlier "delete does not work" reading was a probe bug (`Object.keys` lists
   a key whose value is `undefined` identically to one holding data).
   On *items*, `delete draft.metadata[key]` is **rejected**; assign `undefined` there too.
-- **A non-GM can write item metadata** (confirmed on a PROP). Character tokens are a separate
-  permission grant — `CHARACTER_UPDATE`, plus the `CHARACTER_OWNER_ONLY` flag which is off by
-  default in this room. Recommend Damian turns `CHARACTER_OWNER_ONLY` **on**; it is a useful
-  guard rail and the design does not need it off.
+- **A non-GM can write item metadata on a CHARACTER token** — confirmed directly, not inferred
+  from the PROP case, since `PROP_UPDATE` and `CHARACTER_UPDATE` are separate grants. Players can
+  therefore own and edit their own sheets without the GM proxying. Recommend Damian turns
+  `CHARACTER_OWNER_ONLY` **on** in the real room; it is off by default, the design does not need it
+  off, and it is a free guard rail.
+- **Metadata capacity does not vary by item type or image size.** The token's artwork is an asset
+  reference, so a high-resolution prop and a plain token have the same metadata budget.
 - **Compression works in the iframe**: `CompressionStream('gzip')` + base64 took a realistic
   6-sheet roster from 2,377 chars to 464, and round-tripped through room metadata intact.
 
@@ -203,7 +206,7 @@ Room for development: `https://www.owlbear.rodeo/room/oSZbFhSwnKqy/ThePubicRim` 
 
 | # | What | Blocked on |
 |---|---|---|
-| 0 | **Done** — see the measured table in §2. One loose end: re-run the non-GM write on a *character* token rather than a prop. | — |
+| 0 | **Done** — all five questions answered; see the measured table in §2. | — |
 | 1 | `src/rules/`: **chips done**, **poker done**, sheet schema + JSON codec outstanding. | schema needs the book |
 | 2 | Extension skeleton: manifest, static host, `Storage` adapter interface with room/item implementations, leader election. | 0 |
 | 3 | Sheet panel: view/edit a PC, trait rolls through the verified engine, export/import the roster. | 1, 2 |
