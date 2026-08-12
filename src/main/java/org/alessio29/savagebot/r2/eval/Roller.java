@@ -36,7 +36,7 @@ public class Roller {
             }
         }
 
-        return new IntResult(total, Integer.toString(total));
+        return new IntResult(total, explained.toString());
     }
 
     private int rollDF() {

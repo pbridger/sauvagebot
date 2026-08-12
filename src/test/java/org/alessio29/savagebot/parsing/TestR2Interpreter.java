@@ -65,7 +65,7 @@ public class TestR2Interpreter {
                 "2d6"
         );
         expect(
-                "10d6!: 1 + 5 + 2 + 28 + 4 + 3 + 23 + 9 + 5 + 4 = **84**",
+                "10d6!: 1 + 5 + 2 + 6+6+6+6+4 + 4 + 3 + 6+6+6+5 + 6+3 + 5 + 4 = **84**",
                 "10d6!"
         );
         expect(
@@ -139,7 +139,7 @@ public class TestR2Interpreter {
                 "s8+2df"
         );
         expect(
-                "3s8: [2; 6; 7; w28] = **6** (success), **7** (success), **28** (success; **6** raises)",
+                "3s8: [2; 6; 7; w6+6+6+6+4] = **6** (success), **7** (success), **28** (success; **6** raises)",
                 "3s8"
         );
         expect(
@@ -147,7 +147,7 @@ public class TestR2Interpreter {
                 "3s8w10"
         );
         expect(
-                "3s6+2: [1; 2; 5; w28] + 2 = **4** (success), **7** (success), **30** (success; **6** raises)",
+                "3s6+2: [1; 2; 5; w6+6+6+6+4] + 2 = **4** (success), **7** (success), **30** (success; **6** raises)",
                 "3s6+2"
         );
     }
@@ -197,13 +197,13 @@ public class TestR2Interpreter {
         );
         expect(
                 "10x3s6+2: \n" +
-                        "1: 3s6+2: [1; 2; 5; w28] + 2 = **4** (success), **7** (success), **30** (success; **6** raises)\n" +
-                        "2: 3s6+2: [3; 4; 23; w9] + 2 = **6** (success), **11** (success; **1** raise), **25** (success; **5** raises)\n" +
-                        "3: 3s6+2: [4; 5; 9; w2] + 2 = **6** (success), **7** (success), **11** (success; **1** raise)\n" +
-                        "4: 3s6+2: [1; 3; 9; w5] + 2 = **5** (success), **7** (success), **11** (success; **1** raise)\n" +
-                        "5: 3s6+2: [1; 4; 5; w33] + 2 = **6** (success), **7** (success), **35** (success; **7** raises)\n" +
-                        "6: 3s6+2: [3; 4; 11; w4] + 2 = **6** (success), **6** (success), **13** (success; **2** raises)\n" +
-                        "7: 3s6+2: [2; 3; 9; w5] + 2 = **5** (success), **7** (success), **11** (success; **1** raise)\n" +
+                        "1: 3s6+2: [1; 2; 5; w6+6+6+6+4] + 2 = **4** (success), **7** (success), **30** (success; **6** raises)\n" +
+                        "2: 3s6+2: [3; 4; 6+6+6+5; w6+3] + 2 = **6** (success), **11** (success; **1** raise), **25** (success; **5** raises)\n" +
+                        "3: 3s6+2: [4; 5; 6+3; w2] + 2 = **6** (success), **7** (success), **11** (success; **1** raise)\n" +
+                        "4: 3s6+2: [1; 3; 6+3; w5] + 2 = **5** (success), **7** (success), **11** (success; **1** raise)\n" +
+                        "5: 3s6+2: [1; 4; 5; w6+6+6+6+6+3] + 2 = **6** (success), **7** (success), **35** (success; **7** raises)\n" +
+                        "6: 3s6+2: [3; 4; 6+5; w4] + 2 = **6** (success), **6** (success), **13** (success; **2** raises)\n" +
+                        "7: 3s6+2: [2; 3; 6+3; w5] + 2 = **5** (success), **7** (success), **11** (success; **1** raise)\n" +
                         "8: 3s6+2: [4; 5; 5; w5] + 2 = **7** (success), **7** (success), **7** (success)\n" +
                         "9: 3s6+2: [1; 2; 4; w3] + 2 = **4** (success), **5** (success), **6** (success)\n" +
                         "10: 3s6+2: [1; 4; 5; w5] + 2 = **6** (success), **7** (success), **7** (success)",
@@ -319,7 +319,7 @@ public class TestR2Interpreter {
                         "\n" +
                         "shooting\n" +
                         "```\n" +
-                        "NonParsedString text='shooting' parserErrorMessage='[1]: token recognition error at: 'h''\n" +
+                        "NonParsedString text='shooting' parserErrorMessage='[2]: token recognition error at: 'o''\n" +
                         "```\n" +
                         "shooting \n" +
                         "2d6\n" +
@@ -351,8 +351,8 @@ public class TestR2Interpreter {
                 "12d10f1s7"
         );
         expect(
-                "28d6!s10f1: [successes(4): 33, 28, 23, 11; failures(3): 1, 1, 1; " +
-                        "rest: 9, 9, 9, 9, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2] = **1**",
+                "28d6!s10f1: [successes(4): 6+6+6+6+6+3, 6+6+6+6+4, 6+6+6+5, 6+5; failures(3): 1, 1, 1; " +
+                        "rest: 6+3, 6+3, 6+3, 6+3, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 3, 3, 3, 3, 2, 2, 2] = **1**",
                 "28d6!s10f1"
         );
     }
@@ -409,9 +409,9 @@ public class TestR2Interpreter {
         expect(
                 "5x(d10!+d8!+d6!)[8:10+8+6]: \n" +
                         "1: (d10!+d8!+d6!)[8:10+8+6]: {(1 + 7 + 2) = 10} = **10**\n" +
-                        "2: (d10!+d8!+d6!)[8:10+8+6]: {(8 + 6 + 16) = 30=>24} = **24**\n" +
-                        "3: (d10!+d8!+d6!)[8:10+8+6]: {(15 + 3 + 17) = 35=>24} = **24**\n" +
-                        "4: (d10!+d8!+d6!)[8:10+8+6]: {(6 + 17 + 9) = 32=>24} = **24**\n" +
+                        "2: (d10!+d8!+d6!)[8:10+8+6]: {(8 + 6 + 6+6+4) = 30=>24} = **24**\n" +
+                        "3: (d10!+d8!+d6!)[8:10+8+6]: {(10+5 + 3 + 6+6+5) = 35=>24} = **24**\n" +
+                        "4: (d10!+d8!+d6!)[8:10+8+6]: {(6 + 8+8+1 + 6+3) = 32=>24} = **24**\n" +
                         "5: (d10!+d8!+d6!)[8:10+8+6]: {(4 + 3 + 3) = 10} = **10**",
                 "5x(d10!+d8!+d6!)[8:10+8+6]"
         );
@@ -461,13 +461,13 @@ public class TestR2Interpreter {
         expect(
                 "10xs10: \n" +
                         "1: s10: [1; w5] = **5** (success)\n" +
-                        "2: s10: [18; w22] = **22** (success; **4** raises)\n" +
-                        "3: s10: [15; w23] = **23** (success; **4** raises)\n" +
+                        "2: s10: [10+8; w6+6+6+4] = **22** (success; **4** raises)\n" +
+                        "3: s10: [10+5; w6+6+6+5] = **23** (success; **4** raises)\n" +
                         "4: s10: [6; w3] = **6** (success)\n" +
                         "5: s10: [5; w4] = **5** (success)\n" +
                         "6: s10: [2; w3] = **3**\n" +
                         "7: s10: [4; w1] = **4** (success)\n" +
-                        "8: s10: [5; w9] = **9** (success; **1** raise)\n" +
+                        "8: s10: [5; w6+3] = **9** (success; **1** raise)\n" +
                         "9: s10: [1; w4] = **4** (success)\n" +
                         "10: s10: [3; w1] = **3**",
                 "10xs10"
@@ -499,13 +499,13 @@ public class TestR2Interpreter {
         expect(
                 "10xs12t5r5: \n" +
                         "1: s12t5r5: [1; w5] = **5** (success)\n" +
-                        "2: s12t5r5: [2; w28] = **28** (success; **4** raises)\n" +
+                        "2: s12t5r5: [2; w6+6+6+6+4] = **28** (success; **4** raises)\n" +
                         "3: s12t5r5: [4; w3] = **4**\n" +
-                        "4: s12t5r5: [6; w17] = **17** (success; **2** raises)\n" +
-                        "5: s12t5r5: [21; w5] = **21** (success; **3** raises)\n" +
-                        "6: s12t5r5: [4; w9] = **9** (success)\n" +
+                        "4: s12t5r5: [6; w6+6+5] = **17** (success; **2** raises)\n" +
+                        "5: s12t5r5: [12+9; w5] = **21** (success; **3** raises)\n" +
+                        "6: s12t5r5: [4; w6+3] = **9** (success)\n" +
                         "7: s12t5r5: [8; w1] = **8** (success)\n" +
-                        "8: s12t5r5: [9; w9] = **9** (success)\n" +
+                        "8: s12t5r5: [9; w6+3] = **9** (success)\n" +
                         "9: s12t5r5: [5; w4] = **5** (success)\n" +
                         "10: s12t5r5: [11; w1] = **11** (success; **1** raise)",
                 "10xs12t5r5"
@@ -513,13 +513,13 @@ public class TestR2Interpreter {
         expect(
                 "10xs12tr5: \n" +
                         "1: s12tr5: [1; w5] = **5** (success)\n" +
-                        "2: s12tr5: [2; w28] = **28** (success; **4** raises)\n" +
+                        "2: s12tr5: [2; w6+6+6+6+4] = **28** (success; **4** raises)\n" +
                         "3: s12tr5: [4; w3] = **4**\n" +
-                        "4: s12tr5: [6; w17] = **17** (success; **2** raises)\n" +
-                        "5: s12tr5: [21; w5] = **21** (success; **3** raises)\n" +
-                        "6: s12tr5: [4; w9] = **9** (success)\n" +
+                        "4: s12tr5: [6; w6+6+5] = **17** (success; **2** raises)\n" +
+                        "5: s12tr5: [12+9; w5] = **21** (success; **3** raises)\n" +
+                        "6: s12tr5: [4; w6+3] = **9** (success)\n" +
                         "7: s12tr5: [8; w1] = **8** (success)\n" +
-                        "8: s12tr5: [9; w9] = **9** (success)\n" +
+                        "8: s12tr5: [9; w6+3] = **9** (success)\n" +
                         "9: s12tr5: [5; w4] = **5** (success)\n" +
                         "10: s12tr5: [11; w1] = **11** (success; **1** raise)",
                 "10xs12tr5"
@@ -598,7 +598,7 @@ public class TestR2Interpreter {
                 "2d6t6"
         );
         expect(
-                "4d6!t6: 1 + 5 + 2 + 28 = **36** (shaken, **7** wounds)",
+                "4d6!t6: 1 + 5 + 2 + 6+6+6+6+4 = **36** (shaken, **7** wounds)",
                 "4d6!t6"
         );
         expect(
@@ -606,7 +606,7 @@ public class TestR2Interpreter {
                         "1: d6!t6: 1 = **1**\n" +
                         "2: d6!t6: 5 = **5**\n" +
                         "3: d6!t6: 2 = **2**\n" +
-                        "4: d6!t6: 28 = **28** (shaken, **5** wounds)",
+                        "4: d6!t6: 6+6+6+6+4 = **28** (shaken, **5** wounds)",
                 "4xd6!t6"
         );
         expect(
@@ -644,15 +644,15 @@ public class TestR2Interpreter {
         expect(
                 "5xtr6:s6: \n" +
                         "1: tr6:s6: [1; w5] = **5**\n" +
-                        "2: tr6:s6: [2; w28] = **28** (success; **3** raises)\n" +
+                        "2: tr6:s6: [2; w6+6+6+6+4] = **28** (success; **3** raises)\n" +
                         "3: tr6:s6: [4; w3] = **4**\n" +
-                        "4: tr6:s6: [23; w9] = **23** (success; **2** raises)\n" +
+                        "4: tr6:s6: [6+6+6+5; w6+3] = **23** (success; **2** raises)\n" +
                         "5: tr6:s6: [5; w4] = **5**",
                 "5xtr6:s6"
         );
         // Only last target number and raise step are taken into account
         expect(
-                "t6:s6+t8:s8: [1; w5] + [2; w28] = **33** (success; **6** raises)",
+                "t6:s6+t8:s8: [1; w5] + [2; w6+6+6+6+4] = **33** (success; **6** raises)",
                 "t6:s6+t8:s8"
         );
     }
@@ -662,8 +662,8 @@ public class TestR2Interpreter {
         expect(
                 "5xtr6:s10: \n" +
                         "1: tr6:s10: [1; w5] = **5**\n" +
-                        "2: tr6:s10: [18; w22] = **22** (success; **2** raises)\n" +
-                        "3: tr6:s10: [15; w23] = **23** (success; **2** raises)\n" +
+                        "2: tr6:s10: [10+8; w6+6+6+4] = **22** (success; **2** raises)\n" +
+                        "3: tr6:s10: [10+5; w6+6+6+5] = **23** (success; **2** raises)\n" +
                         "4: tr6:s10: [6; w3] = **6** (success)\n" +
                         "5: tr6:s10: [5; w4] = **5**",
                 "5xtr6:s10"
@@ -687,7 +687,7 @@ public class TestR2Interpreter {
     public void testMultipleSavageWorldChecksWithTargetNumbers() {
         // Only last TN and raise step is taken into account
         expect(
-                "s8t4+s8t6: [6; w5] + [2; w28] = **34** (success; **7** raises)",
+                "s8t4+s8t6: [6; w5] + [2; w6+6+6+6+4] = **34** (success; **7** raises)",
                 "s8t4+s8t6"
         );
     }
@@ -778,25 +778,25 @@ public class TestR2Interpreter {
         expect(
                 "4xtn10:2d10!+1: \n" +
                         "1: tn10:2d10!+1: 1 + 9 + 1 = **11** (success, MoS=1)\n" +
-                        "2: tn10:2d10!+1: 18 + 6 + 1 = **25** (success, MoS=15)\n" +
+                        "2: tn10:2d10!+1: 10+8 + 6 + 1 = **25** (success, MoS=15)\n" +
                         "3: tn10:2d10!+1: 4 + 2 + 1 = **7** (failure, MoF=3)\n" +
-                        "4: tn10:2d10!+1: 2 + 15 + 1 = **18** (success, MoS=8)",
+                        "4: tn10:2d10!+1: 2 + 10+5 + 1 = **18** (success, MoS=8)",
                 "4xtn10:2d10!+1"
         );
         expect(
                 "4xTN10:2d10!+1: \n" +
                         "1: TN10:2d10!+1: 1 + 9 + 1 = **11** (success, MoS=1)\n" +
-                        "2: TN10:2d10!+1: 18 + 6 + 1 = **25** (success, MoS=15)\n" +
+                        "2: TN10:2d10!+1: 10+8 + 6 + 1 = **25** (success, MoS=15)\n" +
                         "3: TN10:2d10!+1: 4 + 2 + 1 = **7** (failure, MoF=3)\n" +
-                        "4: TN10:2d10!+1: 2 + 15 + 1 = **18** (success, MoS=8)",
+                        "4: TN10:2d10!+1: 2 + 10+5 + 1 = **18** (success, MoS=8)",
                 "4xTN10:2d10!+1"
         );
         expect(
                 "4xtn10+:2d10!+1: \n" +
                         "1: tn10+:2d10!+1: 1 + 9 + 1 = **11** (success, MoS=1)\n" +
-                        "2: tn10+:2d10!+1: 18 + 6 + 1 = **25** (success, MoS=15)\n" +
+                        "2: tn10+:2d10!+1: 10+8 + 6 + 1 = **25** (success, MoS=15)\n" +
                         "3: tn10+:2d10!+1: 4 + 2 + 1 = **7** (failure, MoF=3)\n" +
-                        "4: tn10+:2d10!+1: 2 + 15 + 1 = **18** (success, MoS=8)",
+                        "4: tn10+:2d10!+1: 2 + 10+5 + 1 = **18** (success, MoS=8)",
                 "4xtn10+:2d10!+1"
         );
         expect(
