@@ -52,16 +52,18 @@
       store persists, and an unchanged player id means it is stable across rejoins.
     </p>
     <button id="stamp">Stamp room + player</button>
-    <button id="clear-stamps">Clear stamps</button>
+    <button id="clear-stamps">Clear probe keys</button>
     <dl id="stamps"></dl>
 
-    <h2>Room metadata capacity</h2>
+    <h2>Capacity</h2>
     <p style="margin:0 0 8px;opacity:.7">
-      Writes realistic dummy PC sheets, one key each, until a write fails — so the answer comes out
-      in <em>sheets</em>, not bytes. Then checks whether an oversize write throws or truncates
-      silently. Cleans up after itself and verifies the cleanup.
+      Doubling search then bisection with incompressible filler, so these measure a byte budget
+      rather than a compression ratio. Item and scene need a token selected / a scene open.
     </p>
-    <button id="cap">How many sheets fit?</button>
+    <button id="room-cap">Room cap</button>
+    <button id="item-cap">Item cap</button>
+    <button id="scene-cap">Scene cap</button>
+    <button id="compression">Compression check</button>
 
     <h2>Item metadata write (run this as a PLAYER too)</h2>
     <p style="margin:0 0 8px;opacity:.7">

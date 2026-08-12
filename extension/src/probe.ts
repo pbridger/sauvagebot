@@ -1,20 +1,28 @@
 /**
- * Milestone 0 — throwaway storage probe.
+ * Milestone 0 — throwaway storage probe. Round 2.
  *
- * Answers the three questions in docs/OBR-DEADLANDS-PLAN.md §2 that cannot be
- * settled by reading the SDK, because they are host behaviour:
+ * Round 1 established (in Paul's room, as GM):
+ *   - room metadata holds ~12.6 kB and silently drops the write that overflows;
+ *   - player metadata does NOT survive closing the tab, though `player.id` does;
+ *   - "clear" reported that keys set to `undefined` survived.
  *
- *   1. How much fits in room metadata? (decides whether PC sheets can live there)
- *   2. Does player metadata persist, and is `player.id` stable across a rejoin?
- *   3. Can a non-GM write item metadata? (decides whether players own their sheets)
+ * Round 2 exists to answer what those leave open:
+ *   1. Is the room budget really ~16 kB, and is it per-document? (pin it)
+ *   2. Did delete actually fail, or did round 1 only see a key whose value is now
+ *      `undefined`? `Object.keys` cannot tell those apart, and the difference is
+ *      between "append-only store, 16 kB and no way back" and "fine".
+ *   3. How much fits in ITEM metadata? If that is roomy, sheets live on tokens.
+ *   4. How much fits in SCENE metadata?
+ *   5. Can a non-GM write item metadata?
  *
- * Everything it writes is under the `com.savagebot/probe*` keys and is removable
- * with "Clear stamps". Delete this whole directory once the answers are recorded.
+ * Everything written lives under `com.savagebot/probe*`. Delete this directory
+ * once the answers are in docs/OBR-DEADLANDS-PLAN.md §2.
  */
 import OBR from '@owlbear-rodeo/sdk';
 
-const STAMP_KEY = 'com.savagebot/probe-stamp';
-const BLOB_KEY = 'com.savagebot/probe-blob';
+const PREFIX = 'com.savagebot/probe';
+const STAMP_KEY = `${PREFIX}-stamp`;
+const BLOB_KEY = `${PREFIX}-blob`;
 
 const logEl = document.getElementById('log')!;
 
@@ -44,8 +52,8 @@ function fill(id: string, rows: [string, string][]): void {
 }
 
 function button(id: string, handler: () => Promise<void>): void {
-  const el = document.getElementById(id) as HTMLButtonElement;
-  el.addEventListener('click', async () => {
+  const el = document.getElementById(id) as HTMLButtonElement | null;
+  el?.addEventListener('click', async () => {
     el.disabled = true;
     try {
       await handler();
@@ -56,6 +64,18 @@ function button(id: string, handler: () => Promise<void>): void {
     }
   });
 }
+
+const isProbeKey = (key: string): boolean => key.startsWith(PREFIX);
+
+/** Incompressible, so it measures a byte budget rather than a compression ratio. */
+function noise(length: number): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.';
+  let out = '';
+  for (let i = 0; i < length; i++) out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return out;
+}
+
+// ---------------------------------------------------------------- identity
 
 interface Stamp {
   at: string;
@@ -70,11 +90,10 @@ function formatStamp(value: unknown): string {
 }
 
 async function showIdentity(): Promise<void> {
-  const [name, role, connectionId, permissions] = await Promise.all([
+  const [name, role, connectionId] = await Promise.all([
     OBR.player.getName(),
     OBR.player.getRole(),
     OBR.player.getConnectionId(),
-    OBR.room.getPermissions(),
   ]);
   fill('identity', [
     ['room', OBR.room.id],
@@ -82,16 +101,16 @@ async function showIdentity(): Promise<void> {
     ['connection', connectionId],
     ['name', name],
     ['role', role],
-    ['restrictions', permissions.length ? permissions.join(', ') : '(none set)'],
   ]);
 }
 
 async function showStamps(): Promise<void> {
   const [room, player] = await Promise.all([OBR.room.getMetadata(), OBR.player.getMetadata()]);
+  const used = JSON.stringify(room).length;
   fill('stamps', [
     ['room stamp', formatStamp(room[STAMP_KEY])],
     ['player stamp', formatStamp(player[STAMP_KEY])],
-    ['current player id', OBR.player.id],
+    ['room metadata in use', `${used} chars of JSON across ${Object.keys(room).length} keys`],
   ]);
 }
 
@@ -107,124 +126,157 @@ async function stamp(): Promise<void> {
   await showStamps();
 }
 
+// ---------------------------------------------------------------- deletion
+
 /**
- * Deletes every probe key and *verifies* it. "Setting a key to undefined deletes
- * it" is an assumption, not a documented fact — and if it is wrong, every cleanup
- * path here would log success while leaving junk in the room. We only get one
- * live session, so the probe checks its own claims.
+ * THE IMPORTANT ONE. Round 1 said keys "survived" deletion, but it tested with
+ * `Object.keys`, which lists a key whose value is `undefined` exactly as it lists
+ * a key with real data. If deletion truly does not work, room metadata is an
+ * append-only 16 kB store and every schema change leaks budget permanently.
+ *
+ * So: report the value, not just the key, and try three strategies in order.
  */
 async function clearProbeKeys(): Promise<void> {
-  const roomBefore = Object.keys(await OBR.room.getMetadata()).filter(isProbeKey);
-  const update: Record<string, undefined> = {};
-  for (const key of roomBefore) update[key] = undefined;
-  if (roomBefore.length) await OBR.room.setMetadata(update);
-  await OBR.player.setMetadata({ [STAMP_KEY]: undefined });
-
-  const roomAfter = Object.keys(await OBR.room.getMetadata()).filter(isProbeKey);
-  const playerAfter = Object.keys(await OBR.player.getMetadata()).filter(isProbeKey);
-  if (roomAfter.length || playerAfter.length) {
-    log(
-      `DELETE-BY-UNDEFINED DOES NOT WORK — survivors: ${[...roomAfter, ...playerAfter].join(', ')}`,
-      'bad',
-    );
+  const before = await OBR.room.getMetadata();
+  const keys = Object.keys(before).filter(isProbeKey);
+  if (!keys.length) {
+    log('no probe keys in room metadata', 'ok');
   } else {
-    log(`cleared ${roomBefore.length + 1} probe key(s); delete-by-undefined confirmed`, 'ok');
+    log(`--- deleting ${keys.length} probe key(s) ---`);
+    for (const key of keys) {
+      log(`  before: ${key} = ${JSON.stringify(before[key])?.slice(0, 40) ?? 'undefined'}…`);
+    }
   }
+
+  const strategies: [string, unknown][] = [
+    ['undefined', undefined],
+    ['null', null],
+    ['empty string', ''],
+  ];
+
+  const holdsData = (md: Record<string, unknown>, key: string): boolean => {
+    const v = md[key];
+    return v !== undefined && v !== null && v !== '';
+  };
+
+  for (const [label, value] of strategies) {
+    const current = await OBR.room.getMetadata();
+    const remaining = Object.keys(current).filter((k) => isProbeKey(k) && holdsData(current, k));
+    if (!remaining.length) break;
+
+    const update: Record<string, unknown> = {};
+    for (const key of remaining) update[key] = value;
+    await OBR.room.setMetadata(update);
+
+    const after = await OBR.room.getMetadata();
+    const listed = Object.keys(after).filter(isProbeKey);
+    const withData = listed.filter((k) => holdsData(after, k));
+    log(
+      `  set to ${label}: ${listed.length} key(s) still listed, ${withData.length} still holding data` +
+        ` — room metadata now ${JSON.stringify(after).length} chars`,
+      withData.length ? 'bad' : 'ok',
+    );
+    if (!withData.length) break;
+  }
+
+  await OBR.player.setMetadata({ [STAMP_KEY]: undefined });
   await showStamps();
 }
 
-function isProbeKey(key: string): boolean {
-  return key.startsWith('com.savagebot/probe');
-}
+// ---------------------------------------------------------------- capacity
 
-/**
- * Incompressible filler. A run of one character would measure nothing useful if
- * OBR compresses metadata anywhere between here and storage.
- */
-function noise(length: number): string {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.';
-  let out = '';
-  for (let i = 0; i < length; i++) {
-    out += alphabet[Math.floor(Math.random() * alphabet.length)];
-  }
-  return out;
-}
+type Writer = (payload: string) => Promise<void>;
+type Reader = () => Promise<unknown>;
 
-/**
- * A stand-in for one Deadlands PC sheet — roughly the right shape and size, with
- * the free-text fields (edges, hindrances, gear) that make sheets big.
- */
-function dummySheet(index: number): unknown {
-  return {
-    id: `probe-${index}`,
-    name: `Probe Character ${index}`,
-    wildCard: true,
-    traits: {
-      agility: 8, smarts: 6, spirit: 6, strength: 6, vigor: 8,
-      fighting: 8, shooting: 10, notice: 6, riding: 6, survival: 4,
-      intimidation: 6, persuasion: 4, stealth: 6, athletics: 6,
-    },
-    derived: { parry: 6, toughness: 7, armor: 2, pace: 6, size: 0, grit: 1 },
-    state: { wounds: 0, fatigue: 0, shaken: false, bennies: 3 },
-    edges: [noise(140), noise(120), noise(160), noise(110)],
-    hindrances: [noise(130), noise(150), noise(90)],
-    gear: [noise(180), noise(160), noise(140), noise(200), noise(120)],
-    powers: [noise(220), noise(240)],
-    notes: noise(600),
-  };
-}
-
-/**
- * The decision this probe exists to make is "do the party's PC sheets fit in room
- * metadata", so it measures in *sheets*, not characters — which sidesteps every
- * question about encoding, escaping and compression at once. One key per sheet,
- * because that is how the real thing would store them.
- */
-async function measureCap(): Promise<void> {
-  log('--- how many PC sheets fit in room metadata? ---');
-  const sample = JSON.stringify(dummySheet(0));
-  log(`one dummy sheet is ${sample.length} chars of JSON`);
-
-  let stored = 0;
-  for (let i = 1; i <= 40; i++) {
-    const key = `com.savagebot/probe-roster/${i}`;
-    try {
-      await OBR.room.setMetadata({ [key]: dummySheet(i) });
-    } catch (error) {
-      log(`sheet ${i}: REJECTED — ${describe(error)}`, 'bad');
-      break;
-    }
-    const back = await OBR.room.getMetadata();
-    if (!back[key]) {
-      log(`sheet ${i}: silently dropped — write returned, key absent`, 'bad');
-      break;
-    }
-    stored = i;
-  }
-  const budget = stored * sample.length;
-  log(
-    `FITS: ${stored} sheets (~${(budget / 1024).toFixed(1)} kB of sheet JSON)`,
-    stored >= 8 ? 'ok' : 'bad',
-  );
-
-  // Secondary: does the limit throw, or truncate silently? Error handling in the
-  // real extension depends on which, and it is one write to find out.
-  const huge = noise(1024 * 1024);
+/** A write counts only if it reads back at full length — silent drops are the norm here. */
+async function fits(size: number, write: Writer, read: Reader): Promise<boolean> {
+  const payload = noise(size);
   try {
-    await OBR.room.setMetadata({ [BLOB_KEY]: huge });
-    const back = (await OBR.room.getMetadata())[BLOB_KEY];
-    if (typeof back === 'string' && back.length === huge.length) {
-      log('1 MB single key accepted intact — no practical cap on a single value', 'ok');
-    } else if (typeof back === 'string') {
-      log(`OVERSIZE WRITES TRUNCATE SILENTLY: 1 MB read back as ${back.length} chars`, 'bad');
-    } else {
-      log('1 MB write returned but the key is absent — silent drop, no error', 'bad');
-    }
-  } catch (error) {
-    log(`oversize writes throw (good, detectable): ${describe(error)}`, 'ok');
+    await write(payload);
+  } catch {
+    return false;
   }
+  const back = await read();
+  return typeof back === 'string' && back.length === size;
+}
 
+/** Doubling search then bisection, to ~256 chars. */
+async function findCap(label: string, write: Writer, read: Reader): Promise<number> {
+  let lo = 0;
+  let hi = 0;
+  for (let size = 1024; size <= 8 * 1024 * 1024; size *= 2) {
+    if (await fits(size, write, read)) {
+      lo = size;
+      log(`  ${label} ${size}: ok`);
+    } else {
+      hi = size;
+      log(`  ${label} ${size}: rejected or dropped`);
+      break;
+    }
+  }
+  if (!hi) {
+    log(`${label}: no limit found below 8 MB`, 'ok');
+    return lo;
+  }
+  while (hi - lo > 256) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (await fits(mid, write, read)) lo = mid;
+    else hi = mid;
+  }
+  log(`${label} CAP ≈ ${lo} chars (${(lo / 1024).toFixed(1)} kB)`, 'ok');
+  return lo;
+}
+
+async function roomCap(): Promise<void> {
+  log('--- room metadata capacity (single key, incompressible) ---');
+  const cap = await findCap(
+    'room',
+    (p) => OBR.room.setMetadata({ [BLOB_KEY]: p }),
+    async () => (await OBR.room.getMetadata())[BLOB_KEY],
+  );
+  log(`that is the whole-document budget: round 1 saw 4 keys x 3.2 kB fill it`, cap ? 'ok' : 'bad');
   await clearProbeKeys();
+}
+
+async function sceneCap(): Promise<void> {
+  if (!(await OBR.scene.isReady())) {
+    log('no scene open — open one first', 'bad');
+    return;
+  }
+  log('--- scene metadata capacity ---');
+  await findCap(
+    'scene',
+    (p) => OBR.scene.setMetadata({ [BLOB_KEY]: p }),
+    async () => (await OBR.scene.getMetadata())[BLOB_KEY],
+  );
+  await OBR.scene.setMetadata({ [BLOB_KEY]: undefined });
+  log('cleared scene blob');
+}
+
+async function itemCap(): Promise<void> {
+  const selection = await OBR.player.getSelection();
+  const id = selection?.[0];
+  if (!id) {
+    log('nothing selected — select a token first', 'bad');
+    return;
+  }
+  log('--- item metadata capacity (the candidate home for sheets) ---');
+  await findCap(
+    'item',
+    (p) =>
+      OBR.scene.items.updateItems([id], (items) => {
+        for (const item of items) item.metadata[BLOB_KEY] = p;
+      }),
+    async () => (await OBR.scene.items.getItems([id]))[0]?.metadata[BLOB_KEY],
+  );
+  await OBR.scene.items.updateItems([id], (items) => {
+    for (const item of items) delete item.metadata[BLOB_KEY];
+  });
+  const left = (await OBR.scene.items.getItems([id]))[0]?.metadata[BLOB_KEY];
+  log(
+    left === undefined ? 'item key deleted via `delete` on the draft' : 'item key SURVIVED delete',
+    left === undefined ? 'ok' : 'bad',
+  );
 }
 
 async function writeToSelectedItem(): Promise<void> {
@@ -246,21 +298,66 @@ async function writeToSelectedItem(): Promise<void> {
   const [item] = await OBR.scene.items.getItems(selection);
   const stored = item?.metadata[STAMP_KEY] as { at?: string } | undefined;
   if (stored?.at === value.at) {
-    log(`item write OK as ${role} on ${item?.name ?? selection[0]} (${item?.layer})`, 'ok');
+    log(`item write OK as ${role} on "${item?.name}" (${item?.layer})`, 'ok');
   } else {
     log(`item write SILENTLY DROPPED as ${role} — no error, but not stored`, 'bad');
   }
 }
 
+/**
+ * Compression turns a marginal fit into a comfortable one: real sheet JSON is
+ * highly repetitive, unlike the noise used to measure the cap. Confirms that
+ * CompressionStream exists in this context and that base64 survives a round trip.
+ */
+async function compressionCheck(): Promise<void> {
+  if (typeof CompressionStream === 'undefined') {
+    log('CompressionStream unavailable in this context', 'bad');
+    return;
+  }
+  const roster = Array.from({ length: 6 }, (_, i) => ({
+    id: `pc-${i}`,
+    name: `Character ${i}`,
+    wildCard: true,
+    traits: { agility: 8, smarts: 6, spirit: 6, strength: 6, vigor: 8, fighting: 8, shooting: 10 },
+    derived: { parry: 6, toughness: 7, armor: 2, pace: 6, grit: 1 },
+    edges: ['Quick', 'Level Headed', 'Marksman', 'Steady Hands'],
+    hindrances: ['Loyal', 'Stubborn', 'Vengeful (Minor)'],
+    gear: ['Colt Peacemaker', 'Winchester 76', 'Bowie knife', 'Duster', 'Horse'],
+  }));
+  const raw = JSON.stringify(roster);
+
+  const stream = new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  const encoded = btoa(binary);
+
+  log(`6 realistic sheets: ${raw.length} chars raw, ${encoded.length} gzip+base64`, 'ok');
+
+  const key = `${PREFIX}-compressed`;
+  await OBR.room.setMetadata({ [key]: encoded });
+  const back = (await OBR.room.getMetadata())[key];
+  log(
+    back === encoded ? 'base64 round-tripped through room metadata intact' : 'base64 round trip FAILED',
+    back === encoded ? 'ok' : 'bad',
+  );
+  await OBR.room.setMetadata({ [key]: undefined });
+}
+
+// ---------------------------------------------------------------- wiring
+
 OBR.onReady(async () => {
   button('stamp', stamp);
   button('clear-stamps', clearProbeKeys);
-  button('cap', measureCap);
+  button('room-cap', roomCap);
+  button('scene-cap', sceneCap);
+  button('item-cap', itemCap);
   button('item', writeToSelectedItem);
+  button('compression', compressionCheck);
 
   await showIdentity();
   await showStamps();
-  log('ready');
+  log('ready — start with "Clear probe keys", your room still holds round 1 data');
 
   OBR.room.onMetadataChange(() => void showStamps());
   OBR.player.onChange(() => void showIdentity());
