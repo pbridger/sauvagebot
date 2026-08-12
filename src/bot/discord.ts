@@ -11,6 +11,7 @@ import {
   Client,
   Events,
   GatewayIntentBits,
+  MessageFlags,
   Partials,
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -138,8 +139,29 @@ export function buildSlashCommands(): SlashCommandBuilder[] {
 
 async function registerSlashCommands(client: Client<true>): Promise<void> {
   const body = buildSlashCommands().map((b) => b.toJSON());
-  await client.application.commands.set(body);
-  console.log(`Registered ${body.length} slash commands`);
+
+  // Global registration can take up to an hour to propagate. Guild registration is immediate,
+  // so register to every guild we are in as well — that is what makes the commands usable now.
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      await guild.commands.set(body);
+      console.log(`Registered ${body.length} slash commands in guild ${guild.name}`);
+    } catch (error) {
+      // Almost always a missing `applications.commands` scope on the invite.
+      console.warn(
+        `Could not register slash commands in guild ${guild.name} — ` +
+          `the bot may have been invited without the applications.commands scope:`,
+        error,
+      );
+    }
+  }
+
+  try {
+    await client.application.commands.set(body);
+    console.log(`Registered ${body.length} global slash commands`);
+  } catch (error) {
+    console.error('Global slash registration failed', error);
+  }
 }
 
 async function handleInteraction(
@@ -149,7 +171,7 @@ async function handleInteraction(
 ): Promise<void> {
   const command = findCommand(interaction.commandName);
   if (!command) {
-    await interaction.reply({ content: 'Unknown command.', ephemeral: true });
+    await interaction.reply({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -180,11 +202,13 @@ async function handleInteraction(
 
   const parts = splitMessage(text);
   const first = parts.shift() ?? '(no output)';
+  // Private results become ephemeral replies — the interaction equivalent of a DM.
+  // `ephemeral: true` is deprecated in discord.js v14 in favour of the flag.
+  const flags = isPrivate ? { flags: MessageFlags.Ephemeral as const } : {};
   try {
-    // Private results become ephemeral replies — the interaction equivalent of a DM.
-    await interaction.reply({ content: first, ephemeral: isPrivate });
+    await interaction.reply({ content: first, ...flags });
     for (const part of parts) {
-      await interaction.followUp({ content: part, ephemeral: isPrivate });
+      await interaction.followUp({ content: part, ...flags });
     }
   } catch (error) {
     console.error('Could not reply to interaction', error);

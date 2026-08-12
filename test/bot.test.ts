@@ -229,6 +229,45 @@ describe('slash commands', () => {
   });
 });
 
+/**
+ * `/roll 2d6+1` was reported as not working in Discord while `/roll 2d6` was fine. These pin the
+ * command layer, which is what a slash interaction calls with args split on whitespace. They
+ * pass — so the fault is above this layer (interaction option delivery or the reply), not in the
+ * dice engine or the command. Kept as the boundary marker for that open bug.
+ */
+describe('arguments containing operators', () => {
+  const rollCommand = findCommand('roll')!;
+
+  function runRoll(argsString: string): string {
+    return rollCommand.run({
+      args: argsString.split(/\s+/).filter((w) => w.length > 0),
+      channelId: 'chan',
+      guildId: 'guild',
+      authorId: 'user',
+      authorName: 'Paul',
+      prefix: '~',
+      tables: new Tables(),
+      random: new JavaRandom(0),
+    }).text;
+  }
+
+  it('handles a bare roll', () => {
+    expect(runRoll('2d6')).toBe('2d6: 1 + 5 = **6**');
+  });
+
+  it('handles an additive modifier with no spaces', () => {
+    expect(runRoll('2d6+1')).toBe('2d6+1: 1 + 5 + 1 = **7**');
+  });
+
+  it('handles a modifier with spaces around the operator', () => {
+    expect(runRoll('2d6 + 1')).toContain('2d6');
+  });
+
+  it('handles Savage Worlds with a modifier', () => {
+    expect(runRoll('s8+2')).toContain('s8+2:');
+  });
+});
+
 describe('message splitting', () => {
   it('leaves short messages alone', () => {
     expect(splitMessage('hello')).toEqual(['hello']);
