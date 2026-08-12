@@ -188,8 +188,7 @@ async function clearProbeKeys(): Promise<void> {
   await OBR.player.setMetadata({ [STAMP_KEY]: undefined });
 
   // The item capacity probe can leave ~512 kB of filler on whatever was selected.
-  const selection = await OBR.player.getSelection();
-  for (const id of selection ?? []) await cleanItem(id);
+  await cleanSelectedItems();
 
   await showStamps();
 }
@@ -284,6 +283,27 @@ async function itemCap(): Promise<void> {
 }
 
 /**
+ * Reports what it can see before acting. A silent "nothing to do" is exactly what
+ * we got last run, and it is ambiguous between "selection was empty" and "the item
+ * was already clean" — which matters when half a megabyte may be sitting on a token.
+ */
+async function cleanSelectedItems(): Promise<void> {
+  const selection = await OBR.player.getSelection();
+  if (!selection?.length) {
+    log('no item selected — select the token and click again to clean it', 'bad');
+    return;
+  }
+  const items = await OBR.scene.items.getItems(selection);
+  log(`${items.length} item(s) selected:`);
+  for (const item of items) {
+    const size = JSON.stringify(item.metadata ?? {}).length;
+    const keys = Object.keys(item.metadata ?? {});
+    log(`  "${item.name}" (${item.layer}) — metadata ${size} chars, keys: ${keys.join(', ') || '(none)'}`);
+  }
+  for (const id of selection) await cleanItem(id);
+}
+
+/**
  * Round 2 tried `delete item.metadata[key]` on the Immer draft and OBR rejected it,
  * leaving half a megabyte of filler on the token. Assigning `undefined` is the
  * pattern that works for room metadata, so use it here too — and verify.
@@ -298,8 +318,11 @@ async function cleanItem(id: string): Promise<void> {
   });
   const metadata = (await OBR.scene.items.getItems([id]))[0]?.metadata ?? {};
   const left = Object.keys(metadata).filter((k) => isProbeKey(k) && metadata[k] !== undefined);
+  const size = JSON.stringify(metadata).length;
   log(
-    left.length ? `item probe keys SURVIVED: ${left.join(', ')}` : 'item probe keys cleared',
+    left.length
+      ? `  probe keys SURVIVED: ${left.join(', ')} (metadata still ${size} chars)`
+      : `  probe keys cleared — metadata now ${size} chars`,
     left.length ? 'bad' : 'ok',
   );
 }
