@@ -96,21 +96,53 @@ Read from `@owlbear-rodeo/sdk@3.1.0` on disk, not from docs.
 - Within one key the write is whole-value, so **one writer per key**. Use per-owner keys
   (`chips/<playerId>`) over shared mutable structures wherever concurrent writers are possible.
 
-**Still unverified — these gate the layout, and both need a live room:**
+### Measured — milestone 0, run 2026-08-12 in Paul's room
 
-1. **Room metadata size cap.** ~16kB is widely cited and not in the source. If PC sheets go in room
-   metadata this is load-bearing: a Deadlands sheet with edges, hindrances and gear as free text is
-   easily 2–5kB, and six PCs might not fit. If it doesn't fit, the fallback is one sheet per
-   **scene-metadata key** with a room-level index, or sheets pinned to a hidden "roster" item.
-2. **Player metadata persistence and `player.id` stability.** The handoff asserted "persists: yes".
-   That is not determinable from a type signature — it's server behaviour. `Player` carries both
-   `id` and `connectionId`, so `id` is clearly meant to be the more durable of the two, but whether
-   it survives a rejoin, a different browser, or cleared storage is unknown. **Assume it doesn't**
-   until measured: key player-owned data by a sheet id the GM controls, not by `player.id`.
+Numbers, not citations. All measured with **incompressible** filler, so they are byte budgets and
+not compression ratios.
 
-Both are answered by a ~30-line throwaway extension in one short session with Paul: write growing
-blobs to room metadata until it errors; write player metadata, close the browser, rejoin, read
-back. **This is milestone 0, not background research.**
+| Store | Capacity | Overflow behaviour | Persists |
+|---|---|---|---|
+| Room metadata | **~16 kB for the whole document** (4 keys × 3.2 kB filled it) | **silent drop — no error** | yes, across tab close |
+| Item metadata | **~512 kB per item** | rejected at 1 MB | yes, with the scene |
+| Player metadata | not measured | — | **NO — gone on tab close** |
+
+- **`player.id` is stable** across a tab close and rejoin (same browser). `connectionId` is not.
+- **Deletion works**: assigning `undefined` removes the key and reclaims the budget — room metadata
+  went back to `{}`. An earlier "delete does not work" reading was a probe bug (`Object.keys` lists
+  a key whose value is `undefined` identically to one holding data).
+  On *items*, `delete draft.metadata[key]` is **rejected**; assign `undefined` there too.
+- **A non-GM can write item metadata** (confirmed on a PROP). Character tokens are a separate
+  permission grant — `CHARACTER_UPDATE`, plus the `CHARACTER_OWNER_ONLY` flag which is off by
+  default in this room. Recommend Damian turns `CHARACTER_OWNER_ONLY` **on**; it is a useful
+  guard rail and the design does not need it off.
+- **Compression works in the iframe**: `CompressionStream('gzip')` + base64 took a realistic
+  6-sheet roster from 2,377 chars to 464, and round-tripped through room metadata intact.
+
+**The decisive number is 512 kB on items versus 16 kB in the room** — a 30× difference that settles
+where the bulk goes.
+
+### What that means for the layout
+
+The §1b split survives, with the budgets attached:
+
+| Data | Home | Size | Why |
+|---|---|---|---|
+| Canonical PC roster | **room metadata**, one key per PC | ~400 chars each | campaign-scoped; 6 PCs is ~2.4 kB of a 16 kB budget |
+| Chips, per player | **room metadata**, one key per player | tiny | must outlive a tab close, so player metadata is out |
+| Extra/NPC sheets, prose, backstory, images | **item metadata** on the token | 512 kB, effectively free | no budget pressure at all |
+| PC volatile combat state (wounds, shaken, card) | **item metadata** on the PC token | tiny | belongs to the scene, not the campaign |
+
+Three rules fall out of the measurements:
+
+1. **Verify every room-metadata write by reading it back.** Overflow is silent, and a character
+   sheet edit that vanishes without an error is the worst failure this thing could have.
+2. **Keep the room roster lean and structured; push prose to the token.** The 16 kB budget is
+   comfortable at ~3 kB of real use, but an unbounded notes field would eat it. Items have 512 kB
+   and no such pressure.
+3. **Do not compress the roster**, even though compression works. A gzipped blob is one key, which
+   means one writer and last-write-wins across *all* PCs — it trades collision-safety for space we
+   do not need. Hold compression in reserve for a single archive/backup key.
 
 ---
 
@@ -171,7 +203,7 @@ Room for development: `https://www.owlbear.rodeo/room/oSZbFhSwnKqy/ThePubicRim` 
 
 | # | What | Blocked on |
 |---|---|---|
-| 0 | **Built, awaiting a run.** Probe extension in `extension/` — how many sheets fit in room metadata, does player metadata survive a rejoin, can a non-GM write item metadata. Answers §2. | Paul running it |
+| 0 | **Done** — see the measured table in §2. One loose end: re-run the non-GM write on a *character* token rather than a prop. | — |
 | 1 | `src/rules/`: **chips done**, **poker done**, sheet schema + JSON codec outstanding. | schema needs the book |
 | 2 | Extension skeleton: manifest, static host, `Storage` adapter interface with room/item implementations, leader election. | 0 |
 | 3 | Sheet panel: view/edit a PC, trait rolls through the verified engine, export/import the roster. | 1, 2 |

@@ -35,7 +35,13 @@ function log(message: string, cls?: 'ok' | 'bad'): void {
 }
 
 function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof Error) return error.message;
+  // OBR rejects with plain objects, which stringify to a useless "[object Object]".
+  try {
+    return JSON.stringify(error) ?? String(error);
+  } catch {
+    return String(error);
+  }
 }
 
 function fill(id: string, rows: [string, string][]): void {
@@ -180,6 +186,11 @@ async function clearProbeKeys(): Promise<void> {
   }
 
   await OBR.player.setMetadata({ [STAMP_KEY]: undefined });
+
+  // The item capacity probe can leave ~512 kB of filler on whatever was selected.
+  const selection = await OBR.player.getSelection();
+  for (const id of selection ?? []) await cleanItem(id);
+
   await showStamps();
 }
 
@@ -269,13 +280,27 @@ async function itemCap(): Promise<void> {
       }),
     async () => (await OBR.scene.items.getItems([id]))[0]?.metadata[BLOB_KEY],
   );
+  await cleanItem(id);
+}
+
+/**
+ * Round 2 tried `delete item.metadata[key]` on the Immer draft and OBR rejected it,
+ * leaving half a megabyte of filler on the token. Assigning `undefined` is the
+ * pattern that works for room metadata, so use it here too — and verify.
+ */
+async function cleanItem(id: string): Promise<void> {
   await OBR.scene.items.updateItems([id], (items) => {
-    for (const item of items) delete item.metadata[BLOB_KEY];
+    for (const item of items) {
+      for (const key of Object.keys(item.metadata)) {
+        if (isProbeKey(key)) item.metadata[key] = undefined;
+      }
+    }
   });
-  const left = (await OBR.scene.items.getItems([id]))[0]?.metadata[BLOB_KEY];
+  const metadata = (await OBR.scene.items.getItems([id]))[0]?.metadata ?? {};
+  const left = Object.keys(metadata).filter((k) => isProbeKey(k) && metadata[k] !== undefined);
   log(
-    left === undefined ? 'item key deleted via `delete` on the draft' : 'item key SURVIVED delete',
-    left === undefined ? 'ok' : 'bad',
+    left.length ? `item probe keys SURVIVED: ${left.join(', ')}` : 'item probe keys cleared',
+    left.length ? 'bad' : 'ok',
   );
 }
 
