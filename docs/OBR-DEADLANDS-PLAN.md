@@ -3,8 +3,13 @@
 Written 2026-08-12. Supersedes the *scope* of `OBR-INTEGRATION-PLAN.md` (which stays as the
 reference for the SDK survey, hosting, and the deferred Discord relay). Read `HANDOFF.md` first.
 
-**Scope decision:** the target is **Deadlands**, not generic Savage Worlds. Where a choice exists
-between a general SWADE abstraction and the Deadlands-specific thing, build the Deadlands thing.
+**Scope decision:** the target is **Deadlands: The Weird West** (SWADE-based, 2020) — confirmed by
+Paul — not generic Savage Worlds. Where a choice exists between a general SWADE abstraction and the
+Deadlands-specific thing, build the Deadlands thing. SWADE underneath is the right base, which
+matches the already-ported engine and deck.
+
+**Rooms:** development happens in **Paul's** room; the campaign eventually runs in **Damian's**.
+That makes cross-room portability a hard requirement rather than a nicety — see §1c.
 
 ---
 
@@ -55,9 +60,15 @@ Damian owns the room, the party's sheets are in Damian's account and nobody else
 So **JSON export/import is first-class from day one**. It is simultaneously:
 
 - the backup (dump the whole roster to a file, commit it next to this repo),
+- **the move from Paul's dev room into Damian's campaign room** — since dev happens in one and play
+  in the other, this path gets exercised for real, not just in theory,
 - the offline-authoring path (edit a sheet in a text editor between sessions, re-import),
 - the escape hatch if a storage decision turns out wrong,
 - and the migration path when the schema changes.
+
+Because of the room move, export/import must round-trip the **whole roster in one operation**, and
+must not embed anything room-specific (OBR item ids, scene ids, player ids) in the sheet itself.
+That reinforces §1b: the token points at the sheet, never the reverse.
 
 That, and not a live external database, is what "persistent outside Owlbear" should mean here.
 
@@ -119,8 +130,9 @@ On a platform with no authoritative RNG and last-write-wins semantics, that mean
 This is a much sharper reason to build leader election first than initiative was. The handoff's
 generic "build it in from the start" becomes a concrete requirement with a concrete failure mode.
 
-Other Deadlands-specific surfaces worth building (**all to be confirmed against the book** — see
-§6, the edition is not yet settled):
+Other Deadlands-specific surfaces worth building. **All written from memory and to be confirmed
+against the Weird West book before any of it is coded** — the rules modules in §4 are exactly where
+a misremembered detail would get baked in:
 
 - **Huckster hexes** — the deal with the devil draws cards and evaluates a **poker hand**. This
   reuses the already-ported deck and `javaShuffle` directly, and a poker-hand evaluator is pure,
@@ -173,12 +185,15 @@ all — but they need nothing new architecturally, so they're not on the critica
 
 ## 6. Open questions
 
-- **Which edition?** *Deadlands: The Weird West* (SWADE, 2020) or *Deadlands Reloaded* (Savage
-  Worlds Deluxe)? This changes the chip economy, how Hucksters cast, and the shape of the sheet.
-  Building the wrong one is a real cost. **Needs Paul or Damian.** No rules specifics in this plan
-  should be treated as settled until checked against the book — they are written from memory.
-- Does Damian own the OBR room, or should Paul, given §1c?
-- Any existing party sheets to import — a spreadsheet, PDFs, Roll20?
+- **Rules text.** Edition is settled (Weird West), but every rules specific in §3 is from memory.
+  Before milestone 1, get the actual chip economy, huckster deal-with-the-devil procedure, and Fear
+  Level table — from the book, Damian, or the SWADE/Deadlands SRD if one covers it.
+- Any existing party sheets to import — a spreadsheet, PDFs, Roll20? This shapes the JSON schema
+  more than anything else, and is worth knowing before milestone 1.
+- Does the party actually want to move off whatever they use now, or is the extension GM-side only
+  at first? Affects how much sheet-editing UI is needed versus import-only.
+
+**Settled:** Weird West edition; dev in Paul's room, play eventually in Damian's (§1c).
 
 Carried over from `HANDOFF.md` §5, so it doesn't rot behind this workstream:
 
