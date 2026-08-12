@@ -14,9 +14,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "start": "node --enable-source-maps dist/main.js",
-    "dev": "tsx watch src/main.ts"
+    "dev": "tsx watch src/main.ts",
+    "ext:dev": "vite --config extension/vite.config.ts",
+    "ext:build": "vite build --config extension/vite.config.ts",
+    "ext:typecheck": "tsc -p extension/tsconfig.json"
   },
   "dependencies": {
+    "@owlbear-rodeo/sdk": "^3.1.0",
     "antlr4ng": "^3.0.4",
     "discord.js": "^14.16.3",
     "ioredis": "^5.4.1"
@@ -26,6 +30,7 @@
     "antlr4ng-cli": "^2.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
+    "vite": "^6.4.3",
     "vitest": "^2.1.5"
   }
 }

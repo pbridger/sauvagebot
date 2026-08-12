@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Savage Probe</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        padding: 12px;
+        font: 13px/1.45 ui-sans-serif, system-ui, sans-serif;
+      }
+      h2 { font-size: 13px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .06em; opacity: .65; }
+      h2:first-child { margin-top: 0; }
+      button {
+        font: inherit;
+        padding: 6px 10px;
+        margin: 0 6px 6px 0;
+        border-radius: 6px;
+        border: 1px solid currentColor;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+      button:disabled { opacity: .4; cursor: default; }
+      dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 10px; margin: 0; }
+      dt { opacity: .65; }
+      dd { margin: 0; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+      #log {
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 220px;
+        overflow-y: auto;
+        border: 1px solid rgba(128,128,128,.35);
+        border-radius: 6px;
+        padding: 8px;
+      }
+      .ok { color: #1a7f37; }
+      .bad { color: #cf222e; }
+    </style>
+  </head>
+  <body>
+    <h2>Identity</h2>
+    <dl id="identity"></dl>
+
+    <h2>Persistence</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      Stamp, then close the tab and rejoin the room. Reopen this panel: a surviving stamp means the
+      store persists, and an unchanged player id means it is stable across rejoins.
+    </p>
+    <button id="stamp">Stamp room + player</button>
+    <button id="clear-stamps">Clear stamps</button>
+    <dl id="stamps"></dl>
+
+    <h2>Room metadata capacity</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      Doubles a single-key blob until the write fails or does not read back, then binary-searches
+      the boundary. Cleans up after itself.
+    </p>
+    <button id="cap">Measure cap</button>
+
+    <h2>Item metadata write (run this as a PLAYER too)</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      Select a character token first. Tests whether a non-GM can write item metadata, which decides
+      whether players can own their own sheets.
+    </p>
+    <button id="item">Write to selected item</button>
+
+    <h2>Log</h2>
+    <div id="log"></div>
+
+    <script type="module" src="/src/probe.ts"></script>
+  </body>
+</html>
