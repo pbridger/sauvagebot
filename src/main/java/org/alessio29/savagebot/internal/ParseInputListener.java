@@ -18,7 +18,8 @@ public class ParseInputListener extends ListenerAdapter {
 			return;
 		}
 
-        DiscordResponseBuilder responseBuilder = new DiscordResponseBuilder(author, channel);
+        DiscordResponseBuilder responseBuilder =
+                new DiscordResponseBuilder(author, channel, event.getMessage());
 		new CommandInterpreter().run(new DiscordMessageReceived(event), responseBuilder);
 		responseBuilder.sendResponse();
 	}

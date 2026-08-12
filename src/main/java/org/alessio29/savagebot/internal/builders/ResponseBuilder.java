@@ -44,6 +44,16 @@ public abstract class ResponseBuilder {
         }
     }
 
+    /**
+     * Deliver the private part of a response. Overridable so a transport can
+     * fan out to more than one destination (e.g. DM plus a thread).
+     */
+    protected void sendPrivateParts(List<String> parts) {
+        for (String part : parts) {
+            sendPrivateReply(part);
+        }
+    }
+
     protected abstract void sendReplyToOrigin(String message);
     protected abstract void sendPrivateReply(String message);
 }

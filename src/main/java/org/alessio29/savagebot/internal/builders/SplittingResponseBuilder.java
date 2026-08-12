@@ -52,10 +52,7 @@ public abstract class SplittingResponseBuilder extends ResponseBuilder {
     }
 
     private void splitAndSendPrivate(String message) {
-        List<String> messageParts = splitMessage(message, messageLengthLimit);
-        for (String part : messageParts) {
-            sendPrivateReply(part);
-        }
+        sendPrivateParts(splitMessage(message, messageLengthLimit));
     }
 
 }
