@@ -134,6 +134,31 @@ export function awardChip(
   return { chip, holding: adjust(holding, chip, 1), pot: after };
 }
 
+export class ChipConservationError extends Error {
+  constructor(expected: number, found: number) {
+    super(`chip total is ${found}, expected ${expected} — a draw was lost or duplicated`);
+    this.name = 'ChipConservationError';
+  }
+}
+
+/**
+ * Pot + every holding must always equal the starting total.
+ *
+ * The pot is the one structure in the design that per-owner keys cannot protect:
+ * it is inherently one shared key with one writer, so leader election is the
+ * *only* mitigation — and election is advisory (see `obr/leader.ts`). During a
+ * leader handover two clients can briefly both draw, which shows up here and
+ * nowhere else. Call this after every draw, not just in tests.
+ */
+export function assertConserved(
+  pot: ChipCounts,
+  holdings: readonly ChipCounts[],
+  expectedTotal: number,
+): void {
+  const found = totalChips(pot) + holdings.reduce((sum, h) => sum + totalChips(h), 0);
+  if (found !== expectedTotal) throw new ChipConservationError(expectedTotal, found);
+}
+
 export function formatChips(counts: ChipCounts): string {
   const parts = CHIP_COLORS.filter((c) => counts[c] > 0).map(
     (c) => `${counts[c]} ${CHIP_EFFECTS[c].label}`,

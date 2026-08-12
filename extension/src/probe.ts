@@ -1,5 +1,7 @@
 /**
- * Milestone 0 — throwaway storage probe. Round 2.
+ * Scratch harness for checking OBR behaviour in a live room.
+ *
+ * Built for milestone 0, which it answered; kept for the next surprise.
  *
  * Round 1 established (in Paul's room, as GM):
  *   - room metadata holds ~12.6 kB and silently drops the write that overflows;
@@ -15,8 +17,11 @@
  *   4. How much fits in SCENE metadata?
  *   5. Can a non-GM write item metadata?
  *
- * Everything written lives under `com.savagebot/probe*`. Delete this directory
- * once the answers are in docs/OBR-DEADLANDS-PLAN.md §2.
+ * Everything written lives under `com.savagebot/probe*`.
+ *
+ * KEEP THIS around after milestone 0 rather than deleting it: it is the only
+ * harness for checking real OBR behaviour in a live room, and the next surprise
+ * will want it.
  */
 import OBR from '@owlbear-rodeo/sdk';
 

@@ -103,9 +103,14 @@ not compression ratios.
 
 | Store | Capacity | Overflow behaviour | Persists |
 |---|---|---|---|
-| Room metadata | **~16 kB for the whole document** (4 keys × 3.2 kB filled it) | **silent drop — no error** | yes, across tab close |
-| Item metadata | **~512 kB per item** | rejected at 1 MB | yes, with the scene |
+| Room metadata | **between 12.6 kB and 15.8 kB**, whole document | **silent drop — no error** | yes, across tab close |
+| Item metadata | **~512 kB per item**, bisected | rejected at 1 MB | yes, with the scene |
 | Player metadata | not measured | — | **NO — gone on tab close** |
+
+The room figure is a **bracket, not a bisection**: four 3.2 kB keys were accepted and the fifth was
+dropped. 16 kB is the obvious candidate but was not confirmed — the room-cap bisection button was
+never run. `ROOM_CAPACITY` is set to 15,000 to sit under the bracket, and the design uses ~3 kB, so
+nothing turns on the exact figure. Run the button if that ever stops being true.
 
 - **`player.id` is stable** across a tab close and rejoin (same browser). `connectionId` is not.
 - **Deletion works**: assigning `undefined` removes the key and reclaims the budget — room metadata

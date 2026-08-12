@@ -16,6 +16,18 @@
  *
  * The GM is preferred so that shared writes come from the machine most likely to
  * stay connected for the whole session.
+ *
+ * **Election is advisory, not a lock.** It is exactly-one-leader for a *given*
+ * party list, which the tests pin — but clients learn about a disconnect at
+ * slightly different moments, so for a few hundred milliseconds after the leader
+ * drops, two clients can both believe they lead. A call site that mutates shared
+ * state must therefore:
+ *
+ *   1. re-check `isLeader` immediately before the write, not once at startup; and
+ *   2. read back and confirm *its own* change is the one that landed.
+ *
+ * `VerifiedStore` gives you (2) for capacity failures; logical conflicts — a chip
+ * drawn twice — need the caller to check an invariant as well.
  */
 
 export interface Peer {

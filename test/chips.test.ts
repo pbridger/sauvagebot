@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHIP_COLORS,
+  ChipConservationError,
+  assertConserved,
   DEFAULT_POT,
   NO_CHIPS,
   PotEmptyError,
@@ -105,6 +107,19 @@ describe('holdings', () => {
     expect(holding[chip]).toBe(1);
     expect(pot[chip]).toBe(DEFAULT_POT[chip] - 1);
     expect(totalChips(pot) + totalChips(holding)).toBe(totalChips(DEFAULT_POT));
+  });
+
+  it('detects a chip drawn twice, which is what a leader handover would cause', () => {
+    const total = totalChips(DEFAULT_POT);
+    const { chips, pot } = drawChips(DEFAULT_POT, 3, seededRng(9));
+    const holding = addChips(NO_CHIPS, chips);
+    expect(() => assertConserved(pot, [holding], total)).not.toThrow();
+
+    // Two clients both draw the same chip: it lands in two holdings, pot decremented once.
+    const duplicate = addChips(NO_CHIPS, [chips[0]!]);
+    expect(() => assertConserved(pot, [holding, duplicate], total)).toThrow(
+      ChipConservationError,
+    );
   });
 
   it('formats holdings for display', () => {
