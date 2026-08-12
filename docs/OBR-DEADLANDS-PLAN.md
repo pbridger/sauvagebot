@@ -167,10 +167,12 @@ scaffolding exists — the same sequencing that made the dice-engine rewrite ver
 
 ## 5. Milestones
 
+Room for development: `https://www.owlbear.rodeo/room/oSZbFhSwnKqy/ThePubicRim` (Paul's).
+
 | # | What | Blocked on |
 |---|---|---|
-| 0 | Probe extension: measure the room-metadata cap; test player-metadata persistence across rejoin. Answers §2. | Paul opening a room |
-| 1 | `src/rules/`: sheet schema + JSON codec, chip pot, poker hands. Tested. | nothing |
+| 0 | **Built, awaiting a run.** Probe extension in `extension/` — how many sheets fit in room metadata, does player metadata survive a rejoin, can a non-GM write item metadata. Answers §2. | Paul running it |
+| 1 | `src/rules/`: **chips done**, **poker done**, sheet schema + JSON codec outstanding. | schema needs the book |
 | 2 | Extension skeleton: manifest, static host, `Storage` adapter interface with room/item implementations, leader election. | 0 |
 | 3 | Sheet panel: view/edit a PC, trait rolls through the verified engine, export/import the roster. | 1, 2 |
 | 4 | Chip pot + per-player chip widgets, GM award, draw. | 1, 2 |
@@ -180,6 +182,22 @@ scaffolding exists — the same sequencing that made the dice-engine rewrite ver
 
 Positional features (gang-up, range, templates) come after, and are the reason to be on a VTT at
 all — but they need nothing new architecturally, so they're not on the critical path.
+
+---
+
+### Running the probe
+
+```bash
+npm run ext:dev          # serves http://localhost:5173
+```
+
+Then in the room: ⚙ → Extensions → **Add Custom Extension** → `http://localhost:5173/manifest.json`.
+Open the "Savage Probe" action; **the Identity panel filling in is the signal it loaded at all** —
+if it stays blank, the extension did not load and nothing below means anything.
+
+`localhost` is reachable only from Paul's Mac, which is fine for a probe and is exactly why the real
+extension needs static hosting. For the non-GM test, open the room's *player* invite link in an
+incognito window **on the same machine**.
 
 ---
 
