@@ -1,136 +1,209 @@
-# Savage Worlds Discord bot — handoff
+# Savage Worlds bot — handoff
 
-Written 2026-08-12, migrated from a Claude Code session in `~/dev/shub-niggurath`
-(wrong directory — savagebot work doesn't belong in the Blacksands repo).
+Rewritten 2026-08-12, superseding the Java-era handoff (that content is preserved in
+`OBR-INTEGRATION-PLAN.md` §"Build status" and in git history on the `savage/self-host-fixes`
+branch). **Read this first**; `OBR-INTEGRATION-PLAN.md` has the depth.
 
-## Goal
+Damian runs a Savage Worlds game. Paul is building bot + VTT support for it.
 
-Damian wants a Discord bot supporting **Savage Worlds**-specific rolling plus table helpers
-(initiative cards, bennies, tokens, states).
+---
 
-## Where things stand
+## 1. Where things stand
 
-`alessio29/savagebot` is an existing open-source bot that already does exactly this — see
-`savagebot-analysis.md` for a full architecture read. Short version: ANTLR4-based dice expression
-language, Savage Worlds trait/extra rolls with acing, initiative card deck with Quick/Level
-Headed/Hesitant edges, bennies, tokens, character states, plus LavaPlayer music. Redis for
-persistence. Java 8 / Maven.
+**A TypeScript bot is live and working in Discord.** The Java bot it replaced is stopped.
 
-**The author's hosted instance is currently offline.** Invited it to a test server on 2026-08-12;
-the bot joins fine but shows greyed-out Offline in the member list. It's gateway-based, so while
-offline neither `!` commands nor slash commands work. It's a verified public app, so this is a
-global outage of the author's box, not a local misconfiguration. Infra is a bare
-`while true; do nohup java -jar ...; done` loop with no monitoring, no status page and no support
-server — recovery depends on the author noticing by hand. No GitHub issue filed for the outage;
-newest human-filed issue is #204 (Oct 2025), so it was alive then.
+Two branches on `git@github.com:pbridger/sauvagebot.git` (Paul's fork of `alessio29/savagebot`):
 
-**Therefore: self-hosting is the path.** Waiting on someone else's unmonitored box isn't a
-foundation for Damian's game.
+| Branch | What | Tests |
+|---|---|---|
+| `savage/self-host-fixes` | the original Java bot, made buildable + two real fixes | 94 green |
+| `typescript-rewrite` | the rewrite; **this is the live bot** | 246 green |
 
-## Contents of this directory
+Bot identity: **SauvageBot#0301**, app id `1537112650314678323`, in guild
+`1007423179746201671` ("Return to Scree Saddle"). Target channel `1534124646624923668`.
+Running with prefix `~` (debug mode) so it can't be confused with anything else.
 
-- `savagebot/` — clone of `alessio29/savagebot` @ `b60e98e`.
-  **Shallow clone (`--depth 20`)** — run `git fetch --unshallow` before doing real work, and
-  re-point `origin` at your own fork if you intend to modify it.
-- `savagebot-analysis.md` — full architecture analysis, run instructions, known blockers.
+### Running it
 
-## Build status — 2026-08-12, self-host
+```bash
+cd ~/dev/savage
+./run-ts.sh debug     # `~` prefix;  omit `debug` for `!`
+```
 
-**It builds.** `./build.sh` produces `savagebot/target/savagebot-0.2.0-SNAPSHOT-jar-with-dependencies.jar`
-(51MB). `./run.sh [debug]` launches it, reading the bot token from `.token` (gitignored, chmod 600).
-Both scripts pin `JAVA_HOME` to `openjdk@17` internally — it's keg-only, so `/usr/bin/java`
-stays a broken stub and no `export` survives between shells.
+`run-ts.sh` reads the token from `~/dev/savage/.token` and **exports `DISCORD_TOKEN` itself**.
+That is deliberate: Paul has an ambient `DISCORD_TOKEN` in his shell for an unrelated bot
+("Overlord/McDoom"), and `main.ts` prefers env over file. Early runs silently logged in as the
+wrong bot — the symptom was "SauvageBot is offline" while the process happily reported
+`Logged in as…`. Don't reintroduce ambient-token precedence.
 
-Patches applied to get there:
+Slash commands register **per-guild as well as globally** on startup. Guild registration is
+immediate; global can take an hour. This is what makes them usable during a session.
 
-- `SavageBotRunner.java` — added `.enableIntents(GatewayIntent.MESSAGE_CONTENT)`.
-  **Order-sensitive:** with this in, the gateway rejects the connection outright with close code
-  **4014 (disallowed intents)** unless Message Content is already toggled on in the Developer
-  Portal. That's "bot never comes online", not a silent degradation.
-- `pom.xml` — dropped the dead `jcenter` repo (as predicted), and two blockers the analysis did
-  *not* predict, both downstream of that removal:
-  - `com.sedmelluq:lavaplayer:1.3.73` was **jcenter-only and is not on Maven Central at all**, so
-    removing jcenter made the build unresolvable. Swapped to the maintained fork
-    `dev.arbjerg:lavaplayer:1.5.3`, which keeps the same `com.sedmelluq.discord.lavaplayer.*`
-    package names — a drop-in, no Java changes needed.
-  - that fork's audio-codec transitives (`com.github.walkyst.JAADec-fork:*`) are **JitPack-only**,
-    so `https://jitpack.io` had to be added to `<repositories>`.
+**Redis is not running.** Table state is in-memory and lost on restart. `docker run -d -p
+6379:6379 redis` and set `REDIS_HOST` when that starts to matter.
 
-  Net: the music dependency is what makes this build fragile. If Damian doesn't want music,
-  ripping out `internal/music/` + `MusicCommands` removes all three of the above at once.
+### What's verified
 
-**First real run confirmed the 4014 prediction exactly.** With a valid token but the portal toggle
-still off, the bot authenticates fine, logs `Registered /-command: roll|deal|fight|card|hold|init|
-round|drop`, then the gateway drops the connection:
-`CloseCode(4014 / Disallowed intents...)`. Token validity and the intent toggle are therefore
-independent failures that look identical from Discord's side (bot never appears Online) — read the
-log, not the member list. Flipping **MESSAGE CONTENT INTENT** in the Developer Portal is the fix.
+The rewrite is held to **byte-equality against the Java engine**, not inspection:
 
-**Pre-flight done with a junk token** (`... NOT_A_REAL_TOKEN 127.0.0.1 6379 dummyPass debug`):
-the whole startup path runs clean and fails at *exactly* one place — `LoginException: The provided
-token is invalid!` from `build()` at `SavageBotRunner.java:53`. Nothing throws before it. So with a
-real token in `.token`, any remaining failure is portal/token config, not a code defect. Also
-established: `build()` blocks and throws synchronously, so the `getSelfUser()` loop right after it
-is not racing an un-READY shard.
+- `JavaRandom` reproduces `java.util.Random` exactly — 107 vectors from a real JVM.
+- The roller matches on 735 vectors across 15 methods.
+- All **450 conformance-corpus records** (`savagebot/src/test/resources/conformance-corpus.tsv`)
+  reproduce byte for byte.
+- The corpus was **mutation-checked**: reintroducing the original explainer bug turns 11 groups
+  red, so the oracle genuinely discriminates. Regenerate it with `ConformanceCorpus.main` only for
+  an intentional behaviour change, and review the diff.
 
-Two facts confirmed **by reading the source** (the analysis doc asserted both without ever running
-the code — verified here because a wrong prefix would make a checkpoint-(d) failure look like (b)):
+Confirmed working live: `~s8`, `~help` (DMs *and* creates a thread — Paul confirmed), `/roll 2d6`.
 
-- **`debug` is strictly positional (`args[5]`).** To reach it you must pass redisHost/port/pass
-  first — "only password + token are required" and "6th arg is debug" can't both be honoured.
-  `run.sh debug` passes `127.0.0.1 6379 dummyPass` to get there. Safe: `RedisClient.setup()` is
-  pure field assignment (no connection), and every read/write wraps the Jedis call in
-  `catch (Exception) → log.debug`, returning an empty map (`RedisClient.java:66-73`). A dead Redis
-  really is harmless — state just doesn't persist. Want persistence later:
-  `docker run -d -p 6379:6379 redis` and the same args start working, no code change.
-- The debug prefix is **`~`** — `Prefixes.java:8`, `DEFAULT_TEST_PREFIX = "~"`. Verified, not assumed.
-- **Slash commands register globally**, via `jda.updateCommands()` in `CommandRegistry.java:105` —
-  not per-guild. Propagation can take up to an hour. Do not read a slow slash command as a broken
-  build.
+---
 
-Verify these as four separate checkpoints; most confusion here is misreading a later failure as an
-earlier one: (a) jar builds ✅ · (b) bot shows **Online** in the member list — gateway/token/intents
-· (c) a slash command responds — registration · (d) `~s8` responds — MESSAGE_CONTENT.
+## 2. Owlbear Rodeo — the architecture question, answered
 
-The public bot is still in the test server. Leave it: it's offline so it can't double-respond, and
-the local instance runs on the `~` prefix under `run.sh debug`, so there's no ambiguity about which
-bot answered. Kick it only when taking over `!`.
+**OBR extensions are client-side only. There is no server-side OBR API, no REST endpoint, no
+webhook receiver.** Verified against the SDK source (`github.com/owlbear-rodeo/sdk`);
+`docs.owlbear.rodeo` 403s automated fetches, so don't rely on doc summaries.
 
-## Next steps (original)
+### So how do complex shared-state plugins work?
 
-1. Install a JDK and Maven — **neither is on this machine** (`java` and `mvn` both absent).
-   `brew install openjdk@17 maven`.
-2. Patch the two known blockers before first build:
-   - `SavageBotRunner.java` — imports `GatewayIntent` but never calls `enableIntents(...)`; it uses
-     `DefaultShardManagerBuilder.createDefault(token)`, whose defaults exclude the privileged
-     `MESSAGE_CONTENT` intent. Prefix commands (`!s8`) will very likely arrive with empty content on
-     a bot registered today. Also enable Message Content in the Developer Portal.
-   - `pom.xml` — drop the `jcenter` repository; bintray has been dead since 2021 and will just add
-     resolution timeouts.
-3. `mvn clean compile assembly:single`, then run per `savagebot-analysis.md` § Running it.
-4. Register a new Discord application for Damian's instance; invite with
-   `scope=bot%20applications.commands` (the README's link omits `applications.commands`, so slash
-   commands never register).
-5. Optional: Redis for persistence. Without it the bot runs but loses table state on restart.
+**OBR itself is the server.** Extensions bring no backend — they read and write *OBR's own synced
+stores*, and OBR replicates to every connected client. Four writable shared stores, each with an
+`onChange` subscription:
 
-## Open questions for Damian
+| Store | Scope | Persists | Natural use |
+|---|---|---|---|
+| Room metadata | whole room | yes | small config |
+| Scene metadata | current scene | yes | initiative order, round counter |
+| **Item metadata** | per token | yes, with the scene | character sheet bound to a token |
+| Player metadata | per player | yes | that player's bennies |
 
-- Does he need the music commands? If not, dropping LavaPlayer removes the most rotten dependency
-  (`com.sedmelluq:lavaplayer` 1.3.73 is the abandoned line; YouTube playback is broken on it — the
-  live fork is `dev.arbjerg:lavaplayer`).
-- Self-host on what? A always-on box is needed. The upstream restart-loop script is a starting
-  point but deserves better (systemd unit or a container, secrets via env not argv — currently the
-  bot token and Redis password are passed as command-line args and visible in `ps`).
-- Modernise or run as-is? JDA is pinned to `5.0.0-alpha.18`; JDA 5 stable exists. Running as-is is
-  fastest; upgrading is the right call if this becomes a maintained fork.
+Plus `broadcast` (ephemeral, connection-scoped — reaches only who is online *now*, persists
+nothing) and `scene.local` as the non-synced counterpart. **`scene.local`'s sync semantics were
+not confirmed from source** — verify before relying on it.
 
-Base to fork: **upstream `alessio29/savagebot`** (50 stars, last push 2026-03-02). The `dnpetrov`
-fork contributed the Sword World / Ironsworn roll work but is stale since 2024-05 and already
-merged upstream.
+`SceneItemsApi.updateItems` uses **Immer draft mutation and ships only changed fields as patches**,
+so two clients editing *different* fields of one token do not clobber each other.
 
-## Context that does NOT carry over
+The loop: write → OBR replicates → every other client's extension gets `onChange` → re-renders.
+A shared document with pub/sub, without running the infrastructure.
 
-Earlier in the originating session I recommended *against* SavageBot — that was for Paul's Delta
-Green campaign (Blacksands), where the Savage Worlds feature set is dead weight and only percentile
-rolls matter. For Damian's Savage Worlds game that reasoning is inverted: SavageBot is
-purpose-built for the job.
+### The four constraints that shape any design
+
+1. **No trusted authority.** No server-side code: no secrets, no authoritative RNG, no anti-cheat.
+   Any client can write any value. `getRole()` makes "GM-only" a UI convention, not security.
+2. **Last-write-wins on the same field.** Patches reduce collisions but don't eliminate them.
+   Prefer **per-owner keys** over shared mutable counters (two clients incrementing one benny
+   counter will lose an update).
+3. **No background execution.** Nothing runs when the room is closed. No timers.
+4. **Every client runs your code.** All clients reacting to one event produce N duplicate writes.
+   Use **leader election** — GM's client, or lowest `connectionId`, performs shared writes.
+   **Build this in from the start**; retrofitting is painful.
+
+---
+
+## 3. Scope change: no server needed
+
+Paul has deprioritised the Discord↔OBR shared roll log and syncing.
+
+**That removes the only reason for a server.** Discord→OBR is impossible without a relay, but
+nothing else needs one. The extension becomes pure static hosting: a `manifest.json` on Cloudflare
+Pages or Netlify, free. No VPS, no Caddy, no pairing tokens, no secrets, no Redis for the OBR side.
+Most of `OBR-INTEGRATION-PLAN.md` §2 (hosting) and §3 (relay) is deferred, not deleted — revisit if
+the Discord bridge comes back.
+
+The TypeScript dice engine **compiles straight to the browser**, so the extension gets the
+conformance-verified engine locally with no round trip. This is the payoff from doing the rewrite
+before the OBR work.
+
+---
+
+## 4. How far Savage Worlds support could go
+
+Tiered by how much leverage the VTT actually provides.
+
+**Tier 1 — sheet and state on the token.** Traits (d4–d12 + mods), Parry, Toughness + armour,
+Pace, Wounds, Fatigue, Wild Card vs Extra. Lives in item metadata, so it travels with the token
+and persists. Token badges for wounds and Shaken/Distracted/Vulnerable; initiative card rendered
+in the token corner.
+
+**Tier 2 — the rules loop.** One-click trait rolls from the sheet with the correct Wild Die.
+Damage entry compared to Toughness, applying Shaken/wounds *with raises*, then offering a Soak roll
+(spend a benny, roll Vigor). Benny economy with GM award. Initiative deal/round/joker-reshuffle
+driven by the already-ported deck. Multi-action penalty helper.
+
+**Tier 3 — what only a VTT can do** (needs token positions; this is the differentiator):
+- **Gang-up bonus** — count adjacent enemies, apply +1..+4 automatically.
+- **Range penalties** — measure attacker-to-target distance, resolve Short/Medium/Long.
+- **Blast templates** — Small/Medium/Large and Cone as scene items, resolving who is underneath.
+- **Cover and illumination** as token/scene flags feeding the modifier.
+
+**Tier 4 — long tail.** Chase and Dramatic Task trackers (card-driven, reuses the deck),
+Power Points, Conviction, Support/Test resolution.
+
+### Recommended first slice
+
+**Tier 1 plus the initiative panel.** Shortest path to something usable at the table, exercises all
+four state stores, and forces the leader-election decision early. The dice engine — normally the
+risky part — is already done and verified.
+
+Next step Paul was offered and has not yet accepted: spec that slice properly — data shapes in item
+metadata, leader-election approach, and which UI surfaces to use (action popover vs context menu
+vs token badge).
+
+---
+
+## 5. Open items
+
+**Bugs**
+
+- **`/roll 2d6+1` fails in Discord while `/roll 2d6` works.** Confirmed live. Narrowed, not solved:
+  the dice engine is fine (`2d6+1: 1 + 5 + 1 = **7**`), the command layer is fine (pinned by tests
+  in `test/bot.test.ts` → "arguments containing operators"), and no error was logged, so
+  `interaction.reply` did not throw. Fault is *above* the command layer — either the option value
+  never arrives or the reply is not rendered. **Next step:** log the raw
+  `interaction.options.getString('args')` and re-test; that distinguishes the two in one shot.
+  `~r 2d6+1` is unaffected.
+- **Suspected upstream bug, ported faithfully rather than "fixed":** `Deck.getCardByParams` keeps
+  the *worst* card for Level Headed (`l`) and Improved Level Headed (`i`), identical to Hesitant,
+  because it combines with `normalSortingOrder = false`. Level Headed should keep the best of two.
+  Preserved so the rewrite stays behaviour-identical — needs a rules check before changing.
+- **Unidentified:** a screenshot line reading `[12; w4]`. If that was a `~s4`, a trait die of 12 is
+  impossible (an exploding dN can never total a multiple of N) and would be a real bug. Never
+  identified which command produced it.
+
+**Decisions Paul owes**
+
+- **The command surface shrank from 59 to 24**, beyond the 7 music commands he chose to drop.
+  Not ported: `ept`, `prefix` (per-user prefixes — there is now one global prefix), `invite`,
+  `info`, `addbenny`, `clearbennies`, `pullbenny`, `setbennymode`, and the standalone card-deck
+  commands (`put`/`show`/`shuffle` as a general deck separate from initiative). Which come back?
+- Redis: stand it up, or accept losing table state on restart?
+
+**Collateral already done and unrecoverable**
+
+While running under the wrong ambient token, the bot called `commands.set()` on the unrelated
+"Overlord/McDoom" application, which replaces the global slash set wholesale. Whatever that bot had
+registered is gone. Paul has said not to worry about it.
+
+---
+
+## 6. Layout
+
+```
+~/dev/savage/
+  .token                 bot token (gitignored, chmod 600)
+  run-ts.sh              run the TypeScript bot   <- current
+  build.sh, run.sh       build/run the Java bot   <- legacy
+  savagebot/             Java bot (fork, branch savage/self-host-fixes)
+  savagebot-ts/          TypeScript bot (branch typescript-rewrite)  <- current
+    src/dice/            engine: javaRandom, roller, parser, evaluator, interpreter
+    src/game/            cards, table state
+    src/bot/             commands, interpreter, discord transport
+    src/store/           optional Redis
+    test/                237+ tests incl. the conformance corpus replay
+    docs/                this file + OBR-INTEGRATION-PLAN.md  <- copies of record
+    scripts/             copies of the run scripts
+```
+
+`~/dev/savage` is **not** a git repo. `savagebot-ts/docs/` holds the versioned copies of these
+documents; edit those.

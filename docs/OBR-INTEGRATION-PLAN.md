@@ -42,7 +42,52 @@ without bound and must be readable by clients that were offline when it happened
 
 ---
 
-## 2. Hosting is now a prerequisite, not an open question
+## 1b. How client-only extensions have shared state (added 2026-08-12)
+
+**OBR itself is the server.** Extensions read and write OBR's own synced stores; OBR replicates to
+every connected client. Four writable shared stores, each with an `onChange` subscription: **room
+metadata** (room-scoped, persistent), **scene metadata** (scene-scoped, persistent), **item
+metadata** (per token, persists with the scene), **player metadata** (per player). Plus
+`broadcast` (ephemeral) and `scene.local` (non-synced counterpart — **sync semantics unverified**).
+
+`SceneItemsApi.updateItems` uses **Immer draft mutation and sends only changed fields as patches**,
+so two clients editing different fields of one token do not clobber each other.
+
+Four constraints follow, and they shape every design:
+
+1. **No trusted authority** — no secrets, no authoritative RNG, no anti-cheat. Any client can write
+   any value; `getRole()` makes "GM-only" a UI convention, not security.
+2. **Last-write-wins on the same field** — prefer per-owner keys over shared mutable counters.
+3. **No background execution** — nothing runs when the room is closed.
+4. **Every client runs your code** — N clients reacting to one event produce N duplicate writes.
+   Use **leader election** (GM's client, or lowest `connectionId`). Build it in from the start.
+
+### Scope change: the relay is deferred
+
+Paul has deprioritised the Discord↔OBR shared log and syncing. **That removes the only reason for
+a server.** The extension becomes pure static hosting (`manifest.json` on Cloudflare Pages or
+Netlify, free) — no VPS, no Caddy, no pairing token, no Redis on the OBR side. §2 and §3 below are
+therefore **deferred, not deleted**; revisit them if the Discord bridge returns.
+
+The TypeScript dice engine compiles straight to the browser, so the extension gets the
+conformance-verified engine locally with no round trip.
+
+### Savage Worlds feature tiers
+
+- **Tier 1 — sheet and state on the token.** Traits, Parry, Toughness+armour, Pace, Wounds,
+  Fatigue, Wild Card vs Extra in item metadata; token badges for wounds and status; initiative card
+  on the token.
+- **Tier 2 — the rules loop.** One-click trait rolls with the right Wild Die; damage vs Toughness
+  applying Shaken/wounds with raises; Soak (benny + Vigor); benny economy; initiative
+  deal/round/joker reshuffle; multi-action penalty.
+- **Tier 3 — what only a VTT can do** (needs token positions): gang-up bonus from adjacency, range
+  penalties from measured distance, blast templates resolving who is underneath, cover/illumination.
+- **Tier 4 — long tail.** Chase and Dramatic Task trackers, Power Points, Conviction, Support/Test.
+
+**Recommended first slice: Tier 1 + the initiative panel.** Exercises all four state stores and
+forces the leader-election decision early.
+
+## 2. Hosting — DEFERRED (see §1b); prerequisite only if the relay returns
 
 `HANDOFF.md` lists "self-host on what?" as optional. This plan makes it blocking:
 
