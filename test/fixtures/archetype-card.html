@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Deadlands Archetypes - Test Fixture</title></head>
+<body>
+
+<!--
+  A structural stand-in for the party's real archetype cards. It reproduces the
+  markup the importer depends on — the nested `attr-input-group` divs in
+  particular, which are what break a naive non-greedy `</div>` match — with
+  invented characters, so nobody's actual sheet lives in the repo.
+
+  Two cards, because one file may hold a whole party.
+-->
+
+<div class="archetype-card">
+  <div class="rank-banner"><span contenteditable="true">RANK: NOVICE</span></div>
+  <div class="card-header">
+    <h2 class="character-name" contenteditable="true">MADAME &quot;LUCKY&quot; DELACROIX</h2>
+    <p class="character-quote" contenteditable="true">The cards never lie &mdash; they just don&rsquo;t always tell you everything.</p>
+  </div>
+  <div class="card-content-wrapper">
+    <div class="stats-section">
+      <div class="attributes-block">
+        <h3 class="section-title">ATTRIBUTES</h3>
+        <table>
+          <tr>
+            <td>AGILITY</td>
+            <td><div class="attr-input-group"><select class="die-select"><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option></select><input type="text" class="mod-input" value=""></div></td>
+            <td>PACE</td>
+            <td><input type="text" class="stat-input" value="6"></td>
+          </tr>
+          <tr>
+            <td>SMARTS</td>
+            <td><div class="attr-input-group"><select class="die-select"><option value="d8">d8</option><option value="d10" selected>d10</option></select><input type="text" class="mod-input" value="+1"></div></td>
+            <td>PARRY</td>
+            <td><input type="text" class="stat-input" value="5"></td>
+          </tr>
+          <tr>
+            <td>SPIRIT</td>
+            <td><div class="attr-input-group"><select class="die-select"><option value="d8" selected>d8</option></select><input type="text" class="mod-input" value=""></div></td>
+            <td>TOUGHNESS</td>
+            <td><input type="text" class="stat-input" value="6(5)"></td>
+          </tr>
+          <tr>
+            <td>STRENGTH</td>
+            <td><div class="attr-input-group"><select class="die-select"><option value="d4" selected>d4</option></select><input type="text" class="mod-input" value=""></div></td>
+          </tr>
+          <tr>
+            <td>VIGOR</td>
+            <td><div class="attr-input-group"><select class="die-select"><option value="d6" selected>d6</option></select><input type="text" class="mod-input" value=""></div></td>
+          </tr>
+        </table>
+      </div>
+      <div class="skills-block">
+        <h3 class="section-title">SKILLS</h3>
+        <table>
+          <tr><td>Academics</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option></select></td></tr>
+          <tr><td>Gambling</td><td><select class="die-select"><option value="-">-</option><option value="d10" selected>d10</option></select></td></tr>
+          <tr><td>Notice</td><td><select class="die-select"><option value="-">-</option><option value="d6" selected>d6</option></select></td></tr>
+          <tr><td>Occult</td><td><select class="die-select"><option value="-">-</option><option value="d8" selected>d8</option></select></td></tr>
+          <tr><td>Shooting</td><td><select class="die-select"><option value="-" selected>-</option></select></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="details-section">
+      <div class="hindrances-block">
+        <h3 class="section-title">HINDRANCES</h3>
+        <div contenteditable="true" class="editable-content">
+          <p><strong>HABIT (MINOR):</strong> Never turns down a hand of poker.</p>
+          <p><strong>OUTSIDER (MINOR):</strong> Folks hereabouts don&rsquo;t trust a fortune teller.</p>
+        </div>
+      </div>
+      <div class="edges-block">
+        <h3 class="section-title">EDGES</h3>
+        <div contenteditable="true" class="editable-content">
+          <p><strong>ARCANE BACKGROUND (HUCKSTER):</strong> You deal with the Devil for your hexes.</p>
+          <p><strong>LUCK:</strong> Draw one extra Fate Chip at the start of each session.</p>
+        </div>
+      </div>
+      <div class="gear-block">
+        <h3 class="section-title">GEAR</h3>
+        <div contenteditable="true" class="editable-content">
+          <p>Derringer (Range 5/10/20, damage 2d6), marked deck, tarot cards, $40.</p>
+        </div>
+      </div>
+      <div class="advances-block">
+        <h4 class="advances-title">ADVANCES:</h4>
+        <div contenteditable="true" class="editable-content">
+          <p>Occult d8, Luck.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="archetype-card">
+  <div class="rank-banner"><span contenteditable="true">RANK: SEASONED</span></div>
+  <div class="card-header">
+    <h2 class="character-name" contenteditable="true">SILAS BLACKWOOD</h2>
+    <p class="character-quote" contenteditable="true">Preachin&rsquo; is easy. Stayin&rsquo; alive is the hard part.</p>
+  </div>
+  <div class="card-content-wrapper">
+    <div class="stats-section">
+      <div class="attributes-block">
+        <h3 class="section-title">ATTRIBUTES</h3>
+        <table>
+          <tr>
+            <td>AGILITY</td>
+            <td><div class="attr-input-group"><select class="die-select"><option value="d8" selected>d8</option></select><input type="text" class="mod-input" value=""></div></td>
+            <td>PACE</td>
+            <td><input type="text" class="stat-input" value="6"></td>
+          </tr>
+          <tr>
+            <td>SPIRIT</td>
+            <td><div class="attr-input-group"><select class="die-select"><option value="d12" selected>d12</option></select><input type="text" class="mod-input" value=""></div></td>
+            <td>TOUGHNESS</td>
+            <td><input type="text" class="stat-input" value="7"></td>
+          </tr>
+        </table>
+      </div>
+      <div class="skills-block">
+        <h3 class="section-title">SKILLS</h3>
+        <table>
+          <tr><td>Fighting</td><td><select class="die-select"><option value="d8" selected>d8</option></select></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="details-section">
+      <div class="hindrances-block">
+        <h3 class="section-title">HINDRANCES</h3>
+        <div contenteditable="true" class="editable-content">
+          <p><strong>VOW (MAJOR):</strong> Protect the flock.</p>
+        </div>
+      </div>
+      <div class="edges-block">
+        <h3 class="section-title">EDGES</h3>
+        <div contenteditable="true" class="editable-content">
+          <p><strong>ARCANE BACKGROUND (BLESSED)</strong></p>
+        </div>
+      </div>
+      <div class="gear-block">
+        <h3 class="section-title">GEAR</h3>
+        <div contenteditable="true" class="editable-content">
+          <p>Bible, shotgun, .12 shells (&times;20), $15.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
