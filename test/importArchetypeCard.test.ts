@@ -100,6 +100,67 @@ describe('parsing an archetype card', () => {
   });
 });
 
+/**
+ * The party's real card, not a stand-in. This is the test that would actually
+ * catch a template change, and it pins the budget figures the storage design
+ * rests on rather than leaving them in a comment.
+ */
+describe('the real Reggie Kane card', () => {
+  const reggie = parseArchetypeCards(
+    readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
+  )[0]!;
+
+  it('reads the whole card', () => {
+    expect(reggie.name).toBe('REGINALD "REGGIE" KANE');
+    expect(reggie.rank).toBe('SEASONED');
+    expect(reggie.attributes).toEqual({
+      agility: { die: 8 },
+      smarts: { die: 8 },
+      spirit: { die: 6 },
+      strength: { die: 4 },
+      vigor: { die: 6 },
+    });
+    expect(reggie.pace).toBe(6);
+    expect(reggie.parry).toBe(6);
+    expect(Object.keys(reggie.skills)).toHaveLength(11);
+    expect(reggie.skills.Shooting).toEqual({ die: 8 });
+    expect(reggie.skills.Academics).toBeUndefined();
+  });
+
+  it('reads "7(5)" as Toughness 7 with 2 points of armour', () => {
+    // Confirmed with Damian, and corroborated by the gear line's "armored vest (+2)".
+    expect(reggie.toughness).toBe(7);
+    expect(reggie.armor).toBe(2);
+    expect(reggie.gear).toContain('armored vest (+2');
+  });
+
+  it('reads all five edges and both hindrances with their rules text', () => {
+    expect(reggie.edges.map((e) => e.name)).toEqual([
+      'AGENT',
+      'AGENCY PROMOTION',
+      'GUTS',
+      'INVESTIGATOR',
+      'ROCK AND ROLL!',
+    ]);
+    expect(reggie.hindrances.map((h) => h.name)).toEqual(['CURIOUS (MAJOR)', 'DRIVEN (MAJOR)']);
+    expect(reggie.edges.every((e) => e.text)).toBe(true);
+  });
+
+  it('is 75% of the room budget with prose, 28% without — the split, in numbers', () => {
+    const full = sheetToJson(reggie).length;
+    const lean = sheetToJson({
+      ...reggie,
+      edges: reggie.edges.map((e) => ({ name: e.name })),
+      hindrances: reggie.hindrances.map((h) => ({ name: h.name })),
+      gear: undefined,
+      advances: undefined,
+      quote: undefined,
+    }).length;
+    expect(full * 6 / 15_000).toBeGreaterThan(0.7);
+    expect(lean * 6 / 15_000).toBeLessThan(0.32);
+  });
+});
+
 describe('the storage budget', () => {
   /**
    * Why the §1b lifecycle split exists, in numbers.
