@@ -1,0 +1,15 @@
+{
+  "name": "Savage Probe",
+  "version": "0.0.2",
+  "manifest_version": 1,
+  "author": "pbridger",
+  "icon": "/icon.svg",
+  "description": "Scratch harness for checking OBR behaviour in a live room.",
+  "action": {
+    "title": "Savage Probe",
+    "icon": "/icon.svg",
+    "popover": "/probe.html",
+    "height": 620,
+    "width": 420
+  }
+}

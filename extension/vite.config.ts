@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 // The probe (and later the real extension) is served from this directory.
@@ -13,5 +14,13 @@ export default defineConfig({
   build: {
     outDir: '../dist-extension',
     emptyOutDir: true,
+    rollupOptions: {
+      // Two pages: the extension proper, and the scratch harness kept from
+      // milestone 0. Each has its own manifest so they load independently.
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        probe: resolve(__dirname, 'probe.html'),
+      },
+    },
   },
 });
