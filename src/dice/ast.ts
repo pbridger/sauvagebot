@@ -181,20 +181,24 @@ export interface GygaxRangeRollExpression extends NodeBase {
 
 export interface SwordWorldPowerRollExpression extends NodeBase {
   kind: 'SwordWorldPowerRoll';
-  power: Expression | undefined;
+  power: Expression;
   critical: Expression | undefined;
   autoFailThreshold: Expression | undefined;
   numDice: Expression | undefined;
   rollModifier: Expression | undefined;
-  isHalved: boolean;
+  /** 0 when no modifier operator was given, otherwise +1 or -1. */
+  rollModifierSign: number;
+  withHumanSwordGrace: boolean;
 }
 
 export interface TargetNumberAndRaiseStepExpression extends NodeBase {
   kind: 'TargetNumberAndRaiseStep';
   argument: Expression;
+  mode: TargetNumberMode;
   targetNumber: Expression | undefined;
   raiseStep: Expression | undefined;
-  mode: TargetNumberMode;
+  /** The `trN` form, where target number and raise step are given as one value. */
+  targetNumberAndRaiseStep: Expression | undefined;
 }
 
 export type Expression =
