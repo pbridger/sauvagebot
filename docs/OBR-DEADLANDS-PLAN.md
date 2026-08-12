@@ -136,18 +136,27 @@ The §1b split survives, with the budgets attached:
 
 | Data | Home | Size | Why |
 |---|---|---|---|
-| Canonical PC roster | **room metadata**, one key per PC | ~400 chars each | campaign-scoped; 6 PCs is ~2.4 kB of a 16 kB budget |
+| Canonical PC roster | **room metadata**, one key per PC | ~1.25 kB each | campaign-scoped |
+| Edge/hindrance rules text | **room metadata**, one shared dictionary | ~700 chars total | identical across characters, so stored once |
 | Chips, per player | **room metadata**, one key per player | tiny | must outlive a tab close, so player metadata is out |
-| Extra/NPC sheets, prose, backstory, images | **item metadata** on the token | 512 kB, effectively free | no budget pressure at all |
+| Extra/NPC sheets, backstory, images | **item metadata** on the token | 512 kB, effectively free | no budget pressure at all |
 | PC volatile combat state (wounds, shaken, card) | **item metadata** on the PC token | tiny | belongs to the scene, not the campaign |
 
 Three rules fall out of the measurements:
 
 1. **Verify every room-metadata write by reading it back.** Overflow is silent, and a character
    sheet edit that vanishes without an error is the worst failure this thing could have.
-2. **Keep the room roster lean and structured; push prose to the token.** The 16 kB budget is
-   comfortable at ~3 kB of real use, but an unbounded notes field would eat it. Items have 512 kB
-   and no such pressure.
+2. **Rules text is not character data — store it once.** "GUTS" says the same thing on every card
+   that has it, so edge and hindrance text lives in one shared dictionary keyed by entry name, and
+   sheets carry only names. Measured on the real cards: a full sheet is 1,877 chars, of which 677
+   is rules text; six PCs plus one dictionary come to **~8.2 kB, 55% of the budget**.
+
+   An earlier design sent that prose to the *token*. It was wrong twice: prose keyed by entry name
+   inside a sheet loses one of two identically-named entries, and a PC exists campaign-wide while a
+   token does not, so an off-scene character's prose had nowhere to live. The dictionary fixes both.
+
+   It is also **best-effort and evictable** — if it does not fit, sheets still save and the UI shows
+   edge names without descriptions. Nothing that matters is traded for something that does not.
 3. **Do not compress the roster**, even though compression works. A gzipped blob is one key, which
    means one writer and last-write-wins across *all* PCs — it trades collision-safety for space we
    do not need. Hold compression in reserve for a single archive/backup key.

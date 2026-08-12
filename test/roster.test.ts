@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
 import { sheetToJson } from '../src/rules/sheet.js';
-import { Roster, joinSheet, splitSheet } from '../src/obr/roster.js';
+import { Roster, TEXT_KEY, joinSheet, splitSheet } from '../src/obr/roster.js';
 import { ROOM_CAPACITY, VerifiedStore, usedBytes, type Backend } from '../src/obr/store.js';
 
 const reggie = parseArchetypeCards(
@@ -36,16 +36,40 @@ const newRoster = (capacity = ROOM_CAPACITY) => {
 };
 
 describe('splitting a sheet', () => {
-  it('takes the prose out and puts it back unchanged', () => {
-    const { lean, prose } = splitSheet(reggie);
-    expect(joinSheet(lean, prose)).toEqual(reggie);
+  it('takes the rules text out and puts it back unchanged', () => {
+    const { lean, text } = splitSheet(reggie);
+    expect(joinSheet(lean, text)).toEqual(reggie);
   });
 
-  it('leaves the lean half well inside the per-sheet share of the budget', () => {
-    const { lean } = splitSheet(reggie);
-    expect(sheetToJson(lean).length).toBeLessThan(sheetToJson(reggie).length * 0.45);
+  it('round-trips two entries that share a name', () => {
+    // Keying prose by name inside each sheet lost one of these. The shared
+    // dictionary is name-keyed by design, so identical names share one entry --
+    // which is correct: the same edge has the same rules text.
+    const twins = {
+      ...reggie,
+      edges: [
+        { name: 'GUTS', text: 'Free reroll to resist Fear.' },
+        { name: 'GUTS', text: 'Free reroll to resist Fear.' },
+      ],
+    };
+    const { lean, text } = splitSheet(twins);
+    expect(joinSheet(lean, text)).toEqual(twins);
+  });
+
+  it('cuts a third off the sheet, and pays for the text once per room', () => {
+    // Reggie: 1,877 full -> 1,253 lean, with 677 chars of text moving to the
+    // shared dictionary. The saving compounds: a second character with the same
+    // edges adds 1,253, not 1,930.
+    const { lean, text } = splitSheet(reggie);
+    expect(sheetToJson(lean).length).toBeLessThan(sheetToJson(reggie).length * 0.7);
+    expect(JSON.stringify(text).length).toBeGreaterThan(500);
     expect(lean.edges.every((e) => e.text === undefined)).toBe(true);
-    expect(lean.gear).toBeUndefined();
+  });
+
+  it('keeps gear and quote on the sheet, where they belong', () => {
+    const { lean } = splitSheet(reggie);
+    expect(lean.gear).toBe(reggie.gear);
+    expect(lean.quote).toBe(reggie.quote);
   });
 
   it('keeps the names, so the lean sheet is still readable on its own', () => {
@@ -53,20 +77,61 @@ describe('splitting a sheet', () => {
     expect(lean.edges.map((e) => e.name)).toEqual(reggie.edges.map((e) => e.name));
   });
 
-  it('survives a sheet that has no prose at all', () => {
-    const bare = { ...reggie, quote: undefined, gear: undefined, advances: undefined };
-    const { lean, prose } = splitSheet(bare);
-    expect(joinSheet(lean, prose)).toEqual(bare);
+  it('survives a sheet with no rules text at all', () => {
+    const bare = { ...reggie, edges: [{ name: 'LUCK' }], hindrances: [] };
+    const { lean, text } = splitSheet(bare);
+    expect(text).toEqual({});
+    expect(joinSheet(lean, text)).toEqual(bare);
+  });
+});
+
+describe('the shared rules-text dictionary', () => {
+  it('pays for a shared edge once, not once per character', async () => {
+    const { backend, roster } = newRoster();
+    for (let i = 0; i < 6; i++) await roster.save({ ...reggie, id: `pc-${i}`, name: `PC ${i}` });
+    const dictionary = JSON.stringify(backend.data[TEXT_KEY]);
+    // Seven entries stored once, though six characters reference them.
+    expect(Object.keys(backend.data[TEXT_KEY] as object)).toHaveLength(7);
+    expect(dictionary.length).toBeLessThan(sheetToJson(reggie).length * 1.5);
+  });
+
+  it('reattaches text on read', async () => {
+    const { roster } = newRoster();
+    await roster.save(reggie);
+    expect(await roster.get(reggie.id)).toEqual(reggie);
+  });
+
+  it('saves the sheet anyway when the dictionary will not fit', async () => {
+    const warnings: string[] = [];
+    const backend = new FakeBackend(1_400);
+    const roster = new Roster(
+      new VerifiedStore(backend, { capacity: 1_400, onWarning: () => {} }),
+      (m) => warnings.push(m),
+    );
+    await roster.save(reggie);
+
+    // The sheet is there; only the descriptions are missing.
+    const stored = await roster.get(reggie.id);
+    expect(stored?.name).toBe(reggie.name);
+    expect(stored?.edges[0]?.text).toBeUndefined();
+    expect(warnings.join()).toMatch(/without their descriptions/);
+  });
+
+  it('can be dropped to reclaim space, leaving sheets intact', async () => {
+    const { roster } = newRoster();
+    await roster.save(reggie);
+    await roster.dropRulesText();
+    const stored = await roster.get(reggie.id);
+    expect(stored?.edges.map((e) => e.name)).toEqual(reggie.edges.map((e) => e.name));
+    expect(stored?.edges[0]?.text).toBeUndefined();
   });
 });
 
 describe('Roster', () => {
-  it('saves and reads back a character', async () => {
+  it('saves and reads back a character unchanged', async () => {
     const { roster } = newRoster();
-    const prose = await roster.save(reggie);
-    const stored = await roster.get(reggie.id);
-    expect(stored?.name).toBe(reggie.name);
-    expect(joinSheet(stored!, prose)).toEqual(reggie);
+    await roster.save(reggie);
+    expect(await roster.get(reggie.id)).toEqual(reggie);
   });
 
   it('uses one key per character, so two players never share a write', async () => {
@@ -76,6 +141,7 @@ describe('Roster', () => {
     expect(Object.keys(backend.data).sort()).toEqual([
       'com.savagebot/pc/lucky',
       'com.savagebot/pc/reginald-reggie-kane',
+      TEXT_KEY,
     ]);
   });
 
@@ -93,14 +159,19 @@ describe('Roster', () => {
     await roster.save(reggie);
     await roster.remove(reggie.id);
     expect(await roster.get(reggie.id)).toBeUndefined();
-    expect(usedBytes(backend.data)).toBe(2);
+    // The dictionary is deliberately left behind; other characters share it.
+    expect(Object.keys(backend.data)).toEqual([TEXT_KEY]);
   });
 
-  it('holds the whole party comfortably', async () => {
+  it('holds the whole party with headroom to spare', async () => {
+    // Measured, not aspirational: six full Reggie-scale sheets plus the shared
+    // dictionary come to ~8.2 kB of the 15 kB budget. That is 55%, not the 28%
+    // an earlier design claimed -- that figure stripped gear, quote and advances
+    // as well, and those belong on the sheet.
     const { backend, roster } = newRoster();
     for (let i = 0; i < 6; i++) await roster.save({ ...reggie, id: `pc-${i}`, name: `PC ${i}` });
     expect(await roster.list()).toHaveLength(6);
-    expect(usedBytes(backend.data)).toBeLessThan(ROOM_CAPACITY * 0.35);
+    expect(usedBytes(backend.data)).toBeLessThan(ROOM_CAPACITY * 0.6);
   });
 });
 
