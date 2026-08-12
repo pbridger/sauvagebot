@@ -57,10 +57,11 @@
 
     <h2>Room metadata capacity</h2>
     <p style="margin:0 0 8px;opacity:.7">
-      Doubles a single-key blob until the write fails or does not read back, then binary-searches
-      the boundary. Cleans up after itself.
+      Writes realistic dummy PC sheets, one key each, until a write fails — so the answer comes out
+      in <em>sheets</em>, not bytes. Then checks whether an oversize write throws or truncates
+      silently. Cleans up after itself and verifies the cleanup.
     </p>
-    <button id="cap">Measure cap</button>
+    <button id="cap">How many sheets fit?</button>
 
     <h2>Item metadata write (run this as a PLAYER too)</h2>
     <p style="margin:0 0 8px;opacity:.7">

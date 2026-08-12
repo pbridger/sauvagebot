@@ -107,67 +107,124 @@ async function stamp(): Promise<void> {
   await showStamps();
 }
 
-async function clearStamps(): Promise<void> {
-  // OBR treats an explicit `undefined` as a key deletion.
-  await OBR.room.setMetadata({ [STAMP_KEY]: undefined, [BLOB_KEY]: undefined });
+/**
+ * Deletes every probe key and *verifies* it. "Setting a key to undefined deletes
+ * it" is an assumption, not a documented fact — and if it is wrong, every cleanup
+ * path here would log success while leaving junk in the room. We only get one
+ * live session, so the probe checks its own claims.
+ */
+async function clearProbeKeys(): Promise<void> {
+  const roomBefore = Object.keys(await OBR.room.getMetadata()).filter(isProbeKey);
+  const update: Record<string, undefined> = {};
+  for (const key of roomBefore) update[key] = undefined;
+  if (roomBefore.length) await OBR.room.setMetadata(update);
   await OBR.player.setMetadata({ [STAMP_KEY]: undefined });
-  log('cleared probe keys from room and player metadata');
+
+  const roomAfter = Object.keys(await OBR.room.getMetadata()).filter(isProbeKey);
+  const playerAfter = Object.keys(await OBR.player.getMetadata()).filter(isProbeKey);
+  if (roomAfter.length || playerAfter.length) {
+    log(
+      `DELETE-BY-UNDEFINED DOES NOT WORK — survivors: ${[...roomAfter, ...playerAfter].join(', ')}`,
+      'bad',
+    );
+  } else {
+    log(`cleared ${roomBefore.length + 1} probe key(s); delete-by-undefined confirmed`, 'ok');
+  }
   await showStamps();
 }
 
-/**
- * A write "succeeds" only if it reads back at full length. A silent truncation
- * or a dropped write would otherwise look like success.
- */
-async function tryBlob(size: number): Promise<{ ok: boolean; detail: string }> {
-  const payload = 'x'.repeat(size);
-  try {
-    await OBR.room.setMetadata({ [BLOB_KEY]: payload });
-  } catch (error) {
-    return { ok: false, detail: `rejected: ${describe(error)}` };
-  }
-  const stored = (await OBR.room.getMetadata())[BLOB_KEY];
-  if (typeof stored !== 'string') return { ok: false, detail: `read back as ${typeof stored}` };
-  if (stored.length !== size) return { ok: false, detail: `read back ${stored.length} chars` };
-  return { ok: true, detail: 'read back intact' };
+function isProbeKey(key: string): boolean {
+  return key.startsWith('com.savagebot/probe');
 }
 
-async function measureCap(): Promise<void> {
-  const CEILING = 4 * 1024 * 1024;
-  let lastOk = 0;
-  let firstBad = 0;
+/**
+ * Incompressible filler. A run of one character would measure nothing useful if
+ * OBR compresses metadata anywhere between here and storage.
+ */
+function noise(length: number): string {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.';
+  let out = '';
+  for (let i = 0; i < length; i++) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+}
 
-  log('--- room metadata capacity ---');
-  for (let size = 1024; size <= CEILING; size *= 2) {
-    const { ok, detail } = await tryBlob(size);
-    log(`${size} chars: ${ok ? 'ok' : 'FAILED'} — ${detail}`, ok ? 'ok' : 'bad');
-    if (!ok) {
-      firstBad = size;
+/**
+ * A stand-in for one Deadlands PC sheet — roughly the right shape and size, with
+ * the free-text fields (edges, hindrances, gear) that make sheets big.
+ */
+function dummySheet(index: number): unknown {
+  return {
+    id: `probe-${index}`,
+    name: `Probe Character ${index}`,
+    wildCard: true,
+    traits: {
+      agility: 8, smarts: 6, spirit: 6, strength: 6, vigor: 8,
+      fighting: 8, shooting: 10, notice: 6, riding: 6, survival: 4,
+      intimidation: 6, persuasion: 4, stealth: 6, athletics: 6,
+    },
+    derived: { parry: 6, toughness: 7, armor: 2, pace: 6, size: 0, grit: 1 },
+    state: { wounds: 0, fatigue: 0, shaken: false, bennies: 3 },
+    edges: [noise(140), noise(120), noise(160), noise(110)],
+    hindrances: [noise(130), noise(150), noise(90)],
+    gear: [noise(180), noise(160), noise(140), noise(200), noise(120)],
+    powers: [noise(220), noise(240)],
+    notes: noise(600),
+  };
+}
+
+/**
+ * The decision this probe exists to make is "do the party's PC sheets fit in room
+ * metadata", so it measures in *sheets*, not characters — which sidesteps every
+ * question about encoding, escaping and compression at once. One key per sheet,
+ * because that is how the real thing would store them.
+ */
+async function measureCap(): Promise<void> {
+  log('--- how many PC sheets fit in room metadata? ---');
+  const sample = JSON.stringify(dummySheet(0));
+  log(`one dummy sheet is ${sample.length} chars of JSON`);
+
+  let stored = 0;
+  for (let i = 1; i <= 40; i++) {
+    const key = `com.savagebot/probe-roster/${i}`;
+    try {
+      await OBR.room.setMetadata({ [key]: dummySheet(i) });
+    } catch (error) {
+      log(`sheet ${i}: REJECTED — ${describe(error)}`, 'bad');
       break;
     }
-    lastOk = size;
-  }
-
-  if (!firstBad) {
-    log(`no limit found below ${CEILING} chars — suspicious, check for silent truncation`, 'bad');
-  } else if (!lastOk) {
-    log('even 1024 chars failed — something else is wrong', 'bad');
-  } else {
-    // Narrow to within 256 chars; finer than that does not change any decision.
-    let lo = lastOk;
-    let hi = firstBad;
-    while (hi - lo > 256) {
-      const mid = Math.floor((lo + hi) / 2);
-      const { ok, detail } = await tryBlob(mid);
-      log(`  probe ${mid}: ${ok ? 'ok' : 'FAILED'} — ${detail}`);
-      if (ok) lo = mid;
-      else hi = mid;
+    const back = await OBR.room.getMetadata();
+    if (!back[key]) {
+      log(`sheet ${i}: silently dropped — write returned, key absent`, 'bad');
+      break;
     }
-    log(`CAP: largest single-key value is ~${lo} chars (${(lo / 1024).toFixed(1)} kB)`, 'ok');
+    stored = i;
+  }
+  const budget = stored * sample.length;
+  log(
+    `FITS: ${stored} sheets (~${(budget / 1024).toFixed(1)} kB of sheet JSON)`,
+    stored >= 8 ? 'ok' : 'bad',
+  );
+
+  // Secondary: does the limit throw, or truncate silently? Error handling in the
+  // real extension depends on which, and it is one write to find out.
+  const huge = noise(1024 * 1024);
+  try {
+    await OBR.room.setMetadata({ [BLOB_KEY]: huge });
+    const back = (await OBR.room.getMetadata())[BLOB_KEY];
+    if (typeof back === 'string' && back.length === huge.length) {
+      log('1 MB single key accepted intact — no practical cap on a single value', 'ok');
+    } else if (typeof back === 'string') {
+      log(`OVERSIZE WRITES TRUNCATE SILENTLY: 1 MB read back as ${back.length} chars`, 'bad');
+    } else {
+      log('1 MB write returned but the key is absent — silent drop, no error', 'bad');
+    }
+  } catch (error) {
+    log(`oversize writes throw (good, detectable): ${describe(error)}`, 'ok');
   }
 
-  await OBR.room.setMetadata({ [BLOB_KEY]: undefined });
-  log('cleaned up blob key');
+  await clearProbeKeys();
 }
 
 async function writeToSelectedItem(): Promise<void> {
@@ -197,7 +254,7 @@ async function writeToSelectedItem(): Promise<void> {
 
 OBR.onReady(async () => {
   button('stamp', stamp);
-  button('clear-stamps', clearStamps);
+  button('clear-stamps', clearProbeKeys);
   button('cap', measureCap);
   button('item', writeToSelectedItem);
 

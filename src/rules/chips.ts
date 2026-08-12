@@ -10,8 +10,15 @@
  * The pot composition and the chip effects below are written from memory and are
  * pending a check against the Weird West book. Everything that is a *number* is
  * isolated in `DEFAULT_POT` and `CHIP_EFFECTS` precisely so that correcting them
- * is a one-line change that no other code depends on. The *structure* — draw
- * without replacement, return on spend, per-owner holdings — is not in doubt.
+ * is a one-line change that no other code depends on.
+ *
+ * Also pending the book, and *not* merely a number:
+ *   - whether a spent chip returns to the pot (assumed here) or goes to a discard;
+ *   - end-of-session handling, which differs by colour — white is lost, red and
+ *     blue are cashed for something. Not modelled yet.
+ *
+ * What is not in doubt is that the pot is drawn from without replacement and that
+ * holdings are per-owner. Those are the parts the extension's design rests on.
  */
 import { JavaRandom } from '../dice/javaRandom.js';
 
