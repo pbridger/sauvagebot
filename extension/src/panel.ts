@@ -26,8 +26,15 @@ import {
   type RollEntry,
 } from '../../src/obr/rollLog.js';
 import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
+import { readBinding, tokensForSheet, type TokenLike } from '../../src/obr/binding.js';
 import { renderEditor } from './editor.js';
-import { roomStore } from './backends.js';
+import {
+  autoBind,
+  bindToken,
+  characterTokens,
+  roomStore,
+  unbindToken,
+} from './backends.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const bar = { who: el<HTMLSelectElement>('who'), file: el<HTMLInputElement>('file') };
@@ -45,6 +52,8 @@ const log = new RollLog();
 let me = 'someone';
 let secretRolls = false;
 let editing = false;
+let tokens: (TokenLike & { imageUrl?: string })[] = [];
+let selectedTokenId: string | undefined;
 /** Set while we are saving our own change, so the resulting onChange is ignored. */
 let saving = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -233,6 +242,91 @@ function setEditing(on: boolean): void {
   renderSheetArea();
 }
 
+/**
+ * The token's artwork, shown live from the bound token rather than copied onto
+ * the sheet. Storing the URL would put a room-specific asset reference inside a
+ * sheet that has to survive being exported into Damian's room.
+ */
+function portrait(sheet: Sheet): HTMLElement | undefined {
+  const bound = tokensForSheet(tokens, sheet.id)[0] as
+    | (TokenLike & { imageUrl?: string })
+    | undefined;
+  if (!bound?.imageUrl) return undefined;
+  const img = document.createElement('img');
+  img.className = 'portrait';
+  img.src = bound.imageUrl;
+  img.alt = '';
+  // The asset is served by OBR, not by us; if it will not load, drop it quietly
+  // rather than leaving a broken-image icon in the middle of the card.
+  img.addEventListener('error', () => img.remove());
+  return img;
+}
+
+/** Bind / unbind for whatever is selected on the map. */
+function bindBar(sheet: Sheet): HTMLElement | undefined {
+  const bound = tokensForSheet(tokens, sheet.id);
+  const bar = document.createElement('div');
+  bar.className = 'bindbar';
+
+  if (bound.length) {
+    const label = document.createElement('span');
+    label.textContent =
+      bound.length === 1
+        ? `Bound to "${bound[0]!.name}"`
+        : `Bound to ${bound.length} tokens — probably a duplicate`;
+    if (bound.length > 1) label.className = 'warn';
+
+    const unbind = document.createElement('button');
+    unbind.textContent = 'Unbind';
+    unbind.addEventListener('click', () => {
+      void (async () => {
+        for (const token of bound) await unbindToken(token.id);
+        await refreshTokens();
+      })();
+    });
+    bar.append(label, unbind);
+    return bar;
+  }
+
+  if (!selectedTokenId) return undefined;
+  const target = tokens.find((t) => t.id === selectedTokenId);
+  if (!target) return undefined;
+
+  const bind = document.createElement('button');
+  bind.textContent = `Bind to "${target.name}"`;
+  bind.addEventListener('click', () => {
+    void (async () => {
+      await bindToken(target.id, sheet.id);
+      await refreshTokens();
+    })();
+  });
+  bar.append(bind);
+  return bar;
+}
+
+async function refreshTokens(): Promise<void> {
+  tokens = await characterTokens();
+  renderSheetArea();
+}
+
+/**
+ * Selecting a bound token switches the panel to that character — the reason
+ * binding exists at all, once there are six PCs and a dozen mooks.
+ */
+async function onSelectionChange(): Promise<void> {
+  const selection = await OBR.player.getSelection();
+  selectedTokenId = selection?.[0];
+  if (!selectedTokenId) return renderSheetArea();
+
+  tokens = await characterTokens();
+  const binding = readBinding(tokens.find((t) => t.id === selectedTokenId)?.metadata);
+  if (binding && sheets.some((s) => s.id === binding.sheetId)) {
+    selectedId = binding.sheetId;
+    renderRoster();
+  }
+  renderSheetArea();
+}
+
 function render(): void {
   sheetEl.replaceChildren();
   const sheet = sheets.find((s) => s.id === selectedId);
@@ -244,22 +338,33 @@ function render(): void {
     return;
   }
 
+  const head = document.createElement('div');
+  head.className = 'cardhead';
+  const image = portrait(sheet);
+  if (image) head.append(image);
+  const headText = document.createElement('div');
+  head.append(headText);
+
   if (sheet.rank) {
     const rank = document.createElement('div');
     rank.className = 'rank';
     rank.textContent = sheet.rank;
-    sheetEl.append(rank);
+    headText.append(rank);
   }
   const h1 = document.createElement('h1');
   h1.textContent = sheet.name;
-  sheetEl.append(h1);
+  headText.append(h1);
 
   if (sheet.quote) {
     const quote = document.createElement('p');
     quote.className = 'quote';
     quote.textContent = sheet.quote;
-    sheetEl.append(quote);
+    headText.append(quote);
   }
+  sheetEl.append(head);
+
+  const bind = bindBar(sheet);
+  if (bind) sheetEl.append(bind);
 
   const derived = document.createElement('div');
   derived.className = 'derived';
@@ -545,7 +650,20 @@ OBR.onReady(async () => {
 
   OBR.player.onChange((player) => {
     me = player.name;
+    void onSelectionChange();
   });
+
+  // Bindings live in item metadata, which is per-scene — so every new map starts
+  // unbound, and the party would have to be re-bound by hand without this.
+  OBR.scene.onReadyChange((ready) => {
+    if (!ready) return;
+    void (async () => {
+      const count = await autoBind(sheets);
+      if (count) notify(`Bound ${count} token(s) to characters by name`);
+      await refreshTokens();
+    })();
+  });
+  OBR.scene.items.onChange(() => void refreshTokens());
 
   bar.who.addEventListener('change', () => {
     selectedId = bar.who.value;
@@ -582,4 +700,9 @@ OBR.onReady(async () => {
   });
 
   await reload();
+  if (await OBR.scene.isReady()) {
+    const count = await autoBind(sheets);
+    if (count) notify(`Bound ${count} token(s) to characters by name`);
+  }
+  await onSelectionChange();
 });

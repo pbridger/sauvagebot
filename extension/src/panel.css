@@ -63,7 +63,7 @@ button:disabled { opacity: .45; cursor: default; }
   flex: none;
 }
 
-#sheet { flex: 1; overflow-y: auto; padding: 10px; }
+#sheet { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; }
 .empty { color: var(--muted); text-align: center; margin: 32px 10px; }
 
 h1 {
@@ -248,23 +248,37 @@ body.editing textarea {
   border: 1px solid var(--rule);
   border-radius: 4px;
   padding: 2px 5px;
+  /* Both are needed: an input carries a default `size` that ignores its grid
+     track, and a grid item's min-width defaults to auto, so it refuses to shrink
+     below that. Together they were pushing the panel wide enough to scroll. */
+  width: 100%;
+  min-width: 0;
 }
+/* The spinners are twenty-odd pixels of nothing useful at this width. */
+body.editing input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+body.editing input[type='number']::-webkit-outer-spin-button,
+body.editing input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+body.editing input[type='checkbox'] { width: auto; }
 body.editing textarea { width: 100%; resize: vertical; font-size: 12px; }
 
 .edit-block { display: grid; gap: 5px; margin-bottom: 10px; }
-.field { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; }
+.field { display: grid; grid-template-columns: 74px minmax(0, 1fr); align-items: center; gap: 8px; }
 .field > span {
   font-size: 10.5px;
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--muted);
 }
-.derived-edit { grid-template-columns: 1fr 1fr; }
-.derived-edit .field { grid-template-columns: 68px 1fr; }
+.derived-edit { grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+.derived-edit .field { grid-template-columns: minmax(0, 1fr) 48px; }
+.derived-edit .field input { text-align: center; }
 
 .edit-trait {
   display: grid;
-  grid-template-columns: 1fr 62px 46px;
+  grid-template-columns: minmax(0, 1fr) 62px 46px;
   align-items: center;
   gap: 5px;
   margin-bottom: 3px;
@@ -273,7 +287,7 @@ body.editing textarea { width: 100%; resize: vertical; font-size: 12px; }
 
 .edit-entry {
   display: grid;
-  grid-template-columns: 1fr 22px;
+  grid-template-columns: minmax(0, 1fr) 22px;
   gap: 4px;
   margin-bottom: 7px;
 }
@@ -296,3 +310,27 @@ button.danger {
 @media (prefers-color-scheme: dark) {
   button.danger { color: #f2b8b5; border-color: #f2b8b5; }
 }
+
+/* ---- token binding --------------------------------------------------- */
+
+.cardhead { display: flex; gap: 10px; align-items: flex-start; }
+.cardhead > div { min-width: 0; flex: 1; }
+img.portrait {
+  width: 58px;
+  height: 58px;
+  border-radius: 5px;
+  border: 1px solid var(--rule);
+  object-fit: cover;
+  flex: none;
+}
+
+.bindbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 2px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.bindbar button { font-size: 11.5px; padding: 2px 7px; }
+.bindbar .warn { color: var(--accent); font-weight: 700; }

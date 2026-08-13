@@ -15,6 +15,15 @@ import {
 } from '../../src/obr/store.js';
 import { Roster } from '../../src/obr/roster.js';
 import { electLeader, type Peer } from '../../src/obr/leader.js';
+import {
+  TOKEN_KEY,
+  autoBindings,
+  newTokenState,
+  readBinding,
+  type TokenLike,
+  type TokenState,
+} from '../../src/obr/binding.js';
+import type { Sheet } from '../../src/rules/sheet.js';
 
 const roomBackend: Backend = {
   get: () => OBR.room.getMetadata(),
@@ -84,4 +93,71 @@ export async function peers(): Promise<Peer[]> {
 export async function amLeader(): Promise<boolean> {
   const [party, connectionId] = await Promise.all([peers(), OBR.player.getConnectionId()]);
   return electLeader(party) === connectionId;
+}
+
+// ---------------------------------------------------------------- tokens
+
+/** Every character token in the current scene, in the shape `binding.ts` expects. */
+export async function characterTokens(): Promise<(TokenLike & { imageUrl?: string })[]> {
+  if (!(await OBR.scene.isReady())) return [];
+  const items = await OBR.scene.items.getItems();
+  return items
+    .filter((item) => item.layer === 'CHARACTER')
+    .map((item) => {
+      const image = (item as { image?: { url?: string } }).image?.url;
+      return {
+        id: item.id,
+        name: item.name,
+        layer: item.layer,
+        metadata: item.metadata,
+        ...(image ? { imageUrl: image } : {}),
+      };
+    });
+}
+
+export async function bindToken(tokenId: string, sheetId: string): Promise<void> {
+  await OBR.scene.items.updateItems([tokenId], (items) => {
+    for (const item of items) {
+      const existing = readBinding(item.metadata);
+      // Re-binding an already-bound token keeps its wounds: the GM is usually
+      // fixing a mistaken link mid-fight, not resetting the character.
+      item.metadata[TOKEN_KEY] = existing
+        ? { ...existing, sheetId }
+        : newTokenState(sheetId);
+    }
+  });
+}
+
+export async function unbindToken(tokenId: string): Promise<void> {
+  // `undefined`, not `delete` — measured in milestone 0: OBR rejects `delete` on
+  // the Immer draft of item metadata.
+  await OBR.scene.items.updateItems([tokenId], (items) => {
+    for (const item of items) item.metadata[TOKEN_KEY] = undefined;
+  });
+}
+
+export async function updateTokenState(
+  tokenId: string,
+  change: (state: TokenState) => TokenState,
+): Promise<void> {
+  await OBR.scene.items.updateItems([tokenId], (items) => {
+    for (const item of items) {
+      const existing = readBinding(item.metadata);
+      if (existing) item.metadata[TOKEN_KEY] = change(existing);
+    }
+  });
+}
+
+/**
+ * Bind whatever is unambiguous, and report how many.
+ *
+ * Called when a scene opens, because item metadata is per-scene: without this
+ * the GM would re-bind the whole party on every new map. `autoBindings` only
+ * matches one-to-one, so this cannot quietly attach three bandits to one sheet.
+ */
+export async function autoBind(sheets: readonly Sheet[]): Promise<number> {
+  const tokens = await characterTokens();
+  const bindings = autoBindings(tokens, sheets);
+  for (const { tokenId, sheetId } of bindings) await bindToken(tokenId, sheetId);
+  return bindings.length;
 }
