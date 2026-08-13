@@ -98,7 +98,9 @@ export async function amLeader(): Promise<boolean> {
 // ---------------------------------------------------------------- tokens
 
 /** Every character token in the current scene, in the shape `binding.ts` expects. */
-export async function characterTokens(): Promise<(TokenLike & { imageUrl?: string })[]> {
+export async function characterTokens(): Promise<
+  (TokenLike & { imageUrl?: string; position: { x: number; y: number } })[]
+> {
   if (!(await OBR.scene.isReady())) return [];
   const items = await OBR.scene.items.getItems();
   return items
@@ -110,6 +112,9 @@ export async function characterTokens(): Promise<(TokenLike & { imageUrl?: strin
         name: item.name,
         layer: item.layer,
         metadata: item.metadata,
+        // Needed to place a badge: an attached item keeps its own position and
+        // moves with the parent by delta, so it must start in the right spot.
+        position: { ...item.position },
         ...(image ? { imageUrl: image } : {}),
       };
     });

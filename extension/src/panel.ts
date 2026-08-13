@@ -26,7 +26,24 @@ import {
   type RollEntry,
 } from '../../src/obr/rollLog.js';
 import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
-import { readBinding, tokensForSheet, type TokenLike } from '../../src/obr/binding.js';
+import {
+  duplicateWildCard,
+  readBinding,
+  tokensForSheet,
+  type TokenLike,
+  type TokenState,
+} from '../../src/obr/binding.js';
+import {
+  MAX_FATIGUE,
+  describeStatus,
+  isIncapacitated,
+  maxWounds,
+  setFatigue,
+  setShaken,
+  setWounds,
+  traitPenalty,
+} from '../../src/rules/status.js';
+import { renderBadges } from './badges.js';
 import { renderEditor } from './editor.js';
 import {
   autoBind,
@@ -34,6 +51,7 @@ import {
   characterTokens,
   roomStore,
   unbindToken,
+  updateTokenState,
 } from './backends.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -52,7 +70,7 @@ const log = new RollLog();
 let me = 'someone';
 let secretRolls = false;
 let editing = false;
-let tokens: (TokenLike & { imageUrl?: string })[] = [];
+let tokens: (TokenLike & { imageUrl?: string; position: { x: number; y: number } })[] = [];
 let selectedTokenId: string | undefined;
 /** Set while we are saving our own change, so the resulting onChange is ignored. */
 let saving = false;
@@ -190,11 +208,6 @@ function traitButton(label: string, dieText: string, untrained: boolean, roll: (
   return button;
 }
 
-function dieLabel(die: number, mod?: number): string {
-  if (!mod) return `d${die}`;
-  return `d${die}${mod > 0 ? '+' : ''}${mod}`;
-}
-
 function entryList(entries: Sheet['edges']): HTMLElement {
   const dl = document.createElement('dl');
   dl.className = 'entries';
@@ -248,9 +261,7 @@ function setEditing(on: boolean): void {
  * sheet that has to survive being exported into Damian's room.
  */
 function portrait(sheet: Sheet): HTMLElement | undefined {
-  const bound = tokensForSheet(tokens, sheet.id)[0] as
-    | (TokenLike & { imageUrl?: string })
-    | undefined;
+  const bound = tokensForSheet(tokens, sheet.id)[0] as (typeof tokens)[number] | undefined;
   if (!bound?.imageUrl) return undefined;
   const img = document.createElement('img');
   img.className = 'portrait';
@@ -262,6 +273,125 @@ function portrait(sheet: Sheet): HTMLElement | undefined {
   return img;
 }
 
+/**
+ * The bound token for this sheet, and its state.
+ *
+ * For an Extra many tokens share one sheet, so "the" token is whichever is
+ * selected — otherwise clicking a wound would damage an arbitrary bandit.
+ */
+function activeToken(sheet: Sheet): { token: TokenLike; state: TokenState } | undefined {
+  const bound = tokensForSheet(tokens, sheet.id);
+  const token = bound.find((t) => t.id === selectedTokenId) ?? bound[0];
+  const state = token && readBinding(token.metadata);
+  return token && state ? { token, state } : undefined;
+}
+
+/** The penalty the sheet's trait rolls currently carry. */
+function statusPenalty(sheet: Sheet): number {
+  const active = activeToken(sheet);
+  return active ? traitPenalty(active.state) : 0;
+}
+
+function pips(
+  count: number,
+  filled: number,
+  title: (n: number) => string,
+  onPick: (n: number) => void,
+): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pips';
+  for (let n = 1; n <= count; n++) {
+    const pip = document.createElement('button');
+    pip.className = n <= filled ? 'pip on' : 'pip';
+    pip.title = title(n);
+    // Clicking the pip you are already on steps back, so the track is reversible
+    // without hunting for a separate minus button.
+    pip.addEventListener('click', () => onPick(filled === n ? n - 1 : n));
+    wrap.append(pip);
+  }
+  return wrap;
+}
+
+/**
+ * Wounds, fatigue and Shaken — always live, never behind the Edit toggle.
+ *
+ * Edit mode is for changing who a character *is*; this is for using them. The
+ * payoff is that the trait buttons pick the penalty up automatically.
+ */
+function statusStrip(sheet: Sheet): HTMLElement {
+  const strip = document.createElement('div');
+  strip.className = 'status';
+
+  const active = activeToken(sheet);
+  if (!active) {
+    const hint = document.createElement('span');
+    hint.className = 'hint';
+    hint.textContent = 'Bind a token to track wounds';
+    strip.append(hint);
+    return strip;
+  }
+
+  const { token, state } = active;
+  const change = (next: TokenState): void => {
+    void updateTokenState(token.id, () => next).then(refreshTokens);
+  };
+
+  const woundMax = maxWounds(sheet.wildCard);
+  if (woundMax > 0) {
+    strip.append(
+      labelled(
+        'Wounds',
+        pips(woundMax, Math.min(state.wounds, woundMax), (n) => `${n} wound(s)`, (n) =>
+          change(setWounds(state, n, sheet.wildCard)),
+        ),
+      ),
+    );
+  }
+  strip.append(
+    labelled(
+      'Fatigue',
+      pips(MAX_FATIGUE, Math.min(state.fatigue, MAX_FATIGUE), (n) => `Fatigue ${n}`, (n) =>
+        change(setFatigue(state, n)),
+      ),
+    ),
+  );
+
+  const shaken = document.createElement('button');
+  shaken.className = state.shaken ? 'toggle on' : 'toggle';
+  shaken.textContent = 'Shaken';
+  shaken.addEventListener('click', () => change(setShaken(state, !state.shaken)));
+  strip.append(shaken);
+
+  // An Extra has no wound track, so Incapacitated needs its own control.
+  const out = isIncapacitated(state, sheet.wildCard);
+  const down = document.createElement('button');
+  down.className = out ? 'toggle on danger-toggle' : 'toggle';
+  down.textContent = out ? 'Incapacitated' : 'Down';
+  down.title = out ? 'Bring back up' : 'Mark Incapacitated';
+  down.addEventListener('click', () =>
+    change(setWounds(state, out ? 0 : woundMax + 1, sheet.wildCard)),
+  );
+  strip.append(down);
+
+  const summary = document.createElement('span');
+  summary.className = 'hint';
+  const penalty = traitPenalty(state);
+  summary.textContent =
+    describeStatus(state, sheet.wildCard) + (penalty ? ` — ${penalty} to trait rolls` : '');
+  strip.append(summary);
+
+  return strip;
+}
+
+function labelled(label: string, control: HTMLElement): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'statgroup';
+  const span = document.createElement('span');
+  span.textContent = label;
+  wrap.append(span, control);
+  return wrap;
+}
+
 /** Bind / unbind for whatever is selected on the map. */
 function bindBar(sheet: Sheet): HTMLElement | undefined {
   const bound = tokensForSheet(tokens, sheet.id);
@@ -270,11 +400,13 @@ function bindBar(sheet: Sheet): HTMLElement | undefined {
 
   if (bound.length) {
     const label = document.createElement('span');
-    label.textContent =
-      bound.length === 1
+    const clash = duplicateWildCard(tokens, sheet);
+    label.textContent = clash
+      ? `Bound to ${bound.length} tokens — a Wild Card should have one, wounds are shared`
+      : bound.length === 1
         ? `Bound to "${bound[0]!.name}"`
-        : `Bound to ${bound.length} tokens — probably a duplicate`;
-    if (bound.length > 1) label.className = 'warn';
+        : `Shared by ${bound.length} tokens`;
+    if (clash) label.className = 'warn';
 
     const unbind = document.createElement('button');
     unbind.textContent = 'Unbind';
@@ -307,6 +439,7 @@ function bindBar(sheet: Sheet): HTMLElement | undefined {
 async function refreshTokens(): Promise<void> {
   tokens = await characterTokens();
   renderSheetArea();
+  await renderBadges(tokens, sheets);
 }
 
 /**
@@ -365,6 +498,7 @@ function render(): void {
 
   const bind = bindBar(sheet);
   if (bind) sheetEl.append(bind);
+  sheetEl.append(statusStrip(sheet));
 
   const derived = document.createElement('div');
   derived.className = 'derived';
@@ -385,6 +519,12 @@ function render(): void {
   }
   if (derived.childElementCount) sheetEl.append(derived);
 
+  const penalty = statusPenalty(sheet);
+  const withPenalty = (mod: number | undefined): string => {
+    const total = (mod ?? 0) + penalty;
+    return total ? (total > 0 ? `+${total}` : String(total)) : '';
+  };
+
   sheetEl.append(section('Attributes'));
   const attributes = document.createElement('div');
   attributes.className = 'traits';
@@ -393,8 +533,8 @@ function render(): void {
     if (!trait) continue;
     const label = attribute[0]!.toUpperCase() + attribute.slice(1);
     attributes.append(
-      traitButton(label, dieLabel(trait.die, trait.mod), false, () => {
-        const { expression, explained } = rollAttribute(sheet, attribute as Attribute);
+      traitButton(label, `d${trait.die}${withPenalty(trait.mod)}`, false, () => {
+        const { expression, explained } = rollAttribute(sheet, attribute as Attribute, penalty);
         publish({ character: sheet.name, label, expression, explained });
       }),
     );
@@ -408,10 +548,15 @@ function render(): void {
     const trait = sheet.skills[skill];
     // Untrained skills are shown too — rolling one at d4−2 is a normal thing to do.
     skills.append(
-      traitButton(skill, trait ? dieLabel(trait.die, trait.mod) : 'd4−2', !trait, () => {
-        const { expression, explained } = rollSkill(sheet, skill as Skill);
-        publish({ character: sheet.name, label: skill, expression, explained });
-      }),
+      traitButton(
+        skill,
+        trait ? `d${trait.die}${withPenalty(trait.mod)}` : `d4${withPenalty(-2)}`,
+        !trait,
+        () => {
+          const { expression, explained } = rollSkill(sheet, skill as Skill, penalty);
+          publish({ character: sheet.name, label: skill, expression, explained });
+        },
+      ),
     );
   }
   sheetEl.append(skills);

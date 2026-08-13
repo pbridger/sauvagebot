@@ -3,6 +3,7 @@ import { emptySheet, type Sheet } from '../src/rules/sheet.js';
 import {
   TOKEN_KEY,
   autoBindings,
+  duplicateWildCard,
   isTokenState,
   newTokenState,
   orphanedTokens,
@@ -19,6 +20,7 @@ const token = (id: string, name: string, bound?: string, layer = 'CHARACTER'): T
 });
 
 const sheet = (id: string, name: string): Sheet => emptySheet(id, name);
+const extra = (id: string, name: string): Sheet => ({ ...emptySheet(id, name), wildCard: false });
 
 describe('reading a binding', () => {
   it('reads a well-formed one', () => {
@@ -67,11 +69,20 @@ describe('auto-binding by name', () => {
     ).toEqual([]);
   });
 
-  it('refuses to guess when several tokens share a name', () => {
-    // Three bandits and one Bandit sheet: guessing would attach three tokens to
-    // one character's wounds, and nobody would think to check.
+  it('will not put a Wild Card on two tokens, which would pool their wounds', () => {
+    const twins = [token('t1', 'Reggie'), token('t2', 'Reggie')];
+    expect(autoBindings(twins, [sheet('reggie', 'Reggie')])).toEqual([]);
+  });
+
+  it('binds every matching token to an Extra, which is how a gang works', () => {
+    // Five bandits share one stat block; each keeps its own wounds, because
+    // wounds live on the token.
     const bandits = [token('t1', 'Bandit'), token('t2', 'Bandit'), token('t3', 'Bandit')];
-    expect(autoBindings(bandits, [sheet('bandit', 'Bandit')])).toEqual([]);
+    expect(autoBindings(bandits, [extra('bandit', 'Bandit')])).toEqual([
+      { tokenId: 't1', sheetId: 'bandit' },
+      { tokenId: 't2', sheetId: 'bandit' },
+      { tokenId: 't3', sheetId: 'bandit' },
+    ]);
   });
 
   it('refuses to guess when several characters share a name', () => {
@@ -83,10 +94,14 @@ describe('auto-binding by name', () => {
     ).toEqual([]);
   });
 
-  it('binds the unambiguous ones and skips the rest in the same scene', () => {
+  it('handles a mixed scene: one Wild Card, a gang of Extras', () => {
     const tokens = [token('t1', 'Reggie'), token('t2', 'Bandit'), token('t3', 'Bandit')];
-    const sheets = [sheet('reggie', 'Reggie'), sheet('bandit', 'Bandit')];
-    expect(autoBindings(tokens, sheets)).toEqual([{ tokenId: 't1', sheetId: 'reggie' }]);
+    const sheets = [sheet('reggie', 'Reggie'), extra('bandit', 'Bandit')];
+    expect(autoBindings(tokens, sheets)).toEqual([
+      { tokenId: 't1', sheetId: 'reggie' },
+      { tokenId: 't2', sheetId: 'bandit' },
+      { tokenId: 't3', sheetId: 'bandit' },
+    ]);
   });
 
   it('binds nothing when no name matches', () => {
@@ -111,5 +126,12 @@ describe('finding trouble', () => {
   it('finds every token bound to one sheet, since duplicates carry the binding', () => {
     const tokens = [token('t1', 'Reggie', 'reggie'), token('t2', 'Reggie copy', 'reggie')];
     expect(tokensForSheet(tokens, 'reggie').map((t) => t.id)).toEqual(['t1', 't2']);
+  });
+
+  it('flags a duplicated Wild Card but not a gang of Extras', () => {
+    const two = [token('t1', 'a', 'x'), token('t2', 'b', 'x')];
+    expect(duplicateWildCard(two, { id: 'x', wildCard: true })).toBe(true);
+    expect(duplicateWildCard(two, { id: 'x', wildCard: false })).toBe(false);
+    expect(duplicateWildCard([two[0]!], { id: 'x', wildCard: true })).toBe(false);
   });
 });

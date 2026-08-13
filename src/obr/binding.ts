@@ -24,10 +24,10 @@
  *
  * Item metadata is per-scene, so every binding is lost when the GM opens a new
  * map. Re-binding six PCs at the start of each scene would be miserable, so
- * `autoBindings` matches tokens to characters by name. It is deliberately
- * conservative: it binds only where exactly one token matches exactly one
- * character, and never overwrites a binding that already exists. A wrong
+ * `autoBindings` matches tokens to characters by name. It never overwrites an
+ * existing binding, and never guesses when a name is ambiguous — a wrong
  * automatic bind is worse than no bind, because nobody would think to check.
+ * Wild Cards take one token; Extras take as many as share the name.
  */
 import type { Sheet } from '../rules/sheet.js';
 
@@ -78,12 +78,19 @@ function normalise(name: string): string {
 }
 
 /**
- * Work out which unbound tokens obviously belong to which characters.
+ * Work out which unbound tokens belong to which characters.
  *
- * "Obviously" is doing real work: a name must match exactly one token *and*
- * exactly one character. A scene with three tokens called "Bandit" and one
- * Bandit sheet produces nothing, which is the right answer — guessing would
- * silently attach three tokens to one character's wounds.
+ * The rule differs by character type, and that is the whole point:
+ *
+ *   - a **Wild Card** is one person, so one token. Two tokens with their name is
+ *     a mistake, and binding both would silently pool their wounds.
+ *   - an **Extra** is a stat block, so *many* tokens share it. Five tokens called
+ *     "Bandit" all bind to the one Bandit sheet, and each keeps its own wounds,
+ *     because wounds live on the token. That is how a GM runs a gang without
+ *     five copies of the same sheet eating the room's storage budget.
+ *
+ * A name must still match exactly one *character*; two sheets called "Bandit"
+ * is ambiguous either way.
  *
  * Matching is loose on punctuation and case only, so `REGINALD "REGGIE" KANE`
  * finds a token named `Reginald Reggie Kane`, but nothing fuzzier than that.
@@ -111,8 +118,10 @@ export function autoBindings(
   const bindings: { tokenId: string; sheetId: string }[] = [];
   for (const [name, matched] of tokensByName) {
     const sheetMatches = sheetsByName.get(name);
-    if (matched.length !== 1 || sheetMatches?.length !== 1) continue;
-    bindings.push({ tokenId: matched[0]!.id, sheetId: sheetMatches[0]!.id });
+    if (sheetMatches?.length !== 1) continue;
+    const sheet = sheetMatches[0]!;
+    if (sheet.wildCard && matched.length !== 1) continue;
+    for (const token of matched) bindings.push({ tokenId: token.id, sheetId: sheet.id });
   }
   return bindings;
 }
@@ -134,9 +143,23 @@ export function orphanedTokens(
 }
 
 /**
- * Every token bound to a given sheet. Normally one — but a duplicated token
- * carries the binding with it, so the caller must cope with more.
+ * Every token bound to a given sheet.
+ *
+ * For an Extra, many is the normal case. For a Wild Card, more than one means a
+ * token was duplicated and two tokens now share one wound total — see
+ * `duplicateWildCard`.
  */
 export function tokensForSheet(tokens: readonly TokenLike[], sheetId: string): TokenLike[] {
   return tokens.filter((token) => readBinding(token.metadata)?.sheetId === sheetId);
+}
+
+/**
+ * True when a Wild Card has ended up on more than one token, which is always a
+ * mistake: their wounds would be shared. Harmless and expected for an Extra.
+ */
+export function duplicateWildCard(
+  tokens: readonly TokenLike[],
+  sheet: Pick<Sheet, 'id' | 'wildCard'>,
+): boolean {
+  return sheet.wildCard && tokensForSheet(tokens, sheet.id).length > 1;
 }

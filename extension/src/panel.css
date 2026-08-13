@@ -334,3 +334,43 @@ img.portrait {
 }
 .bindbar button { font-size: 11.5px; padding: 2px 7px; }
 .bindbar .warn { color: var(--accent); font-weight: 700; }
+
+/* ---- status strip ---------------------------------------------------- */
+
+.status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 8px 0 4px;
+  padding: 7px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+.statgroup { display: flex; align-items: center; gap: 5px; }
+.statgroup > span {
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pips { display: flex; gap: 3px; }
+button.pip {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--rule);
+}
+button.pip.on { background: var(--accent); border-color: var(--accent); }
+
+button.toggle { padding: 2px 8px; font-size: 11.5px; }
+button.toggle.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--paper);
+  font-weight: 700;
+}
+button.toggle.on.danger-toggle { background: #8c2f22; border-color: #8c2f22; color: #fff; }
+
+.status .hint { font-size: 11px; color: var(--muted); flex-basis: 100%; }

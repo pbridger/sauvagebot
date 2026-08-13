@@ -33,7 +33,9 @@ export function maxWounds(wildCard: boolean): number {
 export function traitPenalty(state: Pick<TokenState, 'wounds' | 'fatigue'>): number {
   const wounds = clamp(state.wounds, 0, MAX_WOUNDS_WILD_CARD);
   const fatigue = clamp(state.fatigue, 0, MAX_FATIGUE);
-  return -(wounds + fatigue);
+  const total = wounds + fatigue;
+  // `-(0)` is -0, which formats as "−0" in a trait label. Return a plain zero.
+  return total === 0 ? 0 : -total;
 }
 
 export function isIncapacitated(
