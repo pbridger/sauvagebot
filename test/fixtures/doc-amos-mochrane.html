@@ -1,100 +1,447 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Deadlands Seasoned Archetypes - DOC AMOS MOCHRANE</title></head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deadlands Seasoned Archetypes - Doc Amos Mochrane</title>
+    <style>
+        /* archetype_template.css - FINAL FOR PRINTING & A4 FIT */
+        @font-face {
+            font-family: 'WesternTitleFont';
+            /* src: url('fonts/your_western_title_font.woff2') format('woff2'); */
+        }
+        @font-face {
+            font-family: 'WesternBodyFont';
+            /* src: url('fonts/your_western_body_font.woff2') format('woff2'); */
+        }
+
+        body {
+            background-color: #f0f0f0; /* Screen background */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            font-family: 'WesternBodyFont', Georgia, serif;
+        }
+
+        .archetype-card {
+            width: 690px;
+            background-color: #f5e8d0;
+            border: 1px solid #5a442c;
+            box-shadow: 0 0 8px rgba(0,0,0,0.15);
+            position: relative;
+            padding: 10px;
+            color: #2c1e12;
+            overflow: hidden;
+            margin: 10px auto 25px auto;
+            page-break-after: always;
+            break-after: page;
+        }
+
+        .rank-banner {
+            position: absolute;
+            top: 0;
+            right: -6px;
+            height: 100%;
+            width: 33px;
+            background-color: #6b4f38;
+            color: #f5e8d0;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'WesternTitleFont', "Impact", "Arial Black", sans-serif;
+            font-size: 14.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-left: 1.5px solid #4a341c;
+            padding: 3px 0;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 10px;
+            padding-right: 22px;
+        }
+
+        .character-name {
+            font-family: 'WesternTitleFont', "Georgia", serif;
+            font-size: 25px;
+            color: #8c3826;
+            margin: 3px 0;
+            text-transform: uppercase;
+            outline: none;
+        }
+
+        .character-quote {
+            font-family: 'WesternBodyFont', "Georgia", serif;
+            font-style: italic;
+            font-size: 12.5px;
+            color: #3d2b1f;
+            margin: 0 auto 7px;
+            max-width: 88%;
+            outline: none;
+        }
+        
+        .character-name:focus, .character-quote:focus {
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 3px;
+        }
+
+        .card-content-wrapper {
+            display: flex;
+            gap: 10px;
+            padding-right: 28px;
+        }
+
+        .portrait-section {
+            flex: 0 0 155px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .character-image {
+            width: 100%;
+            max-width: 135px;
+            height: auto;
+            border: 2px solid #7a5c43;
+            margin-bottom: 7px;
+            object-fit: cover;
+            min-height: 165px;
+            background-color: #ccc;
+        }
+
+        .deadlands-logo-card {
+            width: 85px;
+            height: auto;
+            margin-top: auto;
+        }
+
+        .stats-section {
+            flex: 0 0 240px;
+        }
+
+        .details-section {
+            flex: 1;
+            background-color: #faf0e0;
+            padding: 7px;
+            border: 1px solid #d3c0a0;
+            min-width: 0;
+        }
+
+        .section-title {
+            font-family: 'WesternTitleFont', "Georgia", serif;
+            font-size: 16.5px;
+            color: #a04030;
+            text-transform: uppercase;
+            margin-top: 0;
+            margin-bottom: 5px;
+            padding-bottom: 1.5px;
+            border-bottom: 1px solid #b08c6f;
+        }
+
+        .details-section .section-title {
+             border-top: 1px solid #b08c6f;
+             padding-top: 1.5px;
+        }
+        .details-section > div:not(:first-child) .section-title {
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+            margin-bottom: 10px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 1px 3.5px;
+        }
+
+        .attributes-block th, .attributes-block td {
+             width: 25%;
+             vertical-align: middle;
+        }
+        .skills-block th, .skills-block td {
+            width: 50%;
+            vertical-align: middle;
+        }
+        .attributes-block td:nth-child(odd), .skills-block td:nth-child(odd) {
+            font-weight: bold;
+        }
+
+        .details-section p, .details-section ul {
+            font-size: 11.5px;
+            line-height: 1.28;
+            margin-top: 0;
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        .details-section p strong {
+            color: #5c3d21;
+        }
+
+        .advances-block {
+            margin-top: 10px;
+        }
+        .advances-title {
+            font-family: 'WesternTitleFont', "Georgia", serif;
+            font-size: 12.5px;
+            font-weight: bold;
+            color: #a04030;
+            margin: 7px 0 3px 0;
+            text-transform: uppercase;
+        }
+        .advances-block p {
+            font-size: 10.5px;
+            line-height: 1.25;
+        }
+
+        /* --- EDITABLE FORM CONTROLS --- */
+        .attr-input-group {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .die-select {
+            font-family: inherit;
+            font-size: 11.5px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid #d3c0a0;
+            padding: 1px;
+            border-radius: 3px;
+            color: inherit;
+            font-weight: inherit;
+        }
+
+        .mod-input {
+            width: 22px;
+            font-family: inherit;
+            font-size: 11.5px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid #d3c0a0;
+            padding: 1px;
+            text-align: center;
+            border-radius: 3px;
+            color: inherit;
+        }
+
+        .stat-input {
+            width: 45px;
+            font-family: inherit;
+            font-size: 11.5px;
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid #d3c0a0;
+            padding: 1px 3px;
+            border-radius: 3px;
+            color: inherit;
+        }
+
+        .editable-content {
+            outline: none;
+            border: 1px dashed transparent;
+            min-height: 1.5em;
+            transition: all 0.2s;
+        }
+
+        .editable-content:focus {
+            border: 1px dashed #a04030;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        /* Print-specific adjustments */
+        @media print {
+            body {
+                background-color: #fff !important;
+                padding: 2mm !important;
+                margin: 0 !important;
+                font-size: 9.5pt !important;
+            }
+            .archetype-card {
+                box-shadow: none !important;
+                border: 0.5pt solid #888 !important;
+                margin: 0 0 7mm 0 !important;
+                width: 100% !important;
+                max-width: none !important;
+                padding: 8px !important;
+            }
+            .card-content-wrapper {
+                padding-right: 25px !important;
+            }
+            .rank-banner {
+                right: -1px !important;
+                width: 28px !important;
+                font-size: 13px !important;
+                border-left-width: 1pt !important;
+            }
+            .character-name { font-size: 22px !important; }
+            .character-quote { font-size: 11.5px !important; }
+            .section-title { font-size: 15px !important; }
+            table { font-size: 10.5px !important; }
+            .details-section p, .details-section ul { font-size: 10.5px !important; }
+            .advances-title { font-size: 11.5px !important; }
+            .advances-block p { font-size: 10px !important; }
+
+            /* Ensure form inputs look like regular text on print */
+            .die-select, .mod-input, .stat-input {
+                border: none !important;
+                background: transparent !important;
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                appearance: none;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            .die-select {
+                background-image: none !important;
+                text-indent: 0.01px; 
+                text-overflow: '';
+            }
+            .mod-input:placeholder-shown {
+                display: none !important; 
+            }
+            .editable-content {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+            }
+        }
+    </style>
+</head>
 <body>
 
-<!--
-  Transcribed from Doc_Amos_Mochrane.pdf on 2026-08-13.
-
-  Those PDFs carry no recoverable text: no /ToUnicode map, no embedded font, and
-  a /Differences array whose glyph names are bare numbers. No library can read
-  them, so the pages were rendered and read, then rebuilt in the template the
-  importer already understands. Replace with a real export if one turns up.
--->
-
-<div class="archetype-card">
-  <div class="rank-banner"><span contenteditable="true">RANK: SEASONED</span></div>
-  <div class="card-header">
-    <h2 class="character-name" contenteditable="true">DOC AMOS MOCHRANE</h2>
-    <p class="character-quote" contenteditable="true">Nasty splinter. Gonna have to take the whole arm. Just kidding.</p>
-  </div>
-  <div class="card-content-wrapper">
-    <div class="stats-section">
-      <div class="attributes-block">
-        <h3 class="section-title">ATTRIBUTES</h3>
-        <table>
-            <tr><td>AGILITY</td><td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td><td>PACE</td><td><input type="text" class="stat-input" value="6"></td></tr>
-            <tr><td>SMARTS</td><td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td><td>PARRY</td><td><input type="text" class="stat-input" value="5"></td></tr>
-            <tr><td>SPIRIT</td><td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td><td>TOUGHNESS</td><td><input type="text" class="stat-input" value="5"></td></tr>
-            <tr><td>STRENGTH</td><td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td><td></td><td></td></tr>
-            <tr><td>VIGOR</td><td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td><td></td><td></td></tr>
-        </table>
-      </div>
-      <div class="skills-block comprehensive-skill-list">
-        <h3 class="section-title">SKILLS</h3>
-        <table>
-            <tr><td>Academics</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Athletics</td><td><select class="die-select"><option value="-">-</option><option value="d4" selected>d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Battle</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Boating</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Com. Knowledge</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Driving</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Fighting</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Gambling</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Healing</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Intimidation</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Language</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Notice</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Occult</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Performance</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Persuasion</td><td><select class="die-select"><option value="-">-</option><option value="d4" selected>d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Piloting</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Repair</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Research</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Riding</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Science</td><td><select class="die-select"><option value="-">-</option><option value="d4" selected>d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Shooting</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Stealth</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Survival</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Taunt</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Thievery</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-            <tr><td>Trade</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
-        </table>
-      </div>
+    <!-- Doc Amos Mochrane -->
+    <!--
+      Transcribed from Doc_Amos_Mochrane.pdf on 2026-08-13. Those PDFs carry no
+      recoverable text — no /ToUnicode map, no embedded font, and a /Differences
+      array of bare numeric glyph names — so the pages were rendered and read,
+      then rebuilt on this template. Replace if a real export turns up.
+    -->
+    <div class="archetype-card">
+        <div class="rank-banner"><span contenteditable="true">RANK: SEASONED</span></div>
+        <div class="card-header">
+            <h2 class="character-name" contenteditable="true">DOC AMOS MOCHRANE</h2>
+            <p class="character-quote" contenteditable="true">Nasty splinter. Gonna have to take the whole arm. Just kidding.</p>
+        </div>
+        <div class="card-content-wrapper">
+            <div class="portrait-section">
+                <!-- Expects external images in the same folder -->
+                <img src="portraits/Doc_Amos_Mochrane.png" alt="Doc Amos Mochrane portrait" class="character-image">
+                <img src="deadlands_logo_card.png" alt="Dead Lands Logo" class="deadlands-logo-card">
+            </div>
+            <div class="stats-section">
+                <div class="attributes-block">
+                    <h3 class="section-title">ATTRIBUTES</h3>
+                    <table>
+                        <tr>
+                            <td>AGILITY</td>
+                            <td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td>
+                            <td>PACE</td>
+                            <td><input type="text" class="stat-input" value="6"></td>
+                        </tr>
+                        <tr>
+                            <td>SMARTS</td>
+                            <td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td>
+                            <td>PARRY</td>
+                            <td><input type="text" class="stat-input" value="5"></td>
+                        </tr>
+                        <tr>
+                            <td>SPIRIT</td>
+                            <td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td>
+                            <td>TOUGHNESS</td>
+                            <td><input type="text" class="stat-input" value="5"></td>
+                        </tr>
+                        <tr>
+                            <td>STRENGTH</td>
+                            <td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td>
+                            <td></td><td></td>
+                        </tr>
+                        <tr>
+                            <td>VIGOR</td>
+                            <td><div class="attr-input-group"><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select><input type="text" class="mod-input" value="" placeholder=" "></div></td>
+                            <td></td><td></td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="skills-block comprehensive-skill-list">
+                    <h3 class="section-title">SKILLS</h3>
+                    <table>
+                        <tr><td>Academics</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Athletics</td><td><select class="die-select"><option value="-">-</option><option value="d4" selected>d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Battle</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Boating</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Com. Knowledge</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Driving</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Fighting</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Gambling</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Healing</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Intimidation</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Language</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Notice</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Occult</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Performance</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Persuasion</td><td><select class="die-select"><option value="-">-</option><option value="d4" selected>d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Piloting</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Repair</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Research</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Riding</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Science</td><td><select class="die-select"><option value="-">-</option><option value="d4" selected>d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Shooting</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Stealth</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6" selected>d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Survival</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Taunt</td><td><select class="die-select"><option value="-">-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8" selected>d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Thievery</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                        <tr><td>Trade</td><td><select class="die-select"><option value="-" selected>-</option><option value="d4">d4</option><option value="d6">d6</option><option value="d8">d8</option><option value="d10">d10</option><option value="d12">d12</option></select></td></tr>
+                    </table>
+                </div>
+            </div>
+            <div class="details-section">
+                <div class="hindrances-block">
+                    <h3 class="section-title">HINDRANCES</h3>
+                    <div contenteditable="true" class="editable-content">
+                        <p><strong>AILIN&#x27; (MINOR):</strong> You picked up some kind of illness from one of your patients. You subtract 1 from rolls made to resist Fatigue from any source. A Critical Failure means your illness escalates to the Major version (see Deadlands).</p>
+                        <p><strong>HEAVY SLEEPER (MINOR):</strong> You sleep deep and hard, subtracting 4 from Notice rolls to wake you and -4 from Vigor rolls made to stay awake.</p>
+                        <p><strong>HEROIC (MAJOR):</strong> You never turn down those in need.</p>
+                    </div>
+                </div>
+                <div class="edges-block">
+                    <h3 class="section-title">EDGES</h3>
+                    <div contenteditable="true" class="editable-content">
+                        <p><strong>GALLOWS HUMOR:</strong> You can use your Taunt instead of your Spirit when making Fear tests. With a raise, you add +1 to all your ally&#x27;s Fear tests (so make sure you roll first!).</p>
+                        <p><strong>HEALER:</strong> You have a knack for taking care of folks. Add +2 to Healing rolls.</p>
+                        <p><strong>HUMILIATE:</strong> You can reroll Taunt (and yes, that applies to Taunt used to resist Fear per your Gallows Humor Edge).</p>
+                        <p><strong>RABBLE-ROUSER:</strong> As a limited action, make a social Test with Intimidation or Taunt against all enemies in a Medium Blast Template. Each defender resists and is affected by the Test separately.</p>
+                    </div>
+                </div>
+                <div class="gear-block">
+                    <h3 class="section-title">GEAR</h3>
+                    <div contenteditable="true" class="editable-content">
+                        <p>Doctor&#x27;s bag, Colt Army (Range 12/24/48, Damage 2d6+1, AP 1, RoF 1, Shots 6), .44 ammo (×50), knife (Str+d4), 2× dehydrated air tablet (10 minutes air when placed in mouth), one dose of liquid courage (+2 to Fear checks for 30 minutes), 2× tactile desensitizer (reduce Wound penalties by 2 for 10 minutes), $45.</p>
+                    </div>
+                </div>
+                <div class="advances-block">
+                    <h4 class="advances-title">ADVANCES:</h4>
+                    <div contenteditable="true" class="editable-content">
+                        <p>Shooting d6 and Stealth d6, Spirit d8, Healing d8 and Taunt d8, Humiliate, Rabble-Rouser.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="details-section">
-        <div class="hindrances-block">
-          <h3 class="section-title">HINDRANCES</h3>
-          <div contenteditable="true" class="editable-content">
-            <p><strong>AILIN&#x27; (MINOR):</strong> You picked up some kind of illness from one of your patients. You subtract 1 from rolls made to resist Fatigue from any source. A Critical Failure means your illness escalates to the Major version (see Deadlands).</p>
-            <p><strong>HEAVY SLEEPER (MINOR):</strong> You sleep deep and hard, subtracting 4 from Notice rolls to wake you and -4 from Vigor rolls made to stay awake.</p>
-            <p><strong>HEROIC (MAJOR):</strong> You never turn down those in need.</p>
-          </div>
-        </div>
-        <div class="edges-block">
-          <h3 class="section-title">EDGES</h3>
-          <div contenteditable="true" class="editable-content">
-            <p><strong>GALLOWS HUMOR:</strong> You can use your Taunt instead of your Spirit when making Fear tests. With a raise, you add +1 to all your ally&#x27;s Fear tests (so make sure you roll first!).</p>
-            <p><strong>HEALER:</strong> You have a knack for taking care of folks. Add +2 to Healing rolls.</p>
-            <p><strong>HUMILIATE:</strong> You can reroll Taunt (and yes, that applies to Taunt used to resist Fear per your Gallows Humor Edge).</p>
-            <p><strong>RABBLE-ROUSER:</strong> As a limited action, make a social Test with Intimidation or Taunt against all enemies in a Medium Blast Template. Each defender resists and is affected by the Test separately.</p>
-          </div>
-        </div>
-        <div class="gear-block">
-          <h3 class="section-title">GEAR</h3>
-          <div contenteditable="true" class="editable-content">
-            <p>Doctor&#x27;s bag, Colt Army (Range 12/24/48, Damage 2d6+1, AP 1, RoF 1, Shots 6), .44 ammo (×50), knife (Str+d4), 2× dehydrated air tablet (10 minutes air when placed in mouth), one dose of liquid courage (+2 to Fear checks for 30 minutes), 2× tactile desensitizer (reduce Wound penalties by 2 for 10 minutes), $45.</p>
-          </div>
-        </div>
-        <div class="advances-block">
-          <h4 class="advances-title">ADVANCES:</h4>
-          <div contenteditable="true" class="editable-content">
-            <p>Shooting d6 and Stealth d6, Spirit d8, Healing d8 and Taunt d8, Humiliate, Rabble-Rouser.</p>
-          </div>
-        </div>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
