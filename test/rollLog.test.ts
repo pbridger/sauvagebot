@@ -23,6 +23,7 @@ describe('validating what arrives over the wire', () => {
   it('accepts a well-formed entry', () => {
     expect(isRollEntry(entry())).toBe(true);
     expect(isRollEntry(entry({ character: 'Reggie', label: 'Shooting' }))).toBe(true);
+    expect(isRollEntry(entry({ total: 10, ap: 2 }))).toBe(true);
   });
 
   it.each([
@@ -32,6 +33,7 @@ describe('validating what arrives over the wire', () => {
     ['numeric by', { id: '1', at: 1, by: 7, expression: 's8', explained: 'x' }],
     ['NaN timestamp', { id: '1', at: NaN, by: 'a', expression: 's8', explained: 'x' }],
     ['object label', { id: '1', at: 1, by: 'a', expression: 's8', explained: 'x', label: {} }],
+    ['non-numeric ap', { id: '1', at: 1, by: 'a', expression: 'd6', explained: 'x', ap: 'lots' }],
   ])('rejects %s rather than rendering half an object', (_, value) => {
     expect(isRollEntry(value)).toBe(false);
   });
@@ -117,6 +119,11 @@ describe('formatting', () => {
 
   it('falls back to the player for a free expression', () => {
     expect(formatEntry(entry())).toBe('Paul: s8: [7; w3] = 7');
+  });
+
+  it('shows armour-piercing, which changes what the damage means', () => {
+    expect(formatEntry(entry({ label: 'Colt damage', ap: 1 }))).toMatch(/\(AP 1\)$/);
+    expect(formatEntry(entry({ ap: 0 }))).not.toMatch(/AP/);
   });
 });
 

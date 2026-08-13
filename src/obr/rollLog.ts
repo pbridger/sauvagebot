@@ -33,8 +33,17 @@ export interface RollEntry {
   explained: string;
   /** The numeric result, when there was a single one. Lets a roll be applied as damage. */
   total?: number;
+  /**
+   * Armour-piercing carried from the weapon that rolled it, so applying the
+   * damage does not silently forget the AP the sheet already knew about.
+   */
+  ap?: number;
   /** Kept local, never sent. Present only on the roller's own client. */
   secret?: boolean;
+}
+
+function isOptionalNumber(value: unknown): boolean {
+  return value === undefined || (typeof value === 'number' && Number.isFinite(value));
 }
 
 export function newRollId(): string {
@@ -58,7 +67,8 @@ export function isRollEntry(value: unknown): value is RollEntry {
     typeof entry.by === 'string' &&
     typeof entry.expression === 'string' &&
     typeof entry.explained === 'string' &&
-    (entry.total === undefined || (typeof entry.total === 'number' && Number.isFinite(entry.total))) &&
+    isOptionalNumber(entry.total) &&
+    isOptionalNumber(entry.ap) &&
     (entry.character === undefined || typeof entry.character === 'string') &&
     (entry.label === undefined || typeof entry.label === 'string')
   );
@@ -114,7 +124,8 @@ export class RollLog {
 export function formatEntry(entry: RollEntry): string {
   const who = entry.character ? `${entry.character}` : entry.by;
   const what = entry.label ? `${who} — ${entry.label}` : who;
-  return `${what}: ${entry.explained.replace(/\*\*/g, '')}`;
+  const ap = entry.ap ? ` (AP ${entry.ap})` : '';
+  return `${what}: ${entry.explained.replace(/\*\*/g, '')}${ap}`;
 }
 
 /**

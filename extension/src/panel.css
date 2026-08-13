@@ -404,3 +404,11 @@ button.apply {
 @media (prefers-color-scheme: dark) {
   button.apply { color: #f2b8b5; border-color: #f2b8b5; }
 }
+
+#log .ap {
+  font-size: 10px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: help;
+}

@@ -149,13 +149,23 @@ function renderLog(): void {
         line.append(span);
       }
 
+      if (entry.ap) {
+        const ap = document.createElement('span');
+        ap.className = 'ap';
+        ap.textContent = ` AP ${entry.ap}`;
+        ap.title = `Ignores ${entry.ap} point(s) of armour`;
+        line.append(ap);
+      }
+
       const target = damageTarget();
       if (target && isApplicable(entry)) {
         const apply = document.createElement('button');
         apply.className = 'apply';
         apply.textContent = `→ ${target.sheet.name}`;
-        apply.title = `Apply ${entry.total} damage to ${target.token.name}`;
-        apply.addEventListener('click', () => void applyToTarget(entry.total!));
+        apply.title =
+          `Apply ${entry.total} damage to ${target.token.name}` +
+          (entry.ap ? `, ignoring ${entry.ap} armour` : '');
+        apply.addEventListener('click', () => void applyToTarget(entry));
         line.append(apply);
       }
       return line;
@@ -664,7 +674,7 @@ function renderGear(sheet: Sheet): void {
         button.textContent = weapon.damage;
         button.title = `Roll ${expression}`;
         button.addEventListener('click', () =>
-          rollFreeform(expression, `${weapon.name} damage`, sheet.name),
+          rollFreeform(expression, `${weapon.name} damage`, sheet.name, weapon.ap),
         );
         damageCell.append(button);
       } else {
@@ -758,19 +768,28 @@ function damageTarget(): { token: (typeof tokens)[number]; state: TokenState; sh
   return token && state && sheet ? { token, state, sheet } : undefined;
 }
 
-/** Resolve a rolled total as damage against the selected token. */
-async function applyToTarget(damage: number): Promise<void> {
+/**
+ * Resolve a rolled total as damage against the selected token.
+ *
+ * Takes the whole entry rather than just the number so the weapon's AP travels
+ * with it — the sheet already knew the Colt ignores a point of armour, and
+ * making the GM remember that at the moment of applying would waste it.
+ */
+async function applyToTarget(entry: RollEntry): Promise<void> {
   const target = damageTarget();
-  if (!target) return;
-  const outcome = applyDamage(target.sheet, target.state, { damage });
+  if (!target || entry.total === undefined) return;
+  const outcome = applyDamage(target.sheet, target.state, {
+    damage: entry.total,
+    ...(entry.ap ? { ap: entry.ap } : {}),
+  });
   await updateTokenState(target.token.id, () => outcome.state);
   await refreshTokens();
   publish({
     character: target.sheet.name,
     label: 'takes damage',
-    expression: `${damage}`,
+    expression: `${entry.total}`,
     explained: outcome.description,
-    total: damage,
+    total: entry.total,
   });
 }
 
@@ -783,7 +802,12 @@ async function applyToTarget(damage: number): Promise<void> {
  * cover — an opposed roll, a random table, damage from something not on the
  * card — so this is permanent furniture rather than a stopgap.
  */
-function rollFreeform(expression: string, label?: string, character?: string): void {
+function rollFreeform(
+  expression: string,
+  label?: string,
+  character?: string,
+  ap?: number,
+): void {
   const trimmed = expression.trim();
   if (!trimmed) return;
   try {
@@ -795,6 +819,7 @@ function rollFreeform(expression: string, label?: string, character?: string): v
       explained,
       ...(label ? { label } : {}),
       ...(character ? { character } : {}),
+      ...(ap ? { ap } : {}),
     });
   } catch (error) {
     // A typo is not worth broadcasting; show it to whoever typed it.
