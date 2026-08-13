@@ -138,7 +138,7 @@ The §1b split survives, with the budgets attached:
 |---|---|---|---|
 | Canonical PC roster | **room metadata**, one key per PC | ~1.25 kB each | campaign-scoped |
 | Edge/hindrance rules text | **room metadata**, one shared dictionary | ~700 chars total | identical across characters, so stored once |
-| Chips, per player | **room metadata**, one key per player | tiny | must outlive a tab close, so player metadata is out |
+| Bennies, per character | **room metadata**, one key per sheet | tiny | must outlive a tab close, so player metadata is out |
 | Extra/NPC sheets, backstory, images | **item metadata** on the token | 512 kB, effectively free | no budget pressure at all |
 | PC volatile combat state (wounds, shaken, card) | **item metadata** on the PC token | tiny | belongs to the scene, not the campaign |
 
@@ -163,35 +163,58 @@ Three rules fall out of the measurements:
 
 ---
 
-## 3. Deadlands: the mechanic that forces the architecture
+## 3. Deadlands rules — verified against the book (2026-08-13)
 
-**Fate Chips, not bennies.** This is the single most important Deadlands-specific difference for
-the design, because it is not a counter — it is a **finite bag drawn from without replacement**,
-with non-fungible colours and per-player holdings.
+`import/DLWW_Core_player_extract.pdf` is text-extractable, so everything below is
+checked rather than remembered. That mattered: **one module was built from memory and was
+wrong about the mechanic entirely.**
 
-On a platform with no authoritative RNG and last-write-wins semantics, that means:
+### The correction: Bennies, not Fate Chips
 
-- the pot composition needs **exactly one writer**, or two simultaneous draws take the same chip;
-- draws must be **leader-performed** (GM's client), or a player can re-roll a draw they don't like
-  by simply calling the function again;
-- a player's held chips are **per-player keys**, never a shared structure.
+An earlier `chips.ts` modelled a Fate Chip pot — a finite bag of coloured chips drawn
+without replacement — and its own comment claimed that structure was "not in doubt". It was
+wrong. Deadlands: The Weird West uses plain SWADE **Bennies**. The only mention of chips in
+the book is that poker chips make thematic tokens (p141). There is no pot, no colours,
+nothing is drawn. `chips.ts` is deleted; `bennies.ts` replaces it.
 
-This is a much sharper reason to build leader election first than initiative was. The handoff's
-generic "build it in from the start" becomes a concrete requirement with a concrete failure mode.
+That also **dissolves the strongest argument for leader election**, which was the shared
+pot needing a single writer. Election stays — it is right for anything one client must do
+for the table — but bennies need none of it: every count is per-owner.
 
-Other Deadlands-specific surfaces worth building. **All written from memory and to be confirmed
-against the Weird West book before any of it is coded** — the rules modules in §4 are exactly where
-a misremembered detail would get baked in:
+The rules, from p141–142:
 
-- **Huckster hexes** — the deal with the devil draws cards and evaluates a **poker hand**. This
-  reuses the already-ported deck and `javaShuffle` directly, and a poker-hand evaluator is pure,
-  testable TypeScript with zero OBR dependency.
-- **Fear Level** — a territory-scoped counter driving Fear/Guts checks. Natural fit for room
-  metadata; trivially small.
-- **Harrowed** — dominion tracking, the Manitou.
-- **Mad science** — malfunction on a roll of 1s, per-device reliability.
-- **Blessed / Shaman** — faith and favour tracking.
-- **Bounty / Reputation / Grit** as sheet fields.
+- every Wild Card starts a session with **three**; unused ones are lost at session end;
+- the Marshal gets **one per player character**, and GM Wild Cards carry **two** each;
+- **Joker's Wild** — when a player draws a Joker, *every* player character gets one, and
+  only one even if two Jokers come up. This falls out of the deal the extension already
+  does, so it is automatic rather than a button;
+- spend on: reroll a Trait, Soak, remove Shaken, draw a new Action Card, reroll damage,
+  regain 5 Power Points, or influence the story.
+
+### Everything else checked out exactly
+
+| Rule | Status |
+|---|---|
+| Damage < Toughness nothing; ≥ Shaken; a Wound per raise | confirmed p149 |
+| Already Shaken + a success = a Wound; + a raise = still one Wound | confirmed, from the book's own table |
+| Extras Incapacitated by one Wound; Wild Cards take three | confirmed |
+| Wound penalty −1 each, capped at −3 | confirmed |
+| Fatigued −1, Exhausted −2, third level Incapacitated | confirmed |
+| Soak: spend a Benny, Vigor roll, one Wound per success and raise | confirmed p150 |
+| Soaking every Wound also clears Shaken | confirmed |
+| Level Headed draws one extra and **chooses**; Improved draws two | confirmed p2833 |
+| Quick redraws a Five or lower until six or better, then chooses | confirmed |
+| Level Headed + Quick: extra card first, then Quick redraws | confirmed — and implemented that way already |
+| Hesitant draws two and acts on the lowest; a Joker is used normally | confirmed |
+
+The Level Headed confirmation is worth noting twice: it independently vindicates the
+deliberate divergence from the Java bot, which keeps the *worst* card. Paige's own card
+states the rule too.
+
+### Still to build, now unblocked
+
+Huckster hexes and the deal with the devil, Fear Level, Grit, Harrowed, and mad science
+malfunctions — all present in the extract and no longer guesswork.
 
 The generic-SWADE ladder in `HANDOFF.md` §4 still applies underneath (traits, wounds, soak,
 initiative, gang-up, range, templates); Deadlands sits on top of it rather than replacing it.
