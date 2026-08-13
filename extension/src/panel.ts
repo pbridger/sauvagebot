@@ -17,6 +17,14 @@ import { JavaRandom } from '../../src/dice/javaRandom.js';
 import { parse } from '../../src/dice/parser.js';
 import { rollAttribute, rollSkill } from '../../src/rules/traitRoll.js';
 import { Roster } from '../../src/obr/roster.js';
+import {
+  ROLL_CHANNEL,
+  RollLog,
+  forBroadcast,
+  isRollEntry,
+  newRollId,
+  type RollEntry,
+} from '../../src/obr/rollLog.js';
 import { roomStore } from './backends.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -30,6 +38,10 @@ let roster: Roster;
 let store = roomStore();
 let sheets: Sheet[] = [];
 let selectedId: string | undefined;
+
+const log = new RollLog();
+let me = 'someone';
+let secretRolls = false;
 
 // ---------------------------------------------------------------- chrome
 
@@ -48,24 +60,58 @@ function describe(error: unknown): string {
 }
 
 /**
- * The engine returns Discord markdown (`**8**`). Render the bold rather than
- * showing the asterisks, without putting engine output through innerHTML.
+ * Record a roll locally and, unless it is secret, tell everyone else.
+ *
+ * A secret roll is never broadcast — filtering it at the receiving end would mean
+ * every client had the result and merely agreed not to show it, which is not a GM
+ * screen. Keeping it local works because the person hiding the roll is the one
+ * making it.
  */
-function logRoll(label: string, explained: string): void {
-  const line = document.createElement('div');
-  const strong = document.createElement('span');
-  strong.textContent = `${label} `;
-  strong.style.fontWeight = '700';
-  line.append(strong);
-
-  for (const [i, part] of explained.split('**').entries()) {
-    const span = document.createElement('span');
-    span.textContent = part;
-    if (i % 2 === 1) span.className = 'total';
-    line.append(span);
+function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>): void {
+  const entry: RollEntry = {
+    ...partial,
+    id: newRollId(),
+    at: Date.now(),
+    by: me,
+    ...(secretRolls ? { secret: true } : {}),
+  };
+  log.add(entry);
+  renderLog();
+  if (!entry.secret) {
+    // REMOTE: everyone but us, since we have already added it ourselves.
+    void OBR.broadcast
+      .sendMessage(ROLL_CHANNEL, forBroadcast(entry), { destination: 'REMOTE' })
+      .catch((error: unknown) => notify(`could not share that roll: ${describe(error)}`));
   }
-  logEl.prepend(line);
-  while (logEl.childElementCount > 40) logEl.lastElementChild?.remove();
+}
+
+/**
+ * The engine returns Discord markdown (`**8**`). Render the bold rather than
+ * showing the asterisks, and via textContent rather than innerHTML — these
+ * strings arrive from other clients.
+ */
+function renderLog(): void {
+  logEl.replaceChildren(
+    ...log.list().map((entry) => {
+      const line = document.createElement('div');
+      if (entry.secret) line.classList.add('secret');
+
+      const who = document.createElement('span');
+      who.className = 'who';
+      const subject = entry.character ?? entry.by;
+      who.textContent = entry.label ? `${subject} — ${entry.label} ` : `${subject} `;
+      who.title = entry.character ? `rolled by ${entry.by}` : '';
+      line.append(who);
+
+      for (const [i, part] of entry.explained.split('**').entries()) {
+        const span = document.createElement('span');
+        span.textContent = part;
+        if (i % 2 === 1) span.className = 'total';
+        line.append(span);
+      }
+      return line;
+    }),
+  );
 }
 
 async function showBudget(): Promise<void> {
@@ -172,8 +218,8 @@ function render(): void {
     const label = attribute[0]!.toUpperCase() + attribute.slice(1);
     attributes.append(
       traitButton(label, dieLabel(trait.die, trait.mod), false, () => {
-        const { explained } = rollAttribute(sheet, attribute as Attribute);
-        logRoll(`${sheet.name} — ${label}`, explained);
+        const { expression, explained } = rollAttribute(sheet, attribute as Attribute);
+        publish({ character: sheet.name, label, expression, explained });
       }),
     );
   }
@@ -187,8 +233,8 @@ function render(): void {
     // Untrained skills are shown too — rolling one at d4−2 is a normal thing to do.
     skills.append(
       traitButton(skill, trait ? dieLabel(trait.die, trait.mod) : 'd4−2', !trait, () => {
-        const { explained } = rollSkill(sheet, skill as Skill);
-        logRoll(`${sheet.name} — ${skill}`, explained);
+        const { expression, explained } = rollSkill(sheet, skill as Skill);
+        publish({ character: sheet.name, label: skill, expression, explained });
       }),
     );
   }
@@ -249,7 +295,9 @@ function renderGear(sheet: Sheet): void {
         button.className = 'dmg';
         button.textContent = weapon.damage;
         button.title = `Roll ${expression}`;
-        button.addEventListener('click', () => rollFreeform(expression, `${weapon.name} damage`));
+        button.addEventListener('click', () =>
+          rollFreeform(expression, `${weapon.name} damage`, sheet.name),
+        );
         damageCell.append(button);
       } else {
         damageCell.textContent = '—';
@@ -336,16 +384,30 @@ async function reload(): Promise<void> {
  * cover — an opposed roll, a random table, damage from something not on the
  * card — so this is permanent furniture rather than a stopgap.
  */
-function rollFreeform(expression: string, label = expression): void {
+function rollFreeform(expression: string, label?: string, character?: string): void {
   const trimmed = expression.trim();
   if (!trimmed) return;
   try {
     const explained = new RollInterpreter(new CommandContext(new JavaRandom()))
       .run(parse([trimmed]))
       .trim();
-    logRoll(label === trimmed ? '' : `${label} —`, explained);
+    publish({
+      expression: trimmed,
+      explained,
+      ...(label ? { label } : {}),
+      ...(character ? { character } : {}),
+    });
   } catch (error) {
-    logRoll('', `${trimmed}: ${describe(error)}`);
+    // A typo is not worth broadcasting; show it to whoever typed it.
+    log.add({
+      id: newRollId(),
+      at: Date.now(),
+      by: me,
+      expression: trimmed,
+      explained: `${trimmed}: ${describe(error)}`,
+      secret: true,
+    });
+    renderLog();
   }
 }
 
@@ -392,6 +454,27 @@ async function exportRoster(): Promise<void> {
 OBR.onReady(async () => {
   store = roomStore(notify);
   roster = new Roster(store, notify);
+  me = await OBR.player.getName();
+
+  const secretToggle = el<HTMLInputElement>('secret');
+  secretToggle.checked = secretRolls;
+  secretToggle.addEventListener('change', () => {
+    secretRolls = secretToggle.checked;
+  });
+  // Only the GM has a screen to roll behind.
+  secretToggle.closest('label')!.hidden = (await OBR.player.getRole()) !== 'GM';
+
+  OBR.broadcast.onMessage(ROLL_CHANNEL, (event) => {
+    if (!isRollEntry(event.data)) return;
+    // `secret` is meaningless on the wire; never honour a claim of it.
+    const { secret, ...entry } = event.data;
+    void secret;
+    if (log.add(entry)) renderLog();
+  });
+
+  OBR.player.onChange((player) => {
+    me = player.name;
+  });
 
   bar.who.addEventListener('change', () => {
     selectedId = bar.who.value;
