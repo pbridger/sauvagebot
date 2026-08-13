@@ -519,3 +519,37 @@ table.weapons button.atk {
   font-size: 11px;
   white-space: nowrap;
 }
+
+/* ---- bennies --------------------------------------------------------- */
+
+.statgroup.bennies { gap: 4px; }
+.benny-count {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--paper);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.benny-count.none { background: transparent; color: var(--muted); border: 1px solid var(--rule); }
+
+select.spend {
+  font: inherit;
+  font-size: 11px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  padding: 1px 4px;
+  max-width: 96px;
+}
+button.toggle.soak {
+  border-color: #8c2f22;
+  color: #8c2f22;
+  font-weight: 700;
+}
+@media (prefers-color-scheme: dark) {
+  button.toggle.soak { border-color: #f2b8b5; color: #f2b8b5; }
+}

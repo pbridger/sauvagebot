@@ -53,6 +53,10 @@ import {
   traitPenalty,
 } from '../../src/rules/status.js';
 import { renderBadges } from './badges.js';
+import { BennyBank } from '../../src/obr/bennyBank.js';
+import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
+import { soak, soakedWounds } from '../../src/rules/damage.js';
+import { rollAttribute as rollAttr } from '../../src/rules/traitRoll.js';
 import { renderEditor } from './editor.js';
 import { combatants, displayName, renderInitiative } from './initiativePanel.js';
 import {
@@ -83,6 +87,10 @@ const noticeEl = el('notice');
 const budgetEl = el('budget');
 
 let roster: Roster;
+let bank: BennyBank;
+let bennies = new Map<string, number>();
+/** The most recent damage per token, so a Soak knows how much it may undo. */
+const lastDamage = new Map<string, number>();
 let store = roomStore();
 let sheets: Sheet[] = [];
 let selectedId: string | undefined;
@@ -358,6 +366,20 @@ async function deal(): Promise<void> {
     explained: dealt + (result.jokerDealt ? ' — **joker!**' : ''),
   });
 
+  // Joker's Wild: one Benny to every Wild Card, once, however many Jokers came
+  // up. It follows from the deal, so it happens rather than being remembered.
+  if (result.jokerDealt) {
+    const lucky = await bank.jokersWild(sheets);
+    bennies = await bank.all();
+    if (lucky.length) {
+      publish({
+        label: "Joker's Wild",
+        expression: 'benny',
+        explained: `a Benny each for ${lucky.join(', ')}`,
+      });
+    }
+  }
+
   await refreshTokens();
 }
 
@@ -560,6 +582,19 @@ function statusStrip(sheet: Sheet): HTMLElement {
   );
   strip.append(down);
 
+  const soakable = lastDamage.get(token.id) ?? 0;
+  if (soakable > 0 && sheet.wildCard) {
+    const button = document.createElement('button');
+    button.className = 'toggle soak';
+    button.textContent = `Soak ${soakable}`;
+    button.title = `Spend a Benny and roll Vigor to shrug off ${soakable} wound(s)`;
+    button.disabled = (bennies.get(sheet.id) ?? 0) === 0;
+    button.addEventListener('click', () => void attemptSoak(sheet, token.id, state, soakable));
+    strip.append(button);
+  }
+
+  strip.append(bennyGroup(sheet));
+
   // No status sentence: the trait buttons already show the penalty where it is
   // actually used, so a line repeating it is clutter. The detail lives in the
   // pip tooltips, and a single chip appears only when there is a penalty at all.
@@ -573,6 +608,127 @@ function statusStrip(sheet: Sheet): HTMLElement {
   }
 
   return strip;
+}
+
+/**
+ * Bennies: a count, a way to spend one on something in particular, and a way to
+ * hand one out.
+ *
+ * Shown for Wild Cards only — Extras do not have Bennies — and outside the Edit
+ * toggle like the rest of the status strip, because spending one is play.
+ */
+function bennyGroup(sheet: Sheet): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'statgroup bennies';
+  if (!sheet.wildCard) return wrap;
+
+  const label = document.createElement('span');
+  label.textContent = 'Bennies';
+  wrap.append(label);
+
+  const count = bennies.get(sheet.id) ?? 0;
+  const value = document.createElement('span');
+  value.className = count > 0 ? 'benny-count' : 'benny-count none';
+  value.textContent = String(count);
+  wrap.append(value);
+
+  // A menu rather than a bare minus: what a Benny was spent on is the
+  // interesting part, and it goes in the log where the table can see it.
+  const spend = document.createElement('select');
+  spend.className = 'spend';
+  spend.disabled = count === 0;
+  const first = document.createElement('option');
+  first.textContent = 'Spend…';
+  first.value = '';
+  spend.append(first);
+  for (const use of BENNY_USES) {
+    const option = document.createElement('option');
+    option.value = use;
+    option.textContent = use;
+    spend.append(option);
+  }
+  spend.addEventListener('change', () => {
+    const use = spend.value;
+    spend.value = '';
+    if (use) void spendBenny(sheet, use);
+  });
+  wrap.append(spend);
+
+  const give = document.createElement('button');
+  give.className = 'toggle';
+  give.textContent = '+';
+  give.title = 'Award a Benny';
+  give.addEventListener('click', () => void awardBenny(sheet));
+  wrap.append(give);
+
+  return wrap;
+}
+
+/**
+ * Soak: spend a Benny, roll Vigor, remove a wound per success and raise.
+ *
+ * The Vigor roll deliberately ignores the wounds just taken — "don't count the
+ * Wound modifiers they're about to suffer when making this roll" (p150) — so it
+ * uses the penalty from the state *before* the hit. Earlier wounds still count.
+ */
+async function attemptSoak(
+  sheet: Sheet,
+  tokenId: string,
+  state: TokenState,
+  wounds: number,
+): Promise<void> {
+  try {
+    const left = await bank.spend(sheet.id, 'Soak Rolls');
+    bennies.set(sheet.id, left);
+
+    const before = { ...state, wounds: Math.max(0, state.wounds - wounds) };
+    const { expression, explained } = rollAttr(sheet, 'vigor', traitPenalty(before));
+    const total = totalOf(explained) ?? 0;
+    const removed = Math.min(soakedWounds(total), wounds);
+
+    const next = soak(state, total, wounds);
+    await updateTokenState(tokenId, () => next);
+    if (removed >= wounds) lastDamage.delete(tokenId);
+    else lastDamage.set(tokenId, wounds - removed);
+
+    publish({
+      character: sheet.name,
+      label: 'Soak',
+      expression,
+      explained: `${explained} — ${removed === 0 ? 'no wounds soaked' : `soaked ${removed} of ${wounds}`}`,
+    });
+    await refreshTokens();
+  } catch (error) {
+    notify(error instanceof NoBenniesError ? `${sheet.name} has no Bennies left` : describe(error));
+  }
+}
+
+async function spendBenny(sheet: Sheet, use: string): Promise<void> {
+  try {
+    const left = await bank.spend(sheet.id, use);
+    bennies.set(sheet.id, left);
+    renderSheetArea();
+    publish({
+      character: sheet.name,
+      label: 'spends a Benny',
+      expression: 'benny',
+      explained: `${use} — **${left}** left`,
+    });
+  } catch (error) {
+    notify(error instanceof NoBenniesError ? `${sheet.name} has no Bennies left` : describe(error));
+  }
+}
+
+async function awardBenny(sheet: Sheet): Promise<void> {
+  const total = await bank.award(sheet.id);
+  bennies.set(sheet.id, total);
+  renderSheetArea();
+  publish({
+    character: sheet.name,
+    label: 'gets a Benny',
+    expression: 'benny',
+    explained: `now has **${total}**`,
+  });
 }
 
 function labelled(label: string, control: HTMLElement): HTMLElement {
@@ -933,6 +1089,7 @@ function renderRoster(): void {
 
 async function reload(): Promise<void> {
   sheets = await roster.listFull();
+  bennies = await bank.all();
   if (!sheets.some((s) => s.id === selectedId)) selectedId = sheets[0]?.id;
   renderRoster();
   renderSheetArea();
@@ -969,6 +1126,7 @@ async function applyToTarget(entry: RollEntry): Promise<void> {
     ...(entry.ap ? { ap: entry.ap } : {}),
   });
   await updateTokenState(target.token.id, () => outcome.state);
+  if (outcome.wounds > 0) lastDamage.set(target.token.id, outcome.wounds);
   await refreshTokens();
   // No `total`: this line is the *outcome* of applying damage, and offering to
   // apply it again to whoever is selected next would only ever be a mistake.
@@ -1065,6 +1223,7 @@ async function exportRoster(): Promise<void> {
 OBR.onReady(async () => {
   store = roomStore(notify);
   roster = new Roster(store, notify);
+  bank = new BennyBank(store);
   me = await OBR.player.getName();
   // Set at runtime as well as in the manifest: OBR caches the manifest, so a
   // height change there alone would not reach an already-installed extension.
@@ -1124,6 +1283,19 @@ OBR.onReady(async () => {
     bar.file.value = '';
   });
   el('export').addEventListener('click', () => void exportRoster());
+  el('session').addEventListener('click', () => {
+    void (async () => {
+      if (!confirm('Start a new session? Every Wild Card goes back to 3 Bennies.')) return;
+      await bank.newSession(sheets);
+      bennies = await bank.all();
+      renderSheetArea();
+      publish({
+        label: 'New session',
+        expression: 'benny',
+        explained: 'every Wild Card back to **3** Bennies',
+      });
+    })();
+  });
 
   // Two buttons rather than a checkbox plus Roll: rolling in secret is one
   // click, and there is no sticky mode to forget you left on. Available to
