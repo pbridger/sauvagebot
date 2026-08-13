@@ -21,10 +21,13 @@ import {
   ROLL_CHANNEL,
   RollLog,
   forBroadcast,
+  isApplicable,
   isRollEntry,
   newRollId,
+  totalOf,
   type RollEntry,
 } from '../../src/obr/rollLog.js';
+import { applyDamage } from '../../src/rules/damage.js';
 import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
 import {
   duplicateWildCard,
@@ -71,7 +74,7 @@ const log = new RollLog();
 let me = 'someone';
 let secretRolls = false;
 let editing = false;
-let tokens: (TokenLike & { imageUrl?: string; position: { x: number; y: number } })[] = [];
+let tokens: Awaited<ReturnType<typeof characterTokens>> = [];
 let selectedTokenId: string | undefined;
 /** Set while we are saving our own change, so the resulting onChange is ignored. */
 let saving = false;
@@ -102,11 +105,13 @@ function describe(error: unknown): string {
  * making it.
  */
 function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>): void {
+  const total = partial.total ?? totalOf(partial.explained);
   const entry: RollEntry = {
     ...partial,
     id: newRollId(),
     at: Date.now(),
     by: me,
+    ...(total === undefined ? {} : { total }),
     ...(secretRolls ? { secret: true } : {}),
   };
   log.add(entry);
@@ -142,6 +147,16 @@ function renderLog(): void {
         span.textContent = part;
         if (i % 2 === 1) span.className = 'total';
         line.append(span);
+      }
+
+      const target = damageTarget();
+      if (target && isApplicable(entry)) {
+        const apply = document.createElement('button');
+        apply.className = 'apply';
+        apply.textContent = `→ ${target.sheet.name}`;
+        apply.title = `Apply ${entry.total} damage to ${target.token.name}`;
+        apply.addEventListener('click', () => void applyToTarget(entry.total!));
+        line.append(apply);
       }
       return line;
     }),
@@ -475,7 +490,11 @@ async function refreshTokens(): Promise<void> {
 async function onSelectionChange(): Promise<void> {
   const selection = await OBR.player.getSelection();
   selectedTokenId = selection?.[0];
-  if (!selectedTokenId) return renderSheetArea();
+  if (!selectedTokenId) {
+    renderSheetArea();
+    renderLog();
+    return;
+  }
 
   tokens = await characterTokens();
   const binding = readBinding(tokens.find((t) => t.id === selectedTokenId)?.metadata);
@@ -484,6 +503,7 @@ async function onSelectionChange(): Promise<void> {
     renderRoster();
   }
   renderSheetArea();
+  renderLog();
 }
 
 function render(): void {
@@ -721,6 +741,37 @@ async function reload(): Promise<void> {
   renderRoster();
   renderSheetArea();
   await showBudget();
+}
+
+/**
+ * What a rolled total would be applied to: whatever token is selected on the map.
+ *
+ * Deliberately the *selection*, not the sheet on screen. Damage is something you
+ * do to a target, and in play the GM has the target selected — reading the
+ * dropdown instead would quietly hit the wrong character.
+ */
+function damageTarget(): { token: (typeof tokens)[number]; state: TokenState; sheet: Sheet } | undefined {
+  if (!selectedTokenId) return undefined;
+  const token = tokens.find((t) => t.id === selectedTokenId);
+  const state = token && readBinding(token.metadata);
+  const sheet = state && sheets.find((s) => s.id === state.sheetId);
+  return token && state && sheet ? { token, state, sheet } : undefined;
+}
+
+/** Resolve a rolled total as damage against the selected token. */
+async function applyToTarget(damage: number): Promise<void> {
+  const target = damageTarget();
+  if (!target) return;
+  const outcome = applyDamage(target.sheet, target.state, { damage });
+  await updateTokenState(target.token.id, () => outcome.state);
+  await refreshTokens();
+  publish({
+    character: target.sheet.name,
+    label: 'takes damage',
+    expression: `${damage}`,
+    explained: outcome.description,
+    total: damage,
+  });
 }
 
 // ---------------------------------------------------------------- free rolls

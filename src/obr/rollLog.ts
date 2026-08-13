@@ -31,6 +31,8 @@ export interface RollEntry {
   expression: string;
   /** The engine's explanation, with Discord-style `**bold**` around the total. */
   explained: string;
+  /** The numeric result, when there was a single one. Lets a roll be applied as damage. */
+  total?: number;
   /** Kept local, never sent. Present only on the roller's own client. */
   secret?: boolean;
 }
@@ -56,6 +58,7 @@ export function isRollEntry(value: unknown): value is RollEntry {
     typeof entry.by === 'string' &&
     typeof entry.expression === 'string' &&
     typeof entry.explained === 'string' &&
+    (entry.total === undefined || (typeof entry.total === 'number' && Number.isFinite(entry.total))) &&
     (entry.character === undefined || typeof entry.character === 'string') &&
     (entry.label === undefined || typeof entry.label === 'string')
   );
@@ -112,4 +115,29 @@ export function formatEntry(entry: RollEntry): string {
   const who = entry.character ? `${entry.character}` : entry.by;
   const what = entry.label ? `${who} — ${entry.label}` : who;
   return `${what}: ${entry.explained.replace(/\*\*/g, '')}`;
+}
+
+/**
+ * Pull the total out of the engine's explanation, which bolds it: `… = **11**`.
+ *
+ * Returns nothing when there is more than one bolded number, which is how a
+ * multi-roll (`3#s8`) is distinguished from a single result — applying "some of
+ * three rolls" as damage would be a guess.
+ */
+export function totalOf(explained: string): number | undefined {
+  const bolded = [...explained.matchAll(/\*\*(-?\d+)\*\*/g)];
+  if (bolded.length !== 1) return undefined;
+  return Number(bolded[0]![1]);
+}
+
+/**
+ * Whether this roll is a candidate for "apply to the selected token".
+ *
+ * Trait rolls are excluded: `s8` is a test of whether you hit, not a quantity of
+ * harm, and offering to apply one as damage invites a mis-click at the worst
+ * moment. Damage, and anything typed freehand, is fair game.
+ */
+export function isApplicable(entry: RollEntry): boolean {
+  if (entry.total === undefined) return false;
+  return !/^\s*\d*[se]\d+/i.test(entry.expression);
 }

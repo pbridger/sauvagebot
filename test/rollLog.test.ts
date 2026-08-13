@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   RollLog,
+  isApplicable,
+  totalOf,
   forBroadcast,
   formatEntry,
   isRollEntry,
@@ -115,5 +117,35 @@ describe('formatting', () => {
 
   it('falls back to the player for a free expression', () => {
     expect(formatEntry(entry())).toBe('Paul: s8: [7; w3] = 7');
+  });
+});
+
+describe('applying a roll to a token', () => {
+  it('reads the total the engine bolded', () => {
+    expect(totalOf('2d6!: 4 + 6 = **10**')).toBe(10);
+    expect(totalOf('s8-2: [7; w3] -2 = **5**')).toBe(5);
+    expect(totalOf('s4-6: [2; w1] -6 = **-4**')).toBe(-4);
+  });
+
+  it('declines a multi-roll rather than guessing which result to use', () => {
+    expect(totalOf('1: **7**\n2: **11**\n3: **4**')).toBeUndefined();
+    expect(totalOf('no numbers here')).toBeUndefined();
+  });
+
+  it('offers damage and freehand rolls', () => {
+    expect(isApplicable(entry({ expression: '2d6!', total: 10 }))).toBe(true);
+    expect(isApplicable(entry({ expression: 'd12!+d6!', total: 14 }))).toBe(true);
+    expect(isApplicable(entry({ expression: '4+3', total: 7 }))).toBe(true);
+  });
+
+  it('refuses trait rolls, which measure whether you hit rather than how hard', () => {
+    expect(isApplicable(entry({ expression: 's8', total: 7 }))).toBe(false);
+    expect(isApplicable(entry({ expression: 's8-2', total: 5 }))).toBe(false);
+    expect(isApplicable(entry({ expression: 'e6', total: 4 }))).toBe(false);
+    expect(isApplicable(entry({ expression: '3s10', total: 9 }))).toBe(false);
+  });
+
+  it('refuses anything with no single total', () => {
+    expect(isApplicable(entry({ expression: '3#s8' }))).toBe(false);
   });
 });

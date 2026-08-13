@@ -36,9 +36,13 @@ const FONT_SIZE = 22;
 const PADDING = 5;
 /** Roughly what the label occupies: one line of text plus padding top and bottom. */
 const LABEL_HEIGHT = FONT_SIZE * 1.2 + PADDING * 2;
+/** Breathing room between the artwork and a badge. */
+const GAP = 4;
 
 interface Token extends TokenLike {
   position: { x: number; y: number };
+  /** Rendered height in scene units. */
+  height: number;
 }
 
 function badge(
@@ -86,8 +90,6 @@ export async function renderBadges(
   if (!(await OBR.scene.isReady())) return;
   await clearBadges();
 
-  // A token is one grid square, so the grid's dpi is the unit to place in.
-  const dpi = await OBR.scene.grid.getDpi();
   const byId = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const items: Item[] = [];
 
@@ -100,16 +102,19 @@ export async function renderBadges(
     // Wounds and Fatigue below, Shaken above: two separate markers, because the
     // two are independent. One badge meant a Shaken-but-unwounded character
     // looked fine, and a wounded one looked Shaken.
+    // Measured from the token's real half-height rather than assuming one grid
+    // square: a big token would otherwise wear its badge across its middle.
+    const edge = token.height / 2;
+
     const damage = damageBadge(state, sheet.wildCard);
     if (damage) {
       const colour = state.wounds > 0 ? WOUND_RED : FATIGUE_AMBER;
-      // A label grows upward from its position, which is why the same 0.42 that
-      // puts SHAKEN neatly above the token put this one *inside* its lower half.
-      // Clearing the token's bottom edge needs that plus a label's height.
-      items.push(badge(token, damage, colour, { x: 0, y: dpi * 0.42 + LABEL_HEIGHT }));
+      // A label grows upward from its position, so clearing the bottom edge
+      // takes the half-height plus a whole label.
+      items.push(badge(token, damage, colour, { x: 0, y: edge + LABEL_HEIGHT }));
     }
     if (state.shaken) {
-      items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -dpi * 0.42 }));
+      items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -edge - GAP }));
     }
   }
 

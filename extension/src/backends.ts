@@ -99,14 +99,33 @@ export async function amLeader(): Promise<boolean> {
 
 /** Every character token in the current scene, in the shape `binding.ts` expects. */
 export async function characterTokens(): Promise<
-  (TokenLike & { imageUrl?: string; position: { x: number; y: number } })[]
+  (TokenLike & {
+    imageUrl?: string;
+    position: { x: number; y: number };
+    /** Rendered height in scene units, for placing badges clear of the artwork. */
+    height: number;
+  })[]
 > {
   if (!(await OBR.scene.isReady())) return [];
-  const items = await OBR.scene.items.getItems();
+  const [items, sceneDpi] = await Promise.all([
+    OBR.scene.items.getItems(),
+    OBR.scene.grid.getDpi(),
+  ]);
   return items
     .filter((item) => item.layer === 'CHARACTER')
     .map((item) => {
-      const image = (item as { image?: { url?: string } }).image?.url;
+      const asImage = item as {
+        image?: { url?: string; height?: number };
+        grid?: { dpi?: number };
+        scale?: { y?: number };
+      };
+      const image = asImage.image?.url;
+      // OBR scales an image so its own grid dpi maps onto the scene's, then
+      // applies the item's scale. Guessing "one square" was what put the badge
+      // over the artwork on anything larger.
+      const imageDpi = asImage.grid?.dpi ?? sceneDpi;
+      const pixels = asImage.image?.height ?? imageDpi;
+      const height = (pixels * sceneDpi) / imageDpi * (asImage.scale?.y ?? 1);
       return {
         id: item.id,
         name: item.name,
@@ -115,6 +134,7 @@ export async function characterTokens(): Promise<
         // Needed to place a badge: an attached item keeps its own position and
         // moves with the parent by delta, so it must start in the right spot.
         position: { ...item.position },
+        height: Number.isFinite(height) && height > 0 ? height : sceneDpi,
         ...(image ? { imageUrl: image } : {}),
       };
     });

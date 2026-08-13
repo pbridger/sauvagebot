@@ -124,11 +124,24 @@ export function parseGear(text: string | undefined): Gear {
 /**
  * Turn a card's damage notation into something the dice engine can roll.
  *
- * SWADE writes melee damage as `Str+d4`, meaning the wielder's Strength die plus
- * a d4 — so it cannot be rolled without knowing whose hand it is in.
+ * Two things happen here:
+ *
+ * 1. SWADE writes melee damage as `Str+d4`, meaning the wielder's Strength die
+ *    plus a d4 — so it cannot be rolled without knowing whose hand it is in.
+ * 2. **Damage dice ace.** Every die in a damage roll explodes, so `2d6` on the
+ *    card is `2d6!` to the engine. Rolling it unexploded silently caps damage
+ *    and quietly removes the best thing about Savage Worlds combat.
  */
 export function damageExpression(damage: string, strengthDie: number | undefined): string {
-  if (!/^str\b/i.test(damage)) return damage;
-  if (strengthDie === undefined) return damage.replace(/^str\s*\+\s*/i, '');
-  return damage.replace(/^str/i, `d${strengthDie}`);
+  const withStrength = !/^str\b/i.test(damage)
+    ? damage
+    : strengthDie === undefined
+      ? damage.replace(/^str\s*\+\s*/i, '')
+      : damage.replace(/^str/i, `d${strengthDie}`);
+  return explodeDice(withStrength);
+}
+
+/** Mark every die group as open-ended, leaving any already marked alone. */
+export function explodeDice(expression: string): string {
+  return expression.replace(/(\d*d\d+)(!?)/gi, (_, dice: string) => `${dice}!`);
 }

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
-import { damageExpression, parseGear } from '../src/rules/gear.js';
+import { damageExpression, explodeDice, parseGear } from '../src/rules/gear.js';
 
 const reggie = parseArchetypeCards(
   readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
@@ -103,16 +103,26 @@ describe('edge cases', () => {
 describe('damage expressions', () => {
   it('substitutes the wielder’s Strength die', () => {
     // Reggie has Strength d4, so his knife does d4+d4 — not a fixed number.
-    expect(damageExpression('Str+d4', 4)).toBe('d4+d4');
-    expect(damageExpression('Str+d6', 12)).toBe('d12+d6');
+    expect(damageExpression('Str+d4', 4)).toBe('d4!+d4!');
+    expect(damageExpression('Str+d6', 12)).toBe('d12!+d6!');
   });
 
-  it('leaves a fixed damage expression alone', () => {
-    expect(damageExpression('2d6', 8)).toBe('2d6');
-    expect(damageExpression('2d6+1', 8)).toBe('2d6+1');
+  it('makes every damage die explode, because damage aces', () => {
+    // The card writes 2d6; rolling that unexploded silently caps damage at 12.
+    expect(damageExpression('2d6', 8)).toBe('2d6!');
+    expect(damageExpression('2d6+1', 8)).toBe('2d6!+1');
+  });
+
+  it('does not double up an exclamation that is already there', () => {
+    expect(explodeDice('2d6!')).toBe('2d6!');
+    expect(explodeDice('d8!+d6')).toBe('d8!+d6!');
+  });
+
+  it('leaves a flat modifier alone', () => {
+    expect(explodeDice('2d6+3')).toBe('2d6!+3');
   });
 
   it('drops the Strength term rather than producing nonsense when it is unknown', () => {
-    expect(damageExpression('Str+d4', undefined)).toBe('d4');
+    expect(damageExpression('Str+d4', undefined)).toBe('d4!');
   });
 });

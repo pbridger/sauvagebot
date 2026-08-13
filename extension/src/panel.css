@@ -390,3 +390,17 @@ button.toggle.on.danger-toggle { background: #8c2f22; border-color: #8c2f22; col
   font-variant-numeric: tabular-nums;
   cursor: help;
 }
+
+/* Applying a rolled total to whatever token is selected. */
+button.apply {
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 11px;
+  border-radius: 9px;
+  color: #8c2f22;
+  border-color: #8c2f22;
+  white-space: nowrap;
+}
+@media (prefers-color-scheme: dark) {
+  button.apply { color: #f2b8b5; border-color: #f2b8b5; }
+}
