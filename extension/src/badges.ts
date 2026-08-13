@@ -3,7 +3,7 @@
  *
  * These are **local** items — `scene.local`, not synced. Probed in the live room
  * before committing to it: a local item attached to a synced token does follow it
- * (marker moved exactly 250 when the token did). That result is worth a lot:
+ * (the marker moved exactly 250 when the token did). That result is worth a lot:
  *
  *   - nothing is written to the scene, so no storage cost and no undo-history
  *     clutter from a dozen badge objects;
@@ -13,20 +13,58 @@
  *     the tab.
  *
  * The trade-off is that every client redraws for itself, which is cheap.
+ *
+ * Built with `buildLabel` rather than a shape plus a text item. Two reasons, one
+ * of them learned the hard way: a Label carries its own background, so it is one
+ * item instead of two — and `TextBuilder` defaults its content type to `"RICH"`,
+ * so setting only `plainText` renders an item with no text in it. That was the
+ * empty coloured ellipse. `LabelBuilder` defaults to `"PLAIN"`.
  */
-import OBR, { buildShape, buildText, type Item } from '@owlbear-rodeo/sdk';
+import OBR, { buildLabel, type Item } from '@owlbear-rodeo/sdk';
 import { readBinding, type TokenLike } from '../../src/obr/binding.js';
-import { badgeText, isIncapacitated } from '../../src/rules/status.js';
+import { damageBadge } from '../../src/rules/status.js';
 import type { Sheet } from '../../src/rules/sheet.js';
 
 /** Marks our local items so we only ever clear up our own. */
 export const BADGE_KEY = 'com.savagebot/badge';
 
-const RED = '#8c2f22';
-const AMBER = '#b06a1f';
+const WOUND_RED = '#8c2f22';
+const FATIGUE_AMBER = '#9a6a15';
+const SHAKEN_YELLOW = '#c9a227';
 
 interface Token extends TokenLike {
   position: { x: number; y: number };
+}
+
+function badge(
+  token: Token,
+  text: string,
+  background: string,
+  offset: { x: number; y: number },
+): Item {
+  return (
+    buildLabel()
+      .plainText(text)
+      .position({ x: token.position.x + offset.x, y: token.position.y + offset.y })
+      .backgroundColor(background)
+      .backgroundOpacity(0.92)
+      .fillColor('#ffffff')
+      .fontSize(22)
+      .fontWeight(700)
+      .padding(5)
+      .cornerRadius(9)
+      .pointerHeight(0)
+      .pointerWidth(0)
+      // Keep it legible when zoomed out and unobtrusive when zoomed in.
+      .minViewScale(0.6)
+      .maxViewScale(1.4)
+      .attachedTo(token.id)
+      .disableHit(true)
+      .locked(true)
+      .layer('ATTACHMENT')
+      .metadata({ [BADGE_KEY]: true })
+      .build()
+  );
 }
 
 /**
@@ -41,15 +79,10 @@ export async function renderBadges(
   sheets: readonly Sheet[],
 ): Promise<void> {
   if (!(await OBR.scene.isReady())) return;
+  await clearBadges();
 
-  const existing = await OBR.scene.local.getItems((item: Item) => item.metadata[BADGE_KEY] === true);
-  if (existing.length) await OBR.scene.local.deleteItems(existing.map((item) => item.id));
-
-  // Offset into the token's lower-right rather than over its face. A token is
-  // one grid square, so the grid's dpi is the unit to work in.
+  // A token is one grid square, so the grid's dpi is the unit to place in.
   const dpi = await OBR.scene.grid.getDpi();
-  const offset = { x: dpi * 0.3, y: dpi * 0.3 };
-
   const byId = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const items: Item[] = [];
 
@@ -59,48 +92,17 @@ export async function renderBadges(
     const sheet = byId.get(state.sheetId);
     if (!sheet) continue;
 
-    const text = badgeText(state, sheet.wildCard);
-    if (!text) continue;
-
-    const out = isIncapacitated(state, sheet.wildCard);
-    const colour = out || state.wounds > 0 ? RED : AMBER;
-    const position = { x: token.position.x + offset.x, y: token.position.y + offset.y };
-
-    // A filled pill behind the text, because token art is arbitrary and unstyled
-    // text over a light image is unreadable.
-    items.push(
-      buildShape()
-        .shapeType('CIRCLE')
-        .width(46)
-        .height(30)
-        .position(position)
-        .fillColor(colour)
-        .fillOpacity(0.85)
-        .strokeWidth(0)
-        .attachedTo(token.id)
-        .disableHit(true)
-        .locked(true)
-        .layer('ATTACHMENT')
-        .metadata({ [BADGE_KEY]: true })
-        .build(),
-      buildText()
-        .plainText(text)
-        .fontSize(20)
-        .fontWeight(700)
-        .textAlign('CENTER')
-        .textAlignVertical('MIDDLE')
-        .fillColor('#ffffff')
-        .strokeWidth(0)
-        .width(46)
-        .height(30)
-        .position(position)
-        .attachedTo(token.id)
-        .disableHit(true)
-        .locked(true)
-        .layer('ATTACHMENT')
-        .metadata({ [BADGE_KEY]: true })
-        .build(),
-    );
+    // Wounds and Fatigue below, Shaken above: two separate markers, because the
+    // two are independent. One badge meant a Shaken-but-unwounded character
+    // looked fine, and a wounded one looked Shaken.
+    const damage = damageBadge(state, sheet.wildCard);
+    if (damage) {
+      const colour = state.wounds > 0 ? WOUND_RED : FATIGUE_AMBER;
+      items.push(badge(token, damage, colour, { x: 0, y: dpi * 0.34 }));
+    }
+    if (state.shaken) {
+      items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -dpi * 0.42 }));
+    }
   }
 
   if (items.length) await OBR.scene.local.addItems(items);
@@ -108,6 +110,8 @@ export async function renderBadges(
 
 export async function clearBadges(): Promise<void> {
   if (!(await OBR.scene.isReady())) return;
-  const existing = await OBR.scene.local.getItems((item: Item) => item.metadata[BADGE_KEY] === true);
+  const existing = await OBR.scene.local.getItems(
+    (item: Item) => item.metadata[BADGE_KEY] === true,
+  );
   if (existing.length) await OBR.scene.local.deleteItems(existing.map((item) => item.id));
 }

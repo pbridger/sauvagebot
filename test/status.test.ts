@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newTokenState, type TokenState } from '../src/obr/binding.js';
 import {
   MAX_FATIGUE,
-  badgeText,
+  damageBadge,
   describeStatus,
   isIncapacitated,
   maxWounds,
@@ -82,10 +82,17 @@ describe('display', () => {
     expect(describeStatus(state({ wounds: 4 }), true)).toBe('Incapacitated');
   });
 
-  it('keeps the token badge terse', () => {
-    expect(badgeText(state(), true)).toBe('');
-    expect(badgeText(state({ wounds: 2 }), true)).toBe('2W');
-    expect(badgeText(state({ wounds: 1, fatigue: 1, shaken: true }), true)).toBe('1W 1F !');
-    expect(badgeText(state({ wounds: 1 }), false)).toBe('OUT');
+  it('keeps the damage badge terse', () => {
+    expect(damageBadge(state(), true)).toBe('');
+    expect(damageBadge(state({ wounds: 2 }), true)).toBe('2W');
+    expect(damageBadge(state({ wounds: 1, fatigue: 1 }), true)).toBe('1W 1F');
+    expect(damageBadge(state({ wounds: 1 }), false)).toBe('OUT');
+  });
+
+  it('leaves Shaken out of the damage badge, since the two are independent', () => {
+    // Shaken and unwounded must still show on the token, and a wounded
+    // character who is not Shaken must not look Shaken.
+    expect(damageBadge(state({ shaken: true }), true)).toBe('');
+    expect(damageBadge(state({ wounds: 2, shaken: true }), true)).toBe('2W');
   });
 });

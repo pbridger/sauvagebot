@@ -62,16 +62,22 @@ export function setShaken(state: TokenState, shaken: boolean): TokenState {
   return { ...state, shaken };
 }
 
-/** Short text for a token badge — empty when there is nothing to show. */
-export function badgeText(
-  state: Pick<TokenState, 'wounds' | 'fatigue' | 'shaken'>,
+/**
+ * Short text for the damage badge — empty when there is nothing to show.
+ *
+ * Shaken is deliberately *not* included. It is a different kind of thing: you
+ * can be Shaken and unwounded, or wounded and not Shaken, and folding both into
+ * one badge made the more urgent of the two invisible behind the other. The
+ * caller draws Shaken as its own marker.
+ */
+export function damageBadge(
+  state: Pick<TokenState, 'wounds' | 'fatigue'>,
   wildCard: boolean,
 ): string {
   if (isIncapacitated(state, wildCard)) return 'OUT';
   const parts: string[] = [];
   if (state.wounds > 0) parts.push(`${state.wounds}W`);
   if (state.fatigue > 0) parts.push(`${state.fatigue}F`);
-  if (state.shaken) parts.push('!');
   return parts.join(' ');
 }
 

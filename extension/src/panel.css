@@ -314,7 +314,9 @@ button.danger {
 /* ---- token binding --------------------------------------------------- */
 
 .cardhead { display: flex; gap: 10px; align-items: flex-start; }
-.cardhead > div { min-width: 0; flex: 1; }
+.cardhead > div:last-child { min-width: 0; flex: 1; }
+.portrait-col { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none; }
+.portrait-col .rank { text-align: center; }
 img.portrait {
   width: 58px;
   height: 58px;
@@ -374,3 +376,15 @@ button.toggle.on {
 button.toggle.on.danger-toggle { background: #8c2f22; border-color: #8c2f22; color: #fff; }
 
 .status .hint { font-size: 11px; color: var(--muted); flex-basis: 100%; }
+
+/* Only shown when there is a penalty at all — the trait buttons carry the rest. */
+.penalty {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: #8c2f22;
+  color: #fff;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}

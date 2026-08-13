@@ -34,6 +34,7 @@ import {
   type TokenState,
 } from '../../src/obr/binding.js';
 import {
+  FATIGUE_NAMES,
   MAX_FATIGUE,
   describeStatus,
   isIncapacitated,
@@ -341,8 +342,11 @@ function statusStrip(sheet: Sheet): HTMLElement {
     strip.append(
       labelled(
         'Wounds',
-        pips(woundMax, Math.min(state.wounds, woundMax), (n) => `${n} wound(s)`, (n) =>
-          change(setWounds(state, n, sheet.wildCard)),
+        pips(
+          woundMax,
+          Math.min(state.wounds, woundMax),
+          (n) => `${n} wound${n === 1 ? '' : 's'} — ${-n} to every trait roll`,
+          (n) => change(setWounds(state, n, sheet.wildCard)),
         ),
       ),
     );
@@ -350,17 +354,26 @@ function statusStrip(sheet: Sheet): HTMLElement {
   strip.append(
     labelled(
       'Fatigue',
-      pips(MAX_FATIGUE, Math.min(state.fatigue, MAX_FATIGUE), (n) => `Fatigue ${n}`, (n) =>
-        change(setFatigue(state, n)),
+      pips(
+        MAX_FATIGUE,
+        Math.min(state.fatigue, MAX_FATIGUE),
+        (n) => `${FATIGUE_NAMES[n] ?? `Fatigue ${n}`} — ${-n} to every trait roll`,
+        (n) => change(setFatigue(state, n)),
       ),
     ),
   );
 
-  const shaken = document.createElement('button');
-  shaken.className = state.shaken ? 'toggle on' : 'toggle';
-  shaken.textContent = 'Shaken';
-  shaken.addEventListener('click', () => change(setShaken(state, !state.shaken)));
-  strip.append(shaken);
+  strip.append(
+    labelled(
+      'Shaken',
+      pips(
+        1,
+        state.shaken ? 1 : 0,
+        () => (state.shaken ? 'Shaken — click to clear' : 'Mark Shaken (no penalty to the roll)'),
+        (n) => change(setShaken(state, n > 0)),
+      ),
+    ),
+  );
 
   // An Extra has no wound track, so Incapacitated needs its own control.
   const out = isIncapacitated(state, sheet.wildCard);
@@ -373,12 +386,17 @@ function statusStrip(sheet: Sheet): HTMLElement {
   );
   strip.append(down);
 
-  const summary = document.createElement('span');
-  summary.className = 'hint';
+  // No status sentence: the trait buttons already show the penalty where it is
+  // actually used, so a line repeating it is clutter. The detail lives in the
+  // pip tooltips, and a single chip appears only when there is a penalty at all.
   const penalty = traitPenalty(state);
-  summary.textContent =
-    describeStatus(state, sheet.wildCard) + (penalty ? ` — ${penalty} to trait rolls` : '');
-  strip.append(summary);
+  if (penalty) {
+    const chip = document.createElement('span');
+    chip.className = 'penalty';
+    chip.textContent = String(penalty);
+    chip.title = `${describeStatus(state, sheet.wildCard)} — ${penalty} to every trait roll`;
+    strip.append(chip);
+  }
 
   return strip;
 }
@@ -473,17 +491,25 @@ function render(): void {
 
   const head = document.createElement('div');
   head.className = 'cardhead';
+
+  // Portrait and rank stack together on the left; the rank is a caption for the
+  // picture rather than a line pushing the name down.
   const image = portrait(sheet);
-  if (image) head.append(image);
+  if (image || sheet.rank) {
+    const column = document.createElement('div');
+    column.className = 'portrait-col';
+    if (image) column.append(image);
+    if (sheet.rank) {
+      const rank = document.createElement('div');
+      rank.className = 'rank';
+      rank.textContent = sheet.rank;
+      column.append(rank);
+    }
+    head.append(column);
+  }
   const headText = document.createElement('div');
   head.append(headText);
 
-  if (sheet.rank) {
-    const rank = document.createElement('div');
-    rank.className = 'rank';
-    rank.textContent = sheet.rank;
-    headText.append(rank);
-  }
   const h1 = document.createElement('h1');
   h1.textContent = sheet.name;
   headText.append(h1);
