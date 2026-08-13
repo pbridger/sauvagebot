@@ -131,3 +131,62 @@ p.prose { margin: 4px 0 0; font-size: 12px; }
   color: var(--muted);
 }
 #budget.warn { color: var(--accent); font-weight: 700; }
+
+/*
+ * The free-expression roller. However complete the sheet gets, there is always
+ * something it does not cover — so this is permanent furniture, not a fallback.
+ */
+#freeform {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  padding: 7px 10px;
+  border-top: 1px solid var(--rule);
+}
+#freeform input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  padding: 4px 8px;
+}
+#freeform input::placeholder { color: var(--muted); }
+
+table.weapons {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.weapons th {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 400;
+  padding: 0 6px 2px 0;
+}
+table.weapons td { padding: 2px 6px 2px 0; vertical-align: top; }
+table.weapons td:first-child { font-weight: 700; }
+table.weapons .num { font-variant-numeric: tabular-nums; }
+/* Damage is rollable, so it looks it. */
+table.weapons button.dmg {
+  padding: 0 5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  font-weight: 700;
+}
+table.weapons tr.note td {
+  padding-top: 0;
+  padding-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+ul.gear { margin: 4px 0 0; padding-left: 18px; }
+ul.gear li { margin: 1px 0; }
+ul.gear .detail { color: var(--muted); }
+p.money { margin: 6px 0 0; font-weight: 700; }

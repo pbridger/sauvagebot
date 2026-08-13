@@ -10,6 +10,11 @@
 import OBR from '@owlbear-rodeo/sdk';
 import { ATTRIBUTES, SKILLS, type Attribute, type Sheet, type Skill } from '../../src/rules/sheet.js';
 import { parseArchetypeCards } from '../../src/rules/importArchetypeCard.js';
+import { damageExpression, parseGear } from '../../src/rules/gear.js';
+import { CommandContext } from '../../src/dice/evaluator.js';
+import { RollInterpreter } from '../../src/dice/interpreter.js';
+import { JavaRandom } from '../../src/dice/javaRandom.js';
+import { parse } from '../../src/dice/parser.js';
 import { rollAttribute, rollSkill } from '../../src/rules/traitRoll.js';
 import { Roster } from '../../src/obr/roster.js';
 import { roomStore } from './backends.js';
@@ -195,17 +200,111 @@ function render(): void {
   if (sheet.edges.length) {
     sheetEl.append(section('Edges'), entryList(sheet.edges));
   }
-  for (const [title, text] of [
-    ['Gear', sheet.gear],
-    ['Advances', sheet.advances],
-  ] as const) {
-    if (!text) continue;
+  renderGear(sheet);
+
+  if (sheet.advances) {
     const p = document.createElement('p');
     p.className = 'prose';
-    p.textContent = text;
-    sheetEl.append(section(title), p);
+    p.textContent = sheet.advances;
+    sheetEl.append(section('Advances'), p);
   }
 }
+
+/**
+ * Gear as a weapons table plus a bulleted list, rather than the card's one long
+ * sentence. Damage is a button: a weapon's damage is the roll you make right
+ * after the attack that the sheet already rolls for you.
+ */
+function renderGear(sheet: Sheet): void {
+  const gear = parseGear(sheet.gear);
+  if (!sheet.gear) return;
+
+  if (gear.weapons.length) {
+    sheetEl.append(section('Weapons'));
+    const table = document.createElement('table');
+    table.className = 'weapons';
+
+    const head = document.createElement('tr');
+    for (const label of ['', 'Range', 'Damage', 'RoF', 'AP']) {
+      const th = document.createElement('th');
+      th.textContent = label;
+      head.append(th);
+    }
+    table.append(head);
+
+    for (const weapon of gear.weapons) {
+      const row = document.createElement('tr');
+      const cells = [weapon.name, weapon.range ?? '—'];
+      for (const value of cells) {
+        const td = document.createElement('td');
+        td.textContent = value;
+        row.append(td);
+      }
+
+      const damageCell = document.createElement('td');
+      if (weapon.damage) {
+        // "Str+d4" needs the wielder's Strength die substituted before it parses.
+        const expression = damageExpression(weapon.damage, sheet.attributes.strength?.die);
+        const button = document.createElement('button');
+        button.className = 'dmg';
+        button.textContent = weapon.damage;
+        button.title = `Roll ${expression}`;
+        button.addEventListener('click', () => rollFreeform(expression, `${weapon.name} damage`));
+        damageCell.append(button);
+      } else {
+        damageCell.textContent = '—';
+      }
+      row.append(damageCell);
+
+      for (const value of [weapon.rof, weapon.ap]) {
+        const td = document.createElement('td');
+        td.className = 'num';
+        td.textContent = value === undefined ? '—' : String(value);
+        row.append(td);
+      }
+      table.append(row);
+
+      if (weapon.notes) {
+        const noteRow = document.createElement('tr');
+        noteRow.className = 'note';
+        const td = document.createElement('td');
+        td.colSpan = 5;
+        td.textContent = weapon.notes;
+        noteRow.append(td);
+        table.append(noteRow);
+      }
+    }
+    sheetEl.append(table);
+  }
+
+  const rest = [...gear.armor, ...gear.items];
+  if (rest.length || gear.money) {
+    sheetEl.append(section('Gear'));
+    if (rest.length) {
+      const list = document.createElement('ul');
+      list.className = 'gear';
+      for (const item of rest) {
+        const li = document.createElement('li');
+        li.textContent = item.name;
+        if (item.detail) {
+          const detail = document.createElement('span');
+          detail.className = 'detail';
+          detail.textContent = ` — ${item.detail}`;
+          li.append(detail);
+        }
+        list.append(li);
+      }
+      sheetEl.append(list);
+    }
+    if (gear.money) {
+      const money = document.createElement('p');
+      money.className = 'money';
+      money.textContent = gear.money;
+      sheetEl.append(money);
+    }
+  }
+}
+
 
 function renderRoster(): void {
   bar.who.replaceChildren(
@@ -226,6 +325,28 @@ async function reload(): Promise<void> {
   renderRoster();
   render();
   await showBudget();
+}
+
+// ---------------------------------------------------------------- free rolls
+
+/**
+ * Roll an arbitrary expression through the same engine as everything else.
+ *
+ * However complete the sheet gets there will always be something it does not
+ * cover — an opposed roll, a random table, damage from something not on the
+ * card — so this is permanent furniture rather than a stopgap.
+ */
+function rollFreeform(expression: string, label = expression): void {
+  const trimmed = expression.trim();
+  if (!trimmed) return;
+  try {
+    const explained = new RollInterpreter(new CommandContext(new JavaRandom()))
+      .run(parse([trimmed]))
+      .trim();
+    logRoll(label === trimmed ? '' : `${label} —`, explained);
+  } catch (error) {
+    logRoll('', `${trimmed}: ${describe(error)}`);
+  }
 }
 
 // ---------------------------------------------------------------- import / export
@@ -282,6 +403,13 @@ OBR.onReady(async () => {
     bar.file.value = '';
   });
   el('export').addEventListener('click', () => void exportRoster());
+
+  const expr = el<HTMLInputElement>('expr');
+  el<HTMLFormElement>('freeform').addEventListener('submit', (event) => {
+    event.preventDefault();
+    rollFreeform(expr.value);
+    expr.select();
+  });
 
   // Another player editing their own sheet must show up here without a reload.
   OBR.room.onMetadataChange(() => void reload());

@@ -20,6 +20,17 @@
       <p class="empty">No characters yet. <strong>Import…</strong> an archetype card to start.</p>
     </main>
 
+    <form id="freeform">
+      <input
+        id="expr"
+        type="text"
+        placeholder="Anything: s8+2, 2d6+1, 4d6k3, 3#s10…"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button type="submit">Roll</button>
+    </form>
+
     <section id="log" aria-live="polite"></section>
 
     <footer id="budget"></footer>

@@ -1,0 +1,118 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
+import { damageExpression, parseGear } from '../src/rules/gear.js';
+
+const reggie = parseArchetypeCards(
+  readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
+)[0]!;
+
+describe('parsing the real gear line', () => {
+  const gear = parseGear(reggie.gear);
+
+  it('finds the weapons with their stats', () => {
+    expect(gear.weapons).toEqual([
+      { name: 'Colt Rainmaker', range: '12/24/48', damage: '2d6', rof: 1, ap: 1 },
+      {
+        name: 'Gatling pistol',
+        range: '12/24/48',
+        damage: '2d6',
+        rof: 3,
+        ap: 1,
+        notes: 'must fire full RoF',
+      },
+      { name: 'knife', damage: 'Str+d4' },
+    ]);
+  });
+
+  it('keeps a note that is not one of the recognised stats', () => {
+    expect(gear.weapons[1]?.notes).toBe('must fire full RoF');
+  });
+
+  it('separates armour, which is written as a bare bonus', () => {
+    expect(gear.armor).toEqual([
+      {
+        name: 'armored vest',
+        detail: '+2; subtract 2 from bullet damage before applying AP',
+      },
+    ]);
+  });
+
+  it('does not mistake the vest for a weapon, though its text says "damage" and "AP"', () => {
+    expect(gear.weapons.map((w) => w.name)).not.toContain('armored vest');
+  });
+
+  it('does not mistake a +1 skill bonus for armour', () => {
+    // "Agency badge (+1 Persuasion to lawful types)" starts with a bonus but is
+    // not armour. Only a standalone bonus counts.
+    expect(gear.armor.map((a) => a.name)).toEqual(['armored vest']);
+  });
+
+  it('keeps everything else as plain items, losing nothing', () => {
+    expect(gear.items).toEqual([
+      { name: 'spare Gatling drum' },
+      { name: '.32 ammo', detail: '×50' },
+      { name: 'disguise kit' },
+      { name: 'Agency badge', detail: '+1 Persuasion to lawful types' },
+    ]);
+  });
+
+  it('pulls the money out', () => {
+    expect(gear.money).toBe('$135');
+  });
+
+  it('accounts for every comma-separated entry on the line', () => {
+    const total =
+      gear.weapons.length + gear.armor.length + gear.items.length + (gear.money ? 1 : 0);
+    expect(total).toBe(9);
+  });
+});
+
+describe('edge cases', () => {
+  it('handles no gear at all', () => {
+    expect(parseGear(undefined)).toEqual({ weapons: [], armor: [], items: [] });
+    expect(parseGear('')).toEqual({ weapons: [], armor: [], items: [] });
+  });
+
+  it('does not split on a comma inside brackets', () => {
+    const gear = parseGear('Shotgun (Range 12/24/48, damage 1-3d6), hat');
+    expect(gear.weapons).toHaveLength(1);
+    expect(gear.items).toEqual([{ name: 'hat' }]);
+  });
+
+  it('falls back to a plain item rather than dropping something unrecognised', () => {
+    const gear = parseGear('mysterious artifact (glows faintly on Tuesdays)');
+    expect(gear.items).toEqual([
+      { name: 'mysterious artifact', detail: 'glows faintly on Tuesdays' },
+    ]);
+  });
+
+  it('reads a weapon written with only damage', () => {
+    expect(parseGear('sabre (Str+d6)').weapons).toEqual([{ name: 'sabre', damage: 'Str+d6' }]);
+  });
+
+  it('tolerates a trailing full stop and stray whitespace', () => {
+    expect(parseGear('  rope ,  lantern .  ').items).toEqual([
+      { name: 'rope' },
+      { name: 'lantern' },
+    ]);
+  });
+});
+
+describe('damage expressions', () => {
+  it('substitutes the wielder’s Strength die', () => {
+    // Reggie has Strength d4, so his knife does d4+d4 — not a fixed number.
+    expect(damageExpression('Str+d4', 4)).toBe('d4+d4');
+    expect(damageExpression('Str+d6', 12)).toBe('d12+d6');
+  });
+
+  it('leaves a fixed damage expression alone', () => {
+    expect(damageExpression('2d6', 8)).toBe('2d6');
+    expect(damageExpression('2d6+1', 8)).toBe('2d6+1');
+  });
+
+  it('drops the Strength term rather than producing nonsense when it is unknown', () => {
+    expect(damageExpression('Str+d4', undefined)).toBe('d4');
+  });
+});
