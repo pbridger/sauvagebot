@@ -959,6 +959,9 @@ OBR.onReady(async () => {
   store = roomStore(notify);
   roster = new Roster(store, notify);
   me = await OBR.player.getName();
+  // Set at runtime as well as in the manifest: OBR caches the manifest, so a
+  // height change there alone would not reach an already-installed extension.
+  await OBR.action.setHeight(900);
 
   const secretToggle = el<HTMLInputElement>('secret');
   secretToggle.checked = secretRolls;
