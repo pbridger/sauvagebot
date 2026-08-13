@@ -49,7 +49,7 @@ import {
 } from '../../src/rules/status.js';
 import { renderBadges } from './badges.js';
 import { renderEditor } from './editor.js';
-import { combatants, renderInitiative } from './initiativePanel.js';
+import { combatants, displayName, renderInitiative } from './initiativePanel.js';
 import {
   dealRound,
   initiativeEdges,
@@ -95,6 +95,8 @@ let lastDraws: Map<string, Draw> = new Map();
 let acted = new Set<string>();
 let tokens: Awaited<ReturnType<typeof characterTokens>> = [];
 let selectedTokenId: string | undefined;
+/** The whole selection, so a gang of mooks can be bound to one sheet at once. */
+let selectedTokenIds: string[] = [];
 /** Set while we are saving our own change, so the resulting onChange is ignored. */
 let saving = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -338,7 +340,10 @@ async function deal(): Promise<void> {
 
   const dealt = [...result.draws]
     .map(([id, draw]) => {
-      const who = table.find((c) => c.tokenId === id)?.name ?? '?';
+      // The character's name, as everywhere else — a token called
+      // "Npc Linguist 4" says nothing about who just drew a king.
+      const combatant = table.find((c) => c.tokenId === id);
+      const who = combatant ? displayName(combatant, table) : '?';
       return `${who} ${cardToString(draw.card)}`;
     })
     .join(', ');
@@ -580,42 +585,61 @@ function bindBar(sheet: Sheet): HTMLElement | undefined {
   const bar = document.createElement('div');
   bar.className = 'bindbar';
 
-  if (bound.length) {
-    const label = document.createElement('span');
-    const clash = duplicateWildCard(tokens, sheet);
-    label.textContent = clash
-      ? `Bound to ${bound.length} tokens — a Wild Card should have one, wounds are shared`
+  const label = document.createElement('span');
+  const clash = duplicateWildCard(tokens, sheet);
+  label.textContent = clash
+    ? `${bound.length} tokens — a Wild Card should have one, wounds are shared`
+    : bound.length === 0
+      ? 'Not on the map'
       : bound.length === 1
         ? `Bound to "${bound[0]!.name}"`
         : `Shared by ${bound.length} tokens`;
-    if (clash) label.className = 'warn';
+  if (clash) label.className = 'warn';
+  bar.append(label);
 
-    const unbind = document.createElement('button');
-    unbind.textContent = 'Unbind';
-    unbind.addEventListener('click', () => {
+  // Anything selected that is not already this character. Offered even when the
+  // sheet is already bound, because an Extra is a stat block a whole gang
+  // shares — five bandits on one Bandit sheet is the normal case, and the
+  // earlier UI only ever let you bind the first.
+  const boundHere = new Set(bound.map((t) => t.id));
+  const toBind = selectedTokenIds.filter((id) => !boundHere.has(id));
+  if (toBind.length) {
+    const bind = document.createElement('button');
+    const first = tokens.find((t) => t.id === toBind[0]);
+    bind.textContent =
+      toBind.length === 1 ? `Bind "${first?.name ?? 'token'}"` : `Bind ${toBind.length} tokens`;
+    bind.title = sheet.wildCard
+      ? 'A Wild Card should be on one token'
+      : 'Each token keeps its own wounds';
+    bind.addEventListener('click', () => {
       void (async () => {
-        for (const token of bound) await unbindToken(token.id);
+        for (const id of toBind) await bindToken(id, sheet.id);
         await refreshTokens();
       })();
     });
-    bar.append(label, unbind);
-    return bar;
+    bar.append(bind);
   }
 
-  if (!selectedTokenId) return undefined;
-  const target = tokens.find((t) => t.id === selectedTokenId);
-  if (!target) return undefined;
+  if (bound.length) {
+    // Unbind what is selected if any of it is bound here, otherwise all of it —
+    // so one bandit can be detached without dissolving the gang.
+    const selectedBound = selectedTokenIds.filter((id) => boundHere.has(id));
+    const targets = selectedBound.length ? selectedBound : bound.map((t) => t.id);
+    const unbind = document.createElement('button');
+    unbind.textContent =
+      selectedBound.length && bound.length > selectedBound.length
+        ? `Unbind ${selectedBound.length}`
+        : 'Unbind all';
+    unbind.addEventListener('click', () => {
+      void (async () => {
+        for (const id of targets) await unbindToken(id);
+        await refreshTokens();
+      })();
+    });
+    bar.append(unbind);
+  }
 
-  const bind = document.createElement('button');
-  bind.textContent = `Bind to "${target.name}"`;
-  bind.addEventListener('click', () => {
-    void (async () => {
-      await bindToken(target.id, sheet.id);
-      await refreshTokens();
-    })();
-  });
-  bar.append(bind);
-  return bar;
+  return bar.childElementCount > 1 ? bar : undefined;
 }
 
 async function refreshTokens(): Promise<void> {
@@ -630,6 +654,7 @@ async function refreshTokens(): Promise<void> {
  */
 async function onSelectionChange(): Promise<void> {
   const selection = await OBR.player.getSelection();
+  selectedTokenIds = selection ?? [];
   selectedTokenId = selection?.[0];
   if (!selectedTokenId) {
     renderSheetArea();

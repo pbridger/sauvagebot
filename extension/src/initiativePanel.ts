@@ -219,7 +219,7 @@ export function renderInitiative(
  * identical for all of them and the token name is the only way to tell which
  * bandit is up. There, and only there, the token name is appended.
  */
-function displayName(combatant: Combatant, all: readonly Combatant[]): string {
+export function displayName(combatant: Combatant, all: readonly Combatant[]): string {
   const shared = all.filter((other) => other.sheet.id === combatant.sheet.id).length > 1;
   if (!shared || combatant.name === combatant.sheet.name) return combatant.sheet.name;
   return `${combatant.sheet.name} · ${combatant.name}`;

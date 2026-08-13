@@ -33,9 +33,12 @@ export const BADGE_KEY = 'com.savagebot/badge';
 const WOUND_RED = '#8c2f22';
 const FATIGUE_AMBER = '#9a6a15';
 const SHAKEN_YELLOW = '#c9a227';
-const CARD_DARK = '#22282e';
 const JOKER_PURPLE = '#5b3a86';
-const SUIT_RED = '#ff6b5e';
+/* A playing card is dark ink on white. Black suits on a dark pill were the one
+   badge you could not read at a glance. */
+const CARD_FACE = '#f7f3e8';
+const CARD_BLACK = '#1b1b1b';
+const CARD_RED = '#b3261e';
 
 const FONT_SIZE = 22;
 const PADDING = 5;
@@ -130,14 +133,16 @@ export async function renderBadges(
     // The initiative card sits to the side, so it does not fight with SHAKEN for
     // the space above the token during a round when both are true.
     if (state.card) {
+      const joker = isJoker(state.card);
       items.push(
         badge(
           token,
           cardToString(state.card),
-          isJoker(state.card) ? JOKER_PURPLE : CARD_DARK,
-          { x: halfWidth + GAP * 4, y: -halfHeight + LABEL_HEIGHT },
-          // Hearts and diamonds read red, as they do on a real card.
-          isRedSuit(state.card) ? SUIT_RED : '#ffffff',
+          joker ? JOKER_PURPLE : CARD_FACE,
+          // Mid-left: out of the way of SHAKEN above and the damage below, and
+          // it stays put as those come and go.
+          { x: -halfWidth - GAP * 4, y: LABEL_HEIGHT / 2 },
+          joker ? '#ffffff' : isRedSuit(state.card) ? CARD_RED : CARD_BLACK,
         ),
       );
     }
