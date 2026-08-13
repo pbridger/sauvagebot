@@ -196,9 +196,13 @@ export interface DealResult {
  */
 export function dealRound(
   state: InitiativeState,
-  combatants: readonly { tokenId: string; edges: InitiativeEdges }[],
+  all: readonly { tokenId: string; edges: InitiativeEdges; out?: boolean }[],
   random: JavaRandom,
 ): DealResult {
+  // An Incapacitated character is out of the fight until they are healed, so
+  // they get no card. Dealing them one both wastes a card and puts a body in
+  // the turn order the GM then has to skip by hand every round.
+  const combatants = all.filter((c) => !c.out);
   // Worst case each combatant needs three cards, plus Quick redraws.
   const needed = combatants.reduce((sum, c) => sum + drawCount(c.edges) + 2, 0);
   const fresh = state.jokerDealt || state.deck.length < needed;

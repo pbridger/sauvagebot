@@ -10,7 +10,7 @@
 import OBR from '@owlbear-rodeo/sdk';
 import { ATTRIBUTES, SKILLS, type Attribute, type Sheet, type Skill } from '../../src/rules/sheet.js';
 import { parseArchetypeCards } from '../../src/rules/importArchetypeCard.js';
-import { damageExpression, parseGear } from '../../src/rules/gear.js';
+import { damageExpression, parseGear, weaponSkill } from '../../src/rules/gear.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
 import { RollInterpreter } from '../../src/dice/interpreter.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
@@ -56,7 +56,7 @@ import {
   type Draw,
   type InitiativeState,
 } from '../../src/rules/initiative.js';
-import { cardToString } from '../../src/game/cards.js';
+import { cardToString, type Card } from '../../src/game/cards.js';
 import {
   autoBind,
   bindToken,
@@ -226,10 +226,18 @@ function scheduleSave(sheet: Sheet): void {
   }, 400);
 }
 
+/**
+ * Only shown once the budget is worth worrying about. A permanent readout of a
+ * number that is fine 99% of the time is noise, and noise is what you stop
+ * reading before the one time it matters.
+ */
 async function showBudget(): Promise<void> {
   const { used, capacity, fraction } = await store.usage();
-  budgetEl.textContent = `roster storage ${used}/${capacity} chars (${Math.round(fraction * 100)}%)`;
-  budgetEl.classList.toggle('warn', fraction > 0.8);
+  const crowded = fraction > 0.8;
+  budgetEl.textContent = crowded
+    ? `roster storage ${Math.round(fraction * 100)}% full (${used}/${capacity} chars)`
+    : '';
+  budgetEl.classList.toggle('warn', crowded);
 }
 
 // ---------------------------------------------------------------- rendering
@@ -309,13 +317,21 @@ async function deal(): Promise<void> {
 
   const result = dealRound(
     state,
-    table.map((c) => ({ tokenId: c.tokenId, edges: initiativeEdges(c.sheet) })),
+    table.map((c) => ({
+      tokenId: c.tokenId,
+      edges: initiativeEdges(c.sheet),
+      out: isIncapacitated(c.state, c.sheet.wildCard),
+    })),
     new JavaRandom(),
   );
 
   // A new round is a clean slate: everyone acts again.
   acted = new Set();
-  await setCards(new Map([...result.draws].map(([id, draw]) => [id, draw.card])));
+  // Anyone out of the fight loses their card as well, so the map is not showing
+  // a card for a body.
+  const assignments = new Map(table.map((c) => [c.tokenId, undefined as Card | undefined]));
+  for (const [id, draw] of result.draws) assignments.set(id, draw.card);
+  await setCards(assignments);
   await writeInitiative(result.state);
   initiative = result.state;
   lastDraws = result.draws;
@@ -373,6 +389,9 @@ function setTab(next: 'sheet' | 'initiative'): void {
   for (const name of ['sheet', 'initiative'] as const) {
     el(`tab-${name}`).setAttribute('aria-selected', String(name === next));
   }
+  // The character picker, Edit, Import and Export are all sheet-scoped; on the
+  // Initiative tab they are just a row of controls that do nothing useful.
+  el('bar').hidden = next !== 'sheet';
   renderSheetArea();
 }
 
@@ -736,7 +755,7 @@ function render(): void {
   if (sheet.edges.length) {
     sheetEl.append(section('Edges'), entryList(sheet.edges));
   }
-  renderGear(sheet);
+  renderGear(sheet, penalty);
 
   if (sheet.advances) {
     const p = document.createElement('p');
@@ -751,7 +770,7 @@ function render(): void {
  * sentence. Damage is a button: a weapon's damage is the roll you make right
  * after the attack that the sheet already rolls for you.
  */
-function renderGear(sheet: Sheet): void {
+function renderGear(sheet: Sheet, penalty: number): void {
   const gear = parseGear(sheet.gear);
   if (!sheet.gear) return;
 
@@ -761,7 +780,7 @@ function renderGear(sheet: Sheet): void {
     table.className = 'weapons';
 
     const head = document.createElement('tr');
-    for (const label of ['', 'Range', 'Damage', 'RoF', 'AP']) {
+    for (const label of ['', 'Roll', 'Range', 'Damage', 'RoF', 'AP']) {
       const th = document.createElement('th');
       th.textContent = label;
       head.append(th);
@@ -770,12 +789,30 @@ function renderGear(sheet: Sheet): void {
 
     for (const weapon of gear.weapons) {
       const row = document.createElement('tr');
-      const cells = [weapon.name, weapon.range ?? '—'];
-      for (const value of cells) {
-        const td = document.createElement('td');
-        td.textContent = value;
-        row.append(td);
-      }
+
+      const nameCell = document.createElement('td');
+      nameCell.textContent = weapon.name;
+      row.append(nameCell);
+
+      // The attack itself, not just its damage — the two halves of using a
+      // weapon should be next to each other rather than one here and one in a
+      // list of 26 skills.
+      const skill = weaponSkill(weapon);
+      const attackCell = document.createElement('td');
+      const attack = document.createElement('button');
+      attack.className = 'atk';
+      attack.textContent = skill;
+      attack.title = `Roll ${skill}${penalty ? ` (${penalty})` : ''}`;
+      attack.addEventListener('click', () => {
+        const { expression, explained } = rollSkill(sheet, skill, penalty);
+        publish({ character: sheet.name, label: `${weapon.name} — ${skill}`, expression, explained });
+      });
+      attackCell.append(attack);
+      row.append(attackCell);
+
+      const rangeCell = document.createElement('td');
+      rangeCell.textContent = weapon.range ?? '—';
+      row.append(rangeCell);
 
       const damageCell = document.createElement('td');
       if (weapon.damage) {
@@ -806,7 +843,7 @@ function renderGear(sheet: Sheet): void {
         const noteRow = document.createElement('tr');
         noteRow.className = 'note';
         const td = document.createElement('td');
-        td.colSpan = 5;
+        td.colSpan = 6;
         td.textContent = weapon.notes;
         noteRow.append(td);
         table.append(noteRow);
@@ -896,12 +933,13 @@ async function applyToTarget(entry: RollEntry): Promise<void> {
   });
   await updateTokenState(target.token.id, () => outcome.state);
   await refreshTokens();
+  // No `total`: this line is the *outcome* of applying damage, and offering to
+  // apply it again to whoever is selected next would only ever be a mistake.
   publish({
     character: target.sheet.name,
     label: 'takes damage',
     expression: `${entry.total}`,
     explained: outcome.description,
-    total: entry.total,
   });
 }
 

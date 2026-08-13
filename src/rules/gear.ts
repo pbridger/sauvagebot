@@ -145,3 +145,20 @@ export function damageExpression(damage: string, strengthDie: number | undefined
 export function explodeDice(expression: string): string {
   return expression.replace(/(\d*d\d+)(!?)/gi, (_, dice: string) => `${dice}!`);
 }
+
+/**
+ * Which skill swings this weapon.
+ *
+ * A weapon with a range is shot; anything else is swung. Crude, but it matches
+ * how the cards are written, and the button says which skill it is rolling so a
+ * wrong guess is visible rather than silent.
+ */
+export function weaponSkill(weapon: Weapon): 'Shooting' | 'Fighting' {
+  if (weapon.range) return 'Shooting';
+  if (weapon.damage && /^str/i.test(weapon.damage)) return 'Fighting';
+  // No leading word boundary: "scattergun" and "handgun" are one word, and a
+  // Deadlands gear list is full of them.
+  return /(?:bow|rifle|pistol|gun|derringer|carbine|revolver|repeater)\b/i.test(weapon.name)
+    ? 'Shooting'
+    : 'Fighting';
+}

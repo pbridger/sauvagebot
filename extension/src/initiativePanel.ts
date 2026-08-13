@@ -29,6 +29,8 @@ export interface Combatant {
   sheet: Sheet;
   state: TokenState;
   card?: Card;
+  /** The token's artwork, so a row is recognisable at a glance. */
+  imageUrl?: string;
 }
 
 export interface InitiativeHooks {
@@ -48,7 +50,7 @@ export interface InitiativeHooks {
 
 /** Everyone bound to a sheet in this scene, with whatever card they hold. */
 export function combatants(
-  tokens: readonly TokenLike[],
+  tokens: readonly (TokenLike & { imageUrl?: string })[],
   sheets: readonly Sheet[],
 ): Combatant[] {
   const byId = new Map(sheets.map((sheet) => [sheet.id, sheet]));
@@ -63,6 +65,7 @@ export function combatants(
       sheet,
       state,
       ...(state.card ? { card: state.card } : {}),
+      ...(token.imageUrl ? { imageUrl: token.imageUrl } : {}),
     });
   }
   return out;
@@ -108,6 +111,13 @@ export function renderInitiative(
   bar.append(clear);
   out.append(bar);
 
+  if (state) {
+    const count = document.createElement('div');
+    count.className = 'deck-count';
+    count.textContent = `${state.deck.length} cards left in the deck`;
+    out.append(count);
+  }
+
   if (state?.jokerDealt) {
     const notice = document.createElement('div');
     notice.className = 'joker-notice';
@@ -131,6 +141,15 @@ export function renderInitiative(
     if (hooks.acted?.has(combatant.tokenId)) row.classList.add('acted');
     if (combatant.card && isJoker(combatant.card)) row.classList.add('joker');
     if (isIncapacitated(combatant.state, combatant.sheet.wildCard)) row.classList.add('out');
+
+    if (combatant.imageUrl) {
+      const thumb = document.createElement('img');
+      thumb.className = 'thumb';
+      thumb.src = combatant.imageUrl;
+      thumb.alt = '';
+      thumb.addEventListener('error', () => thumb.remove());
+      row.append(thumb);
+    }
 
     const card = document.createElement('span');
     card.className = combatant.card
@@ -188,13 +207,6 @@ export function renderInitiative(
     list.append(row);
   }
   out.append(list);
-
-  if (state) {
-    const footer = document.createElement('p');
-    footer.className = 'deck-count';
-    footer.textContent = `${state.deck.length} cards left in the deck`;
-    out.append(footer);
-  }
 
   return out;
 }

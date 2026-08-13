@@ -4,11 +4,19 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Deadlands Assistant</title>
-    <script type="module" crossorigin src="/assets/main-DDB7Fayv.js"></script>
+    <script type="module" crossorigin src="/assets/main-C6Agx6IM.js"></script>
     <link rel="modulepreload" crossorigin href="/assets/index-Bgmlk7PP.js">
-    <link rel="stylesheet" crossorigin href="/assets/main-DtDRpwm1.css">
+    <link rel="stylesheet" crossorigin href="/assets/main-BzOHFVza.css">
   </head>
   <body>
+    <nav id="tabs" role="tablist">
+      <button id="tab-sheet" role="tab" aria-selected="true">Sheet</button>
+      <button id="tab-initiative" role="tab" aria-selected="false">Initiative</button>
+    </nav>
+
+    <div id="notice" hidden></div>
+
+    <!-- Inside the tab area: none of it means anything on the Initiative tab. -->
     <header id="bar">
       <select id="who" aria-label="Character"></select>
       <button id="new" title="New character">＋</button>
@@ -17,13 +25,6 @@
       <button id="export" title="Download the roster as JSON">Export</button>
       <input id="file" type="file" accept=".html,.htm,.json" multiple hidden />
     </header>
-
-    <nav id="tabs" role="tablist">
-      <button id="tab-sheet" role="tab" aria-selected="true">Sheet</button>
-      <button id="tab-initiative" role="tab" aria-selected="false">Initiative</button>
-    </nav>
-
-    <div id="notice" hidden></div>
 
     <main id="sheet">
       <p class="empty">No characters yet. <strong>Import…</strong> an archetype card to start.</p>

@@ -156,6 +156,12 @@ describe('dealing a round', () => {
     { tokenId: 't3', edges: edges({ hesitant: true }) },
   ];
 
+  it('does not deal to someone who is out of the fight', () => {
+    const withCasualty = [...table, { tokenId: 't4', edges: NO_EDGES, out: true }];
+    const result = dealRound(newInitiative(new JavaRandom(1)), withCasualty, new JavaRandom(2));
+    expect([...result.draws.keys()].sort()).toEqual(['t1', 't2', 't3']);
+  });
+
   it('gives everyone a card and advances the round', () => {
     const result = dealRound(newInitiative(new JavaRandom(1)), table, new JavaRandom(2));
     expect(result.state.round).toBe(1);

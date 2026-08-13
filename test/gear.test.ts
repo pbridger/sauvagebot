@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
-import { damageExpression, explodeDice, parseGear } from '../src/rules/gear.js';
+import { damageExpression, explodeDice, parseGear, weaponSkill } from '../src/rules/gear.js';
 
 const reggie = parseArchetypeCards(
   readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
@@ -124,5 +124,23 @@ describe('damage expressions', () => {
 
   it('drops the Strength term rather than producing nonsense when it is unknown', () => {
     expect(damageExpression('Str+d4', undefined)).toBe('d4!');
+  });
+});
+
+describe('which skill swings the weapon', () => {
+  const gear = parseGear(reggie.gear);
+
+  it('shoots anything with a range', () => {
+    expect(weaponSkill(gear.weapons[0]!)).toBe('Shooting');
+    expect(weaponSkill(gear.weapons[1]!)).toBe('Shooting');
+  });
+
+  it('fights anything doing Strength-based damage', () => {
+    expect(weaponSkill(gear.weapons[2]!)).toBe('Fighting');
+  });
+
+  it('falls back on the name when there is neither', () => {
+    expect(weaponSkill({ name: 'scattergun' })).toBe('Shooting');
+    expect(weaponSkill({ name: 'cavalry sabre' })).toBe('Fighting');
   });
 });

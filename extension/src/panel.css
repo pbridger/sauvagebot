@@ -113,11 +113,16 @@ p.prose { margin: 4px 0 0; font-size: 12px; }
 
 #log {
   flex: none;
-  max-height: 32%;
+  max-height: 22%;
   overflow-y: auto;
   border-top: 1px solid var(--rule);
   padding: 6px 10px;
   font-size: 12px;
+  /* Lighter than the sheet so the running commentary reads as a separate surface. */
+  background: color-mix(in srgb, #ffffff 55%, var(--paper));
+}
+@media (prefers-color-scheme: dark) {
+  #log { background: color-mix(in srgb, #ffffff 7%, var(--paper)); }
 }
 #log:empty { display: none; }
 #log div { padding: 2px 0; }
@@ -442,25 +447,35 @@ button.apply {
 ol.initiative { list-style: none; margin: 0; padding: 0; }
 ol.initiative li {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
-  padding: 4px 6px;
+  padding: 5px 6px;
   border-radius: 5px;
   cursor: pointer;
+}
+ol.initiative img.thumb {
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex: none;
 }
 ol.initiative li:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
 ol.initiative li.selected { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 ol.initiative li.joker { box-shadow: inset 2px 0 0 #5b3a86; }
 ol.initiative .card {
-  min-width: 34px;
+  min-width: 40px;
+  font-size: 16px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* A joker is the most consequential card in the deck; make it look like it. */
+ol.initiative li.joker .card { font-size: 22px; }
 ol.initiative .card.none { color: var(--muted); font-weight: 400; }
 ol.initiative .who { flex: 1; min-width: 0; }
 ol.initiative .drew { font-size: 10.5px; color: var(--muted); }
 
-.deck-count { margin: 10px 0 0; font-size: 11px; color: var(--muted); }
+.deck-count { margin: -4px 0 8px; font-size: 11px; color: var(--muted); }
 
 /* Hearts and diamonds read red, as on a real card. */
 ol.initiative .card.red,
@@ -496,3 +511,9 @@ button.sheet-link {
   color: var(--muted);
 }
 button.sheet-link:hover { color: var(--accent); border-color: var(--accent); }
+
+table.weapons button.atk {
+  padding: 0 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
