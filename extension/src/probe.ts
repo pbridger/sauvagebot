@@ -23,7 +23,7 @@
  * harness for checking real OBR behaviour in a live room, and the next surprise
  * will want it.
  */
-import OBR from '@owlbear-rodeo/sdk';
+import OBR, { buildShape } from '@owlbear-rodeo/sdk';
 
 const PREFIX = 'com.savagebot/probe';
 const STAMP_KEY = `${PREFIX}-stamp`;
@@ -397,6 +397,78 @@ async function compressionCheck(): Promise<void> {
   await OBR.room.setMetadata({ [key]: undefined });
 }
 
+/**
+ * Does a `scene.local` item follow a synced token it is attached to?
+ *
+ * This decides how status badges are drawn. Local items are not synced, so each
+ * client renders its own — which costs nothing in scene storage, pollutes no undo
+ * history, and sidesteps leader election entirely, because there is no shared
+ * write to collide over. All of that is worthless if the badge does not move with
+ * the token.
+ *
+ * Fully automated: attach a marker, move the token, see whether the marker moved.
+ */
+async function attachmentTest(): Promise<void> {
+  const selection = await OBR.player.getSelection();
+  const tokenId = selection?.[0];
+  if (!tokenId) {
+    log('select a token first', 'bad');
+    return;
+  }
+  const [token] = await OBR.scene.items.getItems([tokenId]);
+  if (!token) {
+    log('selection is not a scene item', 'bad');
+    return;
+  }
+  const home = { ...token.position };
+  log(`--- local-item attachment, on "${token.name}" ---`);
+
+  const marker = buildShape()
+    .shapeType('CIRCLE')
+    .width(20)
+    .height(20)
+    .position(home)
+    .attachedTo(tokenId)
+    .disableHit(true)
+    .metadata({ [BLOB_KEY]: 'probe-marker' })
+    .build();
+
+  try {
+    await OBR.scene.local.addItems([marker]);
+    const before = (await OBR.scene.local.getItems([marker.id]))[0]?.position;
+    if (!before) {
+      log('local item was not created at all', 'bad');
+      return;
+    }
+    log(`marker created at ${before.x.toFixed(0)},${before.y.toFixed(0)}`);
+
+    await OBR.scene.items.updateItems([tokenId], (items) => {
+      for (const item of items) item.position = { x: home.x + 250, y: home.y };
+    });
+    // Attachment is applied by the renderer, so give it a frame or two.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+
+    const after = (await OBR.scene.local.getItems([marker.id]))[0]?.position;
+    const moved = after ? Math.round(after.x - before.x) : 0;
+    log(`token moved +250; marker moved ${moved}`);
+    if (Math.abs(moved - 250) < 2) {
+      log('LOCAL ATTACHMENT WORKS — badges can be local, no leader election needed', 'ok');
+    } else if (moved === 0) {
+      log('local items do NOT follow a synced token — use synced attachments', 'bad');
+    } else {
+      log(`marker moved by ${moved}, not 250 — investigate before relying on it`, 'bad');
+    }
+  } catch (error) {
+    log(`attachment test failed: ${describe(error)}`, 'bad');
+  } finally {
+    await OBR.scene.local.deleteItems([marker.id]);
+    await OBR.scene.items.updateItems([tokenId], (items) => {
+      for (const item of items) item.position = home;
+    });
+    log('marker removed, token put back');
+  }
+}
+
 // ---------------------------------------------------------------- wiring
 
 OBR.onReady(async () => {
@@ -407,6 +479,7 @@ OBR.onReady(async () => {
   button('item-cap', itemCap);
   button('item', writeToSelectedItem);
   button('compression', compressionCheck);
+  button('attach', attachmentTest);
 
   await showIdentity();
   await showStamps();

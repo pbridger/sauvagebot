@@ -41,8 +41,8 @@
       .ok { color: #1a7f37; }
       .bad { color: #cf222e; }
     </style>
-    <script type="module" crossorigin src="/assets/probe-BIB4Dvx9.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/index-CrpO6S2q.js">
+    <script type="module" crossorigin src="/assets/probe-AWKLIgJV.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/index-CgEUcrpI.js">
   </head>
   <body>
     <h2>Identity</h2>
@@ -66,6 +66,14 @@
     <button id="item-cap">Item cap</button>
     <button id="scene-cap">Scene cap</button>
     <button id="compression">Compression check</button>
+
+    <h2>Local-item attachment</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      Select a token. Attaches a non-synced marker, moves the token 250 units, and checks whether
+      the marker followed. Decides whether status badges can be local — which would avoid leader
+      election and scene clutter entirely. Puts the token back afterwards.
+    </p>
+    <button id="attach">Test attachment</button>
 
     <h2>Item metadata write (run this as a PLAYER too)</h2>
     <p style="margin:0 0 8px;opacity:.7">
