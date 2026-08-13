@@ -9,6 +9,8 @@
   <body>
     <header id="bar">
       <select id="who" aria-label="Character"></select>
+      <button id="new" title="New character">＋</button>
+      <button id="edit" title="Edit this character" aria-pressed="false">Edit</button>
       <button id="import" title="Import an archetype card">Import…</button>
       <button id="export" title="Download the roster as JSON">Export</button>
       <input id="file" type="file" accept=".html,.htm,.json" multiple hidden />
@@ -37,7 +39,7 @@
 
     <section id="log" aria-live="polite"></section>
 
-    <footer id="budget"></footer>
+    <footer><span id="budget"></span><span id="saved"></span></footer>
 
     <script type="module" src="/src/panel.ts"></script>
   </body>

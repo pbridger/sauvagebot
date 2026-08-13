@@ -25,6 +25,8 @@ import {
   newRollId,
   type RollEntry,
 } from '../../src/obr/rollLog.js';
+import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
+import { renderEditor } from './editor.js';
 import { roomStore } from './backends.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -42,6 +44,10 @@ let selectedId: string | undefined;
 const log = new RollLog();
 let me = 'someone';
 let secretRolls = false;
+let editing = false;
+/** Set while we are saving our own change, so the resulting onChange is ignored. */
+let saving = false;
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
 // ---------------------------------------------------------------- chrome
 
@@ -114,6 +120,40 @@ function renderLog(): void {
   );
 }
 
+function showSaved(state: 'saving' | 'saved' | ''): void {
+  const el2 = el('saved');
+  el2.textContent = state === 'saving' ? 'saving…' : state === 'saved' ? '✓ saved' : '';
+  el2.className = state;
+}
+
+/**
+ * Debounced save. Writes go through VerifiedStore, which reads back and throws
+ * rather than letting a dropped write look like success — so a visible tick is
+ * a real one.
+ */
+function scheduleSave(sheet: Sheet): void {
+  sheets = sheets.map((s) => (s.id === sheet.id ? sheet : s));
+  renderSheetArea();
+  showSaved('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    void (async () => {
+      saving = true;
+      try {
+        await roster.save(pruneEmptyEntries(sheet));
+        showSaved('saved');
+        setTimeout(() => showSaved(''), 1500);
+      } catch (error) {
+        showSaved('');
+        notify(`could not save: ${describe(error)}`);
+      } finally {
+        saving = false;
+        await showBudget();
+      }
+    })();
+  }, 400);
+}
+
 async function showBudget(): Promise<void> {
   const { used, capacity, fraction } = await store.usage();
   budgetEl.textContent = `roster storage ${used}/${capacity} chars (${Math.round(fraction * 100)}%)`;
@@ -160,6 +200,37 @@ function entryList(entries: Sheet['edges']): HTMLElement {
     }
   }
   return dl;
+}
+
+function renderSheetArea(): void {
+  const sheet = sheets.find((s) => s.id === selectedId);
+  if (editing && sheet) {
+    sheetEl.replaceChildren(
+      renderEditor(sheet, {
+        onChange: scheduleSave,
+        onDelete: () => void deleteCharacter(sheet),
+      }),
+    );
+    return;
+  }
+  render();
+}
+
+async function deleteCharacter(sheet: Sheet): Promise<void> {
+  if (!confirm(`Delete ${sheet.name}? This cannot be undone — export first if unsure.`)) return;
+  await roster.remove(sheet.id);
+  selectedId = undefined;
+  setEditing(false);
+  await reload();
+}
+
+function setEditing(on: boolean): void {
+  editing = on;
+  const button = el('edit');
+  button.setAttribute('aria-pressed', String(on));
+  button.textContent = on ? 'Done' : 'Edit';
+  document.body.classList.toggle('editing', on);
+  renderSheetArea();
 }
 
 function render(): void {
@@ -371,7 +442,7 @@ async function reload(): Promise<void> {
   sheets = await roster.listFull();
   if (!sheets.some((s) => s.id === selectedId)) selectedId = sheets[0]?.id;
   renderRoster();
-  render();
+  renderSheetArea();
   await showBudget();
 }
 
@@ -461,8 +532,8 @@ OBR.onReady(async () => {
   secretToggle.addEventListener('change', () => {
     secretRolls = secretToggle.checked;
   });
-  // Only the GM has a screen to roll behind.
-  secretToggle.closest('label')!.hidden = (await OBR.player.getRole()) !== 'GM';
+  // Available to everyone, not just the GM: a player rolling quietly is normal,
+  // and the roll never leaves this machine either way.
 
   OBR.broadcast.onMessage(ROLL_CHANNEL, (event) => {
     if (!isRollEntry(event.data)) return;
@@ -478,7 +549,17 @@ OBR.onReady(async () => {
 
   bar.who.addEventListener('change', () => {
     selectedId = bar.who.value;
-    render();
+    renderSheetArea();
+  });
+  el('edit').addEventListener('click', () => setEditing(!editing));
+  el('new').addEventListener('click', () => {
+    void (async () => {
+      const sheet = newCharacter('New Character', sheets);
+      await roster.save(sheet);
+      selectedId = sheet.id;
+      await reload();
+      setEditing(true);
+    })();
   });
   el('import').addEventListener('click', () => bar.file.click());
   bar.file.addEventListener('change', () => {
@@ -495,7 +576,10 @@ OBR.onReady(async () => {
   });
 
   // Another player editing their own sheet must show up here without a reload.
-  OBR.room.onMetadataChange(() => void reload());
+  // Our own writes are skipped: re-rendering mid-edit would blow away focus.
+  OBR.room.onMetadataChange(() => {
+    if (!saving) void reload();
+  });
 
   await reload();
 });

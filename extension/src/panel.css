@@ -216,3 +216,83 @@ p.money { margin: 6px 0 0; font-weight: 700; }
   text-transform: uppercase;
   letter-spacing: .05em;
 }
+
+/* ---- edit mode ------------------------------------------------------- */
+
+#bar #new { padding: 4px 7px; font-size: 15px; line-height: 1; }
+#bar #edit[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--paper);
+  border-color: var(--accent);
+}
+
+footer {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  border-top: 1px solid var(--rule);
+  font-size: 11px;
+  color: var(--muted);
+}
+#budget.warn { color: var(--accent); font-weight: 700; }
+#saved.saved { color: var(--accent); font-weight: 700; }
+
+body.editing input,
+body.editing select,
+body.editing textarea {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+body.editing textarea { width: 100%; resize: vertical; font-size: 12px; }
+
+.edit-block { display: grid; gap: 5px; margin-bottom: 10px; }
+.field { display: grid; grid-template-columns: 78px 1fr; align-items: center; gap: 8px; }
+.field > span {
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.derived-edit { grid-template-columns: 1fr 1fr; }
+.derived-edit .field { grid-template-columns: 68px 1fr; }
+
+.edit-trait {
+  display: grid;
+  grid-template-columns: 1fr 62px 46px;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+}
+.edit-trait input.mod { text-align: center; }
+
+.edit-entry {
+  display: grid;
+  grid-template-columns: 1fr 22px;
+  gap: 4px;
+  margin-bottom: 7px;
+}
+.edit-entry input { grid-column: 1; }
+.edit-entry textarea { grid-column: 1; }
+.edit-entry .remove {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: start;
+  padding: 2px 5px;
+  color: var(--muted);
+}
+button.add { margin-top: 2px; font-size: 12px; }
+button.danger {
+  margin: 18px 0 8px;
+  width: 100%;
+  color: #b3261e;
+  border-color: #b3261e;
+}
+@media (prefers-color-scheme: dark) {
+  button.danger { color: #f2b8b5; border-color: #f2b8b5; }
+}
