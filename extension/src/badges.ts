@@ -32,6 +32,11 @@ const WOUND_RED = '#8c2f22';
 const FATIGUE_AMBER = '#9a6a15';
 const SHAKEN_YELLOW = '#c9a227';
 
+const FONT_SIZE = 22;
+const PADDING = 5;
+/** Roughly what the label occupies: one line of text plus padding top and bottom. */
+const LABEL_HEIGHT = FONT_SIZE * 1.2 + PADDING * 2;
+
 interface Token extends TokenLike {
   position: { x: number; y: number };
 }
@@ -49,9 +54,9 @@ function badge(
       .backgroundColor(background)
       .backgroundOpacity(0.92)
       .fillColor('#ffffff')
-      .fontSize(22)
+      .fontSize(FONT_SIZE)
       .fontWeight(700)
-      .padding(5)
+      .padding(PADDING)
       .cornerRadius(9)
       .pointerHeight(0)
       .pointerWidth(0)
@@ -98,7 +103,10 @@ export async function renderBadges(
     const damage = damageBadge(state, sheet.wildCard);
     if (damage) {
       const colour = state.wounds > 0 ? WOUND_RED : FATIGUE_AMBER;
-      items.push(badge(token, damage, colour, { x: 0, y: dpi * 0.34 }));
+      // A label grows upward from its position, which is why the same 0.42 that
+      // puts SHAKEN neatly above the token put this one *inside* its lower half.
+      // Clearing the token's bottom edge needs that plus a label's height.
+      items.push(badge(token, damage, colour, { x: 0, y: dpi * 0.42 + LABEL_HEIGHT }));
     }
     if (state.shaken) {
       items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -dpi * 0.42 }));

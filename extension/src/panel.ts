@@ -293,17 +293,22 @@ function statusPenalty(sheet: Sheet): number {
   return active ? traitPenalty(active.state) : 0;
 }
 
+/**
+ * @param tone matches the colour of the corresponding token badge, so the sheet
+ *             and the map read as the same information rather than two schemes.
+ */
 function pips(
   count: number,
   filled: number,
   title: (n: number) => string,
   onPick: (n: number) => void,
+  tone: 'wound' | 'fatigue' | 'shaken',
 ): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'pips';
   for (let n = 1; n <= count; n++) {
     const pip = document.createElement('button');
-    pip.className = n <= filled ? 'pip on' : 'pip';
+    pip.className = n <= filled ? `pip on ${tone}` : 'pip';
     pip.title = title(n);
     // Clicking the pip you are already on steps back, so the track is reversible
     // without hunting for a separate minus button.
@@ -347,6 +352,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
           Math.min(state.wounds, woundMax),
           (n) => `${n} wound${n === 1 ? '' : 's'} — ${-n} to every trait roll`,
           (n) => change(setWounds(state, n, sheet.wildCard)),
+          'wound',
         ),
       ),
     );
@@ -359,6 +365,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
         Math.min(state.fatigue, MAX_FATIGUE),
         (n) => `${FATIGUE_NAMES[n] ?? `Fatigue ${n}`} — ${-n} to every trait roll`,
         (n) => change(setFatigue(state, n)),
+        'fatigue',
       ),
     ),
   );
@@ -371,6 +378,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
         state.shaken ? 1 : 0,
         () => (state.shaken ? 'Shaken — click to clear' : 'Mark Shaken (no penalty to the roll)'),
         (n) => change(setShaken(state, n > 0)),
+        'shaken',
       ),
     ),
   );
@@ -492,24 +500,17 @@ function render(): void {
   const head = document.createElement('div');
   head.className = 'cardhead';
 
-  // Portrait and rank stack together on the left; the rank is a caption for the
-  // picture rather than a line pushing the name down.
   const image = portrait(sheet);
-  if (image || sheet.rank) {
-    const column = document.createElement('div');
-    column.className = 'portrait-col';
-    if (image) column.append(image);
-    if (sheet.rank) {
-      const rank = document.createElement('div');
-      rank.className = 'rank';
-      rank.textContent = sheet.rank;
-      column.append(rank);
-    }
-    head.append(column);
-  }
+  if (image) head.append(image);
   const headText = document.createElement('div');
   head.append(headText);
 
+  if (sheet.rank) {
+    const rank = document.createElement('div');
+    rank.className = 'rank';
+    rank.textContent = sheet.rank;
+    headText.append(rank);
+  }
   const h1 = document.createElement('h1');
   h1.textContent = sheet.name;
   headText.append(h1);

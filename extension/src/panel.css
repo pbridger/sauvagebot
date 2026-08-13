@@ -314,9 +314,7 @@ button.danger {
 /* ---- token binding --------------------------------------------------- */
 
 .cardhead { display: flex; gap: 10px; align-items: flex-start; }
-.cardhead > div:last-child { min-width: 0; flex: 1; }
-.portrait-col { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none; }
-.portrait-col .rank { text-align: center; }
+.cardhead > div { min-width: 0; flex: 1; }
 img.portrait {
   width: 58px;
   height: 58px;
@@ -364,7 +362,11 @@ button.pip {
   border-radius: 50%;
   border: 1px solid var(--rule);
 }
+/* Deliberately the same colours as the token badges: one scheme, two surfaces. */
 button.pip.on { background: var(--accent); border-color: var(--accent); }
+button.pip.on.wound { background: #8c2f22; border-color: #8c2f22; }
+button.pip.on.fatigue { background: #9a6a15; border-color: #9a6a15; }
+button.pip.on.shaken { background: #c9a227; border-color: #c9a227; }
 
 button.toggle { padding: 2px 8px; font-size: 11.5px; }
 button.toggle.on {
