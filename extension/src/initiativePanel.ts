@@ -20,12 +20,14 @@ import {
   type InitiativeState,
 } from '../../src/rules/initiative.js';
 import type { Sheet } from '../../src/rules/sheet.js';
-import { readBinding, type TokenLike } from '../../src/obr/binding.js';
+import { readBinding, type TokenLike, type TokenState } from '../../src/obr/binding.js';
+import { describeStatus, isIncapacitated } from '../../src/rules/status.js';
 
 export interface Combatant {
   tokenId: string;
   name: string;
   sheet: Sheet;
+  state: TokenState;
   card?: Card;
 }
 
@@ -35,6 +37,11 @@ export interface InitiativeHooks {
   onSelect: (tokenId: string) => void;
   /** Whichever token is selected on the map, so the list can highlight it. */
   selectedTokenId?: string;
+  /**
+   * Who has already taken a turn this round. Rows dim as they go, so a GM
+   * clicking down the order can see at a glance who is left.
+   */
+  acted?: ReadonlySet<string>;
 }
 
 /** Everyone bound to a sheet in this scene, with whatever card they hold. */
@@ -52,6 +59,7 @@ export function combatants(
       tokenId: token.id,
       name: token.name,
       sheet,
+      state,
       ...(state.card ? { card: state.card } : {}),
     });
   }
@@ -118,7 +126,9 @@ export function renderInitiative(
   for (const combatant of turnOrder(all)) {
     const row = document.createElement('li');
     if (combatant.tokenId === hooks.selectedTokenId) row.classList.add('selected');
+    if (hooks.acted?.has(combatant.tokenId)) row.classList.add('acted');
     if (combatant.card && isJoker(combatant.card)) row.classList.add('joker');
+    if (isIncapacitated(combatant.state, combatant.sheet.wildCard)) row.classList.add('out');
 
     const card = document.createElement('span');
     card.className = combatant.card
@@ -133,6 +143,10 @@ export function renderInitiative(
     name.className = 'who';
     name.textContent = combatant.name;
     row.append(name);
+
+    // Same colours as the token badges and the sheet pips: one scheme throughout.
+    const status = statusChips(combatant);
+    if (status) row.append(status);
 
     // What else they drew, when an edge meant they drew more than one.
     const drew = lastDraws?.get(combatant.tokenId);
@@ -170,4 +184,30 @@ export function renderInitiative(
   }
 
   return out;
+}
+
+/** Compact wound / fatigue / Shaken markers, matching the token badge colours. */
+function statusChips(combatant: Combatant): HTMLElement | undefined {
+  const { state, sheet } = combatant;
+  const chips: [string, string][] = [];
+
+  if (isIncapacitated(state, sheet.wildCard)) {
+    chips.push(['OUT', 'out']);
+  } else {
+    if (state.wounds > 0) chips.push([`${state.wounds}W`, 'wound']);
+    if (state.fatigue > 0) chips.push([`${state.fatigue}F`, 'fatigue']);
+    if (state.shaken) chips.push(['!', 'shaken']);
+  }
+  if (!chips.length) return undefined;
+
+  const wrap = document.createElement('span');
+  wrap.className = 'chips';
+  wrap.title = describeStatus(state, sheet.wildCard);
+  for (const [text, tone] of chips) {
+    const chip = document.createElement('span');
+    chip.className = `chip ${tone}`;
+    chip.textContent = text;
+    wrap.append(chip);
+  }
+  return wrap;
 }

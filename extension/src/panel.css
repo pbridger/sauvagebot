@@ -477,3 +477,23 @@ ol.initiative .drew .red { color: #c0392b; }
   ol.initiative .card.red,
   ol.initiative .drew .red { color: #ff6b5e; }
 }
+
+/* Status in the turn order, in the same colours as the token badges. */
+ol.initiative .chips { display: flex; gap: 3px; cursor: help; }
+ol.initiative .chip {
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 15px;
+}
+ol.initiative .chip.wound { background: #8c2f22; }
+ol.initiative .chip.fatigue { background: #9a6a15; }
+ol.initiative .chip.shaken { background: #c9a227; }
+ol.initiative .chip.out { background: #444; }
+
+/* Dimmed once they have acted, so what is left stands out. */
+ol.initiative li.acted { opacity: .45; }
+ol.initiative li.acted .who { text-decoration: line-through; }
+ol.initiative li.out .who { font-style: italic; }

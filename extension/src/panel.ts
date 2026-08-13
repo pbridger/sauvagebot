@@ -90,6 +90,8 @@ let tab: 'sheet' | 'initiative' = 'sheet';
 let initiative: InitiativeState | undefined;
 /** What each token drew this round, so the panel can show the discarded cards. */
 let lastDraws: Map<string, Draw> = new Map();
+/** Who has taken a turn this round; cleared on each deal. */
+let acted = new Set<string>();
 let tokens: Awaited<ReturnType<typeof characterTokens>> = [];
 let selectedTokenId: string | undefined;
 /** Set while we are saving our own change, so the resulting onChange is ignored. */
@@ -272,7 +274,8 @@ function renderSheetArea(): void {
       renderInitiative(initiative, combatants(tokens, sheets), {
         onDeal: () => void deal(),
         onClear: () => void endFight(),
-        onSelect: (tokenId) => void OBR.player.select([tokenId]),
+        onSelect: (tokenId) => void takeTurn(tokenId),
+        acted,
         ...(selectedTokenId ? { selectedTokenId } : {}),
       }, lastDraws),
     );
@@ -308,6 +311,8 @@ async function deal(): Promise<void> {
     new JavaRandom(),
   );
 
+  // A new round is a clean slate: everyone acts again.
+  acted = new Set();
   await setCards(new Map([...result.draws].map(([id, draw]) => [id, draw.card])));
   await writeInitiative(result.state);
   initiative = result.state;
@@ -328,11 +333,25 @@ async function deal(): Promise<void> {
   await refreshTokens();
 }
 
+/**
+ * Select a combatant and mark their turn taken.
+ *
+ * Clicking an already-marked row un-marks it, which is the escape hatch for the
+ * inevitable mis-click in the middle of a fight.
+ */
+async function takeTurn(tokenId: string): Promise<void> {
+  if (acted.has(tokenId)) acted.delete(tokenId);
+  else acted.add(tokenId);
+  renderSheetArea();
+  await OBR.player.select([tokenId]);
+}
+
 async function endFight(): Promise<void> {
   await setCards(new Map(tokens.map((token) => [token.id, undefined])));
   await writeInitiative(undefined);
   initiative = undefined;
   lastDraws = new Map();
+  acted = new Set();
   await refreshTokens();
 }
 
