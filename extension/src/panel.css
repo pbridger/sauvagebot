@@ -469,3 +469,11 @@ ol.initiative .who { flex: 1; min-width: 0; }
 ol.initiative .drew { font-size: 10.5px; color: var(--muted); }
 
 .deck-count { margin: 10px 0 0; font-size: 11px; color: var(--muted); }
+
+/* Hearts and diamonds read red, as on a real card. */
+ol.initiative .card.red,
+ol.initiative .drew .red { color: #c0392b; }
+@media (prefers-color-scheme: dark) {
+  ol.initiative .card.red,
+  ol.initiative .drew .red { color: #ff6b5e; }
+}

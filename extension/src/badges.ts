@@ -24,7 +24,7 @@ import OBR, { buildLabel, type Item } from '@owlbear-rodeo/sdk';
 import { readBinding, type TokenLike } from '../../src/obr/binding.js';
 import { damageBadge } from '../../src/rules/status.js';
 import { isJoker } from '../../src/rules/initiative.js';
-import { cardToString } from '../../src/game/cards.js';
+import { cardToString, isRedSuit } from '../../src/game/cards.js';
 import type { Sheet } from '../../src/rules/sheet.js';
 
 /** Marks our local items so we only ever clear up our own. */
@@ -35,6 +35,7 @@ const FATIGUE_AMBER = '#9a6a15';
 const SHAKEN_YELLOW = '#c9a227';
 const CARD_DARK = '#22282e';
 const JOKER_PURPLE = '#5b3a86';
+const SUIT_RED = '#ff6b5e';
 
 const FONT_SIZE = 22;
 const PADDING = 5;
@@ -44,7 +45,8 @@ const LABEL_HEIGHT = FONT_SIZE * 1.2 + PADDING * 2;
 const GAP = 4;
 
 interface Token extends TokenLike {
-  position: { x: number; y: number };
+  /** The artwork's centre, which is not necessarily the item's `position`. */
+  centre: { x: number; y: number };
   /** Rendered height in scene units. */
   height: number;
 }
@@ -54,14 +56,15 @@ function badge(
   text: string,
   background: string,
   offset: { x: number; y: number },
+  textColour = '#ffffff',
 ): Item {
   return (
     buildLabel()
       .plainText(text)
-      .position({ x: token.position.x + offset.x, y: token.position.y + offset.y })
+      .position({ x: token.centre.x + offset.x, y: token.centre.y + offset.y })
       .backgroundColor(background)
       .backgroundOpacity(0.92)
-      .fillColor('#ffffff')
+      .fillColor(textColour)
       .fontSize(FONT_SIZE)
       .fontWeight(700)
       .padding(PADDING)
@@ -129,6 +132,8 @@ export async function renderBadges(
           cardToString(state.card),
           isJoker(state.card) ? JOKER_PURPLE : CARD_DARK,
           { x: edge + GAP * 4, y: -edge + LABEL_HEIGHT },
+          // Hearts and diamonds read red, as they do on a real card.
+          isRedSuit(state.card) ? SUIT_RED : '#ffffff',
         ),
       );
     }

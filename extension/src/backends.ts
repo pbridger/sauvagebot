@@ -111,6 +111,11 @@ export async function characterTokens(): Promise<
     position: { x: number; y: number };
     /** Rendered height in scene units, for placing badges clear of the artwork. */
     height: number;
+    /**
+     * The artwork's centre in scene units. Not the same as `position`: an image
+     * is anchored at its `grid.offset`, which is often not the middle.
+     */
+    centre: { x: number; y: number };
   })[]
 > {
   if (!(await OBR.scene.isReady())) return [];
@@ -122,17 +127,30 @@ export async function characterTokens(): Promise<
     .filter((item) => item.layer === 'CHARACTER')
     .map((item) => {
       const asImage = item as {
-        image?: { url?: string; height?: number };
-        grid?: { dpi?: number };
-        scale?: { y?: number };
+        image?: { url?: string; width?: number; height?: number };
+        grid?: { dpi?: number; offset?: { x: number; y: number } };
+        scale?: { x?: number; y?: number };
       };
       const image = asImage.image?.url;
       // OBR scales an image so its own grid dpi maps onto the scene's, then
       // applies the item's scale. Guessing "one square" was what put the badge
       // over the artwork on anything larger.
       const imageDpi = asImage.grid?.dpi ?? sceneDpi;
-      const pixels = asImage.image?.height ?? imageDpi;
-      const height = (pixels * sceneDpi) / imageDpi * (asImage.scale?.y ?? 1);
+      const unit = sceneDpi / imageDpi;
+      const scaleX = asImage.scale?.x ?? 1;
+      const scaleY = asImage.scale?.y ?? 1;
+      const pixelsW = asImage.image?.width ?? imageDpi;
+      const pixelsH = asImage.image?.height ?? imageDpi;
+      const height = pixelsH * unit * scaleY;
+
+      // An item's `position` is its `grid.offset` point, not its middle. Tokens
+      // whose offset is the centre look right either way; one that is anchored
+      // anywhere else had its badges displaced in both axes at once.
+      const offset = asImage.grid?.offset ?? { x: pixelsW / 2, y: pixelsH / 2 };
+      const centre = {
+        x: item.position.x + (pixelsW / 2 - offset.x) * unit * scaleX,
+        y: item.position.y + (pixelsH / 2 - offset.y) * unit * scaleY,
+      };
       return {
         id: item.id,
         name: item.name,
@@ -142,6 +160,9 @@ export async function characterTokens(): Promise<
         // moves with the parent by delta, so it must start in the right spot.
         position: { ...item.position },
         height: Number.isFinite(height) && height > 0 ? height : sceneDpi,
+        centre: Number.isFinite(centre.x) && Number.isFinite(centre.y)
+          ? centre
+          : { ...item.position },
         ...(image ? { imageUrl: image } : {}),
       };
     });

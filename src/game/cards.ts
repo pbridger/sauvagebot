@@ -39,6 +39,11 @@ export function compareCards(a: Card, b: Card): number {
   return av === bv ? 0 : av < bv ? -1 : 1;
 }
 
+/** Hearts and diamonds print red; the jokers follow their own colour. */
+export function isRedSuit(c: Card): boolean {
+  return c.suit === 'HEARTS' || c.suit === 'DIAMONDS' || c.suit === 'COLOR';
+}
+
 export function sameCard(a: Card, b: Card): boolean {
   return a.rank === b.rank && a.suit === b.suit;
 }
