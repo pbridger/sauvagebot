@@ -49,13 +49,25 @@ import {
 } from '../../src/rules/status.js';
 import { renderBadges } from './badges.js';
 import { renderEditor } from './editor.js';
+import { combatants, renderInitiative } from './initiativePanel.js';
+import {
+  dealRound,
+  initiativeEdges,
+  type Draw,
+  type InitiativeState,
+} from '../../src/rules/initiative.js';
+import { cardToString } from '../../src/game/cards.js';
 import {
   autoBind,
   bindToken,
   characterTokens,
+  freshInitiative,
+  readInitiative,
   roomStore,
+  setCards,
   unbindToken,
   updateTokenState,
+  writeInitiative,
 } from './backends.js';
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -74,6 +86,10 @@ const log = new RollLog();
 let me = 'someone';
 let secretRolls = false;
 let editing = false;
+let tab: 'sheet' | 'initiative' = 'sheet';
+let initiative: InitiativeState | undefined;
+/** What each token drew this round, so the panel can show the discarded cards. */
+let lastDraws: Map<string, Draw> = new Map();
 let tokens: Awaited<ReturnType<typeof characterTokens>> = [];
 let selectedTokenId: string | undefined;
 /** Set while we are saving our own change, so the resulting onChange is ignored. */
@@ -251,6 +267,17 @@ function entryList(entries: Sheet['edges']): HTMLElement {
 }
 
 function renderSheetArea(): void {
+  if (tab === 'initiative') {
+    sheetEl.replaceChildren(
+      renderInitiative(initiative, combatants(tokens, sheets), {
+        onDeal: () => void deal(),
+        onClear: () => void endFight(),
+        onSelect: (tokenId) => void OBR.player.select([tokenId]),
+        ...(selectedTokenId ? { selectedTokenId } : {}),
+      }, lastDraws),
+    );
+    return;
+  }
   const sheet = sheets.find((s) => s.id === selectedId);
   if (editing && sheet) {
     sheetEl.replaceChildren(
@@ -262,6 +289,59 @@ function renderSheetArea(): void {
     return;
   }
   render();
+}
+
+/**
+ * Deal a round to everyone bound in this scene.
+ *
+ * No leader election: dealing is a deliberate button press by one person, not a
+ * reaction every client runs. Two people dealing at once is a table problem.
+ */
+async function deal(): Promise<void> {
+  const table = combatants(tokens, sheets);
+  if (!table.length) return;
+  const state = initiative ?? (await freshInitiative());
+
+  const result = dealRound(
+    state,
+    table.map((c) => ({ tokenId: c.tokenId, edges: initiativeEdges(c.sheet) })),
+    new JavaRandom(),
+  );
+
+  await setCards(new Map([...result.draws].map(([id, draw]) => [id, draw.card])));
+  await writeInitiative(result.state);
+  initiative = result.state;
+  lastDraws = result.draws;
+
+  const dealt = [...result.draws]
+    .map(([id, draw]) => {
+      const who = table.find((c) => c.tokenId === id)?.name ?? '?';
+      return `${who} ${cardToString(draw.card)}`;
+    })
+    .join(', ');
+  publish({
+    label: `Round ${result.state.round}`,
+    expression: 'initiative',
+    explained: dealt + (result.jokerDealt ? ' — **joker!**' : ''),
+  });
+
+  await refreshTokens();
+}
+
+async function endFight(): Promise<void> {
+  await setCards(new Map(tokens.map((token) => [token.id, undefined])));
+  await writeInitiative(undefined);
+  initiative = undefined;
+  lastDraws = new Map();
+  await refreshTokens();
+}
+
+function setTab(next: 'sheet' | 'initiative'): void {
+  tab = next;
+  for (const name of ['sheet', 'initiative'] as const) {
+    el(`tab-${name}`).setAttribute('aria-selected', String(name === next));
+  }
+  renderSheetArea();
 }
 
 async function deleteCharacter(sheet: Sheet): Promise<void> {
@@ -918,6 +998,14 @@ OBR.onReady(async () => {
     renderSheetArea();
   });
   el('edit').addEventListener('click', () => setEditing(!editing));
+  el('tab-sheet').addEventListener('click', () => setTab('sheet'));
+  el('tab-initiative').addEventListener('click', () => setTab('initiative'));
+  OBR.scene.onMetadataChange(() => {
+    void readInitiative().then((state) => {
+      initiative = state;
+      renderSheetArea();
+    });
+  });
   el('new').addEventListener('click', () => {
     void (async () => {
       const sheet = newCharacter('New Character', sheets);
@@ -947,6 +1035,7 @@ OBR.onReady(async () => {
     if (!saving) void reload();
   });
 
+  initiative = await readInitiative();
   await reload();
   if (await OBR.scene.isReady()) {
     const count = await autoBind(sheets);

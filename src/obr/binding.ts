@@ -29,6 +29,7 @@
  * automatic bind is worse than no bind, because nobody would think to check.
  * Wild Cards take one token; Extras take as many as share the name.
  */
+import { SUITS, type Card } from '../game/cards.js';
 import type { Sheet } from '../rules/sheet.js';
 
 export const TOKEN_KEY = 'com.savagebot/token';
@@ -38,7 +39,8 @@ export interface TokenState {
   wounds: number;
   fatigue: number;
   shaken: boolean;
-  card?: { suit: string; rank: number };
+  /** Initiative card, dealt from the action deck. */
+  card?: Card;
 }
 
 export function newTokenState(sheetId: string): TokenState {
@@ -52,7 +54,18 @@ export function isTokenState(value: unknown): value is TokenState {
     typeof state.sheetId === 'string' &&
     typeof state.wounds === 'number' &&
     typeof state.fatigue === 'number' &&
-    typeof state.shaken === 'boolean'
+    typeof state.shaken === 'boolean' &&
+    (state.card === undefined || isCard(state.card))
+  );
+}
+
+function isCard(value: unknown): value is Card {
+  if (!value || typeof value !== 'object') return false;
+  const card = value as Partial<Card>;
+  return (
+    typeof card.rank === 'number' &&
+    typeof card.suit === 'string' &&
+    Object.hasOwn(SUITS, card.suit)
   );
 }
 

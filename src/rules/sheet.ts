@@ -68,18 +68,8 @@ export interface Sheet {
   advances?: string;
 }
 
-/** Per-token, per-scene. Lives in item metadata, never in the room roster. */
-export interface TokenState {
-  /** Points at a `Sheet` in the room roster. Absent for an Extra with an inline sheet. */
-  sheetId?: string;
-  wounds: number;
-  fatigue: number;
-  shaken: boolean;
-  /** Initiative card, as dealt by the ported deck. */
-  card?: { suit: string; rank: number };
-}
-
-export const NEW_TOKEN_STATE: TokenState = { wounds: 0, fatigue: 0, shaken: false };
+// NB: per-token combat state lives in `obr/binding.ts`, not here — it belongs to
+// the token and the scene rather than to the character.
 
 export function emptySheet(id: string, name: string): Sheet {
   return { id, name, wildCard: true, attributes: {}, skills: {}, hindrances: [], edges: [] };

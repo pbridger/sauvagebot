@@ -23,6 +23,8 @@
 import OBR, { buildLabel, type Item } from '@owlbear-rodeo/sdk';
 import { readBinding, type TokenLike } from '../../src/obr/binding.js';
 import { damageBadge } from '../../src/rules/status.js';
+import { isJoker } from '../../src/rules/initiative.js';
+import { cardToString } from '../../src/game/cards.js';
 import type { Sheet } from '../../src/rules/sheet.js';
 
 /** Marks our local items so we only ever clear up our own. */
@@ -31,6 +33,8 @@ export const BADGE_KEY = 'com.savagebot/badge';
 const WOUND_RED = '#8c2f22';
 const FATIGUE_AMBER = '#9a6a15';
 const SHAKEN_YELLOW = '#c9a227';
+const CARD_DARK = '#22282e';
+const JOKER_PURPLE = '#5b3a86';
 
 const FONT_SIZE = 22;
 const PADDING = 5;
@@ -115,6 +119,18 @@ export async function renderBadges(
     }
     if (state.shaken) {
       items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -edge - GAP }));
+    }
+    // The initiative card sits to the side, so it does not fight with SHAKEN for
+    // the space above the token during a round when both are true.
+    if (state.card) {
+      items.push(
+        badge(
+          token,
+          cardToString(state.card),
+          isJoker(state.card) ? JOKER_PURPLE : CARD_DARK,
+          { x: edge + GAP * 4, y: -edge + LABEL_HEIGHT },
+        ),
+      );
     }
   }
 

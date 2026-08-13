@@ -24,6 +24,13 @@ import {
   type TokenState,
 } from '../../src/obr/binding.js';
 import type { Sheet } from '../../src/rules/sheet.js';
+import {
+  isInitiativeState,
+  newInitiative,
+  type InitiativeState,
+} from '../../src/rules/initiative.js';
+import { JavaRandom } from '../../src/dice/javaRandom.js';
+import type { Card } from '../../src/game/cards.js';
 
 const roomBackend: Backend = {
   get: () => OBR.room.getMetadata(),
@@ -185,4 +192,46 @@ export async function autoBind(sheets: readonly Sheet[]): Promise<number> {
   const bindings = autoBindings(tokens, sheets);
   for (const { tokenId, sheetId } of bindings) await bindToken(tokenId, sheetId);
   return bindings.length;
+}
+
+// ---------------------------------------------------------------- initiative
+
+export const INITIATIVE_KEY = 'com.savagebot/initiative';
+
+/**
+ * The deck lives in scene metadata: a fight belongs to a scene, and starting a
+ * new map should start a new fight rather than resume the last one.
+ *
+ * Each combatant's *card* lives on their own token instead, so five bandits
+ * sharing one sheet still get five different cards, and no shared list has to be
+ * kept in step with which tokens actually exist.
+ */
+export async function readInitiative(): Promise<InitiativeState | undefined> {
+  if (!(await OBR.scene.isReady())) return undefined;
+  const value = (await OBR.scene.getMetadata())[INITIATIVE_KEY];
+  return isInitiativeState(value) ? value : undefined;
+}
+
+export async function writeInitiative(state: InitiativeState | undefined): Promise<void> {
+  await OBR.scene.setMetadata({ [INITIATIVE_KEY]: state });
+}
+
+export async function freshInitiative(): Promise<InitiativeState> {
+  const state = newInitiative(new JavaRandom());
+  await writeInitiative(state);
+  return state;
+}
+
+/** Write dealt cards onto their tokens in one update, so the map redraws once. */
+export async function setCards(cards: ReadonlyMap<string, Card | undefined>): Promise<void> {
+  const ids = [...cards.keys()];
+  if (!ids.length) return;
+  await OBR.scene.items.updateItems(ids, (items) => {
+    for (const item of items) {
+      const existing = readBinding(item.metadata);
+      if (!existing) continue;
+      const card = cards.get(item.id);
+      item.metadata[TOKEN_KEY] = card ? { ...existing, card } : { ...existing, card: undefined };
+    }
+  });
 }

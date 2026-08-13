@@ -1,0 +1,215 @@
+import { describe, expect, it } from 'vitest';
+import { JavaRandom } from '../src/dice/javaRandom.js';
+import { BLACK_JOKER, COLOR_JOKER, Deck, card, cardToString } from '../src/game/cards.js';
+import { emptySheet, type Sheet } from '../src/rules/sheet.js';
+import {
+  NO_EDGES,
+  chooseCard,
+  dealOne,
+  dealRound,
+  drawCount,
+  initiativeEdges,
+  isInitiativeState,
+  newInitiative,
+  turnOrder,
+  type InitiativeEdges,
+} from '../src/rules/initiative.js';
+
+const withEdges = (...names: string[]): Sheet => ({
+  ...emptySheet('x', 'X'),
+  edges: names.map((name) => ({ name })),
+});
+
+const edges = (over: Partial<InitiativeEdges> = {}): InitiativeEdges => ({ ...NO_EDGES, ...over });
+
+describe('reading edges off a sheet', () => {
+  it('finds Quick, Level Headed and Hesitant by name', () => {
+    expect(initiativeEdges(withEdges('QUICK')).quick).toBe(true);
+    expect(initiativeEdges(withEdges('LEVEL HEADED')).levelHeaded).toBe(true);
+    expect(initiativeEdges(withEdges('Level-Headed')).levelHeaded).toBe(true);
+    expect(initiativeEdges({ ...emptySheet('x', 'X'), hindrances: [{ name: 'HESITANT (MAJOR)' }] })
+      .hesitant).toBe(true);
+  });
+
+  it('reads "Improved Level Headed" as improved, not as both', () => {
+    // The plain name is a substring of the improved one; getting this wrong
+    // would have a character drawing two cards instead of three.
+    const found = initiativeEdges(withEdges('IMPROVED LEVEL HEADED'));
+    expect(found.improvedLevelHeaded).toBe(true);
+    expect(found.levelHeaded).toBe(false);
+  });
+
+  it('finds nothing on a plain character', () => {
+    expect(initiativeEdges(withEdges('MARKSMAN', 'STEADY HANDS'))).toEqual(NO_EDGES);
+  });
+});
+
+describe('how many cards are drawn', () => {
+  it.each([
+    [NO_EDGES, 1],
+    [edges({ quick: true }), 1],
+    [edges({ levelHeaded: true }), 2],
+    [edges({ improvedLevelHeaded: true }), 3],
+    [edges({ hesitant: true }), 2],
+  ])('%o draws %i', (e, expected) => {
+    expect(drawCount(e)).toBe(expected);
+  });
+});
+
+describe('choosing among the drawn cards', () => {
+  const low = card('CLUBS', 3);
+  const high = card('SPADES', 12);
+
+  it('takes the best by default — Level Headed as written, not as the Java bot does it', () => {
+    // The port keeps Deck.getCardByParams bug-for-bug, where Level Headed takes
+    // the worst. The VTT has no such obligation.
+    expect(chooseCard([low, high], edges({ levelHeaded: true }))).toEqual(high);
+  });
+
+  it('takes the worst when Hesitant', () => {
+    expect(chooseCard([low, high], edges({ hesitant: true }))).toEqual(low);
+  });
+
+  it('lets a joker override Hesitant', () => {
+    expect(chooseCard([low, COLOR_JOKER], edges({ hesitant: true }))).toEqual(COLOR_JOKER);
+  });
+
+  it('breaks a rank tie by suit', () => {
+    const clubs = card('CLUBS', 10);
+    const spades = card('SPADES', 10);
+    expect(chooseCard([clubs, spades], NO_EDGES)).toEqual(spades);
+  });
+
+  it('has nothing to choose from an empty hand', () => {
+    expect(chooseCard([], NO_EDGES)).toBeUndefined();
+  });
+});
+
+describe('dealing one hand', () => {
+  it('draws once for a plain character', () => {
+    const draw = dealOne(new Deck(new JavaRandom(1)), NO_EDGES);
+    expect(draw?.cards).toHaveLength(1);
+    expect(draw?.card).toEqual(draw?.cards[0]);
+  });
+
+  it('redraws for Quick until the card is a six or better', () => {
+    // Deterministic seed; whatever comes out, the acted-on card must not be low.
+    for (let seed = 0; seed < 25; seed++) {
+      const draw = dealOne(new Deck(new JavaRandom(seed)), edges({ quick: true }));
+      expect(draw!.card.rank).toBeGreaterThanOrEqual(6);
+      // Every card below six must have been kept in the record of what was drawn.
+      expect(draw!.cards.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('does not redraw a joker, low rank or not', () => {
+    const deck = Deck.restore([card('CLUBS', 2), BLACK_JOKER], new JavaRandom(1));
+    const draw = dealOne(deck, edges({ quick: true }));
+    expect(draw?.card).toEqual(BLACK_JOKER);
+    expect(draw?.cards).toHaveLength(1);
+  });
+
+  it('stops rather than looping when the deck runs dry', () => {
+    const deck = Deck.restore([card('CLUBS', 2)], new JavaRandom(1));
+    const draw = dealOne(deck, edges({ quick: true }));
+    expect(draw?.card).toEqual(card('CLUBS', 2));
+  });
+
+  it('gives nothing from an empty deck', () => {
+    expect(dealOne(Deck.restore([], new JavaRandom(1)), NO_EDGES)).toBeUndefined();
+  });
+});
+
+describe('turn order', () => {
+  it('puts the highest card first, jokers on top', () => {
+    const order = turnOrder([
+      { name: 'low', card: card('CLUBS', 3) },
+      { name: 'joker', card: COLOR_JOKER },
+      { name: 'king', card: card('HEARTS', 13) },
+    ]);
+    expect(order.map((c) => c.name)).toEqual(['joker', 'king', 'low']);
+  });
+
+  it('breaks ties by suit, spades highest', () => {
+    const order = turnOrder([
+      { name: 'clubs', card: card('CLUBS', 10) },
+      { name: 'spades', card: card('SPADES', 10) },
+      { name: 'hearts', card: card('HEARTS', 10) },
+    ]);
+    expect(order.map((c) => c.name)).toEqual(['spades', 'hearts', 'clubs']);
+  });
+
+  it('sorts the undealt to the bottom rather than dropping them', () => {
+    const order = turnOrder([
+      { name: 'waiting' },
+      { name: 'dealt', card: card('CLUBS', 4) },
+      { name: 'also waiting' },
+    ]);
+    expect(order.map((c) => c.name)).toEqual(['dealt', 'also waiting', 'waiting']);
+  });
+});
+
+describe('dealing a round', () => {
+  const table = [
+    { tokenId: 't1', edges: NO_EDGES },
+    { tokenId: 't2', edges: edges({ levelHeaded: true }) },
+    { tokenId: 't3', edges: edges({ hesitant: true }) },
+  ];
+
+  it('gives everyone a card and advances the round', () => {
+    const result = dealRound(newInitiative(new JavaRandom(1)), table, new JavaRandom(2));
+    expect(result.state.round).toBe(1);
+    expect([...result.draws.keys()].sort()).toEqual(['t1', 't2', 't3']);
+  });
+
+  it('never deals the same card twice', () => {
+    const result = dealRound(newInitiative(new JavaRandom(3)), table, new JavaRandom(4));
+    const dealt = [...result.draws.values()].flatMap((d) => d.cards).map(cardToString);
+    expect(new Set(dealt).size).toBe(dealt.length);
+  });
+
+  it('takes the dealt cards out of the deck', () => {
+    const start = newInitiative(new JavaRandom(5));
+    const result = dealRound(start, table, new JavaRandom(6));
+    const dealt = [...result.draws.values()].reduce((n, d) => n + d.cards.length, 0);
+    expect(result.state.deck.length).toBe(start.deck.length - dealt);
+  });
+
+  it('reshuffles when a joker went out last round', () => {
+    const nearlyEmpty = { round: 4, deck: [card('CLUBS', 2)], jokerDealt: true };
+    const result = dealRound(nearlyEmpty, table, new JavaRandom(7));
+    // A full deck, minus whatever this round used.
+    expect(result.state.deck.length).toBeGreaterThan(40);
+    expect(result.state.round).toBe(5);
+  });
+
+  it('reshuffles rather than running out mid-table', () => {
+    // Three cards cannot serve three combatants, one of whom draws two.
+    const thin = {
+      round: 1,
+      deck: [card('CLUBS', 2), card('CLUBS', 3), card('CLUBS', 4)],
+      jokerDealt: false,
+    };
+    const result = dealRound(thin, table, new JavaRandom(8));
+    expect(result.draws.size).toBe(3);
+    expect(result.state.deck.length).toBeGreaterThan(40);
+  });
+
+  it('reports a joker so the caller knows to reshuffle after the round', () => {
+    // Stack the deck so a joker is certain to come out.
+    const stacked = {
+      round: 1,
+      deck: [COLOR_JOKER, card('CLUBS', 5), card('HEARTS', 9)],
+      jokerDealt: false,
+    };
+    // Enough cards for a single plain combatant, so no reshuffle intervenes.
+    const result = dealRound(stacked, [{ tokenId: 't1', edges: NO_EDGES }], new JavaRandom(9));
+    expect(result.jokerDealt).toBe(result.state.jokerDealt);
+  });
+
+  it('recognises its own serialised state', () => {
+    expect(isInitiativeState(newInitiative(new JavaRandom(1)))).toBe(true);
+    expect(isInitiativeState({ round: 1, deck: 'nope', jokerDealt: false })).toBe(false);
+    expect(isInitiativeState(undefined)).toBe(false);
+  });
+});

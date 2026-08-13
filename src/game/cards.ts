@@ -107,6 +107,26 @@ export class Deck {
     this.shuffle();
   }
 
+  /**
+   * A deck resumed from a saved list of remaining cards.
+   *
+   * Needed because the VTT keeps the deck in scene metadata between rounds, so
+   * dealing has to pick up where the last client left off rather than starting
+   * from a fresh shuffle. Bot behaviour is untouched.
+   */
+  static restore(cards: readonly Card[], random: JavaRandom): Deck {
+    const deck = new Deck(random);
+    deck.currentDeck = [...cards];
+    deck.shuffleNeeded = false;
+    deck.jokerDealt = false;
+    return deck;
+  }
+
+  /** The cards still to be dealt, in deal order (drawn from the end). */
+  remaining(): Card[] {
+    return [...this.currentDeck];
+  }
+
   shuffle(): void {
     this.currentDeck = [...INITIAL_DECK];
     javaShuffle(this.currentDeck, this.random);
