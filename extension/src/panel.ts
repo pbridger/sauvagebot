@@ -8,7 +8,12 @@
  * a Shooting roll in Owlbear and `~s8` in Discord cannot drift apart.
  */
 import OBR from '@owlbear-rodeo/sdk';
-import { ATTRIBUTES, SKILLS, type Attribute, type Sheet, type Skill } from '../../src/rules/sheet.js';
+import {
+  ATTRIBUTES,
+  skillNames,
+  type Attribute,
+  type Sheet,
+} from '../../src/rules/sheet.js';
 import { parseArchetypeCards } from '../../src/rules/importArchetypeCard.js';
 import { damageExpression, parseGear, weaponSkill } from '../../src/rules/gear.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
@@ -602,7 +607,11 @@ function bindBar(sheet: Sheet): HTMLElement | undefined {
   // shares — five bandits on one Bandit sheet is the normal case, and the
   // earlier UI only ever let you bind the first.
   const boundHere = new Set(bound.map((t) => t.id));
-  const toBind = selectedTokenIds.filter((id) => !boundHere.has(id));
+  // Only character tokens we know about: a selection can include props, notes
+  // or drawings, and counting those made the button promise one more than it
+  // would actually bind.
+  const known = new Set(tokens.map((t) => t.id));
+  const toBind = selectedTokenIds.filter((id) => known.has(id) && !boundHere.has(id));
   if (toBind.length) {
     const bind = document.createElement('button');
     const first = tokens.find((t) => t.id === toBind[0]);
@@ -757,7 +766,7 @@ function render(): void {
   sheetEl.append(section('Skills'));
   const skills = document.createElement('div');
   skills.className = 'traits';
-  for (const skill of SKILLS) {
+  for (const skill of skillNames(sheet)) {
     const trait = sheet.skills[skill];
     // Untrained skills are shown too — rolling one at d4−2 is a normal thing to do.
     skills.append(
@@ -766,7 +775,7 @@ function render(): void {
         trait ? `d${trait.die}${withPenalty(trait.mod)}` : `d4${withPenalty(-2)}`,
         !trait,
         () => {
-          const { expression, explained } = rollSkill(sheet, skill as Skill, penalty);
+          const { expression, explained } = rollSkill(sheet, skill, penalty);
           publish({ character: sheet.name, label: skill, expression, explained });
         },
       ),
@@ -779,6 +788,9 @@ function render(): void {
   }
   if (sheet.edges.length) {
     sheetEl.append(section('Edges'), entryList(sheet.edges));
+  }
+  if (sheet.powers?.length) {
+    sheetEl.append(section('Powers'), entryList(sheet.powers));
   }
   renderGear(sheet, penalty);
 

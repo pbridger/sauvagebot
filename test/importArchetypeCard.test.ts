@@ -209,3 +209,86 @@ describe('JSON round trip', () => {
     expect(() => sheetFromJson('{"foo":1}')).toThrow(/not a character sheet/);
   });
 });
+
+/**
+ * The whole party, transcribed from the PDFs Damian supplied.
+ *
+ * Those PDFs carry no recoverable text — no /ToUnicode, no embedded font, and a
+ * /Differences array of bare numeric glyph names — so they were rendered, read,
+ * and rebuilt in this template. These tests are what stops a transcription
+ * error going unnoticed, and they pin the three ways the party's real cards
+ * broke the importer's original assumptions.
+ */
+describe('the rest of the party', () => {
+  const load = (file: string) =>
+    parseArchetypeCards(
+      readFileSync(fileURLToPath(new URL(`./fixtures/${file}`, import.meta.url)), 'utf8'),
+    )[0]!;
+
+  const doc = load('doc-amos-mochrane.html');
+  const jed = load('father-jedidiah-jed-tuffin.html');
+  const paige = load('paige-yellah.html');
+  const ed = load('sir-ed-fiddlebottom-iii.html');
+
+  it('reads all four', () => {
+    expect([doc, jed, paige, ed].map((s) => s.name)).toEqual([
+      'DOC AMOS MOCHRANE',
+      'FATHER JEDIDIAH "JED" TUFFIN',
+      'PAIGE YELLAH',
+      'SIR ED FIDDLEBOTTOM III',
+    ]);
+  });
+
+  it('keeps an arcane skill that is not on the printed list', () => {
+    // Faith is not one of the 26 the card prints; the old fixed list dropped it.
+    expect(jed.skills.Faith).toEqual({ die: 8 });
+  });
+
+  it('keeps a skill with a parenthetical specialisation', () => {
+    expect(paige.skills['Trade (Journalism)']).toEqual({ die: 6 });
+    expect(ed.skills['Language (Your Choice)']).toEqual({ die: 4 });
+    // …and does not invent the unspecialised version alongside it.
+    expect(paige.skills.Trade).toBeUndefined();
+  });
+
+  it('reads negative attribute modifiers', () => {
+    // Sir Ed is Elderly: −1 to Agility, Strength and Vigor.
+    expect(ed.attributes.agility).toEqual({ die: 6, mod: -1 });
+    expect(ed.attributes.vigor).toEqual({ die: 8, mod: -1 });
+    expect(ed.attributes.smarts).toEqual({ die: 8 });
+  });
+
+  it('reads a POWERS block, which only some characters have', () => {
+    expect(jed.powers?.map((p) => p.name)).toEqual([
+      'POWERS',
+      'POWER POINTS',
+      'BACKLASH',
+      "SINNIN'",
+    ]);
+    expect(jed.powers?.[1]?.text).toBe('20');
+    expect(doc.powers).toBeUndefined();
+  });
+
+  it('reads derived stats, including a Toughness with no armour', () => {
+    expect([doc.pace, doc.parry, doc.toughness]).toEqual([6, 5, 5]);
+    expect(ed.armor).toBeUndefined();
+  });
+
+  it('gets the gear, including weapons the parser must cope with', () => {
+    // Paige's LeMat is two weapons in one bracket; it must not be lost.
+    expect(paige.gear).toContain('LeMat Revolver');
+    expect(doc.gear).toContain("Doctor's bag");
+  });
+
+  it('fits the whole party in the room budget', () => {
+    const lean = [doc, jed, paige, ed].map(
+      (s) =>
+        sheetToJson({
+          ...s,
+          edges: s.edges.map((e) => ({ name: e.name })),
+          hindrances: s.hindrances.map((h) => ({ name: h.name })),
+        }).length,
+    );
+    expect(lean.reduce((a, b) => a + b, 0)).toBeLessThan(15_000 * 0.5);
+  });
+});

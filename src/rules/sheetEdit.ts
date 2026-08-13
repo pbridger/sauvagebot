@@ -11,34 +11,30 @@
  */
 import {
   ATTRIBUTES,
-  SKILLS,
+  BASE_SKILLS,
   emptySheet,
   isDieSides,
   type Attribute,
   type DieSides,
   type NamedEntry,
   type Sheet,
-  type Skill,
 } from './sheet.js';
 
 export type EntryList = 'edges' | 'hindrances';
 export type DerivedField = 'pace' | 'parry' | 'toughness' | 'armor';
 
-function withTrait<K extends string>(
-  current: Partial<Record<K, { die: DieSides; mod?: number }>>,
-  key: K,
-  die: DieSides | undefined,
-  mod: number | undefined,
-): Partial<Record<K, { die: DieSides; mod?: number }>> {
-  const next = { ...current };
+type Traits = Record<string, { die: DieSides; mod?: number }>;
+
+function withTrait<T extends Traits>(current: T, key: string, die: DieSides | undefined, mod: number | undefined): T {
+  const next: Traits = { ...current };
   if (die === undefined) {
     // Absent, not zero: an untrained skill rolls d4−2, which is not the same as
     // "has this skill at 0" — a distinction the whole sheet depends on.
     delete next[key];
-    return next;
+    return next as T;
   }
   next[key] = mod ? { die, mod } : { die };
-  return next;
+  return next as T;
 }
 
 export function setAttribute(
@@ -52,7 +48,7 @@ export function setAttribute(
 
 export function setSkill(
   sheet: Sheet,
-  skill: Skill,
+  skill: string,
   die: DieSides | undefined,
   mod?: number,
 ): Sheet {
@@ -157,4 +153,4 @@ export function parseMod(value: string): number | undefined {
 }
 
 export const ALL_ATTRIBUTES = ATTRIBUTES;
-export const ALL_SKILLS = SKILLS;
+export const ALL_SKILLS = BASE_SKILLS;

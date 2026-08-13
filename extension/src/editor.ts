@@ -10,7 +10,6 @@
  */
 import {
   ALL_ATTRIBUTES,
-  ALL_SKILLS,
   addEntry,
   parseDie,
   parseMod,
@@ -24,7 +23,7 @@ import {
   type DerivedField,
   type EntryList,
 } from '../../src/rules/sheetEdit.js';
-import type { Sheet } from '../../src/rules/sheet.js';
+import { skillNames, type Sheet } from '../../src/rules/sheet.js';
 
 const DICE = [4, 6, 8, 10, 12] as const;
 
@@ -208,13 +207,25 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
   const skillHeading = document.createElement('h2');
   skillHeading.textContent = 'Skills';
   skills.append(skillHeading);
-  for (const skill of ALL_SKILLS) {
+  // `skillNames` includes anything this character has beyond the printed list —
+  // Faith, "Trade (Journalism)" and so on — so an imported skill stays editable
+  // rather than being invisible here and silently preserved.
+  for (const skill of skillNames(sheet)) {
     skills.append(
       traitRow(skill, sheet.skills[skill], (die, mod) =>
         change(setSkill(sheet, skill, parseDie(die), parseMod(mod))),
       ),
     );
   }
+
+  const addSkill = document.createElement('button');
+  addSkill.className = 'add';
+  addSkill.textContent = '+ Add skill';
+  addSkill.addEventListener('click', () => {
+    const name = prompt('Skill name (e.g. Faith, Trade (Journalism))')?.trim();
+    if (name) change(setSkill(sheet, name, 4));
+  });
+  skills.append(addSkill);
   out.append(skills);
 
   out.append(entryEditor(sheet, 'hindrances', 'Hindrances', hooks));

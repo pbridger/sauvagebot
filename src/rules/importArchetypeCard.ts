@@ -17,14 +17,12 @@
  */
 import {
   ATTRIBUTES,
-  SKILLS,
   emptySheet,
   isDieSides,
   type Attribute,
   type DieSides,
   type NamedEntry,
   type Sheet,
-  type Skill,
   type Trait,
 } from './sheet.js';
 
@@ -61,7 +59,10 @@ function stripTags(html: string): string {
  * before this was fixed. Count depth instead.
  */
 function extractDiv(html: string, className: string, from = 0): string | undefined {
-  const open = new RegExp(`<div class="${className}"[^>]*>`, 'g');
+  // The class attribute may hold several names — the skills block is
+  // `class="skills-block comprehensive-skill-list"` — so match a whole token
+  // within it rather than the attribute in full.
+  const open = new RegExp(`<div class="[^"]*\\b${className}\\b[^"]*"[^>]*>`, 'g');
   open.lastIndex = from;
   const start = open.exec(html);
   if (!start) return undefined;
@@ -118,12 +119,16 @@ function trait(die: DieSides | undefined, mod: number | undefined): Trait | unde
  * that follows it up to the next label. That survives the attributes table, which
  * interleaves attribute and derived-stat columns in the same row.
  */
-function cellsByLabel(html: string): Map<string, string> {
+function cellsByLabel(
+  html: string,
+  { preserveCase = false }: { preserveCase?: boolean } = {},
+): Map<string, string> {
   const cells = new Map<string, string>();
   const pattern = /<td[^>]*>([^<]+)<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/g;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(html))) {
-    cells.set(decode(match[1]!).trim().toUpperCase(), match[2]!);
+    const label = decode(match[1]!).replace(/\s+/g, ' ').trim();
+    cells.set(preserveCase ? label : label.toUpperCase(), match[2]!);
   }
   return cells;
 }
@@ -220,20 +225,29 @@ export function parseArchetypeCard(cardHtml: string): Sheet {
     Object.assign(sheet, parseToughness(sheet.toughnessRaw));
   }
 
-  // --- skills, one row per skill in the printed order
-  const skillCells = cellsByLabel(extractDiv(cardHtml, 'skills-block') ?? cardHtml);
-  for (const skill of SKILLS) {
-    const cell = skillCells.get(skill.toUpperCase());
-    if (!cell) continue;
-    const value = trait(
-      selectedDie(cell),
-      parseMod(/<input[^>]*class="mod-input"[^>]*value="([^"]*)"/.exec(cell)?.[1]),
-    );
-    if (value) sheet.skills[skill as Skill] = value;
+  // --- skills: whatever the card lists, in the order it lists them.
+  //
+  // Not filtered against a known list. The party's cards carry Faith,
+  // "Trade (Journalism)" and "Language (Your Choice)" — an arcane skill and two
+  // parenthetical specialisations — and dropping those silently would lose real
+  // character data.
+  const skillsBlock = extractDiv(cardHtml, 'skills-block');
+  if (skillsBlock) {
+    for (const [label, cell] of cellsByLabel(skillsBlock, { preserveCase: true })) {
+      if (!/die-select/.test(cell)) continue;
+      const value = trait(
+        selectedDie(cell),
+        parseMod(/<input[^>]*class="mod-input"[^>]*value="([^"]*)"/.exec(cell)?.[1]),
+      );
+      if (value) sheet.skills[label] = value;
+    }
   }
 
   sheet.hindrances = parseEntries(sectionBody(cardHtml, 'HINDRANCES'));
   sheet.edges = parseEntries(sectionBody(cardHtml, 'EDGES'));
+  // Only Blessed, Hucksters and the like have one.
+  const powers = parseEntries(sectionBody(cardHtml, 'POWERS'));
+  if (powers.length) sheet.powers = powers;
 
   const gear = stripTags(sectionBody(cardHtml, 'GEAR') ?? '');
   if (gear) sheet.gear = gear;

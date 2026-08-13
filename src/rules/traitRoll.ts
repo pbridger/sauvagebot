@@ -10,7 +10,7 @@ import { CommandContext } from '../dice/evaluator.js';
 import { RollInterpreter } from '../dice/interpreter.js';
 import { JavaRandom } from '../dice/javaRandom.js';
 import { parse } from '../dice/parser.js';
-import { traitDie, type DieSides, type Sheet, type Skill } from './sheet.js';
+import { traitDie, type DieSides, type Sheet } from './sheet.js';
 
 export interface TraitRollRequest {
   die: DieSides;
@@ -49,7 +49,7 @@ export function rollTrait(
 /** Roll a named skill off a sheet, applying the untrained d4−2 where it applies. */
 export function rollSkill(
   sheet: Sheet,
-  skill: Skill,
+  skill: string,
   situational = 0,
   random?: JavaRandom,
 ): TraitRollResult {

@@ -18,15 +18,24 @@
 export const ATTRIBUTES = ['agility', 'smarts', 'spirit', 'strength', 'vigor'] as const;
 export type Attribute = (typeof ATTRIBUTES)[number];
 
-/** The SWADE skill list, in the order the party's cards print them. */
-export const SKILLS = [
+/**
+ * The skills the cards print by default, in their printed order.
+ *
+ * NOT an exhaustive list, and skills are NOT restricted to it. The party's own
+ * cards already break it three ways: Father Jed has **Faith**, Paige has
+ * **Trade (Journalism)** and Sir Ed **Language (Your Choice)** — an arcane skill
+ * and two parenthetical specialisations. A sheet may hold any skill name.
+ */
+export const BASE_SKILLS = [
   'Academics', 'Athletics', 'Battle', 'Boating', 'Com. Knowledge', 'Driving',
   'Fighting', 'Gambling', 'Healing', 'Intimidation', 'Language', 'Notice',
   'Occult', 'Performance', 'Persuasion', 'Piloting', 'Repair', 'Research',
   'Riding', 'Science', 'Shooting', 'Stealth', 'Survival', 'Taunt',
   'Thievery', 'Trade',
 ] as const;
-export type Skill = (typeof SKILLS)[number];
+
+/** A known skill name. Any string is legal; this is for autocomplete and ordering. */
+export type BaseSkill = (typeof BASE_SKILLS)[number];
 
 /** Die sides. A trait the character does not have is absent, not `0`. */
 export type DieSides = 4 | 6 | 8 | 10 | 12;
@@ -52,7 +61,8 @@ export interface Sheet {
   wildCard: boolean;
 
   attributes: Partial<Record<Attribute, Trait>>;
-  skills: Partial<Record<Skill, Trait>>;
+  /** Free-form: the cards carry arcane skills and parenthetical specialisations. */
+  skills: Record<string, Trait>;
 
   pace?: number;
   parry?: number;
@@ -66,6 +76,19 @@ export interface Sheet {
   /** Free text on the card, deliberately not parsed into items. */
   gear?: string;
   advances?: string;
+  /** The POWERS block: powers, Power Points, Backlash. Blessed and Hucksters have one. */
+  powers?: NamedEntry[];
+}
+
+/**
+ * Skill names to show, in a stable order: the printed list first, then anything
+ * this character has that is not on it, in the order the card gave them.
+ */
+export function skillNames(sheet: Sheet): string[] {
+  const extra = Object.keys(sheet.skills).filter(
+    (name) => !(BASE_SKILLS as readonly string[]).includes(name),
+  );
+  return [...BASE_SKILLS, ...extra];
 }
 
 // NB: per-token combat state lives in `obr/binding.ts`, not here — it belongs to
@@ -76,7 +99,7 @@ export function emptySheet(id: string, name: string): Sheet {
 }
 
 /** The die a trait rolls, defaulting to d4-2 for an untrained skill as SWADE does. */
-export function traitDie(sheet: Sheet, skill: Skill): { die: DieSides; mod: number } {
+export function traitDie(sheet: Sheet, skill: string): { die: DieSides; mod: number } {
   const trait = sheet.skills[skill];
   if (!trait) return { die: 4, mod: -2 };
   return { die: trait.die, mod: trait.mod ?? 0 };

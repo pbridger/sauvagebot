@@ -101,6 +101,7 @@ export async function renderBadges(
   if (!(await OBR.scene.isReady())) return;
   await clearBadges();
 
+  const dpi = await OBR.scene.grid.getDpi();
   const byId = new Map(sheets.map((sheet) => [sheet.id, sheet]));
   const items: Item[] = [];
 
@@ -113,12 +114,17 @@ export async function renderBadges(
     // Wounds and Fatigue below, Shaken above: two separate markers, because the
     // two are independent. One badge meant a Shaken-but-unwounded character
     // looked fine, and a wounded one looked Shaken.
-    // Half-width for horizontal placement, half-height for vertical. Using the
-    // height for both is what pushed the card badge miles to the right of a
-    // portrait token: the mooks measure 1 square wide by 1.78 tall, so the x
-    // offset was nearly twice what it should have been.
-    const halfWidth = token.width / 2;
-    const halfHeight = token.height / 2;
+    // Half-width horizontally, half-height vertically — and both clamped.
+    //
+    // The mook tokens are 768x1365 at 768 dpi, so they render 1 square wide by
+    // 1.78 tall. The geometry is right, but the *artwork* is a standing figure
+    // with empty space around it, so a badge placed correctly against the image
+    // edge floats away from the creature you can actually see. There is no way
+    // to find where the visible pixels stop, so the offset is capped at roughly
+    // one square: correct for normal tokens, and close enough for tall ones.
+    const cap = dpi * 0.6;
+    const halfWidth = Math.min(token.width / 2, cap);
+    const halfHeight = Math.min(token.height / 2, cap);
 
     const damage = damageBadge(state, sheet.wildCard);
     if (damage) {
@@ -139,9 +145,9 @@ export async function renderBadges(
           token,
           cardToString(state.card),
           joker ? JOKER_PURPLE : CARD_FACE,
-          // Mid-left: out of the way of SHAKEN above and the damage below, and
+          // Mid-left: out of the way of SHAKEN above and the damage below, so
           // it stays put as those come and go.
-          { x: -halfWidth - GAP * 4, y: LABEL_HEIGHT / 2 },
+          { x: -halfWidth - GAP * 7, y: LABEL_HEIGHT * 0.75 },
           joker ? '#ffffff' : isRedSuit(state.card) ? CARD_RED : CARD_BLACK,
         ),
       );
