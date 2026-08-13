@@ -109,7 +109,8 @@ export async function characterTokens(): Promise<
   (TokenLike & {
     imageUrl?: string;
     position: { x: number; y: number };
-    /** Rendered height in scene units, for placing badges clear of the artwork. */
+    /** Rendered size in scene units, for placing badges clear of the artwork. */
+    width: number;
     height: number;
     /**
      * The artwork's centre in scene units. Not the same as `position`: an image
@@ -141,6 +142,7 @@ export async function characterTokens(): Promise<
       const scaleY = asImage.scale?.y ?? 1;
       const pixelsW = asImage.image?.width ?? imageDpi;
       const pixelsH = asImage.image?.height ?? imageDpi;
+      const width = pixelsW * unit * scaleX;
       const height = pixelsH * unit * scaleY;
 
       // An item's `position` is its `grid.offset` point, not its middle. Tokens
@@ -159,6 +161,7 @@ export async function characterTokens(): Promise<
         // Needed to place a badge: an attached item keeps its own position and
         // moves with the parent by delta, so it must start in the right spot.
         position: { ...item.position },
+        width: Number.isFinite(width) && width > 0 ? width : sceneDpi,
         height: Number.isFinite(height) && height > 0 ? height : sceneDpi,
         centre: Number.isFinite(centre.x) && Number.isFinite(centre.y)
           ? centre

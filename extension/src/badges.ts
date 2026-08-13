@@ -47,7 +47,8 @@ const GAP = 4;
 interface Token extends TokenLike {
   /** The artwork's centre, which is not necessarily the item's `position`. */
   centre: { x: number; y: number };
-  /** Rendered height in scene units. */
+  /** Rendered size in scene units. */
+  width: number;
   height: number;
 }
 
@@ -109,19 +110,22 @@ export async function renderBadges(
     // Wounds and Fatigue below, Shaken above: two separate markers, because the
     // two are independent. One badge meant a Shaken-but-unwounded character
     // looked fine, and a wounded one looked Shaken.
-    // Measured from the token's real half-height rather than assuming one grid
-    // square: a big token would otherwise wear its badge across its middle.
-    const edge = token.height / 2;
+    // Half-width for horizontal placement, half-height for vertical. Using the
+    // height for both is what pushed the card badge miles to the right of a
+    // portrait token: the mooks measure 1 square wide by 1.78 tall, so the x
+    // offset was nearly twice what it should have been.
+    const halfWidth = token.width / 2;
+    const halfHeight = token.height / 2;
 
     const damage = damageBadge(state, sheet.wildCard);
     if (damage) {
       const colour = state.wounds > 0 ? WOUND_RED : FATIGUE_AMBER;
       // A label grows upward from its position, so clearing the bottom edge
       // takes the half-height plus a whole label.
-      items.push(badge(token, damage, colour, { x: 0, y: edge + LABEL_HEIGHT }));
+      items.push(badge(token, damage, colour, { x: 0, y: halfHeight + LABEL_HEIGHT }));
     }
     if (state.shaken) {
-      items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -edge - GAP }));
+      items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -halfHeight - GAP }));
     }
     // The initiative card sits to the side, so it does not fight with SHAKEN for
     // the space above the token during a round when both are true.
@@ -131,7 +135,7 @@ export async function renderBadges(
           token,
           cardToString(state.card),
           isJoker(state.card) ? JOKER_PURPLE : CARD_DARK,
-          { x: edge + GAP * 4, y: -edge + LABEL_HEIGHT },
+          { x: halfWidth + GAP * 4, y: -halfHeight + LABEL_HEIGHT },
           // Hearts and diamonds read red, as they do on a real card.
           isRedSuit(state.card) ? SUIT_RED : '#ffffff',
         ),
