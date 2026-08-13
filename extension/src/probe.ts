@@ -469,6 +469,56 @@ async function attachmentTest(): Promise<void> {
   }
 }
 
+/**
+ * Dump a token's geometry.
+ *
+ * Badge placement has now been wrong twice on one token and right on another,
+ * which means the model of how OBR positions an image is wrong rather than the
+ * arithmetic. Print what the item actually says instead of guessing a third time.
+ */
+async function tokenGeometry(): Promise<void> {
+  const selection = await OBR.player.getSelection();
+  const id = selection?.[0];
+  if (!id) {
+    log('select a token first', 'bad');
+    return;
+  }
+  const [item] = await OBR.scene.items.getItems([id]);
+  if (!item) {
+    log('selection is not a scene item', 'bad');
+    return;
+  }
+  const sceneDpi = await OBR.scene.grid.getDpi();
+  const raw = item as unknown as {
+    image?: { width?: number; height?: number };
+    grid?: { dpi?: number; offset?: { x: number; y: number } };
+    scale?: { x?: number; y?: number };
+  };
+
+  log(`--- geometry of "${item.name}" (${item.type}, ${item.layer}) ---`);
+  log(`  scene dpi ......... ${sceneDpi}`);
+  log(`  position .......... ${item.position.x.toFixed(1)}, ${item.position.y.toFixed(1)}`);
+  log(`  scale ............. ${raw.scale?.x ?? '—'} x ${raw.scale?.y ?? '—'}`);
+  log(`  image px .......... ${raw.image?.width ?? '—'} x ${raw.image?.height ?? '—'}`);
+  log(`  image grid dpi .... ${raw.grid?.dpi ?? '(none)'}`);
+  log(`  image grid offset . ${raw.grid?.offset ? `${raw.grid.offset.x}, ${raw.grid.offset.y}` : '(none)'}`);
+
+  // The same arithmetic the extension uses, so a wrong number is visible here.
+  const imageDpi = raw.grid?.dpi ?? sceneDpi;
+  const unit = sceneDpi / imageDpi;
+  const pixelsW = raw.image?.width ?? imageDpi;
+  const pixelsH = raw.image?.height ?? imageDpi;
+  const offset = raw.grid?.offset ?? { x: pixelsW / 2, y: pixelsH / 2 };
+  const centre = {
+    x: item.position.x + (pixelsW / 2 - offset.x) * unit * (raw.scale?.x ?? 1),
+    y: item.position.y + (pixelsH / 2 - offset.y) * unit * (raw.scale?.y ?? 1),
+  };
+  const height = pixelsH * unit * (raw.scale?.y ?? 1);
+  log(`  => computed centre  ${centre.x.toFixed(1)}, ${centre.y.toFixed(1)}`, 'ok');
+  log(`  => computed height  ${height.toFixed(1)} (${(height / sceneDpi).toFixed(2)} squares)`, 'ok');
+  log('  If the height is far off what you see on the map, that is the bug.');
+}
+
 // ---------------------------------------------------------------- wiring
 
 OBR.onReady(async () => {
@@ -480,6 +530,7 @@ OBR.onReady(async () => {
   button('item', writeToSelectedItem);
   button('compression', compressionCheck);
   button('attach', attachmentTest);
+  button('geometry', tokenGeometry);
 
   await showIdentity();
   await showStamps();

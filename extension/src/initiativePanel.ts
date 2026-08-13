@@ -35,6 +35,8 @@ export interface InitiativeHooks {
   onDeal: () => void;
   onClear: () => void;
   onSelect: (tokenId: string) => void;
+  /** Select the token *and* show its character sheet — "who is next, what can they do". */
+  onOpenSheet: (tokenId: string) => void;
   /** Whichever token is selected on the map, so the list can highlight it. */
   selectedTokenId?: string;
   /**
@@ -141,7 +143,7 @@ export function renderInitiative(
 
     const name = document.createElement('span');
     name.className = 'who';
-    name.textContent = combatant.name;
+    name.textContent = displayName(combatant, all);
     row.append(name);
 
     // Same colours as the token badges and the sheet pips: one scheme throughout.
@@ -171,6 +173,17 @@ export function renderInitiative(
       }
     }
 
+    const open = document.createElement('button');
+    open.className = 'sheet-link';
+    open.textContent = 'Sheet';
+    open.title = `Show ${combatant.sheet.name}'s sheet`;
+    open.addEventListener('click', (event) => {
+      // Without this the row's own handler also fires and marks the turn taken.
+      event.stopPropagation();
+      hooks.onOpenSheet(combatant.tokenId);
+    });
+    row.append(open);
+
     row.addEventListener('click', () => hooks.onSelect(combatant.tokenId));
     list.append(row);
   }
@@ -184,6 +197,20 @@ export function renderInitiative(
   }
 
   return out;
+}
+
+/**
+ * The character's name, not the token's — a token called "Npc Linguist 4" tells
+ * the GM nothing about who is acting.
+ *
+ * The exception is a gang of Extras sharing one sheet, where the sheet name is
+ * identical for all of them and the token name is the only way to tell which
+ * bandit is up. There, and only there, the token name is appended.
+ */
+function displayName(combatant: Combatant, all: readonly Combatant[]): string {
+  const shared = all.filter((other) => other.sheet.id === combatant.sheet.id).length > 1;
+  if (!shared || combatant.name === combatant.sheet.name) return combatant.sheet.name;
+  return `${combatant.sheet.name} · ${combatant.name}`;
 }
 
 /** Compact wound / fatigue / Shaken markers, matching the token badge colours. */

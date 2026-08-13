@@ -84,6 +84,7 @@ let selectedId: string | undefined;
 
 const log = new RollLog();
 let me = 'someone';
+/** Set only for the duration of one roll, by the Secret button. */
 let secretRolls = false;
 let editing = false;
 let tab: 'sheet' | 'initiative' = 'sheet';
@@ -275,6 +276,7 @@ function renderSheetArea(): void {
         onDeal: () => void deal(),
         onClear: () => void endFight(),
         onSelect: (tokenId) => void takeTurn(tokenId),
+        onOpenSheet: (tokenId) => void openSheetFor(tokenId),
         acted,
         ...(selectedTokenId ? { selectedTokenId } : {}),
       }, lastDraws),
@@ -343,6 +345,17 @@ async function takeTurn(tokenId: string): Promise<void> {
   if (acted.has(tokenId)) acted.delete(tokenId);
   else acted.add(tokenId);
   renderSheetArea();
+  await OBR.player.select([tokenId]);
+}
+
+/** Jump to a combatant's sheet: who is next, and what can they do. */
+async function openSheetFor(tokenId: string): Promise<void> {
+  const binding = readBinding(tokens.find((t) => t.id === tokenId)?.metadata);
+  if (binding) {
+    selectedId = binding.sheetId;
+    renderRoster();
+  }
+  setTab('sheet');
   await OBR.player.select([tokenId]);
 }
 
@@ -982,13 +995,6 @@ OBR.onReady(async () => {
   // height change there alone would not reach an already-installed extension.
   await OBR.action.setHeight(900);
 
-  const secretToggle = el<HTMLInputElement>('secret');
-  secretToggle.checked = secretRolls;
-  secretToggle.addEventListener('change', () => {
-    secretRolls = secretToggle.checked;
-  });
-  // Available to everyone, not just the GM: a player rolling quietly is normal,
-  // and the roll never leaves this machine either way.
 
   OBR.broadcast.onMessage(ROLL_CHANNEL, (event) => {
     if (!isRollEntry(event.data)) return;
@@ -1044,12 +1050,22 @@ OBR.onReady(async () => {
   });
   el('export').addEventListener('click', () => void exportRoster());
 
+  // Two buttons rather than a checkbox plus Roll: rolling in secret is one
+  // click, and there is no sticky mode to forget you left on. Available to
+  // everyone, not just the GM — a player rolling quietly is normal, and the
+  // roll never leaves this machine either way.
   const expr = el<HTMLInputElement>('expr');
+  const rollTyped = (secret: boolean): void => {
+    secretRolls = secret;
+    rollFreeform(expr.value);
+    secretRolls = false;
+    expr.select();
+  };
   el<HTMLFormElement>('freeform').addEventListener('submit', (event) => {
     event.preventDefault();
-    rollFreeform(expr.value);
-    expr.select();
+    rollTyped(false);
   });
+  el('roll-secret').addEventListener('click', () => rollTyped(true));
 
   // Another player editing their own sheet must show up here without a reload.
   // Our own writes are skipped: re-rendering mid-edit would blow away focus.
