@@ -1,11 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { JavaRandom } from '../src/dice/javaRandom.js';
 import { CommandContext } from '../src/dice/evaluator.js';
 import { RollInterpreter } from '../src/dice/interpreter.js';
 import { parse } from '../src/dice/parser.js';
 
-const CORPUS = '/Users/pbridger/dev/savage/savagebot/src/test/resources/conformance-corpus.tsv';
+/**
+ * A copy of `src/test/resources/conformance-corpus.tsv` from the Java project,
+ * checked in here on purpose.
+ *
+ * It used to be read from that repo by absolute path, which meant the one test
+ * that proves the port is faithful ran only on the machine that happened to have
+ * both checkouts — and did not run in CI at all. It is 27 kB of the most valuable
+ * test data in the project; carrying a copy is cheaper than not running it.
+ *
+ * Regenerate by re-running the Java generator and copying the file over.
+ */
+const CORPUS = fileURLToPath(new URL('./fixtures/conformance-corpus.tsv', import.meta.url));
 
 function evaluate(expression: string, seed: number): string {
   const statements = parse([expression]);
