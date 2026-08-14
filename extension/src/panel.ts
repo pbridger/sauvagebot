@@ -1626,9 +1626,11 @@ function render(): void {
     const rest = document.createElement('button');
     rest.className = 'trait untrained roll-untrained';
     const label = document.createElement('span');
-    label.textContent = `Untrained (${untrained.length})`;
+    // No count: it pushed this one button onto two lines, and the number is not
+    // something anyone acts on — the roll is the same either way.
+    label.textContent = 'Untrained';
     rest.append(label, dieLabel('d4', -2));
-    rest.title = 'Roll d4−2 for any untrained skill';
+    rest.title = `Roll d4−2 for any of the ${untrained.length} untrained skills`;
     rest.addEventListener('click', () =>
       publishTrait(
         sheet,
