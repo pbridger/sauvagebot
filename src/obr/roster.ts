@@ -157,6 +157,36 @@ export class Roster {
     await this.store.remove(TEXT_KEY);
   }
 
+  /** What the dictionary currently costs, so the choice to drop it is informed. */
+  async rulesTextSize(): Promise<number> {
+    const text = await this.rulesText();
+    return Object.keys(text).length ? JSON.stringify(text).length + TEXT_KEY.length + 4 : 0;
+  }
+
+  /**
+   * Rebuild the dictionary from a lookup — in practice the shipped rulebook
+   * catalogue — so dropping it is reversible.
+   *
+   * What cannot come back is text that was never in the book: a homebrew edge, or
+   * a variant whose wording came off an imported card. The lookup returns nothing
+   * for those and they stay bare, which is why the caller warns first.
+   *
+   * The lookup is passed in rather than imported so this module stays free of the
+   * catalogue, and so a caller can supply a different book.
+   */
+  async rebuildRulesText(lookup: (name: string) => string | undefined): Promise<number> {
+    const text: RulesText = {};
+    for (const sheet of await this.list()) {
+      for (const entry of [...sheet.edges, ...sheet.hindrances]) {
+        const found = lookup(entry.name);
+        if (found) text[entry.name] = found;
+      }
+    }
+    if (!Object.keys(text).length) return 0;
+    await this.store.write(TEXT_KEY, text);
+    return Object.keys(text).length;
+  }
+
   /** Whole-roster export, with prose reattached so the file stands on its own. */
   async export(): Promise<RosterExport> {
     return {

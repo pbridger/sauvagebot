@@ -4,7 +4,7 @@
   "manifest_version": 1,
   "author": "pbridger",
   "icon": "/icon.svg",
-  "description": "Character sheets, trait rolls and Fate Chips for Deadlands: The Weird West.",
+  "description": "Character sheets, trait rolls, Bennies and initiative for Deadlands: The Weird West.",
   "action": {
     "title": "Deadlands",
     "icon": "/icon.svg",

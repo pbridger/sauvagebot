@@ -77,6 +77,7 @@ import {
   situationsOf,
   toggleCondition,
 } from '../../src/rules/modifiers.js';
+import { findEntry } from '../../src/rules/catalogue.js';
 import { renderBadges } from './badges.js';
 import { BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
@@ -593,6 +594,8 @@ function renderTable(): HTMLElement {
   );
   wrap.append(session);
 
+  wrap.append(storageBlock());
+
   const storage = document.createElement('p');
   storage.className = 'pane-note';
   storage.id = 'pane-storage';
@@ -601,6 +604,84 @@ function renderTable(): HTMLElement {
   });
   wrap.append(storage);
 
+  return wrap;
+}
+
+/**
+ * Storage relief: the rules-text dictionary, and a switch to drop it.
+ *
+ * The dictionary is every edge and hindrance's prose, stored once and shared by
+ * the party. It is the largest thing in the room and the least load-bearing —
+ * without it a sheet still rolls, it just lists its edges without their wording.
+ *
+ * Dropping it is reversible because the book ships inside the extension: turning
+ * it back on rebuilds from the catalogue. What does not come back is text that
+ * was never in the book, which is what the warning is about.
+ *
+ * This is a stopgap and worth naming as one. The real fix is not storing prose in
+ * a 15 kB room document at all.
+ */
+function storageBlock(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  const heading = paneHeading(
+    'Rules text',
+    'The prose behind every edge and hindrance, shared by the whole party. ' +
+      'The biggest thing in the room, and the only one a sheet can do without.',
+  );
+  wrap.append(heading);
+
+  const row = document.createElement('div');
+  row.className = 'pane-buttons';
+  const button = document.createElement('button');
+  button.textContent = 'Rules text';
+  row.append(button);
+  const note = document.createElement('span');
+  note.className = 'pane-note';
+  row.append(note);
+  wrap.append(row);
+
+  const show = (): void => {
+    void roster.rulesTextSize().then((size) => {
+      const on = size > 0;
+      button.textContent = on ? `Drop rules text (${size} chars)` : 'Restore rules text';
+      button.title = on
+        ? 'Free the space. Edges and hindrances keep their names and lose their wording.'
+        : 'Rebuild the wording from the rulebook shipped with this extension';
+      note.textContent = on ? '' : 'not stored';
+    });
+  };
+
+  button.addEventListener('click', () => {
+    void (async () => {
+      try {
+        const size = await roster.rulesTextSize();
+        if (size > 0) {
+          if (
+            !confirm(
+              'Drop the rules text? Edges and hindrances keep their names and lose their ' +
+                'descriptions. Restoring rebuilds them from the rulebook — anything homebrew, ' +
+                'or worded differently on an imported card, will not come back.',
+            )
+          ) {
+            return;
+          }
+          await roster.dropRulesText();
+        } else {
+          const count = await roster.rebuildRulesText((name) => findEntry(name)?.text);
+          notify(count ? `Restored wording for ${count} entries` : 'Nothing in the book to restore');
+        }
+        sheets = await roster.listFull();
+        show();
+        await showBudget();
+        renderSheetArea();
+      } catch (error) {
+        notify(describe(error));
+      }
+    })();
+  });
+
+  show();
   return wrap;
 }
 

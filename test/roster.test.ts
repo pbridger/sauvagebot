@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
-import { sheetToJson } from '../src/rules/sheet.js';
+import { emptySheet, sheetToJson, type Sheet } from '../src/rules/sheet.js';
 import { Roster, TEXT_KEY, joinSheet, splitSheet } from '../src/obr/roster.js';
 import { ROOM_CAPACITY, VerifiedStore, usedBytes, type Backend } from '../src/obr/store.js';
 
@@ -215,5 +215,46 @@ describe('export and import', () => {
   it('rejects a file that is not a roster export', async () => {
     const { roster } = newRoster();
     await expect(roster.import('{"hello":true}')).rejects.toThrow(/not a roster export/);
+  });
+});
+
+describe('dropping and restoring the rules text', () => {
+  const withText = (): Sheet => ({
+    ...emptySheet('reggie', 'Reggie'),
+    edges: [{ name: 'QUICK', text: 'Draw again on a five or lower.' }],
+    hindrances: [{ name: 'LOYAL', text: 'Never abandons a friend.' }],
+  });
+
+  it('reports what the dictionary costs, and nothing when there is none', async () => {
+    const { roster } = newRoster();
+    expect(await roster.rulesTextSize()).toBe(0);
+    await roster.save(withText());
+    expect(await roster.rulesTextSize()).toBeGreaterThan(50);
+    await roster.dropRulesText();
+    expect(await roster.rulesTextSize()).toBe(0);
+  });
+
+  it('rebuilds from a book, leaving sheets untouched', async () => {
+    const { roster } = newRoster();
+    await roster.save(withText());
+    await roster.dropRulesText();
+    expect((await roster.get('reggie'))?.edges[0]?.text).toBeUndefined();
+
+    const restored = await roster.rebuildRulesText((name) =>
+      name === 'QUICK' ? 'Draw again on a five or lower.' : undefined,
+    );
+    expect(restored).toBe(1);
+    expect((await roster.get('reggie'))?.edges[0]?.text).toBe('Draw again on a five or lower.');
+    // Not in the book we handed it, so it stays bare — which is what the warning
+    // in the UI is about.
+    expect((await roster.get('reggie'))?.hindrances[0]?.text).toBeUndefined();
+  });
+
+  it('writes nothing when the book knows none of it', async () => {
+    const { roster, backend } = newRoster();
+    await roster.save(withText());
+    await roster.dropRulesText();
+    expect(await roster.rebuildRulesText(() => undefined)).toBe(0);
+    expect(Object.keys(backend.data).some((k) => k.includes('rules-text'))).toBe(false);
   });
 });

@@ -1,0 +1,58 @@
+# Publish the Owlbear Rodeo extension to GitHub Pages.
+#
+# OBR installs an extension by fetching its manifest over HTTPS with CORS, which
+# is exactly what Pages serves. The result is a link anyone can paste into
+# Owlbear's "Add Extension" box:
+#
+#     https://pbridger.github.io/sauvagebot/manifest.json
+#
+# A project site lives under /<repo>/, so the build is told its base path — every
+# path in the manifest has to carry that prefix or OBR will fetch the popover
+# from the domain root and get nothing.
+name: Publish extension
+
+on:
+  push:
+    branches: [typescript-rewrite]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; a queued run supersedes an older one rather than racing.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The rules layer ships to both the bot and the extension, so a broken
+      # build should not reach a room Damian is running a game in.
+      - run: npm test
+      - run: npm run ext:typecheck
+      - run: npm run ext:build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-extension
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

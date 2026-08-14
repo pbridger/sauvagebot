@@ -218,3 +218,27 @@ registered is gone. Paul has said not to worry about it.
 
 `~/dev/savage` is **not** a git repo. `savagebot-ts/docs/` holds the versioned copies of these
 documents; edit those.
+
+## Installing the extension in someone else's room
+
+The extension is published to GitHub Pages by `.github/workflows/pages.yml` on
+every push to `typescript-rewrite`. The install link is the manifest URL:
+
+    https://pbridger.github.io/sauvagebot/manifest.json
+
+In Owlbear Rodeo: **Profile → Extensions → Add Custom Extension**, paste that,
+install. Nothing needs to be installed per-room — an extension is added to an
+account and then enabled in a room.
+
+**One-off setup, on GitHub:** Settings → Pages → Source: **GitHub Actions**.
+Until that is set the workflow builds and the deploy step fails.
+
+A project site is served from `/<repo>/` rather than a domain root, so the build
+takes `VITE_BASE` and rewrites the manifests' paths to match (see
+`extension/vite.config.ts`). Building without it — `npm run ext:build` — still
+produces a root-served build for local work.
+
+**What this does not solve:** the room's ~15 kB metadata budget. Two Marshals
+running the same roster hit the same ceiling. See the rules-text switch on the
+Table tab for the stopgap, and OBR-DEADLANDS-PLAN.md §2 for what a real fix
+looks like.
