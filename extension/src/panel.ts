@@ -106,7 +106,9 @@ let me = 'someone';
 /** Set only for the duration of one roll, by the Secret button. */
 let secretRolls = false;
 let editing = false;
-let tab: 'sheet' | 'initiative' = 'sheet';
+type Tab = 'sheet' | 'initiative' | 'table';
+let tab: Tab = 'sheet';
+let isGM = false;
 let initiative: InitiativeState | undefined;
 /** What each token drew this round, so the panel can show the discarded cards. */
 let lastDraws: Map<string, Draw> = new Map();
@@ -252,9 +254,10 @@ function scheduleSave(sheet: Sheet): void {
 }
 
 /**
- * Only shown once the budget is worth worrying about. A permanent readout of a
- * number that is fine 99% of the time is noise, and noise is what you stop
- * reading before the one time it matters.
+ * The footer warns only when the budget is worth worrying about — a permanent
+ * readout of a number that is fine 99% of the time is noise, and noise is what
+ * you stop reading before the one time it matters. The exact figure lives in the
+ * GM's Table pane, where someone has gone looking for it.
  */
 async function showBudget(): Promise<void> {
   const { used, capacity, fraction } = await store.usage();
@@ -303,8 +306,8 @@ function entryList(entries: Sheet['edges']): HTMLElement {
 }
 
 function renderSheetArea(): void {
-  if (pasting) {
-    sheetEl.replaceChildren(renderPaste());
+  if (tab === 'table') {
+    sheetEl.replaceChildren(pasting ? renderPaste() : renderTable());
     return;
   }
   if (tab === 'initiative') {
@@ -430,16 +433,117 @@ async function endFight(): Promise<void> {
   await refreshTokens();
 }
 
-function setTab(next: 'sheet' | 'initiative'): void {
+function setTab(next: Tab): void {
   tab = next;
   pasting = false;
-  for (const name of ['sheet', 'initiative'] as const) {
+  for (const name of ['sheet', 'initiative', 'table'] as const) {
     el(`tab-${name}`).setAttribute('aria-selected', String(name === next));
   }
-  // The character picker, Edit, Import and Export are all sheet-scoped; on the
-  // Initiative tab they are just a row of controls that do nothing useful.
+  // The picker and Edit are character-scoped; on the other tabs they are a row
+  // of controls that do nothing useful.
   el('bar').hidden = next !== 'sheet';
   renderSheetArea();
+}
+
+/**
+ * The GM's pane: everything that acts on the table rather than on a character.
+ *
+ * Split out because those are a different kind of work — done between fights,
+ * not during one — and because they were crowding a toolbar that a player has
+ * no use for. Hidden from players, which is a guard rail rather than a
+ * permission: anyone can still write the metadata, but nobody hits "New
+ * session" by accident and wipes the party's Bennies with no undo.
+ */
+function renderTable(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'table-pane';
+
+  const roster = document.createElement('div');
+  roster.className = 'pane-block';
+  roster.append(paneHeading('Roster', `${sheets.length} character(s)`));
+  roster.append(
+    paneButtons([
+      ['New character', 'A blank sheet to fill in by hand', () => void addBlank()],
+      ['Add mooks…', 'Paste stat blocks from a book', () => {
+        pasting = true;
+        renderSheetArea();
+      }],
+      ['Import…', 'Archetype cards, or a roster JSON', () => bar.file.click()],
+      ['Export', 'Download the whole roster', () => void exportRoster()],
+    ]),
+  );
+  wrap.append(roster);
+
+  const session = document.createElement('div');
+  session.className = 'pane-block';
+  session.append(
+    paneHeading('Session', 'Unused Bennies are lost when a session ends'),
+  );
+  session.append(
+    paneButtons([
+      [
+        'New session',
+        'Every Wild Card back to 3 Bennies',
+        () => {
+          void (async () => {
+            if (!confirm('Start a new session? Every Wild Card goes back to 3 Bennies.')) return;
+            await bank.newSession(sheets);
+            bennies = await bank.all();
+            renderSheetArea();
+            publish({
+              label: 'New session',
+              expression: 'benny',
+              explained: 'every Wild Card back to **3** Bennies',
+            });
+          })();
+        },
+      ],
+    ]),
+  );
+  wrap.append(session);
+
+  const storage = document.createElement('p');
+  storage.className = 'pane-note';
+  storage.id = 'pane-storage';
+  void store.usage().then(({ used, capacity, fraction }) => {
+    storage.textContent = `Roster storage: ${used} of ${capacity} chars (${Math.round(fraction * 100)}%)`;
+  });
+  wrap.append(storage);
+
+  return wrap;
+}
+
+function paneHeading(title: string, note: string): HTMLElement {
+  const wrap = document.createElement('div');
+  const h = document.createElement('h2');
+  h.textContent = title;
+  const p = document.createElement('p');
+  p.className = 'pane-note';
+  p.textContent = note;
+  wrap.append(h, p);
+  return wrap;
+}
+
+function paneButtons(items: [string, string, () => void][]): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'pane-buttons';
+  for (const [label, title, onClick] of items) {
+    const button = document.createElement('button');
+    button.textContent = label;
+    button.title = title;
+    button.addEventListener('click', onClick);
+    row.append(button);
+  }
+  return row;
+}
+
+async function addBlank(): Promise<void> {
+  const sheet = newCharacter('New Character', sheets);
+  await roster.save(sheet);
+  selectedId = sheet.id;
+  await reload();
+  setTab('sheet');
+  setEditing(true);
 }
 
 /**
@@ -1244,10 +1348,39 @@ function renderRoster(): void {
   bar.who.disabled = sheets.length === 0;
 }
 
+const MINE_PREFIX = 'com.savagebot/mine/';
+
+/**
+ * Remember which character a player was looking at, so the panel opens on their
+ * own sheet instead of whoever sorts first.
+ *
+ * Kept in room metadata under the player's id rather than in player metadata,
+ * which does not survive a tab close (measured, milestone 0). Only players are
+ * tracked: the GM moves between every sheet at the table, so restoring their
+ * last one would be noise.
+ */
+async function rememberMine(): Promise<void> {
+  if (isGM || !selectedId) return;
+  try {
+    await store.write(`${MINE_PREFIX}${OBR.player.id}`, selectedId);
+  } catch {
+    // Not worth interrupting anyone over; it is a convenience.
+  }
+}
+
+async function myCharacter(): Promise<string | undefined> {
+  if (isGM) return undefined;
+  const id = await store.read<string>(`${MINE_PREFIX}${OBR.player.id}`);
+  return typeof id === 'string' ? id : undefined;
+}
+
 async function reload(): Promise<void> {
   sheets = await roster.listFull();
   bennies = await bank.all();
-  if (!sheets.some((s) => s.id === selectedId)) selectedId = sheets[0]?.id;
+  if (!sheets.some((s) => s.id === selectedId)) {
+    const mine = await myCharacter();
+    selectedId = (mine && sheets.some((s) => s.id === mine) ? mine : undefined) ?? sheets[0]?.id;
+  }
   renderRoster();
   renderSheetArea();
   await showBudget();
@@ -1385,6 +1518,11 @@ OBR.onReady(async () => {
   roster = new Roster(store, notify);
   bank = new BennyBank(store);
   me = await OBR.player.getName();
+  isGM = (await OBR.player.getRole()) === 'GM';
+  // A guard rail, not a permission: any client could still write these keys.
+  // What it prevents is a player hitting "New session" by accident and wiping
+  // the party's Bennies, which has no undo.
+  el('tab-table').hidden = !isGM;
   // Set at runtime as well as in the manifest: OBR caches the manifest, so a
   // height change there alone would not reach an already-installed extension.
   await OBR.action.setHeight(900);
@@ -1417,37 +1555,25 @@ OBR.onReady(async () => {
 
   bar.who.addEventListener('change', () => {
     selectedId = bar.who.value;
+    void rememberMine();
     renderSheetArea();
   });
   el('edit').addEventListener('click', () => setEditing(!editing));
-  el('paste').addEventListener('click', () => {
-    pasting = !pasting;
-    setEditing(false);
-    renderSheetArea();
-  });
   el('tab-sheet').addEventListener('click', () => setTab('sheet'));
   el('tab-initiative').addEventListener('click', () => setTab('initiative'));
+  el('tab-table').addEventListener('click', () => setTab('table'));
   OBR.scene.onMetadataChange(() => {
     void readInitiative().then((state) => {
       initiative = state;
       renderSheetArea();
     });
   });
-  el('new').addEventListener('click', () => {
-    void (async () => {
-      const sheet = newCharacter('New Character', sheets);
-      await roster.save(sheet);
-      selectedId = sheet.id;
-      await reload();
-      setEditing(true);
-    })();
-  });
-  el('import').addEventListener('click', () => bar.file.click());
+
   bar.file.addEventListener('change', () => {
     if (bar.file.files?.length) void importFiles(bar.file.files);
     bar.file.value = '';
   });
-  el('export').addEventListener('click', () => void exportRoster());
+
   const expr = el<HTMLInputElement>('expr');
   const rollTyped = (secret: boolean): void => {
     secretRolls = secret;

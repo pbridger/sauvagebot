@@ -612,3 +612,11 @@ button.roll-untrained { border-style: dashed; }
   color: var(--muted);
   white-space: pre-wrap;
 }
+
+/* ---- the GM's table pane --------------------------------------------- */
+
+.table-pane { display: flex; flex-direction: column; gap: 16px; }
+.pane-block h2 { margin-top: 0; }
+.pane-note { margin: 0 0 6px; font-size: 11.5px; color: var(--muted); }
+.pane-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.pane-buttons button { flex: 1 1 auto; }
