@@ -24,8 +24,33 @@ import {
   type EntryList,
 } from '../../src/rules/sheetEdit.js';
 import { skillNames, type Sheet } from '../../src/rules/sheet.js';
+import { EDGES, HINDRANCES, findEdge, findHindrance } from '../../src/rules/catalogue.js';
 
 const DICE = [4, 6, 8, 10, 12] as const;
+
+/**
+ * A datalist of every name in the book, so the editor offers the real thing
+ * while still accepting anything typed — homebrew and variants have to remain
+ * possible, and three of the party's own entries are variants already.
+ */
+function catalogueList(kind: EntryList): HTMLDataListElement {
+  const id = `catalogue-${kind}`;
+  const existing = document.getElementById(id);
+  if (existing) return existing as HTMLDataListElement;
+
+  const list = document.createElement('datalist');
+  list.id = id;
+  for (const entry of kind === 'edges' ? EDGES : HINDRANCES) {
+    const option = document.createElement('option');
+    option.value = entry.name;
+    // Requirements for an Edge, severity for a Hindrance — the thing you want
+    // to know while picking one.
+    option.label = entry.requirements ?? entry.severity ?? '';
+    list.append(option);
+  }
+  document.body.append(list);
+  return list;
+}
 
 export interface EditorHooks {
   /** Called with the new sheet on every change; the caller debounces and saves. */
@@ -120,12 +145,6 @@ function entryEditor(
     const row = document.createElement('div');
     row.className = 'edit-entry';
 
-    row.append(
-      textInput(entry.name, 'Name', (value) =>
-        hooks.onChange(updateEntry(sheet, list, index, { name: value })),
-      ),
-    );
-
     const text = document.createElement('textarea');
     text.rows = 2;
     text.value = entry.text ?? '';
@@ -133,7 +152,18 @@ function entryEditor(
     text.addEventListener('change', () =>
       hooks.onChange(updateEntry(sheet, list, index, { text: text.value })),
     );
-    row.append(text);
+
+    const name = textInput(entry.name, 'Name', (value) => {
+      // Picking a name from the book fills in its rules text, but only into an
+      // empty box — silently overwriting text someone had edited would be worse
+      // than leaving it stale.
+      const known = list === 'edges' ? findEdge(value) : findHindrance(value);
+      const patch: { name: string; text?: string } = { name: value };
+      if (known && !text.value.trim()) patch.text = known.text;
+      hooks.onChange(updateEntry(sheet, list, index, patch));
+    });
+    name.setAttribute('list', catalogueList(list).id);
+    row.append(name, text);
 
     const remove = document.createElement('button');
     remove.className = 'remove';

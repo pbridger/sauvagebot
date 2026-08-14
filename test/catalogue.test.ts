@@ -11,6 +11,13 @@ import {
   suggest,
 } from '../src/rules/catalogue.js';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
+import { parseGear } from '../src/rules/gear.js';
+import {
+  GEAR,
+  describeGear,
+  findGear,
+  suggestGear,
+} from '../src/rules/gearCatalogue.js';
 
 describe('the extracted catalogue', () => {
   it('has the whole book in it', () => {
@@ -113,5 +120,58 @@ describe('against the real party sheets', () => {
       s.edges.filter((e) => !findEdge(e.name)).map((e) => `${s.name}: ${e.name}`),
     );
     expect(missing).toEqual([]);
+  });
+});
+
+describe('the equipment catalogue', () => {
+  const dir = fileURLToPath(new URL('./fixtures', import.meta.url));
+  const partySheets = readdirSync(dir)
+    .filter((f) => f.endsWith('.html') && f !== 'archetype-card.html')
+    .flatMap((f) => parseArchetypeCards(readFileSync(`${dir}/${f}`, 'utf8')));
+
+  it('has weapons with usable stats', () => {
+    expect(GEAR.length).toBeGreaterThan(50);
+    const peacemaker = findGear('Colt Peacemaker');
+    expect(peacemaker).toMatchObject({
+      range: '12/24/48',
+      damage: '2d6+1',
+      ap: '1',
+      rof: '1',
+      shots: '6',
+      cost: '$15',
+    });
+  });
+
+  it('reads a melee table, whose Notes column sits inline and wraps', () => {
+    // Splitting these rows from the right mangled them; matching each column by
+    // shape is what fixed it.
+    expect(findGear('Bowie knife')).toMatchObject({ damage: 'Str+d4+1', notes: 'AP 1' });
+  });
+
+  it('keeps a second firing mode with its weapon', () => {
+    const lemat = findGear('LeMat Revolver');
+    expect(lemat?.modes?.[0]).toMatchObject({ name: 'Shotgun (20-ga)', damage: '1–3d6' });
+  });
+
+  it('matches the names the cards use, including reversed compounds', () => {
+    expect(findGear('Colt Rainmaker')?.name).toBe('Colt Rainmaker (.32)');
+    expect(findGear('Springfield rifled musket')?.name).toBe('Springfield Rifled Musket');
+    // The book files this as "Knife, Bowie".
+    expect(findGear('Bowie knife')?.name).toBe('Knife, Bowie');
+  });
+
+  it('finds all but one of the weapons the party actually carry', () => {
+    const weapons = partySheets.flatMap((s) => parseGear(s.gear).weapons);
+    const missing = weapons.filter((w) => !findGear(w.name)).map((w) => w.name);
+    // "Hickory stick" is improvised and genuinely not in the book.
+    expect(missing).toEqual(['Hickory stick']);
+  });
+
+  it('describes an item the way a card would', () => {
+    expect(describeGear(findGear('Colt Peacemaker')!)).toContain('Range 12/24/48');
+  });
+
+  it('suggests by prefix', () => {
+    expect(suggestGear('colt').every((g) => g.name.toLowerCase().includes('colt'))).toBe(true);
   });
 });
