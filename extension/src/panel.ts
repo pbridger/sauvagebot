@@ -1448,24 +1448,6 @@ OBR.onReady(async () => {
     bar.file.value = '';
   });
   el('export').addEventListener('click', () => void exportRoster());
-  el('session').addEventListener('click', () => {
-    void (async () => {
-      if (!confirm('Start a new session? Every Wild Card goes back to 3 Bennies.')) return;
-      await bank.newSession(sheets);
-      bennies = await bank.all();
-      renderSheetArea();
-      publish({
-        label: 'New session',
-        expression: 'benny',
-        explained: 'every Wild Card back to **3** Bennies',
-      });
-    })();
-  });
-
-  // Two buttons rather than a checkbox plus Roll: rolling in secret is one
-  // click, and there is no sticky mode to forget you left on. Available to
-  // everyone, not just the GM — a player rolling quietly is normal, and the
-  // roll never leaves this machine either way.
   const expr = el<HTMLInputElement>('expr');
   const rollTyped = (secret: boolean): void => {
     secretRolls = secret;
