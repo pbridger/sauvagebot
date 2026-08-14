@@ -78,7 +78,7 @@ import {
   toggleCondition,
 } from '../../src/rules/modifiers.js';
 import { renderBadges } from './badges.js';
-import { BennyBank } from '../../src/obr/bennyBank.js';
+import { BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
 import { soak, soakedWounds } from '../../src/rules/damage.js';
 import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.js';
@@ -576,18 +576,18 @@ function renderTable(): HTMLElement {
         'New session',
         'Every Wild Card back to 3 Bennies',
         () => {
-          void (async () => {
-            if (!confirm('Start a new session? Every Wild Card goes back to 3 Bennies.')) return;
-            await bank.newSession(sheets);
-            bennies = await bank.all();
-            renderSheetArea();
-            publish({
-              label: 'New session',
-              expression: 'benny',
-              explained: 'every Wild Card back to **3** Bennies',
-            });
-          })();
+          if (!confirm('Start a new session? Every Wild Card goes back to 3 Bennies.')) return;
+          void handOut(
+            () => bank.newSession(sheets),
+            'New session',
+            'back to **3** Bennies each:',
+          );
         },
+      ],
+      [
+        '+1 Benny to all',
+        'One Benny to every Wild Card — for good play, or a scene that deserved it',
+        () => void handOut(() => bank.awardAll(sheets), 'Bennies all round', 'a Benny each for'),
       ],
     ]),
   );
@@ -602,6 +602,37 @@ function renderTable(): HTMLElement {
   wrap.append(storage);
 
   return wrap;
+}
+
+/**
+ * Hand Bennies to the whole party, and say what actually happened.
+ *
+ * The failure this exists for: a write that does not fit the room's budget
+ * throws for one character while everyone else is fine. That used to abort the
+ * loop with nothing to catch it, so the rest of the party silently got nothing —
+ * which at the table looks like one player being skipped.
+ */
+async function handOut(
+  run: () => Promise<BennyOutcome>,
+  label: string,
+  explained: string,
+): Promise<void> {
+  try {
+    const outcome = await run();
+    bennies = await bank.all();
+    renderSheetArea();
+    if (outcome.done.length) {
+      publish({ label, expression: 'benny', explained: `${explained} ${outcome.done.join(', ')}` });
+    }
+    if (outcome.failed.length) {
+      notify(
+        `no room for ${outcome.failed.map((f) => f.name).join(', ')} — ` +
+          `${describe(outcome.failed[0]!.error)}. Free some roster space and try again.`,
+      );
+    }
+  } catch (error) {
+    notify(describe(error));
+  }
 }
 
 /**

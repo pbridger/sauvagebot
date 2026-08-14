@@ -105,6 +105,64 @@ describe('starting a session', () => {
   });
 });
 
+/**
+ * The bug this pins: `newSession` threw on the first write that did not fit and
+ * the caller had nothing to catch it, so the rest of the party silently got
+ * nothing. At the table that reads as "one player was skipped".
+ */
+describe('when the room runs out of space part way through', () => {
+  const tiny = (capacity: number) => {
+    const backend = new FakeBackend();
+    return {
+      backend,
+      bank: new BennyBank(new VerifiedStore(backend, { capacity, onWarning: () => {} })),
+    };
+  };
+
+  const party = [wildCard('aa'), wildCard('bb'), wildCard('cc'), wildCard('dd')];
+
+  it('keeps going, and reports who missed out', async () => {
+    // Room for the first couple of keys and no more.
+    const { bank } = tiny(80);
+    const outcome = await bank.newSession(party);
+
+    expect(outcome.done.length).toBeGreaterThan(0);
+    expect(outcome.failed.length).toBeGreaterThan(0);
+    expect([...outcome.done, ...outcome.failed.map((f) => f.name)].sort()).toEqual([
+      'AA',
+      'BB',
+      'CC',
+      'DD',
+    ]);
+    for (const name of outcome.done) expect(await bank.get(name.toLowerCase())).toBe(3);
+  });
+
+  it('reports nothing failed when everything fits', async () => {
+    const { bank } = newBank();
+    const outcome = await bank.newSession(party);
+    expect(outcome.failed).toEqual([]);
+    expect(outcome.done).toEqual(['AA', 'BB', 'CC', 'DD']);
+  });
+});
+
+describe('a Benny for everyone', () => {
+  it('adds one to every Wild Card and nothing to Extras', async () => {
+    const { bank } = newBank();
+    const party = [wildCard('reggie'), extra('bandit')];
+    await bank.set('reggie', 1);
+    const outcome = await bank.awardAll(party);
+    expect(outcome.done).toEqual(['REGGIE']);
+    expect(await bank.get('reggie')).toBe(2);
+    expect(await bank.get('bandit')).toBe(0);
+  });
+
+  it('adds more than one when asked', async () => {
+    const { bank } = newBank();
+    expect((await bank.awardAll([wildCard('reggie')], 2)).done).toEqual(['REGGIE']);
+    expect(await bank.get('reggie')).toBe(2);
+  });
+});
+
 describe("Joker's Wild", () => {
   it('gives one to every Wild Card and nothing to Extras', async () => {
     const { bank } = newBank();

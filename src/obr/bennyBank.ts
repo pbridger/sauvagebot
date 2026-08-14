@@ -17,6 +17,19 @@ import type { VerifiedStore } from './store.js';
 
 export const BENNY_PREFIX = 'com.savagebot/bennies/';
 
+/**
+ * What a hand-out to the whole party actually managed.
+ *
+ * Partial success is a real state here: room metadata has a hard budget, and a
+ * write that does not fit throws for that one character while everyone else is
+ * fine. Reporting it beats a party where one player quietly has nothing.
+ */
+export interface BennyOutcome {
+  /** Wild Cards whose count was written. */
+  done: string[];
+  failed: { name: string; error: Error }[];
+}
+
 export class BennyBank {
   constructor(private readonly store: VerifiedStore) {}
 
@@ -64,16 +77,40 @@ export class BennyBank {
    *
    * Replaces rather than adds — unused Bennies are lost at session end — and
    * only Wild Cards get any, since Extras do not have them.
+   *
+   * One character's write failing must not cost everyone after them theirs. The
+   * loop used to throw on the first failure, which meant a full room stopped the
+   * hand-out part way through and — since the caller had nothing to catch it —
+   * looked exactly like "that character just didn't get any". Failures are
+   * collected and handed back so somebody can say so.
    */
-  async newSession(sheets: readonly Sheet[]): Promise<number> {
-    let touched = 0;
+  async newSession(sheets: readonly Sheet[]): Promise<BennyOutcome> {
+    const outcome: BennyOutcome = { done: [], failed: [] };
     for (const sheet of sheets) {
       const target = sheet.wildCard ? startOfSession() : 0;
-      if ((await this.get(sheet.id)) === target && !sheet.wildCard) continue;
-      await this.set(sheet.id, target);
-      touched++;
+      if (!sheet.wildCard && (await this.get(sheet.id)) === target) continue;
+      try {
+        await this.set(sheet.id, target);
+        if (sheet.wildCard) outcome.done.push(sheet.name);
+      } catch (error) {
+        outcome.failed.push({ name: sheet.name, error: error as Error });
+      }
     }
-    return touched;
+    return outcome;
+  }
+
+  /** A Benny each to every Wild Card, for a Joker or for the Marshal's own reasons. */
+  async awardAll(sheets: readonly Sheet[], count = 1): Promise<BennyOutcome> {
+    const outcome: BennyOutcome = { done: [], failed: [] };
+    for (const sheet of sheets.filter((s) => s.wildCard)) {
+      try {
+        await this.award(sheet.id, count);
+        outcome.done.push(sheet.name);
+      } catch (error) {
+        outcome.failed.push({ name: sheet.name, error: error as Error });
+      }
+    }
+    return outcome;
   }
 
   /**
@@ -81,9 +118,7 @@ export class BennyBank {
    * Jokers were dealt.
    */
   async jokersWild(sheets: readonly Sheet[]): Promise<string[]> {
-    const lucky = sheets.filter((sheet) => sheet.wildCard);
-    for (const sheet of lucky) await this.award(sheet.id);
-    return lucky.map((sheet) => sheet.name);
+    return (await this.awardAll(sheets)).done;
   }
 
   async clear(sheetId: string): Promise<void> {
