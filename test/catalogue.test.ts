@@ -16,6 +16,7 @@ import {
   GEAR,
   describeGear,
   findGear,
+  gearLine,
   suggestGear,
 } from '../src/rules/gearCatalogue.js';
 
@@ -173,5 +174,40 @@ describe('the equipment catalogue', () => {
 
   it('suggests by prefix', () => {
     expect(suggestGear('colt').every((g) => g.name.toLowerCase().includes('colt'))).toBe(true);
+  });
+});
+
+describe('putting a catalogue item onto a sheet', () => {
+  it('writes it the way a card does', () => {
+    expect(gearLine(findGear('Colt Peacemaker')!)).toBe(
+      'Colt Peacemaker (Range 12/24/48, damage 2d6+1, RoF 1, AP 1, Shots 6)',
+    );
+  });
+
+  it('drops the calibre, which would otherwise break our own gear parser', () => {
+    // "Colt Peacemaker (.45) (Range …)" is two bracketed groups in a row, which
+    // parseGear reads as one malformed item and loses the stats from.
+    expect(gearLine(findGear('Colt Peacemaker')!)).not.toContain('.45');
+  });
+
+  it('round-trips every weapon in the catalogue back through the gear parser', () => {
+    const weapons = GEAR.filter((g) => g.damage && !g.name.startsWith('&'));
+    expect(weapons.length).toBeGreaterThan(30);
+
+    const broken: string[] = [];
+    for (const item of weapons) {
+      const [parsed] = parseGear(gearLine(item)).weapons;
+      if (!parsed) {
+        broken.push(`${item.name}: not read as a weapon`);
+        continue;
+      }
+      if (item.range && parsed.range !== item.range) broken.push(`${item.name}: range`);
+      if (parsed.damage?.replace(/\s/g, '') !== item.damage?.replace(/\s/g, '')) {
+        broken.push(`${item.name}: damage ${parsed.damage} vs ${item.damage}`);
+      }
+      if (item.ap && String(parsed.ap) !== item.ap) broken.push(`${item.name}: ap`);
+      if (item.rof && String(parsed.rof) !== item.rof) broken.push(`${item.name}: rof`);
+    }
+    expect(broken).toEqual([]);
   });
 });

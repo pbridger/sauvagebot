@@ -59,9 +59,32 @@ function splitTopLevel(text: string): string[] {
   return parts.map((p) => p.trim().replace(/\.$/, '').trim()).filter(Boolean);
 }
 
-const DAMAGE = /\b(?:damage|dmg)\s+((?:\d+)?d\d+(?:[+-]\d+)?|str\s*\+\s*d\d+)/i;
+/**
+ * Damage comes in three shapes, and an earlier pattern only handled the first:
+ *
+ *   `2d6+1`      a die count with a modifier
+ *   `Str+d4+1`   Strength-based, which may *also* carry a modifier (Bowie knife)
+ *   `1–3d6`      a range — a shotgun does 1, 2 or 3 dice depending on distance
+ *
+ * All three may use an en-dash rather than a hyphen, which is how the book
+ * prints a minus. Missing that read "2d6–1" as "2d6".
+ */
+const DAMAGE_SHAPE = String.raw`(?:\d+[–-])?(?:\d+)?d\d+(?:[+–-]\d+)?|str\s*\+\s*d\d+(?:[+–-]\d+)?`;
+const DAMAGE = new RegExp(String.raw`\b(?:damage|dmg)\s+(${DAMAGE_SHAPE})`, 'i');
 /** A bare damage expression as the whole bracket, as in "knife (Str+d4)". */
-const BARE_DAMAGE = /^((?:\d+)?d\d+(?:[+-]\d+)?|str\s*\+\s*d\d+)$/i;
+const BARE_DAMAGE = new RegExp(String.raw`^(${DAMAGE_SHAPE})$`, 'i');
+
+/**
+ * Whether damage can be handed to the dice engine.
+ *
+ * A shotgun's `1–3d6` cannot: which of one, two or three dice applies depends
+ * on the range to the target, and the sheet has no way to know. Better to show
+ * it and let the player pick than to guess and be quietly wrong a third of the
+ * time.
+ */
+export function isRollableDamage(damage: string): boolean {
+  return !/^\s*\d+[–-]\d+d/i.test(damage);
+}
 const RANGE = /\brange\s+(\d+\/\d+\/\d+)/i;
 const ROF = /\brof\s+(\d+)/i;
 const AP = /\bap\s+(\d+)/i;

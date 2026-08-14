@@ -580,3 +580,6 @@ h2 .section-toggle {
 }
 h2 .section-toggle:hover { color: var(--accent); border-color: var(--accent); }
 button.roll-untrained { border-style: dashed; }
+
+.gear-picker { display: flex; gap: 5px; margin-top: 5px; }
+.gear-picker input { flex: 1; min-width: 0; }

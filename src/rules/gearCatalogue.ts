@@ -79,12 +79,33 @@ export function suggestGear(query: string, limit = 10): GearEntry[] {
 
 /** The gear line a card would print for this item. */
 export function describeGear(item: GearEntry): string {
+  const bits = stats(item);
+  return bits.length ? `${item.name} (${bits.join(', ')})` : item.name;
+}
+
+function stats(item: GearEntry): string[] {
   const bits: string[] = [];
   if (item.range) bits.push(`Range ${item.range}`);
   if (item.damage) bits.push(`damage ${item.damage}`);
   if (item.rof) bits.push(`RoF ${item.rof}`);
   if (item.ap) bits.push(`AP ${item.ap}`);
   if (item.shots) bits.push(`Shots ${item.shots}`);
-  if (item.armor) bits.push(`Armor ${item.armor}`);
-  return bits.length ? `${item.name} (${bits.join(', ')})` : item.name;
+  if (item.armor) bits.push(`+${item.armor.replace(/^\+/, '')}`);
+  return bits;
+}
+
+/**
+ * The item written the way a character card writes gear, ready to be appended
+ * to a sheet's gear line.
+ *
+ * The calibre is dropped from the name on purpose. The book writes "Colt
+ * Peacemaker (.45)", and leaving that in would produce two bracketed groups in
+ * a row — which our own gear parser reads as one malformed item, losing the
+ * stats. Round-tripping through `parseGear` is tested for every weapon in the
+ * catalogue.
+ */
+export function gearLine(item: GearEntry): string {
+  const name = item.name.replace(/\s*\([^)]*\)\s*$/, '').trim() || item.name;
+  const bits = stats(item);
+  return bits.length ? `${name} (${bits.join(', ')})` : name;
 }

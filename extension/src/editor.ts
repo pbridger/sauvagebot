@@ -25,6 +25,7 @@ import {
 } from '../../src/rules/sheetEdit.js';
 import { skillNames, type Sheet } from '../../src/rules/sheet.js';
 import { EDGES, HINDRANCES, findEdge, findHindrance } from '../../src/rules/catalogue.js';
+import { GEAR, findGear, gearLine } from '../../src/rules/gearCatalogue.js';
 
 const DICE = [4, 6, 8, 10, 12] as const;
 
@@ -184,6 +185,59 @@ function entryEditor(
   return block;
 }
 
+/**
+ * Add an item from the book to the gear line.
+ *
+ * Gear stays a single free-text field rather than becoming a structured list.
+ * That is deliberate: it is what the cards carry, what the importer produces and
+ * what the export round-trips, and restructuring it would risk mangling gear
+ * somebody wrote by hand for the sake of a tidier model. The picker appends;
+ * the text remains yours to edit.
+ */
+function gearPicker(
+  sheet: Sheet,
+  area: HTMLTextAreaElement,
+  change: (sheet: Sheet) => void,
+): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'gear-picker';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Add from the rulebook…';
+  input.setAttribute('list', 'catalogue-gear');
+
+  if (!document.getElementById('catalogue-gear')) {
+    const list = document.createElement('datalist');
+    list.id = 'catalogue-gear';
+    for (const item of GEAR) {
+      const option = document.createElement('option');
+      option.value = item.name;
+      option.label = [item.category, item.cost].filter(Boolean).join(' · ');
+      list.append(option);
+    }
+    document.body.append(list);
+  }
+
+  const add = document.createElement('button');
+  add.className = 'add';
+  add.textContent = '+ Add';
+  const commit = (): void => {
+    const found = findGear(input.value);
+    if (!found) return;
+    const existing = area.value.trim().replace(/\.$/, '');
+    // Cards end the gear line with a full stop; keep that shape.
+    area.value = existing ? `${existing}, ${gearLine(found)}.` : `${gearLine(found)}.`;
+    input.value = '';
+    change(setText(sheet, 'gear', area.value));
+  };
+  add.addEventListener('click', commit);
+  input.addEventListener('change', commit);
+
+  row.append(input, add);
+  return row;
+}
+
 export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment {
   const out = document.createDocumentFragment();
   const change = hooks.onChange;
@@ -261,21 +315,23 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
   out.append(entryEditor(sheet, 'hindrances', 'Hindrances', hooks));
   out.append(entryEditor(sheet, 'edges', 'Edges', hooks));
 
-  // --- prose
-  for (const [title, key] of [
-    ['Gear', 'gear'],
-    ['Advances', 'advances'],
-  ] as const) {
-    const heading = document.createElement('h2');
-    heading.textContent = title;
-    const area = document.createElement('textarea');
-    area.rows = 4;
-    area.value = sheet[key] ?? '';
-    area.placeholder =
-      key === 'gear' ? 'Colt Rainmaker (Range 12/24/48, damage 2d6, RoF 1, AP 1), knife…' : '';
-    area.addEventListener('change', () => change(setText(sheet, key, area.value)));
-    out.append(heading, area);
-  }
+  // --- gear: still one free-text line, with the book behind a picker
+  const gearHeading = document.createElement('h2');
+  gearHeading.textContent = 'Gear';
+  const gearArea = document.createElement('textarea');
+  gearArea.rows = 4;
+  gearArea.value = sheet.gear ?? '';
+  gearArea.placeholder = 'Colt Rainmaker (Range 12/24/48, damage 2d6, RoF 1, AP 1), knife…';
+  gearArea.addEventListener('change', () => change(setText(sheet, 'gear', gearArea.value)));
+  out.append(gearHeading, gearArea, gearPicker(sheet, gearArea, change));
+
+  const advHeading = document.createElement('h2');
+  advHeading.textContent = 'Advances';
+  const advArea = document.createElement('textarea');
+  advArea.rows = 3;
+  advArea.value = sheet.advances ?? '';
+  advArea.addEventListener('change', () => change(setText(sheet, 'advances', advArea.value)));
+  out.append(advHeading, advArea);
 
   const danger = document.createElement('button');
   danger.className = 'danger';

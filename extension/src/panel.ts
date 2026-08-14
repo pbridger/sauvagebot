@@ -15,7 +15,12 @@ import {
   type Sheet,
 } from '../../src/rules/sheet.js';
 import { parseArchetypeCards } from '../../src/rules/importArchetypeCard.js';
-import { damageExpression, parseGear, weaponSkill } from '../../src/rules/gear.js';
+import {
+  damageExpression,
+  isRollableDamage,
+  parseGear,
+  weaponSkill,
+} from '../../src/rules/gear.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
 import { RollInterpreter } from '../../src/dice/interpreter.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
@@ -1065,7 +1070,12 @@ function renderGear(sheet: Sheet, penalty: number): void {
       row.append(rangeCell);
 
       const damageCell = document.createElement('td');
-      if (weapon.damage) {
+      if (weapon.damage && !isRollableDamage(weapon.damage)) {
+        // A shotgun's "1–3d6" depends on the range to the target, which the
+        // sheet cannot know. Show it rather than guess which third is right.
+        damageCell.textContent = weapon.damage;
+        damageCell.title = 'Dice depend on range — roll it in the box below';
+      } else if (weapon.damage) {
         // "Str+d4" needs the wielder's Strength die substituted before it parses.
         const expression = damageExpression(weapon.damage, sheet.attributes.strength?.die);
         const button = document.createElement('button');
