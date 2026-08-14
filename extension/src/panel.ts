@@ -70,7 +70,7 @@ import {
   type Draw,
   type InitiativeState,
 } from '../../src/rules/initiative.js';
-import { cardToString, type Card } from '../../src/game/cards.js';
+import { cardLabel, type Card } from '../../src/game/cards.js';
 import {
   autoBind,
   bindToken,
@@ -364,7 +364,7 @@ async function deal(): Promise<void> {
       // "Npc Linguist 4" says nothing about who just drew a king.
       const combatant = table.find((c) => c.tokenId === id);
       const who = combatant ? displayName(combatant, table) : '?';
-      return `${who} ${cardToString(draw.card)}`;
+      return `${who} ${cardLabel(draw.card)}`;
     })
     .join(', ');
   publish({

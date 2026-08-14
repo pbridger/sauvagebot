@@ -11,7 +11,7 @@
  * people fighting over the deck, which is a table problem rather than a
  * concurrency one.
  */
-import { cardToString, isRedSuit, type Card } from '../../src/game/cards.js';
+import { cardLabel, isRedSuit, type Card } from '../../src/game/cards.js';
 import {
   initiativeEdges,
   isJoker,
@@ -157,7 +157,7 @@ export function renderInitiative(
         ? 'card red'
         : 'card'
       : 'card none';
-    card.textContent = combatant.card ? cardToString(combatant.card) : '—';
+    card.textContent = combatant.card ? cardLabel(combatant.card) : '—';
     row.append(card);
 
     const name = document.createElement('span');
@@ -178,7 +178,7 @@ export function renderInitiative(
       for (const drawn of drew.cards) {
         const one = document.createElement('span');
         if (isRedSuit(drawn)) one.className = 'red';
-        one.textContent = `${cardToString(drawn)} `;
+        one.textContent = `${cardLabel(drawn)} `;
         extra.append(one);
       }
       row.append(extra);

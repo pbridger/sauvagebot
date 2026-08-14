@@ -44,6 +44,20 @@ export function isRedSuit(c: Card): boolean {
   return c.suit === 'HEARTS' || c.suit === 'DIAMONDS' || c.suit === 'COLOR';
 }
 
+/**
+ * A card as the VTT should display it.
+ *
+ * Identical to `cardToString` except for the jokers, which that function renders
+ * as the Unicode playing-card glyphs. Those have almost no font coverage — on
+ * Paul's machine the black joker came out as a row of black bars — so they are
+ * spelled out instead. `cardToString` itself is left alone: the Discord bot's
+ * output is pinned by the conformance corpus.
+ */
+export function cardLabel(c: Card): string {
+  if (c.rank === 15) return 'JKR';
+  return cardToString(c);
+}
+
 export function sameCard(a: Card, b: Card): boolean {
   return a.rank === b.rank && a.suit === b.suit;
 }

@@ -471,7 +471,14 @@ ol.initiative .card {
   font-variant-numeric: tabular-nums;
 }
 /* A joker is the most consequential card in the deck; make it look like it. */
-ol.initiative li.joker .card { font-size: 22px; }
+ol.initiative li.joker .card {
+  font-size: 13px;
+  letter-spacing: .05em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #5b3a86;
+  color: #fff;
+}
 ol.initiative .card.none { color: var(--muted); font-weight: 400; }
 ol.initiative .who { flex: 1; min-width: 0; }
 ol.initiative .drew { font-size: 10.5px; color: var(--muted); }

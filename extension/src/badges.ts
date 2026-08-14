@@ -24,7 +24,7 @@ import OBR, { buildLabel, type Item } from '@owlbear-rodeo/sdk';
 import { readBinding, type TokenLike } from '../../src/obr/binding.js';
 import { damageBadge } from '../../src/rules/status.js';
 import { isJoker } from '../../src/rules/initiative.js';
-import { cardToString, isRedSuit } from '../../src/game/cards.js';
+import { cardLabel, isRedSuit } from '../../src/game/cards.js';
 import type { Sheet } from '../../src/rules/sheet.js';
 
 /** Marks our local items so we only ever clear up our own. */
@@ -143,11 +143,12 @@ export async function renderBadges(
       items.push(
         badge(
           token,
-          cardToString(state.card),
+          cardLabel(state.card),
           joker ? JOKER_PURPLE : CARD_FACE,
           // Mid-left: out of the way of SHAKEN above and the damage below, so
           // it stays put as those come and go.
           { x: -halfWidth - GAP * 7, y: LABEL_HEIGHT * 0.75 },
+          // White on purple for a joker; ink on white for everything else.
           joker ? '#ffffff' : isRedSuit(state.card) ? CARD_RED : CARD_BLACK,
         ),
       );
