@@ -34,6 +34,15 @@ export interface RollEntry {
   /** The numeric result, when there was a single one. Lets a roll be applied as damage. */
   total?: number;
   /**
+   * Whether this may be applied to a token as damage.
+   *
+   * Set explicitly by whoever publishes, rather than inferred. Inferring it went
+   * wrong: "gets a Benny — now has **3**" looks exactly like a roll of 3 to any
+   * rule based on the text, and offered to apply three damage to whoever was
+   * selected.
+   */
+  applicable?: boolean;
+  /**
    * Armour-piercing carried from the weapon that rolled it, so applying the
    * damage does not silently forget the AP the sheet already knew about.
    */
@@ -69,6 +78,7 @@ export function isRollEntry(value: unknown): value is RollEntry {
     typeof entry.explained === 'string' &&
     isOptionalNumber(entry.total) &&
     isOptionalNumber(entry.ap) &&
+    (entry.applicable === undefined || typeof entry.applicable === 'boolean') &&
     (entry.character === undefined || typeof entry.character === 'string') &&
     (entry.label === undefined || typeof entry.label === 'string')
   );
@@ -129,26 +139,31 @@ export function formatEntry(entry: RollEntry): string {
 }
 
 /**
- * Pull the total out of the engine's explanation, which bolds it: `… = **11**`.
+ * Pull the total out of the engine's explanation.
  *
- * Returns nothing when there is more than one bolded number, which is how a
- * multi-roll (`3#s8`) is distinguished from a single result — applying "some of
- * three rolls" as damage would be a guess.
+ * The total is the number after the `=`, and *only* that one. Matching any bold
+ * run instead was a real bug: a Savage Worlds roll annotates its raises in bold
+ * too — `s8+2: [6; w5] + 2 = **8** (success; **1** raise)` — so a roll that
+ * succeeded with a raise looked ambiguous and yielded nothing. Which meant Soak
+ * silently did nothing on exactly the rolls that should have worked.
+ *
+ * Still returns nothing when there are several totals, since that is a
+ * multi-roll and picking one would be a guess.
  */
 export function totalOf(explained: string): number | undefined {
-  const bolded = [...explained.matchAll(/\*\*(-?\d+)\*\*/g)];
-  if (bolded.length !== 1) return undefined;
-  return Number(bolded[0]![1]);
+  const totals = [...explained.matchAll(/=\s*\*\*(-?\d+)\*\*/g)];
+  if (totals.length !== 1) return undefined;
+  return Number(totals[0]![1]);
 }
 
 /**
- * Whether this roll is a candidate for "apply to the selected token".
+ * Whether this roll may be applied to a token as damage.
  *
- * Trait rolls are excluded: `s8` is a test of whether you hit, not a quantity of
- * harm, and offering to apply one as damage invites a mis-click at the worst
- * moment. Damage, and anything typed freehand, is fair game.
+ * A whitelist, set by the publisher: damage rolls and anything typed by hand.
+ * Trait rolls are not — `s8` measures whether you hit, not how hard — and
+ * neither are the log's own notices. Deducing it from the text had "gets a
+ * Benny — now has **3**" offering to deal three damage.
  */
 export function isApplicable(entry: RollEntry): boolean {
-  if (entry.total === undefined) return false;
-  return !/^\s*\d*[se]\d+/i.test(entry.expression);
+  return entry.applicable === true && entry.total !== undefined;
 }

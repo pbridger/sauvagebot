@@ -1162,6 +1162,9 @@ function rollFreeform(
     publish({
       expression: trimmed,
       explained,
+      // The only things that may be applied as damage: a weapon's damage roll
+      // and anything typed into the box.
+      applicable: true,
       ...(label ? { label } : {}),
       ...(character ? { character } : {}),
       ...(ap ? { ap } : {}),
