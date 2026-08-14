@@ -528,7 +528,7 @@ table.weapons button.atk {
 
 /* ---- bennies --------------------------------------------------------- */
 
-.statgroup.bennies { gap: 4px; margin-left: auto; }
+.statgroup.bennies { gap: 4px; }
 .benny-count {
   min-width: 18px;
   padding: 1px 6px;
@@ -590,3 +590,25 @@ button.roll-untrained { border-style: dashed; }
 
 .gear-picker { display: flex; gap: 5px; margin-top: 5px; }
 .gear-picker input { flex: 1; min-width: 0; }
+
+/* Pasting a stat block: a plain form in the sheet area. */
+.paste-block { display: flex; flex-direction: column; gap: 8px; }
+.paste-block textarea {
+  width: 100%;
+  min-height: 190px;
+  font: 12px/1.4 ui-monospace, monospace;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  padding: 6px;
+  resize: vertical;
+}
+.paste-block .row { display: flex; gap: 6px; }
+.paste-block .hint { font-size: 11.5px; color: var(--muted); }
+.paste-block pre {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: pre-wrap;
+}

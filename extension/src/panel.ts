@@ -39,6 +39,7 @@ import {
 } from '../../src/obr/rollLog.js';
 import { applyDamage } from '../../src/rules/damage.js';
 import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
+import { parseStatBlocks } from '../../src/rules/statBlock.js';
 import {
   duplicateWildCard,
   readBinding,
@@ -113,6 +114,8 @@ let lastDraws: Map<string, Draw> = new Map();
 let acted = new Set<string>();
 /** Show every skill, or only the ones this character actually has. */
 let showAllSkills = false;
+/** True while the paste-a-stat-block form is up. */
+let pasting = false;
 let tokens: Awaited<ReturnType<typeof characterTokens>> = [];
 let selectedTokenId: string | undefined;
 /** The whole selection, so a gang of mooks can be bound to one sheet at once. */
@@ -300,6 +303,10 @@ function entryList(entries: Sheet['edges']): HTMLElement {
 }
 
 function renderSheetArea(): void {
+  if (pasting) {
+    sheetEl.replaceChildren(renderPaste());
+    return;
+  }
   if (tab === 'initiative') {
     sheetEl.replaceChildren(
       renderInitiative(initiative, combatants(tokens, sheets), {
@@ -425,6 +432,7 @@ async function endFight(): Promise<void> {
 
 function setTab(next: 'sheet' | 'initiative'): void {
   tab = next;
+  pasting = false;
   for (const name of ['sheet', 'initiative'] as const) {
     el(`tab-${name}`).setAttribute('aria-selected', String(name === next));
   }
@@ -432,6 +440,86 @@ function setTab(next: 'sheet' | 'initiative'): void {
   // Initiative tab they are just a row of controls that do nothing useful.
   el('bar').hidden = next !== 'sheet';
   renderSheetArea();
+}
+
+/**
+ * Add NPCs by pasting their stat blocks.
+ *
+ * There is no preset list to ship: the player extract has no bestiary, and the
+ * three creatures it does contain are summoned allies. Inventing a set of
+ * "standard mooks" would mean making up stats and presenting them as the game's.
+ * Every Savage Worlds NPC is printed in one format, so reading that format turns
+ * any book, including the Marshal's, into the preset list.
+ */
+function renderPaste(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'paste-block';
+
+  const hint = document.createElement('p');
+  hint.className = 'hint';
+  hint.textContent =
+    'Paste one or more stat blocks. Pace, Parry and Toughness are worked out from the rules if a block leaves them out.';
+  wrap.append(hint);
+
+  const area = document.createElement('textarea');
+  area.placeholder = `BODYGUARD
+Attributes: Agility d8, Smarts d4, Spirit d6, Strength d6, Vigor d6
+Skills: Athletics d6, Fighting d6, Notice d4, Shooting d4
+Pace: 6; Parry: 5; Toughness: 7 (2)
+Edges: First Strike
+Gear: Melee attack (Str+d6).`;
+  wrap.append(area);
+
+  const preview = document.createElement('pre');
+  const review = (): void => {
+    if (!area.value.trim()) {
+      preview.textContent = '';
+      return;
+    }
+    try {
+      preview.textContent = parseStatBlocks(area.value)
+        .map(
+          (s) =>
+            `${s.name} — Pace ${s.pace ?? '—'}, Parry ${s.parry}, Toughness ${s.toughness}` +
+            `${s.armor ? ` (${s.armor})` : ''}, ${Object.keys(s.skills).length} skills`,
+        )
+        .join('\n');
+    } catch (error) {
+      preview.textContent = describe(error);
+    }
+  };
+  area.addEventListener('input', review);
+  wrap.append(preview);
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  const add = document.createElement('button');
+  add.textContent = 'Add';
+  add.addEventListener('click', () => {
+    void (async () => {
+      try {
+        const parsed = parseStatBlocks(area.value);
+        for (const sheet of parsed) {
+          await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id });
+        }
+        notify(`Added ${parsed.map((s) => s.name).join(', ')}`);
+        pasting = false;
+        selectedId = undefined;
+        await reload();
+      } catch (error) {
+        notify(describe(error));
+      }
+    })();
+  });
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => {
+    pasting = false;
+    renderSheetArea();
+  });
+  row.append(add, cancel);
+  wrap.append(row);
+  return wrap;
 }
 
 async function deleteCharacter(sheet: Sheet): Promise<void> {
@@ -523,6 +611,8 @@ function statusStrip(sheet: Sheet): HTMLElement {
   const strip = document.createElement('div');
   strip.className = 'status';
 
+  // Ordered Shaken, then Wounds, then Fatigue: how often each comes up in play,
+  // and so the order they get thought about at the table.
   const active = activeToken(sheet);
   if (!active) {
     const hint = document.createElement('span');
@@ -536,6 +626,19 @@ function statusStrip(sheet: Sheet): HTMLElement {
   const change = (next: TokenState): void => {
     void updateTokenState(token.id, () => next).then(refreshTokens);
   };
+
+  strip.append(
+    labelled(
+      'Shaken',
+      pips(
+        1,
+        state.shaken ? 1 : 0,
+        () => (state.shaken ? 'Shaken — click to clear' : 'Mark Shaken (no penalty to the roll)'),
+        (n) => change(setShaken(state, n > 0)),
+        'shaken',
+      ),
+    ),
+  );
 
   const woundMax = maxWounds(sheet.wildCard);
   if (woundMax > 0) {
@@ -561,19 +664,6 @@ function statusStrip(sheet: Sheet): HTMLElement {
         (n) => `${FATIGUE_NAMES[n] ?? `Fatigue ${n}`} — ${-n} to every trait roll`,
         (n) => change(setFatigue(state, n)),
         'fatigue',
-      ),
-    ),
-  );
-
-  strip.append(
-    labelled(
-      'Shaken',
-      pips(
-        1,
-        state.shaken ? 1 : 0,
-        () => (state.shaken ? 'Shaken — click to clear' : 'Mark Shaken (no penalty to the roll)'),
-        (n) => change(setShaken(state, n > 0)),
-        'shaken',
       ),
     ),
   );
@@ -1330,6 +1420,11 @@ OBR.onReady(async () => {
     renderSheetArea();
   });
   el('edit').addEventListener('click', () => setEditing(!editing));
+  el('paste').addEventListener('click', () => {
+    pasting = !pasting;
+    setEditing(false);
+    renderSheetArea();
+  });
   el('tab-sheet').addEventListener('click', () => setTab('sheet'));
   el('tab-initiative').addEventListener('click', () => setTab('initiative'));
   OBR.scene.onMetadataChange(() => {
