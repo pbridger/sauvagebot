@@ -56,7 +56,7 @@ import { renderBadges } from './badges.js';
 import { BennyBank } from '../../src/obr/bennyBank.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
 import { soak, soakedWounds } from '../../src/rules/damage.js';
-import { rollAttribute as rollAttr } from '../../src/rules/traitRoll.js';
+import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.js';
 import { renderEditor } from './editor.js';
 import { combatants, displayName, renderInitiative } from './initiativePanel.js';
 import {
@@ -106,6 +106,8 @@ let initiative: InitiativeState | undefined;
 let lastDraws: Map<string, Draw> = new Map();
 /** Who has taken a turn this round; cleared on each deal. */
 let acted = new Set<string>();
+/** Show every skill, or only the ones this character actually has. */
+let showAllSkills = false;
 let tokens: Awaited<ReturnType<typeof characterTokens>> = [];
 let selectedTokenId: string | undefined;
 /** The whole selection, so a gang of mooks can be bound to one sheet at once. */
@@ -571,6 +573,18 @@ function statusStrip(sheet: Sheet): HTMLElement {
     ),
   );
 
+  // The cumulative penalty sits with the wounds and fatigue that cause it. No
+  // status sentence: the trait buttons already show the effect where it is used,
+  // and the detail is in the pip tooltips.
+  const penalty = traitPenalty(state);
+  if (penalty) {
+    const chip = document.createElement('span');
+    chip.className = 'penalty';
+    chip.textContent = String(penalty);
+    chip.title = `${describeStatus(state, sheet.wildCard)} — ${penalty} to every trait roll`;
+    strip.append(chip);
+  }
+
   // An Extra has no wound track, so Incapacitated needs its own control.
   const out = isIncapacitated(state, sheet.wildCard);
   const down = document.createElement('button');
@@ -594,19 +608,6 @@ function statusStrip(sheet: Sheet): HTMLElement {
   }
 
   strip.append(bennyGroup(sheet));
-
-  // No status sentence: the trait buttons already show the penalty where it is
-  // actually used, so a line repeating it is clutter. The detail lives in the
-  // pip tooltips, and a single chip appears only when there is a penalty at all.
-  const penalty = traitPenalty(state);
-  if (penalty) {
-    const chip = document.createElement('span');
-    chip.className = 'penalty';
-    chip.textContent = String(penalty);
-    chip.title = `${describeStatus(state, sheet.wildCard)} — ${penalty} to every trait roll`;
-    strip.append(chip);
-  }
-
   return strip;
 }
 
@@ -627,10 +628,27 @@ function bennyGroup(sheet: Sheet): HTMLElement {
   wrap.append(label);
 
   const count = bennies.get(sheet.id) ?? 0;
-  const value = document.createElement('span');
-  value.className = count > 0 ? 'benny-count' : 'benny-count none';
-  value.textContent = String(count);
-  wrap.append(value);
+
+  // Actual tokens rather than a number: a stash you can see at a glance is how
+  // Bennies work at the table, where they sit in front of you in a little pile.
+  const stack = document.createElement('div');
+  stack.className = 'benny-stack';
+  if (count === 0) {
+    const none = document.createElement('span');
+    none.className = 'benny-none';
+    none.textContent = 'none';
+    stack.append(none);
+  }
+  for (let n = 1; n <= count; n++) {
+    const token = document.createElement('span');
+    token.className = 'benny';
+    // A stack past about six reads as a pile rather than a count, so they
+    // overlap — the same way chips do when you have too many to lay out.
+    if (count > 6) token.classList.add('tight');
+    token.title = `${count} Benny${count === 1 ? '' : 's'}`;
+    stack.append(token);
+  }
+  wrap.append(stack);
 
   // A menu rather than a bare minus: what a Benny was spent on is the
   // interesting part, and it goes in the log where the table can see it.
@@ -919,12 +937,28 @@ function render(): void {
   }
   sheetEl.append(attributes);
 
-  sheetEl.append(section('Skills'));
+  const all = skillNames(sheet);
+  const untrained = all.filter((skill) => !sheet.skills[skill]);
+  const shown = showAllSkills ? all : all.filter((skill) => sheet.skills[skill]);
+
+  const skillHead = section('Skills');
+  const toggle = document.createElement('button');
+  toggle.className = 'section-toggle';
+  toggle.textContent = showAllSkills ? 'Trained only' : `Show all (${all.length})`;
+  toggle.title = showAllSkills
+    ? 'Hide the skills this character has not trained'
+    : 'Show every skill, trained or not';
+  toggle.addEventListener('click', () => {
+    showAllSkills = !showAllSkills;
+    renderSheetArea();
+  });
+  skillHead.append(toggle);
+  sheetEl.append(skillHead);
+
   const skills = document.createElement('div');
   skills.className = 'traits';
-  for (const skill of skillNames(sheet)) {
+  for (const skill of shown) {
     const trait = sheet.skills[skill];
-    // Untrained skills are shown too — rolling one at d4−2 is a normal thing to do.
     skills.append(
       traitButton(
         skill,
@@ -936,6 +970,29 @@ function render(): void {
         },
       ),
     );
+  }
+
+  // With the untrained hidden there is no button for them, and rolling one is a
+  // normal thing to do — so offer the whole lot at once. They all roll the same
+  // d4−2, so a single roll answers "did anyone manage it" for any of them.
+  if (!showAllSkills && untrained.length) {
+    const rest = document.createElement('button');
+    rest.className = 'trait untrained roll-untrained';
+    const label = document.createElement('span');
+    label.textContent = `Untrained (${untrained.length})`;
+    const die = document.createElement('span');
+    die.className = 'die';
+    die.textContent = `d4${withPenalty(-2)}`;
+    rest.append(label, die);
+    rest.title = 'Roll d4−2 for any untrained skill';
+    rest.addEventListener('click', () => {
+      const { expression, explained } = rollTrait(
+        { die: 4, mod: -2 + penalty, wildCard: sheet.wildCard },
+        new JavaRandom(),
+      );
+      publish({ character: sheet.name, label: 'untrained skill', expression, explained });
+    });
+    skills.append(rest);
   }
   sheetEl.append(skills);
 
