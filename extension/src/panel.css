@@ -620,3 +620,33 @@ button.roll-untrained { border-style: dashed; }
 .pane-note { margin: 0 0 6px; font-size: 11.5px; color: var(--muted); }
 .pane-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
 .pane-buttons button { flex: 1 1 auto; }
+
+p.description {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.creature-list { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.creature { display: flex; align-items: baseline; gap: 8px; }
+button.creature-name {
+  flex: 1;
+  text-align: left;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+button.creature-name:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.creature-meta { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.pane-block input[type='search'] {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  padding: 4px 7px;
+}
+.field textarea { min-height: 46px; }

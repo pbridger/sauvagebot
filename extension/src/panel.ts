@@ -41,6 +41,12 @@ import { applyDamage } from '../../src/rules/damage.js';
 import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
 import { parseStatBlocks } from '../../src/rules/statBlock.js';
 import {
+  BESTIARY_SOURCE,
+  creatureSheet,
+  outdatedSkills,
+  searchCreatures,
+} from '../../src/rules/bestiary.js';
+import {
   duplicateWildCard,
   readBinding,
   tokensForSheet,
@@ -464,7 +470,7 @@ function renderTable(): HTMLElement {
   roster.append(
     paneButtons([
       ['New character', 'A blank sheet to fill in by hand', () => void addBlank()],
-      ['Add mooks…', 'Paste stat blocks from a book', () => {
+      ['Paste stat blocks…', 'Add NPCs from any book', () => {
         pasting = true;
         renderSheetArea();
       }],
@@ -473,6 +479,7 @@ function renderTable(): HTMLElement {
     ]),
   );
   wrap.append(roster);
+  wrap.append(bestiaryBlock());
 
   const session = document.createElement('div');
   session.className = 'pane-block';
@@ -511,6 +518,69 @@ function renderTable(): HTMLElement {
   wrap.append(storage);
 
   return wrap;
+}
+
+/**
+ * The creature presets: search, see what you would get, add it.
+ *
+ * A preset is added exactly as a pasted block would be, because it *is* one —
+ * the same parser reads both, so there is no second code path to keep honest.
+ */
+function bestiaryBlock(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  wrap.append(paneHeading('Bestiary', `${BESTIARY_SOURCE}. Written for an older edition — expect to adjust.`));
+
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.placeholder = 'Search creatures…';
+  wrap.append(search);
+
+  const results = document.createElement('div');
+  results.className = 'creature-list';
+  wrap.append(results);
+
+  const show = (): void => {
+    results.replaceChildren();
+    for (const creature of searchCreatures(search.value, 12)) {
+      const row = document.createElement('div');
+      row.className = 'creature';
+
+      const name = document.createElement('button');
+      name.className = 'creature-name';
+      name.textContent = creature.name;
+      const sheet = creatureSheet(creature);
+      const stale = outdatedSkills(sheet);
+      name.title =
+        `Pace ${sheet.pace ?? '—'}, Parry ${sheet.parry}, Toughness ${sheet.toughness}` +
+        (stale.length ? `\nOlder-edition skills: ${stale.join(', ')}` : '');
+      name.addEventListener('click', () => void addCreature(creature.name));
+      row.append(name);
+
+      const meta = document.createElement('span');
+      meta.className = 'creature-meta';
+      meta.textContent = `${creature.category} · T${sheet.toughness} P${sheet.parry}`;
+      row.append(meta);
+
+      results.append(row);
+    }
+  };
+  search.addEventListener('input', show);
+  show();
+  return wrap;
+}
+
+async function addCreature(name: string): Promise<void> {
+  const creature = searchCreatures(name, 1)[0];
+  if (!creature) return;
+  const sheet = creatureSheet(creature);
+  await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id });
+  const stale = outdatedSkills(sheet);
+  notify(
+    `Added ${sheet.name}` +
+      (stale.length ? ` — note ${stale.join(', ')} predates this edition` : ''),
+  );
+  await reload();
 }
 
 function paneHeading(title: string, note: string): HTMLElement {
@@ -1090,6 +1160,13 @@ function render(): void {
     headText.append(quote);
   }
   sheetEl.append(head);
+
+  if (sheet.description) {
+    const description = document.createElement('p');
+    description.className = 'description';
+    description.textContent = sheet.description;
+    sheetEl.append(description);
+  }
 
   const bind = bindBar(sheet);
   if (bind) sheetEl.append(bind);

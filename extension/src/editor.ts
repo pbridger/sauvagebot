@@ -251,6 +251,15 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
     field('Quote', textInput(sheet.quote ?? '', '', (v) => change(setText(sheet, 'quote', v)))),
   );
 
+  const description = document.createElement('textarea');
+  description.rows = 3;
+  description.value = sheet.description ?? '';
+  description.placeholder = 'Who is this? Flavour, notes, anything worth remembering.';
+  description.addEventListener('change', () =>
+    change(setText(sheet, 'description', description.value)),
+  );
+  identity.append(field('About', description));
+
   const wildCard = document.createElement('input');
   wildCard.type = 'checkbox';
   wildCard.checked = sheet.wildCard;

@@ -69,7 +69,7 @@ export function setDerived(sheet: Sheet, field: DerivedField, value: number | un
 
 export function setText(
   sheet: Sheet,
-  field: 'name' | 'quote' | 'rank' | 'gear' | 'advances',
+  field: 'name' | 'quote' | 'rank' | 'gear' | 'advances' | 'description',
   value: string,
 ): Sheet {
   const next = { ...sheet };

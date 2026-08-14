@@ -73,6 +73,8 @@ export interface Sheet {
 
   hindrances: NamedEntry[];
   edges: NamedEntry[];
+  /** Who this is: flavour, notes, whatever the GM wants to remember. */
+  description?: string;
   /** Free text on the card, deliberately not parsed into items. */
   gear?: string;
   advances?: string;
