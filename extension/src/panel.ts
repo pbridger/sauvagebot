@@ -442,6 +442,9 @@ async function endFight(): Promise<void> {
 function setTab(next: Tab): void {
   tab = next;
   pasting = false;
+  // A notice is about what just happened here; leaving it up on another tab is
+  // stale by definition.
+  notify(undefined);
   for (const name of ['sheet', 'initiative', 'table'] as const) {
     el(`tab-${name}`).setAttribute('aria-selected', String(name === next));
   }
@@ -576,10 +579,13 @@ async function addCreature(name: string): Promise<void> {
   const sheet = creatureSheet(creature);
   await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id });
   const stale = outdatedSkills(sheet);
-  notify(
-    `Added ${sheet.name}` +
+  publish({
+    label: 'Added',
+    expression: 'roster',
+    explained:
+      `**${sheet.name}**` +
       (stale.length ? ` — note ${stale.join(', ')} predates this edition` : ''),
-  );
+  });
   await reload();
 }
 
@@ -829,18 +835,23 @@ function statusStrip(sheet: Sheet): HTMLElement {
       ),
     );
   }
-  strip.append(
-    labelled(
-      'Fatigue',
-      pips(
+  // Extras are taken out by a single Wound, so a fatigue track for them is a
+  // control nobody will ever use. (They can technically take Fatigue; if that
+  // ever matters at the table this is one line.)
+  if (sheet.wildCard) {
+    strip.append(
+      labelled(
+        'Fatigue',
+        pips(
         MAX_FATIGUE,
         Math.min(state.fatigue, MAX_FATIGUE),
         (n) => `${FATIGUE_NAMES[n] ?? `Fatigue ${n}`} — ${-n} to every trait roll`,
-        (n) => change(setFatigue(state, n)),
-        'fatigue',
+          (n) => change(setFatigue(state, n)),
+          'fatigue',
+        ),
       ),
-    ),
-  );
+    );
+  }
 
   // The cumulative penalty sits with the wounds and fatigue that cause it. No
   // status sentence: the trait buttons already show the effect where it is used,
@@ -990,20 +1001,75 @@ async function attemptSoak(
   }
 }
 
+/**
+ * Spend a Benny, and carry out what it bought.
+ *
+ * Two of these did nothing but write a log line: "Remove Shaken" left the
+ * character Shaken, and "Draw a new Action Card" left them on the same card.
+ * Spending a resource and having nothing happen is worse than not offering it.
+ */
 async function spendBenny(sheet: Sheet, use: string): Promise<void> {
+  const active = activeToken(sheet);
+
+  // Soak has its own button, because it needs to know what hit you. Route the
+  // menu entry to it rather than charging twice for one Benny.
+  if (use === 'Soak Rolls') {
+    const wounds = active ? (lastDamage.get(active.token.id) ?? 0) : 0;
+    if (active && wounds > 0) return attemptSoak(sheet, active.token.id, active.state, wounds);
+    notify('Nothing to Soak — apply some damage first');
+    return;
+  }
+
   try {
     const left = await bank.spend(sheet.id, use);
     bennies.set(sheet.id, left);
-    renderSheetArea();
+
+    let effect = '';
+    if (use === 'Remove Shaken' && active) {
+      if (!active.state.shaken) {
+        effect = ' (was not Shaken)';
+      } else {
+        await updateTokenState(active.token.id, (state) => setShaken(state, false));
+        effect = ' — no longer Shaken';
+      }
+    }
+
+    if (use === 'Draw a new Action Card' && active) {
+      effect = await redrawCard(active.token.id, sheet);
+    }
+
     publish({
       character: sheet.name,
       label: 'spends a Benny',
       expression: 'benny',
-      explained: `${use} — **${left}** left`,
+      explained: `${use}${effect} — **${left}** left`,
     });
+    await refreshTokens();
   } catch (error) {
     notify(error instanceof NoBenniesError ? `${sheet.name} has no Bennies left` : describe(error));
   }
+}
+
+/**
+ * Deal this combatant a replacement Action Card from the same deck the round was
+ * dealt from, so the card cannot come out twice.
+ */
+async function redrawCard(tokenId: string, sheet: Sheet): Promise<string> {
+  const state = initiative ?? (await freshInitiative());
+  const result = dealRound(
+    state,
+    [{ tokenId, edges: initiativeEdges(sheet) }],
+    new JavaRandom(),
+  );
+  const draw = result.draws.get(tokenId);
+  if (!draw) return ' — the deck is empty';
+
+  await setCards(new Map([[tokenId, draw.card]]));
+  await writeInitiative(result.state);
+  // Redrawing is not a new round; keep the round number where it was.
+  initiative = { ...result.state, round: state.round };
+  await writeInitiative(initiative);
+  return ` — now on ${cardLabel(draw.card)}`;
 }
 
 async function awardBenny(sheet: Sheet): Promise<void> {

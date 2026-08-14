@@ -18,6 +18,7 @@ import {
   findGear,
   gearLine,
   suggestGear,
+  uncomma,
 } from '../src/rules/gearCatalogue.js';
 
 describe('the extracted catalogue', () => {
@@ -208,6 +209,33 @@ describe('putting a catalogue item onto a sheet', () => {
       if (item.ap && String(parsed.ap) !== item.ap) broken.push(`${item.name}: ap`);
       if (item.rof && String(parsed.rof) !== item.rof) broken.push(`${item.name}: rof`);
     }
+    expect(broken).toEqual([]);
+  });
+});
+
+describe('names that would break a gear line', () => {
+  it('reverses a comma-filed name, which would otherwise become two items', () => {
+    // A gear line is comma-separated, so "Knife, Bowie (…)" parses as a Knife
+    // with no stats plus a Bowie carrying them.
+    expect(uncomma('Knife, Bowie')).toBe('Bowie Knife');
+    expect(uncomma('Club, War')).toBe('War Club');
+    expect(uncomma('Colt Peacemaker')).toBe('Colt Peacemaker');
+  });
+
+  it('writes the Bowie knife as one item the gear parser reads whole', () => {
+    const line = gearLine(findGear('Bowie knife')!);
+    expect(line).toBe('Bowie Knife (damage Str+d4+1)');
+    const { weapons, items } = parseGear(line);
+    expect(weapons).toHaveLength(1);
+    expect(items).toHaveLength(0);
+    expect(weapons[0]).toMatchObject({ name: 'Bowie Knife', damage: 'Str+d4+1' });
+  });
+
+  it('leaves every catalogue name as a single gear item', () => {
+    const broken = GEAR.filter((item) => {
+      const { weapons, armor, items: plain } = parseGear(gearLine(item));
+      return weapons.length + armor.length + plain.length !== 1;
+    }).map((item) => item.name);
     expect(broken).toEqual([]);
   });
 });

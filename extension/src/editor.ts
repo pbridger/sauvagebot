@@ -93,6 +93,34 @@ function numberInput(
   return input;
 }
 
+/** The five ranks, in order of advancement. */
+const RANKS = ['Novice', 'Seasoned', 'Veteran', 'Heroic', 'Legendary'] as const;
+
+/**
+ * Rank as a picker rather than free text — there are five of them and they are
+ * fixed. An imported card carrying something else keeps it as an extra option,
+ * so a value is never silently replaced by the nearest match.
+ */
+function rankPicker(sheet: Sheet, onPick: (rank: string) => void): HTMLSelectElement {
+  const select = document.createElement('select');
+  const current = (sheet.rank ?? '').trim();
+  const known = RANKS.find((r) => r.toLowerCase() === current.toLowerCase());
+  const options = [
+    '',
+    ...RANKS,
+    ...(current && !known ? [current] : []),
+  ];
+  for (const rank of options) {
+    const option = document.createElement('option');
+    option.value = rank;
+    option.textContent = rank || '—';
+    option.selected = known ? rank === known : rank === current;
+    select.append(option);
+  }
+  select.addEventListener('change', () => onPick(select.value));
+  return select;
+}
+
 /** Die picker with a "—" option, which is how a skill is removed. */
 function diePicker(die: number | undefined, onPick: (die: string) => void): HTMLSelectElement {
   const select = document.createElement('select');
@@ -247,7 +275,7 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
   identity.className = 'edit-block';
   identity.append(
     field('Name', textInput(sheet.name, 'Name', (v) => change(setText(sheet, 'name', v)))),
-    field('Rank', textInput(sheet.rank ?? '', 'Novice', (v) => change(setText(sheet, 'rank', v)))),
+    field('Rank', rankPicker(sheet, (v) => change(setText(sheet, 'rank', v)))),
     field('Quote', textInput(sheet.quote ?? '', '', (v) => change(setText(sheet, 'quote', v)))),
   );
 

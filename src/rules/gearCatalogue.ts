@@ -67,6 +67,22 @@ export function findGear(name: string): GearEntry | undefined {
   return undefined;
 }
 
+/**
+ * "Knife, Bowie" -> "Bowie Knife".
+ *
+ * The book files weapons by family so they sort together, but a gear line is
+ * comma-separated: written as-is, that entry becomes two items — a Knife with no
+ * stats and a Bowie carrying them. Reversing the pair keeps one item and reads
+ * the way a character would say it.
+ */
+export function uncomma(name: string): string {
+  const parts = name.split(',').map((part) => part.trim());
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return name;
+  // Not a qualifier in brackets, and not something with its own comma sense.
+  if (/^\(/.test(parts[1])) return name;
+  return `${parts[1]} ${parts[0]}`;
+}
+
 export function suggestGear(query: string, limit = 10): GearEntry[] {
   const key = normaliseGearName(query);
   if (!key) return GEAR.slice(0, limit);
@@ -105,7 +121,7 @@ function stats(item: GearEntry): string[] {
  * catalogue.
  */
 export function gearLine(item: GearEntry): string {
-  const name = item.name.replace(/\s*\([^)]*\)\s*$/, '').trim() || item.name;
+  const name = uncomma(item.name.replace(/\s*\([^)]*\)\s*$/, '').trim() || item.name);
   const bits = stats(item);
   return bits.length ? `${name} (${bits.join(', ')})` : name;
 }
