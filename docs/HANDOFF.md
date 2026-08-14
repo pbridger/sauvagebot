@@ -227,14 +227,25 @@ is the untouched upstream mirror of the Java bot and shares no history with this
 tree; it does not build and nothing here depends on it.) The install link is the
 manifest URL:
 
-    https://pbridger.github.io/sauvagebot/manifest.json
+    https://paulbridger.com/sauvagebot/manifest.json
+
+(`https://pbridger.github.io/sauvagebot/manifest.json` also works, but 301s to
+the line above: the account's Pages site carries a custom domain, and project
+sites follow it. Give people the final URL rather than a redirect — OBR has to
+fetch the manifest cross-origin and a redirect is one more thing to go wrong.)
 
 In Owlbear Rodeo: **Profile → Extensions → Add Custom Extension**, paste that,
 install. Nothing needs to be installed per-room — an extension is added to an
 account and then enabled in a room.
 
-**One-off setup, on GitHub:** Settings → Pages → Source: **GitHub Actions**.
-Until that is set the workflow builds and the deploy step fails.
+**One-off setup, on GitHub:**
+
+  1. Settings → Pages → Source: **GitHub Actions**.
+  2. Settings → Environments → **github-pages** → Deployment branches: allow
+     `typescript-rewrite`. GitHub creates this rule pinned to whatever the
+     default branch was when Pages was first enabled, so if the default branch
+     changed afterwards, every deploy fails the branch check while the build
+     itself passes — which looks like a broken build and is not one.
 
 A project site is served from `/<repo>/` rather than a domain root, so the build
 takes `VITE_BASE` and rewrites the manifests' paths to match (see
