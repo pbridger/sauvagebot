@@ -939,14 +939,14 @@ function pips(
 function statusStrip(sheet: Sheet): HTMLElement {
   const block = document.createElement('div');
   block.className = 'status-block';
-  // Bennies first: they are a resource you decide to spend, and deciding comes
-  // before the arithmetic of what the roll is at.
-  block.append(bennyGroup(sheet));
   const strip = document.createElement('div');
   strip.className = 'status';
   block.append(strip);
-  // Two halves in one row, each its own flex container, so each total can sit
-  // hard right of the controls that produce it.
+  // Bennies first, inside the same panel: a resource you decide to spend, and
+  // deciding comes before the arithmetic of what the roll is at.
+  strip.append(bennyGroup(sheet));
+  // Two halves on the row below, each its own flex container, so each total can
+  // sit hard right of the controls that produce it.
   const half = document.createElement('div');
   half.className = 'statushalf';
 
@@ -1079,26 +1079,28 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
     void updateTokenState(token.id, () => next).then(refreshTokens);
   };
 
+  const line = document.createElement('div');
+  line.className = 'modline';
+  group.append(line);
+
   const track = document.createElement('div');
   track.className = 'pips mod-track';
   const manual = state.mod ?? 0;
   const dial = (n: number): HTMLElement => {
     const pip = document.createElement('button');
-    const on = n < 0 ? manual <= n : manual >= n;
+    const on = n === 0 ? manual === 0 : n < 0 ? manual <= n : manual >= n;
     pip.className = on ? 'pip on situational' : 'pip';
     // Signed, because a pip reading "2" in a track that runs both ways is a
     // question rather than a label.
-    pip.textContent = formatMod(n);
-    pip.title = `${formatMod(n)} to every trait roll`;
+    pip.textContent = formatMod(n) || '+0';
+    pip.title = n === 0 ? 'No hand-dialled modifier' : `${formatMod(n)} to every trait roll`;
     pip.addEventListener('click', () => change(setManualMod(state, manual === n ? 0 : n)));
     return pip;
   };
-  for (let n = -MANUAL_RANGE; n <= -1; n++) track.append(dial(n));
-  const split = document.createElement('span');
-  split.className = 'mod-zero';
-  track.append(split);
-  for (let n = 1; n <= MANUAL_RANGE; n++) track.append(dial(n));
-  group.append(labelled('Modifier', track));
+  // A +0 pip rather than a separator: zero is a value on this track, and the
+  // one you most often want to get back to.
+  for (let n = -MANUAL_RANGE; n <= MANUAL_RANGE; n++) track.append(dial(n));
+  line.append(labelled('Modifier', track));
 
   const active = situationsOf(state);
   const total = manual + active.reduce((sum, s) => sum + s.value, 0);
@@ -1107,26 +1109,25 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
     ...(manual ? [{ label: 'Modifier', value: manual, kind: 'situational' as const }] : []),
   ];
 
-  // Clear before Conditions: unfolding the list is the frequent, harmless click
-  // and belongs next to what it unfolds.
-  if (total) {
-    const clear = document.createElement('button');
-    clear.className = 'toggle';
-    clear.textContent = 'Clear';
-    clear.title = 'Back to no situational modifier';
-    clear.addEventListener('click', () => change(clearModifiers(state)));
-    group.append(clear);
-  }
+  // Always present, disabled when there is nothing to clear: a button that comes
+  // and goes shifts everything beside it every time a modifier is set.
+  const clear = document.createElement('button');
+  clear.className = 'toggle';
+  clear.textContent = 'Clear';
+  clear.disabled = total === 0 && !active.length;
+  clear.title = 'Back to no situational modifier';
+  clear.addEventListener('click', () => change(clearModifiers(state)));
+  line.append(clear);
 
   const more = document.createElement('button');
-  more.className = showConditions ? 'toggle on' : 'toggle';
+  more.className = showConditions ? 'toggle cond-toggle on' : 'toggle cond-toggle';
   more.textContent = showConditions ? 'Conditions ▴' : 'Conditions ▾';
   more.title = 'Named modifiers from the rulebook';
   more.addEventListener('click', () => {
     showConditions = !showConditions;
     renderSheetArea();
   });
-  group.append(more);
+  line.append(more);
 
   // Last, and pushed hard right, so the two totals line up down the panel.
   const chip = document.createElement('span');
@@ -1135,7 +1136,7 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
   chip.title = parts.length
     ? `${describeMods(parts)} — ${formatMod(total)} to every trait roll`
     : 'Nothing the Marshal has called';
-  group.append(chip);
+  line.append(chip);
 
   // Active conditions are always visible; the full list folds away, because ten
   // buttons above a character sheet is a lot of furniture for a player who is
