@@ -46,6 +46,12 @@ export interface InitiativeHooks {
    * clicking down the order can see at a glance who is left.
    */
   acted?: ReadonlySet<string>;
+  /**
+   * GM only. A private character keeps their turn in the order — players still
+   * need to know when the thing acts — but shows as the token on the map rather
+   * than by the name on the sheet the Marshal hid.
+   */
+  revealPrivate?: boolean;
 }
 
 /** Everyone bound to a sheet in this scene, with whatever card they hold. */
@@ -162,7 +168,7 @@ export function renderInitiative(
 
     const name = document.createElement('span');
     name.className = 'who';
-    name.textContent = displayName(combatant, all);
+    name.textContent = displayName(combatant, all, hooks.revealPrivate ?? false);
     row.append(name);
 
     // Same colours as the token badges and the sheet pips: one scheme throughout.
@@ -195,7 +201,8 @@ export function renderInitiative(
     const open = document.createElement('button');
     open.className = 'sheet-link';
     open.textContent = 'Sheet';
-    open.title = `Show ${combatant.sheet.name}'s sheet`;
+    open.title = `Show ${displayName(combatant, all, hooks.revealPrivate ?? false)}'s sheet`;
+    open.disabled = combatant.sheet.private === true && !hooks.revealPrivate;
     open.addEventListener('click', (event) => {
       // Without this the row's own handler also fires and marks the turn taken.
       event.stopPropagation();
@@ -219,7 +226,14 @@ export function renderInitiative(
  * identical for all of them and the token name is the only way to tell which
  * bandit is up. There, and only there, the token name is appended.
  */
-export function displayName(combatant: Combatant, all: readonly Combatant[]): string {
+export function displayName(
+  combatant: Combatant,
+  all: readonly Combatant[],
+  revealPrivate = true,
+): string {
+  // A sheet the Marshal marked private is named by its token, which everyone can
+  // already read off the map.
+  if (combatant.sheet.private && !revealPrivate) return combatant.name;
   const shared = all.filter((other) => other.sheet.id === combatant.sheet.id).length > 1;
   if (!shared || combatant.name === combatant.sheet.name) return combatant.sheet.name;
   return `${combatant.sheet.name} · ${combatant.name}`;

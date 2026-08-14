@@ -59,6 +59,16 @@ export interface Sheet {
   quote?: string;
   rank?: string;
   wildCard: boolean;
+  /**
+   * Marshal's eyes only: hidden from players' panels, pickers and initiative
+   * names.
+   *
+   * A screen, not a vault. Room metadata is readable by every client in the room,
+   * so this keeps a mook's stats out of the way rather than out of reach — the
+   * same guard rail as the Table tab. It is the right level for a table where
+   * everyone is trusted; it is not a defence against someone who goes looking.
+   */
+  private?: boolean;
 
   attributes: Partial<Record<Attribute, Trait>>;
   /** Free-form: the cards carry arcane skills and parenthetical specialisations. */

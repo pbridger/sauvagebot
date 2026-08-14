@@ -59,11 +59,24 @@ import {
   describeStatus,
   isIncapacitated,
   maxWounds,
+  rollBreakdown,
   setFatigue,
   setShaken,
   setWounds,
   traitPenalty,
+  type RollBreakdown,
 } from '../../src/rules/status.js';
+import {
+  MANUAL_RANGE,
+  SITUATIONS,
+  clearModifiers,
+  describeMods,
+  formatMod,
+  hasCondition,
+  setManualMod,
+  situationsOf,
+  toggleCondition,
+} from '../../src/rules/modifiers.js';
 import { renderBadges } from './badges.js';
 import { BennyBank } from '../../src/obr/bennyBank.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
@@ -177,6 +190,42 @@ function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>): void {
 }
 
 /**
+ * The name a roll goes out under.
+ *
+ * A private sheet does not broadcast its character's name: the roll would
+ * otherwise announce exactly what the Marshal just marked hidden, and unlike the
+ * picker nobody has to go looking for it — it arrives in everyone's log. The
+ * token's name goes instead, which the players can already read off the map.
+ */
+function rollerName(sheet: Sheet): string | undefined {
+  if (!sheet.private) return sheet.name;
+  return activeToken(sheet)?.token.name;
+}
+
+/** `{ character }` for a published line, absent for a private sheet with no token. */
+function named(sheet: Sheet): { character?: string } {
+  const who = rollerName(sheet);
+  return who ? { character: who } : {};
+}
+
+/** Publish a roll made off a sheet, with its modifier breakdown attached. */
+function publishTrait(
+  sheet: Sheet,
+  label: string,
+  result: { expression: string; explained: string },
+  mods: RollBreakdown,
+): void {
+  const who = rollerName(sheet);
+  publish({
+    ...(who ? { character: who } : {}),
+    label,
+    expression: result.expression,
+    explained: result.explained,
+    ...(mods.parts.length ? { mods: mods.parts } : {}),
+  });
+}
+
+/**
  * The engine returns Discord markdown (`**8**`). Render the bold rather than
  * showing the asterisks, and via textContent rather than innerHTML — these
  * strings arrive from other clients.
@@ -201,6 +250,15 @@ function renderLog(): void {
         line.append(span);
       }
 
+      // Where the modifier came from, in the same two colours as the sheet: red
+      // for what the character is carrying, green for what the Marshal called.
+      for (const mod of entry.mods ?? []) {
+        const chip = document.createElement('span');
+        chip.className = `rollmod ${mod.kind}`;
+        chip.textContent = `${mod.label} ${formatMod(mod.value)}`;
+        line.append(chip);
+      }
+
       if (entry.ap) {
         const ap = document.createElement('span');
         ap.className = 'ap';
@@ -213,7 +271,7 @@ function renderLog(): void {
       if (target && isApplicable(entry)) {
         const apply = document.createElement('button');
         apply.className = 'apply';
-        apply.textContent = `→ ${target.sheet.name}`;
+        apply.textContent = `→ ${rollerName(target.sheet) ?? target.token.name}`;
         apply.title =
           `Apply ${entry.total} damage to ${target.token.name}` +
           (entry.ap ? `, ignoring ${entry.ap} armour` : '');
@@ -319,6 +377,7 @@ function renderSheetArea(): void {
   if (tab === 'initiative') {
     sheetEl.replaceChildren(
       renderInitiative(initiative, combatants(tokens, sheets), {
+        revealPrivate: isGM,
         onDeal: () => void deal(),
         onClear: () => void endFight(),
         onSelect: (tokenId) => void takeTurn(tokenId),
@@ -330,11 +389,12 @@ function renderSheetArea(): void {
     return;
   }
   const sheet = sheets.find((s) => s.id === selectedId);
-  if (editing && sheet) {
+  if (editing && sheet && maySee(sheet)) {
     sheetEl.replaceChildren(
       renderEditor(sheet, {
         onChange: scheduleSave,
         onDelete: () => void deleteCharacter(sheet),
+        isGM,
       }),
     );
     return;
@@ -379,7 +439,9 @@ async function deal(): Promise<void> {
       // The character's name, as everywhere else — a token called
       // "Npc Linguist 4" says nothing about who just drew a king.
       const combatant = table.find((c) => c.tokenId === id);
-      const who = combatant ? displayName(combatant, table) : '?';
+      // The published line goes to everyone, so a private character is named by
+      // its token there whoever is dealing.
+      const who = combatant ? displayName(combatant, table, false) : '?';
       return `${who} ${cardLabel(draw.card)}`;
     })
     .join(', ');
@@ -422,7 +484,7 @@ async function takeTurn(tokenId: string): Promise<void> {
 /** Jump to a combatant's sheet: who is next, and what can they do. */
 async function openSheetFor(tokenId: string): Promise<void> {
   const binding = readBinding(tokens.find((t) => t.id === tokenId)?.metadata);
-  if (binding) {
+  if (binding && maySee(sheets.find((s) => s.id === binding.sheetId))) {
     selectedId = binding.sheetId;
     renderRoster();
   }
@@ -482,6 +544,7 @@ function renderTable(): HTMLElement {
     ]),
   );
   wrap.append(roster);
+  wrap.append(privateBlock());
   wrap.append(bestiaryBlock());
 
   const session = document.createElement('div');
@@ -520,6 +583,65 @@ function renderTable(): HTMLElement {
   });
   wrap.append(storage);
 
+  return wrap;
+}
+
+/**
+ * Which characters the players cannot see, in one place.
+ *
+ * The per-sheet tick is in the editor, but "what have I hidden?" is a question
+ * about the table rather than about a character — and a mook left private after
+ * the reveal is a small, silent annoyance. So the list lives here, with the
+ * switch next to each name.
+ */
+function privateBlock(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  const hidden = sheets.filter((sheet) => sheet.private);
+  wrap.append(
+    paneHeading(
+      "Marshal's characters",
+      hidden.length
+        ? `${hidden.length} hidden from players' pickers, sheets and initiative names. ` +
+          'A screen, not a lock — room data is readable by every client.'
+        : 'Nothing hidden. Tick "Marshal\'s only" while editing a sheet to hide it.',
+    ),
+  );
+
+  if (!hidden.length) return wrap;
+
+  const list = document.createElement('div');
+  list.className = 'creature-list';
+  for (const sheet of hidden) {
+    const row = document.createElement('div');
+    row.className = 'creature';
+
+    const open = document.createElement('button');
+    open.className = 'creature-name';
+    open.textContent = sheet.name;
+    open.title = 'Open this sheet';
+    open.addEventListener('click', () => {
+      selectedId = sheet.id;
+      renderRoster();
+      setTab('sheet');
+    });
+    row.append(open);
+
+    const reveal = document.createElement('button');
+    reveal.className = 'creature-add';
+    reveal.textContent = 'Reveal';
+    reveal.title = 'Let the players see this sheet';
+    reveal.addEventListener('click', () => {
+      void (async () => {
+        await roster.save({ ...sheet, private: false });
+        await reload();
+        renderSheetArea();
+      })();
+    });
+    row.append(reveal);
+    list.append(row);
+  }
+  wrap.append(list);
   return wrap;
 }
 
@@ -577,7 +699,10 @@ async function addCreature(name: string): Promise<void> {
   const creature = searchCreatures(name, 1)[0];
   if (!creature) return;
   const sheet = creatureSheet(creature);
-  await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id });
+  // NPCs the Marshal adds start private: a mook's stat block is the one thing at
+  // the table the players are meant to find out by being shot at. One tick in
+  // the editor makes it public.
+  await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id, private: true });
   const stale = outdatedSkills(sheet);
   publish({
     label: 'Added',
@@ -680,7 +805,7 @@ Gear: Melee attack (Str+d6).`;
       try {
         const parsed = parseStatBlocks(area.value);
         for (const sheet of parsed) {
-          await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id });
+          await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id, private: true });
         }
         notify(`Added ${parsed.map((s) => s.name).join(', ')}`);
         pasting = false;
@@ -750,10 +875,16 @@ function activeToken(sheet: Sheet): { token: TokenLike; state: TokenState } | un
   return token && state ? { token, state } : undefined;
 }
 
-/** The penalty the sheet's trait rolls currently carry. */
-function statusPenalty(sheet: Sheet): number {
-  const active = activeToken(sheet);
-  return active ? traitPenalty(active.state) : 0;
+/**
+ * Everything modifying this sheet's trait rolls: wounds and Fatigue in red,
+ * whatever the Marshal has called in green.
+ *
+ * Returned whole rather than as a number so a button's label and the expression
+ * it rolls come from the same place. They used to come from two, which is the
+ * sort of disagreement nobody notices until a roll is wrong.
+ */
+function modsFor(sheet: Sheet): RollBreakdown {
+  return rollBreakdown(activeToken(sheet)?.state);
 }
 
 /**
@@ -788,8 +919,11 @@ function pips(
  * payoff is that the trait buttons pick the penalty up automatically.
  */
 function statusStrip(sheet: Sheet): HTMLElement {
+  const block = document.createElement('div');
+  block.className = 'status-block';
   const strip = document.createElement('div');
   strip.className = 'status';
+  block.append(strip);
 
   // Ordered Shaken, then Wounds, then Fatigue: how often each comes up in play,
   // and so the order they get thought about at the table.
@@ -799,7 +933,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
     hint.className = 'hint';
     hint.textContent = 'Bind a token to track wounds';
     strip.append(hint);
-    return strip;
+    return block;
   }
 
   const { token, state } = active;
@@ -887,8 +1021,103 @@ function statusStrip(sheet: Sheet): HTMLElement {
     strip.append(button);
   }
 
-  strip.append(bennyGroup(sheet));
-  return strip;
+  // Bennies on their own line, and the Marshal's modifiers on theirs: the first
+  // row is what the character is carrying, the second is what the world is doing
+  // to them, and they are read at different moments.
+  block.append(modifierRow(token, state), bennyGroup(sheet));
+  return block;
+}
+
+/** Whether the modifier chips are unfolded. Sticky, since a fight tends to keep needing them. */
+let showConditions = false;
+
+/**
+ * The green track: everything the Marshal calls, as opposed to what the
+ * character is carrying.
+ *
+ * A dial from −4 to +4 for the one-off ("that's a tough climb, −2") plus named
+ * conditions from the book, which carry their page and their exact wording in a
+ * tooltip so nobody has to remember whether Dark is −2 or −4.
+ *
+ * Everything here is on the *roller*: it applies to every trait roll this
+ * character makes until it is cleared. Cover, Range, Gang Up and The Drop are
+ * deliberately absent — they belong to one attack against one target, and left
+ * standing here they would quietly follow the character into their next Notice
+ * roll. Hence the Clear button sitting right next to them.
+ */
+function modifierRow(token: TokenLike, state: TokenState): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'status modifiers';
+  const change = (next: TokenState): void => {
+    void updateTokenState(token.id, () => next).then(refreshTokens);
+  };
+
+  const track = document.createElement('div');
+  track.className = 'pips mod-track';
+  const manual = state.mod ?? 0;
+  const dial = (n: number): HTMLElement => {
+    const pip = document.createElement('button');
+    const on = n < 0 ? manual <= n : manual >= n;
+    pip.className = on ? 'pip on situational' : 'pip';
+    pip.textContent = String(Math.abs(n));
+    pip.title = `${formatMod(n)} to every trait roll`;
+    pip.addEventListener('click', () => change(setManualMod(state, manual === n ? 0 : n)));
+    return pip;
+  };
+  for (let n = -MANUAL_RANGE; n <= -1; n++) track.append(dial(n));
+  const split = document.createElement('span');
+  split.className = 'mod-zero';
+  track.append(split);
+  for (let n = 1; n <= MANUAL_RANGE; n++) track.append(dial(n));
+  row.append(labelled('Modifier', track));
+
+  const active = situationsOf(state);
+  const total = manual + active.reduce((sum, s) => sum + s.value, 0);
+  if (total) {
+    const chip = document.createElement('span');
+    chip.className = 'penalty situational';
+    chip.textContent = formatMod(total);
+    chip.title = `${describeMods([...active.map((s) => ({ label: s.label, value: s.value, kind: 'situational' as const })), ...(manual ? [{ label: 'Modifier', value: manual, kind: 'situational' as const }] : [])])} — ${formatMod(total)} to every trait roll`;
+    row.append(chip);
+  }
+
+  const more = document.createElement('button');
+  more.className = showConditions ? 'toggle on' : 'toggle';
+  more.textContent = showConditions ? 'Conditions ▴' : 'Conditions ▾';
+  more.title = 'Named modifiers from the rulebook';
+  more.addEventListener('click', () => {
+    showConditions = !showConditions;
+    renderSheetArea();
+  });
+  row.append(more);
+
+  if (total) {
+    const clear = document.createElement('button');
+    clear.className = 'toggle';
+    clear.textContent = 'Clear';
+    clear.title = 'Back to no situational modifier';
+    clear.addEventListener('click', () => change(clearModifiers(state)));
+    row.append(clear);
+  }
+
+  // Active conditions are always visible; the full list folds away, because ten
+  // buttons above a character sheet is a lot of furniture for a player who is
+  // only ever going to see two of them.
+  const chips = document.createElement('div');
+  chips.className = 'conditions';
+  for (const situation of SITUATIONS) {
+    const on = hasCondition(state, situation.key);
+    if (!on && !showConditions) continue;
+    const chip = document.createElement('button');
+    chip.className = on ? 'cond on' : 'cond';
+    chip.textContent = `${situation.label} ${formatMod(situation.value)}`;
+    chip.title = situation.note;
+    chip.addEventListener('click', () => change(toggleCondition(state, situation.key)));
+    chips.append(chip);
+  }
+  if (chips.childElementCount) row.append(chips);
+
+  return row;
 }
 
 /**
@@ -980,7 +1209,10 @@ async function attemptSoak(
     bennies.set(sheet.id, left);
 
     const before = { ...state, wounds: Math.max(0, state.wounds - wounds) };
-    const { expression, explained } = rollAttr(sheet, 'vigor', traitPenalty(before));
+    // Situational modifiers ride along with the wound penalty, since the
+    // character is still standing in whatever the Marshal called.
+    const mods = rollBreakdown(before);
+    const { expression, explained } = rollAttr(sheet, 'vigor', mods.total);
     const total = totalOf(explained) ?? 0;
     const removed = Math.min(soakedWounds(total), wounds);
 
@@ -989,12 +1221,15 @@ async function attemptSoak(
     if (removed >= wounds) lastDamage.delete(tokenId);
     else lastDamage.set(tokenId, wounds - removed);
 
-    publish({
-      character: sheet.name,
-      label: 'Soak',
-      expression,
-      explained: `${explained} — ${removed === 0 ? 'no wounds soaked' : `soaked ${removed} of ${wounds}`}`,
-    });
+    publishTrait(
+      sheet,
+      'Soak',
+      {
+        expression,
+        explained: `${explained} — ${removed === 0 ? 'no wounds soaked' : `soaked ${removed} of ${wounds}`}`,
+      },
+      mods,
+    );
     await refreshTokens();
   } catch (error) {
     notify(error instanceof NoBenniesError ? `${sheet.name} has no Bennies left` : describe(error));
@@ -1039,7 +1274,7 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
     }
 
     publish({
-      character: sheet.name,
+      ...named(sheet),
       label: 'spends a Benny',
       expression: 'benny',
       explained: `${use}${effect} — **${left}** left`,
@@ -1077,7 +1312,7 @@ async function awardBenny(sheet: Sheet): Promise<void> {
   bennies.set(sheet.id, total);
   renderSheetArea();
   publish({
-    character: sheet.name,
+    ...named(sheet),
     label: 'gets a Benny',
     expression: 'benny',
     explained: `now has **${total}**`,
@@ -1192,11 +1427,14 @@ async function onSelectionChange(): Promise<void> {
 
 function render(): void {
   sheetEl.replaceChildren();
-  const sheet = sheets.find((s) => s.id === selectedId);
+  const found = sheets.find((s) => s.id === selectedId);
+  const sheet = maySee(found) ? found : undefined;
   if (!sheet) {
     const empty = document.createElement('p');
     empty.className = 'empty';
-    empty.textContent = 'No characters yet. Import an archetype card to start.';
+    empty.textContent = found
+      ? "That character is the Marshal's."
+      : 'No characters yet. Import an archetype card to start.';
     sheetEl.append(empty);
     return;
   }
@@ -1257,11 +1495,11 @@ function render(): void {
   }
   if (derived.childElementCount) sheetEl.append(derived);
 
-  const penalty = statusPenalty(sheet);
-  const withPenalty = (mod: number | undefined): string => {
-    const total = (mod ?? 0) + penalty;
-    return total ? (total > 0 ? `+${total}` : String(total)) : '';
-  };
+  // One breakdown for the whole sheet: the label a button shows and the roll it
+  // makes are the same number by construction, and the log gets the itemisation.
+  const mods = modsFor(sheet);
+  const penalty = mods.total;
+  const withPenalty = (mod: number | undefined): string => formatMod((mod ?? 0) + penalty);
 
   sheetEl.append(section('Attributes'));
   const attributes = document.createElement('div');
@@ -1272,8 +1510,7 @@ function render(): void {
     const label = attribute[0]!.toUpperCase() + attribute.slice(1);
     attributes.append(
       traitButton(label, `d${trait.die}${withPenalty(trait.mod)}`, false, () => {
-        const { expression, explained } = rollAttribute(sheet, attribute as Attribute, penalty);
-        publish({ character: sheet.name, label, expression, explained });
+        publishTrait(sheet, label, rollAttribute(sheet, attribute as Attribute, penalty), mods);
       }),
     );
   }
@@ -1306,10 +1543,7 @@ function render(): void {
         skill,
         trait ? `d${trait.die}${withPenalty(trait.mod)}` : `d4${withPenalty(-2)}`,
         !trait,
-        () => {
-          const { expression, explained } = rollSkill(sheet, skill, penalty);
-          publish({ character: sheet.name, label: skill, expression, explained });
-        },
+        () => publishTrait(sheet, skill, rollSkill(sheet, skill, penalty), mods),
       ),
     );
   }
@@ -1327,13 +1561,14 @@ function render(): void {
     die.textContent = `d4${withPenalty(-2)}`;
     rest.append(label, die);
     rest.title = 'Roll d4−2 for any untrained skill';
-    rest.addEventListener('click', () => {
-      const { expression, explained } = rollTrait(
-        { die: 4, mod: -2 + penalty, wildCard: sheet.wildCard },
-        new JavaRandom(),
-      );
-      publish({ character: sheet.name, label: 'untrained skill', expression, explained });
-    });
+    rest.addEventListener('click', () =>
+      publishTrait(
+        sheet,
+        'untrained skill',
+        rollTrait({ die: 4, mod: -2 + penalty, wildCard: sheet.wildCard }, new JavaRandom()),
+        mods,
+      ),
+    );
     skills.append(rest);
   }
   sheetEl.append(skills);
@@ -1347,7 +1582,7 @@ function render(): void {
   if (sheet.powers?.length) {
     sheetEl.append(section('Powers'), entryList(sheet.powers));
   }
-  renderGear(sheet, penalty);
+  renderGear(sheet, mods);
 
   if (sheet.advances) {
     const p = document.createElement('p');
@@ -1362,7 +1597,8 @@ function render(): void {
  * sentence. Damage is a button: a weapon's damage is the roll you make right
  * after the attack that the sheet already rolls for you.
  */
-function renderGear(sheet: Sheet, penalty: number): void {
+function renderGear(sheet: Sheet, mods: RollBreakdown): void {
+  const penalty = mods.total;
   const gear = parseGear(sheet.gear);
   if (!sheet.gear) return;
 
@@ -1394,11 +1630,10 @@ function renderGear(sheet: Sheet, penalty: number): void {
       const attack = document.createElement('button');
       attack.className = 'atk';
       attack.textContent = skill;
-      attack.title = `Roll ${skill}${penalty ? ` (${penalty})` : ''}`;
-      attack.addEventListener('click', () => {
-        const { expression, explained } = rollSkill(sheet, skill, penalty);
-        publish({ character: sheet.name, label: `${weapon.name} — ${skill}`, expression, explained });
-      });
+      attack.title = `Roll ${skill}${mods.parts.length ? ` (${describeMods(mods.parts)})` : ''}`;
+      attack.addEventListener('click', () =>
+        publishTrait(sheet, `${weapon.name} — ${skill}`, rollSkill(sheet, skill, penalty), mods),
+      );
       attackCell.append(attack);
       row.append(attackCell);
 
@@ -1420,7 +1655,7 @@ function renderGear(sheet: Sheet, penalty: number): void {
         button.textContent = weapon.damage;
         button.title = `Roll ${expression}`;
         button.addEventListener('click', () =>
-          rollFreeform(expression, `${weapon.name} damage`, sheet.name, weapon.ap),
+          rollFreeform(expression, `${weapon.name} damage`, rollerName(sheet), weapon.ap),
         );
         damageCell.append(button);
       } else {
@@ -1478,17 +1713,34 @@ function renderGear(sheet: Sheet, penalty: number): void {
 }
 
 
+/**
+ * The characters this client may look at.
+ *
+ * A guard rail, not a permission: room metadata is readable by every client, so
+ * a private sheet is out of the way rather than out of reach. That is the right
+ * level for a table where everyone is trusted — it stops a player idly scrolling
+ * past the Landshark's Toughness, and it does not pretend to be more.
+ */
+function visibleSheets(): Sheet[] {
+  return isGM ? sheets : sheets.filter((sheet) => !sheet.private);
+}
+
+function maySee(sheet: Sheet | undefined): boolean {
+  return sheet !== undefined && (isGM || !sheet.private);
+}
+
 function renderRoster(): void {
+  const shown = visibleSheets();
   bar.who.replaceChildren(
-    ...sheets.map((sheet) => {
+    ...shown.map((sheet) => {
       const option = document.createElement('option');
       option.value = sheet.id;
-      option.textContent = sheet.name;
+      option.textContent = sheet.private ? `${sheet.name} (GM)` : sheet.name;
       option.selected = sheet.id === selectedId;
       return option;
     }),
   );
-  bar.who.disabled = sheets.length === 0;
+  bar.who.disabled = shown.length === 0;
 }
 
 const MINE_PREFIX = 'com.savagebot/mine/';
@@ -1520,9 +1772,11 @@ async function myCharacter(): Promise<string | undefined> {
 async function reload(): Promise<void> {
   sheets = await roster.listFull();
   bennies = await bank.all();
-  if (!sheets.some((s) => s.id === selectedId)) {
+  const mySheets = visibleSheets();
+  if (!mySheets.some((s) => s.id === selectedId)) {
     const mine = await myCharacter();
-    selectedId = (mine && sheets.some((s) => s.id === mine) ? mine : undefined) ?? sheets[0]?.id;
+    selectedId =
+      (mine && mySheets.some((s) => s.id === mine) ? mine : undefined) ?? mySheets[0]?.id;
   }
   renderRoster();
   renderSheetArea();
@@ -1564,7 +1818,7 @@ async function applyToTarget(entry: RollEntry): Promise<void> {
   // No `total`: this line is the *outcome* of applying damage, and offering to
   // apply it again to whoever is selected next would only ever be a mistake.
   publish({
-    character: target.sheet.name,
+    ...named(target.sheet),
     label: 'takes damage',
     expression: `${entry.total}`,
     explained: outcome.description,

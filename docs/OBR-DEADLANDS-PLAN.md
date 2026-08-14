@@ -211,6 +211,33 @@ The Level Headed confirmation is worth noting twice: it independently vindicates
 deliberate divergence from the Java bot, which keeps the *worst* card. Paige's own card
 states the rule too.
 
+### Situational modifiers (added 2026-08-14)
+
+Verified from the extract and shipped in `src/rules/modifiers.ts`:
+
+| Modifier | Value | Source |
+|---|---|---|
+| Illumination — Dim / Dark / Pitch Darkness | −2 / −4 / −6 | p157 |
+| Unstable Platform | −2 | p165 |
+| Distracted ("subtracts 2 from all Trait rolls") | −2 | p154 |
+| Running | −2 | p151 |
+| Off-hand attack | −2 | p158 |
+| Improvised weapon | −2 | p157 |
+| Multi-Action, two / three actions | −2 / −4 | SWADE p159 — **trimmed from the player extract**, the one figure here not confirmed against a page we hold |
+
+**Deliberately excluded**, though the values are equally well known: Cover
+(−2/−4/−6/−8, p154), a prone target (scored *as* Medium Cover), The Drop (+4),
+Gang Up, Range and Called Shots. The dividing line is persistence, not sign: the
+modifier track is a property of the *roller* and applies to every trait roll they
+make until cleared, so anything that belongs to one attack against one target
+would still be subtracting next round — and would be subtracting from their
+Notice roll and their Soak as well. Those want a per-roll modifier box, which is
+a separate feature and the obvious next one.
+
+The track lives on the token (`TokenState`, beside wounds) because it describes a
+body in a scene, not a character. Conditions are stored **by key**, so retuning a
+value does not require migrating bound tokens.
+
 ### Still to build, now unblocked
 
 Huckster hexes and the deal with the devil, Fear Level, Grit, Harrowed, and mad science

@@ -26,6 +26,24 @@ describe('validating what arrives over the wire', () => {
     expect(isRollEntry(entry({ total: 10, ap: 2 }))).toBe(true);
   });
 
+  it('accepts a modifier breakdown, and rejects a malformed one', () => {
+    expect(
+      isRollEntry(
+        entry({
+          mods: [
+            { label: '2 wounds', value: -2, kind: 'status' },
+            { label: 'Dark', value: -4, kind: 'situational' },
+          ],
+        }),
+      ),
+    ).toBe(true);
+    expect(isRollEntry(entry({ mods: [{ label: 'Dark', value: -4, kind: 'weather' }] as never }))).toBe(
+      false,
+    );
+    expect(isRollEntry(entry({ mods: ['Dark -4'] as never }))).toBe(false);
+    expect(isRollEntry(entry({ mods: 'Dark -4' as never }))).toBe(false);
+  });
+
   it.each([
     ['not an object', 'nope'],
     ['null', null],
@@ -124,6 +142,21 @@ describe('formatting', () => {
   it('shows armour-piercing, which changes what the damage means', () => {
     expect(formatEntry(entry({ label: 'Colt damage', ap: 1 }))).toMatch(/\(AP 1\)$/);
     expect(formatEntry(entry({ ap: 0 }))).not.toMatch(/AP/);
+  });
+
+  it('says where the modifier came from', () => {
+    expect(
+      formatEntry(
+        entry({
+          label: 'Shooting',
+          character: 'Reggie',
+          mods: [
+            { label: '2 wounds', value: -2, kind: 'status' },
+            { label: 'Dark', value: -4, kind: 'situational' },
+          ],
+        }),
+      ),
+    ).toMatch(/\[2 wounds -2, Dark -4\]$/);
   });
 });
 

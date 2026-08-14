@@ -57,6 +57,8 @@ export interface EditorHooks {
   /** Called with the new sheet on every change; the caller debounces and saves. */
   onChange: (sheet: Sheet) => void;
   onDelete: () => void;
+  /** Marshal-only controls, chief among them marking a sheet private. */
+  isGM?: boolean;
 }
 
 function field(label: string, control: HTMLElement): HTMLElement {
@@ -293,6 +295,20 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
   wildCard.checked = sheet.wildCard;
   wildCard.addEventListener('change', () => change(setWildCard(sheet, wildCard.checked)));
   identity.append(field('Wild Card', wildCard));
+
+  // Only the Marshal gets the switch: a player unticking it on their own sheet
+  // would do nothing useful, and a player ticking it would hide their own
+  // character from themselves.
+  if (hooks.isGM) {
+    const hidden = document.createElement('input');
+    hidden.type = 'checkbox';
+    hidden.checked = sheet.private === true;
+    hidden.title =
+      "Hide from players' character picker, sheet view and initiative names. " +
+      'A screen, not a lock: room data is readable by every client in the room.';
+    hidden.addEventListener('change', () => change({ ...sheet, private: hidden.checked }));
+    identity.append(field("Marshal's only", hidden));
+  }
   out.append(identity);
 
   // --- derived

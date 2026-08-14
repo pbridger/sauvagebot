@@ -336,6 +336,70 @@ img.portrait {
 
 /* ---- status strip ---------------------------------------------------- */
 
+/* Three rows: what the character is carrying, what the Marshal called, and
+   their Bennies. Read at different moments, so kept on different lines. */
+.status-block { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 4px; }
+.status-block .status { margin: 0; }
+.status-block > .bennies { padding: 0 8px; }
+.status-block > .bennies:empty { display: none; }
+
+/* The Marshal's modifiers: green throughout, against the red of wounds, so a
+   glance at either the sheet or the log says where a number came from. */
+.status.modifiers { border-style: dashed; }
+.mod-track { align-items: center; }
+.mod-track .mod-zero {
+  width: 1px;
+  height: 13px;
+  margin: 0 2px;
+  background: var(--rule);
+}
+.mod-track button.pip {
+  width: 17px;
+  height: 17px;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--muted);
+}
+button.pip.on.situational {
+  background: #2f7d4f;
+  border-color: #2f7d4f;
+  color: #fff;
+}
+.penalty.situational { background: #2f7d4f; }
+
+.conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex-basis: 100%;
+}
+button.cond {
+  padding: 1px 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--muted);
+}
+button.cond.on {
+  background: #2f7d4f;
+  border-color: #2f7d4f;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* The same two colours again, this time in the log. */
+#log .rollmod {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  color: #fff;
+  white-space: nowrap;
+}
+#log .rollmod.status { background: #8c2f22; }
+#log .rollmod.situational { background: #2f7d4f; }
+
 .status {
   display: flex;
   align-items: center;

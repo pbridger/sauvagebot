@@ -16,6 +16,8 @@
  * it here, and it works because the person hiding the roll is the one making it.
  */
 
+import { describeMods, type RollMod } from '../rules/modifiers.js';
+
 export const ROLL_CHANNEL = 'com.savagebot/roll';
 
 export interface RollEntry {
@@ -47,8 +49,27 @@ export interface RollEntry {
    * damage does not silently forget the AP the sheet already knew about.
    */
   ap?: number;
+  /**
+   * What made up the modifier on this roll — "2 wounds −2, Dark −4".
+   *
+   * Carried rather than recomputed: the receiving client cannot know what the
+   * roller's token looked like at the moment they rolled, and by the time the
+   * line is read the fight has usually moved on.
+   */
+  mods?: RollMod[];
   /** Kept local, never sent. Present only on the roller's own client. */
   secret?: boolean;
+}
+
+function isRollMod(value: unknown): value is RollMod {
+  if (!value || typeof value !== 'object') return false;
+  const mod = value as Partial<RollMod>;
+  return (
+    typeof mod.label === 'string' &&
+    typeof mod.value === 'number' &&
+    Number.isFinite(mod.value) &&
+    (mod.kind === 'status' || mod.kind === 'situational')
+  );
 }
 
 function isOptionalNumber(value: unknown): boolean {
@@ -80,7 +101,8 @@ export function isRollEntry(value: unknown): value is RollEntry {
     isOptionalNumber(entry.ap) &&
     (entry.applicable === undefined || typeof entry.applicable === 'boolean') &&
     (entry.character === undefined || typeof entry.character === 'string') &&
-    (entry.label === undefined || typeof entry.label === 'string')
+    (entry.label === undefined || typeof entry.label === 'string') &&
+    (entry.mods === undefined || (Array.isArray(entry.mods) && entry.mods.every(isRollMod)))
   );
 }
 
@@ -135,7 +157,8 @@ export function formatEntry(entry: RollEntry): string {
   const who = entry.character ? `${entry.character}` : entry.by;
   const what = entry.label ? `${who} — ${entry.label}` : who;
   const ap = entry.ap ? ` (AP ${entry.ap})` : '';
-  return `${what}: ${entry.explained.replace(/\*\*/g, '')}${ap}`;
+  const mods = entry.mods?.length ? ` [${describeMods(entry.mods)}]` : '';
+  return `${what}: ${entry.explained.replace(/\*\*/g, '')}${ap}${mods}`;
 }
 
 /**

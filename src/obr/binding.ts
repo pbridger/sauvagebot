@@ -30,11 +30,19 @@
  * Wild Cards take one token; Extras take as many as share the name.
  */
 import { SUITS, type Card } from '../game/cards.js';
+import type { ModifierState } from '../rules/modifiers.js';
 import type { Sheet } from '../rules/sheet.js';
 
 export const TOKEN_KEY = 'com.savagebot/token';
 
-export interface TokenState {
+/**
+ * Volatile state for one token.
+ *
+ * Extends `ModifierState`, so the situational modifiers the Marshal has called on
+ * this character (dark, unstable platform, Distracted) sit beside the wounds —
+ * both are true of a body in a scene rather than of the character.
+ */
+export interface TokenState extends ModifierState {
   sheetId: string;
   wounds: number;
   fatigue: number;
@@ -55,7 +63,13 @@ export function isTokenState(value: unknown): value is TokenState {
     typeof state.wounds === 'number' &&
     typeof state.fatigue === 'number' &&
     typeof state.shaken === 'boolean' &&
-    (state.card === undefined || isCard(state.card))
+    (state.card === undefined || isCard(state.card)) &&
+    // Both optional, and they must stay that way: every token already bound in a
+    // live room predates them, and a guard that required them would fail those
+    // bindings — which would look like every wound on the map vanishing.
+    (state.mod === undefined || (typeof state.mod === 'number' && Number.isFinite(state.mod))) &&
+    (state.conditions === undefined ||
+      (Array.isArray(state.conditions) && state.conditions.every((c) => typeof c === 'string')))
   );
 }
 
