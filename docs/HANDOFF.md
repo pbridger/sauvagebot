@@ -222,7 +222,10 @@ documents; edit those.
 ## Installing the extension in someone else's room
 
 The extension is published to GitHub Pages by `.github/workflows/pages.yml` on
-every push to `typescript-rewrite`. The install link is the manifest URL:
+every push to `typescript-rewrite`, which is the repo's default branch. (`master`
+is the untouched upstream mirror of the Java bot and shares no history with this
+tree; it does not build and nothing here depends on it.) The install link is the
+manifest URL:
 
     https://pbridger.github.io/sauvagebot/manifest.json
 
