@@ -68,7 +68,8 @@ function isRollMod(value: unknown): value is RollMod {
     typeof mod.label === 'string' &&
     typeof mod.value === 'number' &&
     Number.isFinite(mod.value) &&
-    (mod.kind === 'status' || mod.kind === 'situational')
+    (mod.kind === 'status' || mod.kind === 'situational') &&
+    (mod.short === undefined || typeof mod.short === 'string')
   );
 }
 

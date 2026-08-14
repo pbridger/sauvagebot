@@ -336,28 +336,50 @@ img.portrait {
 
 /* ---- status strip ---------------------------------------------------- */
 
-/* Three rows: what the character is carrying, what the Marshal called, and
-   their Bennies. Read at different moments, so kept on different lines. */
+/* Bennies first — a resource you decide to spend — then one row holding both
+   halves of "what is this roll at?": wounds in red, the Marshal's call in green. */
 .status-block { display: flex; flex-direction: column; gap: 4px; margin: 8px 0 4px; }
 .status-block .status { margin: 0; }
 .status-block > .bennies { padding: 0 8px; }
 .status-block > .bennies:empty { display: none; }
 
-/* The Marshal's modifiers: green throughout, against the red of wounds, so a
-   glance at either the sheet or the log says where a number came from. */
-.status.modifiers { border-style: dashed; }
+.statushalf,
+.modgroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  flex: 1 1 260px;
+  min-width: 0;
+}
+/* Both totals hard right of the controls that produce them, so they line up. */
+.statushalf > .penalty,
+.modgroup > .penalty { margin-left: auto; }
+
+/* The green half, tinted rather than merely coloured: at a glance the row says
+   which numbers came from the character and which from the Marshal. */
+.modgroup {
+  padding: 4px 7px;
+  border-radius: 5px;
+  border: 1px dashed #2f7d4f;
+  background: rgba(47, 125, 79, .09);
+}
 .mod-track { align-items: center; }
 .mod-track .mod-zero {
   width: 1px;
   height: 13px;
-  margin: 0 2px;
+  margin: 0 1px;
   background: var(--rule);
 }
 .mod-track button.pip {
-  width: 17px;
+  width: auto;
+  min-width: 22px;
   height: 17px;
-  font-size: 9px;
+  padding: 0 3px;
+  border-radius: 8px;
+  font-size: 9.5px;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
 }
 button.pip.on.situational {
@@ -366,6 +388,8 @@ button.pip.on.situational {
   color: #fff;
 }
 .penalty.situational { background: #2f7d4f; }
+/* Shown even at zero, muted, so the absence of a modifier is visible as such. */
+.penalty.zero { background: transparent; color: var(--muted); border: 1px solid var(--rule); }
 
 .conditions {
   display: flex;
@@ -388,14 +412,24 @@ button.cond.on {
   font-weight: 600;
 }
 
-/* The same two colours again, this time in the log. */
+/* The same two colours on a trait button: d6-1+2 rather than d6-5. */
+.die .mod-status { color: #d4796b; }
+.die .mod-situational { color: #6fc194; }
+
+/* ---- roll log entries ------------------------------------------------- */
+
+#log .entry { padding: 3px 0; }
+#log .entry .head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+#log .entry .what::before { content: "\2014"; margin-right: 4px; font-weight: 400; color: var(--muted); }
+#log .entry .body { padding-left: 2px; }
 #log .rollmod {
-  margin-left: 5px;
-  padding: 0 5px;
-  border-radius: 8px;
-  font-size: 10.5px;
+  padding: 0 4px;
+  border-radius: 7px;
+  font-size: 9.5px;
+  font-weight: 700;
   color: #fff;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 #log .rollmod.status { background: #8c2f22; }
 #log .rollmod.situational { background: #2f7d4f; }

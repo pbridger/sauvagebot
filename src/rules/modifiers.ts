@@ -34,6 +34,12 @@ export interface RollMod {
   label: string;
   value: number;
   kind: ModifierKind;
+  /**
+   * Two or three characters for the log, where a line is read at a glance and a
+   * row of full labels would push the result off the end: `2W`, `1F`, `-4`.
+   * The full label stays in the tooltip.
+   */
+  short?: string;
 }
 
 export interface Situation {
@@ -53,7 +59,11 @@ export const SITUATIONS: readonly Situation[] = [
   { key: 'dark', label: 'Dark', value: -4, group: 'light', note: 'Typical night with some ambient light; targets invisible beyond 10″ (p157)' },
   { key: 'pitch', label: 'Pitch Dark', value: -6, group: 'light', note: 'Complete darkness, or the target is hidden or invisible (p157)' },
   { key: 'unstable', label: 'Unstable Platform', value: -2, group: 'platform', note: 'Firing or throwing from a horse, a moving vehicle, a rooftop (p165)' },
-  { key: 'running', label: 'Running', value: -2, group: 'action', note: 'All actions this turn, when the Running die was added to Pace (p151)' },
+  // Running is its own group, not part of 'action': the book penalises "all
+  // actions that turn" for running (p151), and a Multi-Action costs a further −2
+  // per extra action. Someone who runs and shoots twice is at −4, so grouping the
+  // two together would have silently thrown one of them away.
+  { key: 'running', label: 'Running', value: -2, group: 'running', note: 'All actions this turn, when the Running die was added to Pace (p151)' },
   { key: 'multi2', label: 'Multi-Action ×2', value: -2, group: 'action', note: 'Two actions this turn — each is at −2 (p159)' },
   { key: 'multi3', label: 'Multi-Action ×3', value: -4, group: 'action', note: 'Three actions this turn — each is at −4 (p159)' },
   { key: 'distracted', label: 'Distracted', value: -2, group: 'distracted', note: 'Subtract 2 from all Trait rolls until the end of their next turn (p154)' },
@@ -119,9 +129,17 @@ export function situationalMods(state: ModifierState | undefined): RollMod[] {
     label: s.label,
     value: s.value,
     kind: 'situational' as const,
+    short: formatMod(s.value),
   }));
   const manual = state?.mod ?? 0;
-  if (manual) mods.push({ label: 'Modifier', value: manual, kind: 'situational' });
+  if (manual) {
+    mods.push({
+      label: 'Modifier',
+      value: manual,
+      kind: 'situational',
+      short: formatMod(manual),
+    });
+  }
   return mods;
 }
 

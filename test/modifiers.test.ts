@@ -71,6 +71,19 @@ describe('setting conditions', () => {
     expect(situationalTotal(rough)).toBe(-6);
   });
 
+  it('stacks Running with a Multi-Action, which the book does', () => {
+    // Running is −2 to "all actions that turn" (p151); a Multi-Action costs a
+    // further −2 per extra action. Someone who runs and shoots twice is at −4.
+    const busy = toggleCondition(toggleCondition(state(), 'running'), 'multi2');
+    expect(situationsOf(busy).map((s) => s.key).sort()).toEqual(['multi2', 'running']);
+    expect(situationalTotal(busy)).toBe(-4);
+  });
+
+  it('still swaps one Multi-Action for the other', () => {
+    const three = toggleCondition(toggleCondition(state(), 'multi2'), 'multi3');
+    expect(situationsOf(three).map((s) => s.key)).toEqual(['multi3']);
+  });
+
   it('ignores a key it does not know', () => {
     expect(toggleCondition(state(), 'nonsense')).toEqual(state());
     expect(situationsOf({ conditions: ['nonsense'] })).toEqual([]);
@@ -139,11 +152,16 @@ describe('the whole breakdown', () => {
       setManualMod(toggleCondition(state({ wounds: 1, fatigue: 2 }), 'unstable'), 1),
     ).parts;
     expect(parts).toEqual([
-      { label: '1 wound', value: -1, kind: 'status' },
-      { label: 'Exhausted', value: -2, kind: 'status' },
-      { label: 'Unstable Platform', value: -2, kind: 'situational' },
-      { label: 'Modifier', value: 1, kind: 'situational' },
+      { label: '1 wound', value: -1, kind: 'status', short: '1W' },
+      { label: 'Exhausted', value: -2, kind: 'status', short: '2F' },
+      { label: 'Unstable Platform', value: -2, kind: 'situational', short: '-2' },
+      { label: 'Modifier', value: 1, kind: 'situational', short: '+1' },
     ]);
+  });
+
+  it('shortens the status parts the way the token badge does', () => {
+    // 1W / 2F on the map, in the log, and nowhere a third notation.
+    expect(statusMods(state({ wounds: 2, fatigue: 1 })).map((m) => m.short)).toEqual(['2W', '1F']);
   });
 
   it('is empty for a character with no token bound', () => {

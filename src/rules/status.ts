@@ -47,11 +47,22 @@ export function statusMods(state: Pick<TokenState, 'wounds' | 'fatigue'>): RollM
   const mods: RollMod[] = [];
   const wounds = clamp(state.wounds, 0, MAX_WOUNDS_WILD_CARD);
   if (wounds > 0) {
-    mods.push({ label: `${wounds} wound${wounds === 1 ? '' : 's'}`, value: -wounds, kind: 'status' });
+    mods.push({
+      label: `${wounds} wound${wounds === 1 ? '' : 's'}`,
+      value: -wounds,
+      kind: 'status',
+      // The same notation as the token badge, so the map and the log agree.
+      short: `${wounds}W`,
+    });
   }
   const fatigue = clamp(state.fatigue, 0, MAX_FATIGUE);
   if (fatigue > 0) {
-    mods.push({ label: FATIGUE_NAMES[fatigue] ?? `Fatigue ${fatigue}`, value: -fatigue, kind: 'status' });
+    mods.push({
+      label: FATIGUE_NAMES[fatigue] ?? `Fatigue ${fatigue}`,
+      value: -fatigue,
+      kind: 'status',
+      short: `${fatigue}F`,
+    });
   }
   return mods;
 }

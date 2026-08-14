@@ -234,29 +234,44 @@ function renderLog(): void {
   logEl.replaceChildren(
     ...log.list().map((entry) => {
       const line = document.createElement('div');
+      line.className = 'entry';
       if (entry.secret) line.classList.add('secret');
 
-      const who = document.createElement('span');
+      // Two lines: who and what on the first, the dice and the answer on the
+      // second. One line held a name, a label, an expression, every die and a
+      // total, and the part you were looking for was never in the same place.
+      const head = document.createElement('div');
+      head.className = 'head';
+      const who = document.createElement('b');
       who.className = 'who';
-      const subject = entry.character ?? entry.by;
-      who.textContent = entry.label ? `${subject} — ${entry.label} ` : `${subject} `;
+      who.textContent = entry.character ?? entry.by;
       who.title = entry.character ? `rolled by ${entry.by}` : '';
-      line.append(who);
+      head.append(who);
+      if (entry.label) {
+        const what = document.createElement('b');
+        what.className = 'what';
+        what.textContent = entry.label;
+        head.append(what);
+      }
 
+      // Compact modifier pills, in the sheet's two colours: 2W, 1F, -4. The full
+      // wording is in the tooltip.
+      for (const mod of entry.mods ?? []) {
+        const chip = document.createElement('span');
+        chip.className = `rollmod ${mod.kind}`;
+        chip.textContent = mod.short ?? `${mod.label} ${formatMod(mod.value)}`;
+        chip.title = `${mod.label} ${formatMod(mod.value)}`;
+        head.append(chip);
+      }
+      line.append(head);
+
+      const body = document.createElement('div');
+      body.className = 'body';
       for (const [i, part] of entry.explained.split('**').entries()) {
         const span = document.createElement('span');
         span.textContent = part;
         if (i % 2 === 1) span.className = 'total';
-        line.append(span);
-      }
-
-      // Where the modifier came from, in the same two colours as the sheet: red
-      // for what the character is carrying, green for what the Marshal called.
-      for (const mod of entry.mods ?? []) {
-        const chip = document.createElement('span');
-        chip.className = `rollmod ${mod.kind}`;
-        chip.textContent = `${mod.label} ${formatMod(mod.value)}`;
-        line.append(chip);
+        body.append(span);
       }
 
       if (entry.ap) {
@@ -264,20 +279,21 @@ function renderLog(): void {
         ap.className = 'ap';
         ap.textContent = ` AP ${entry.ap}`;
         ap.title = `Ignores ${entry.ap} point(s) of armour`;
-        line.append(ap);
+        body.append(ap);
       }
 
       const target = damageTarget();
       if (target && isApplicable(entry)) {
         const apply = document.createElement('button');
         apply.className = 'apply';
-        apply.textContent = `→ ${rollerName(target.sheet) ?? target.token.name}`;
+        apply.textContent = `\u2192 ${rollerName(target.sheet) ?? target.token.name}`;
         apply.title =
           `Apply ${entry.total} damage to ${target.token.name}` +
           (entry.ap ? `, ignoring ${entry.ap} armour` : '');
         apply.addEventListener('click', () => void applyToTarget(entry));
-        line.append(apply);
+        body.append(apply);
       }
+      line.append(body);
       return line;
     }),
   );
@@ -340,14 +356,16 @@ function section(title: string): HTMLElement {
   return h;
 }
 
-function traitButton(label: string, dieText: string, untrained: boolean, roll: () => void): HTMLElement {
+function traitButton(
+  label: string,
+  die: HTMLElement,
+  untrained: boolean,
+  roll: () => void,
+): HTMLElement {
   const button = document.createElement('button');
   button.className = untrained ? 'trait untrained' : 'trait';
   const name = document.createElement('span');
   name.textContent = label;
-  const die = document.createElement('span');
-  die.className = 'die';
-  die.textContent = dieText;
   button.append(name, die);
   button.addEventListener('click', roll);
   return button;
@@ -921,9 +939,16 @@ function pips(
 function statusStrip(sheet: Sheet): HTMLElement {
   const block = document.createElement('div');
   block.className = 'status-block';
+  // Bennies first: they are a resource you decide to spend, and deciding comes
+  // before the arithmetic of what the roll is at.
+  block.append(bennyGroup(sheet));
   const strip = document.createElement('div');
   strip.className = 'status';
   block.append(strip);
+  // Two halves in one row, each its own flex container, so each total can sit
+  // hard right of the controls that produce it.
+  const half = document.createElement('div');
+  half.className = 'statushalf';
 
   // Ordered Shaken, then Wounds, then Fatigue: how often each comes up in play,
   // and so the order they get thought about at the table.
@@ -941,7 +966,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
     void updateTokenState(token.id, () => next).then(refreshTokens);
   };
 
-  strip.append(
+  half.append(
     labelled(
       'Shaken',
       pips(
@@ -956,7 +981,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
 
   const woundMax = maxWounds(sheet.wildCard);
   if (woundMax > 0) {
-    strip.append(
+    half.append(
       labelled(
         'Wounds',
         pips(
@@ -973,7 +998,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
   // control nobody will ever use. (They can technically take Fatigue; if that
   // ever matters at the table this is one line.)
   if (sheet.wildCard) {
-    strip.append(
+    half.append(
       labelled(
         'Fatigue',
         pips(
@@ -987,17 +1012,15 @@ function statusStrip(sheet: Sheet): HTMLElement {
     );
   }
 
-  // The cumulative penalty sits with the wounds and fatigue that cause it. No
-  // status sentence: the trait buttons already show the effect where it is used,
-  // and the detail is in the pip tooltips.
+  // The cumulative penalty sits with the wounds and fatigue that cause it, and is
+  // shown even at zero: a number that appears only when it is bad is a number you
+  // have to notice the absence of. No status sentence — the trait buttons carry
+  // the effect where it is used, and the detail is in the pip tooltips.
   const penalty = traitPenalty(state);
-  if (penalty) {
-    const chip = document.createElement('span');
-    chip.className = 'penalty';
-    chip.textContent = String(penalty);
-    chip.title = `${describeStatus(state, sheet.wildCard)} — ${penalty} to every trait roll`;
-    strip.append(chip);
-  }
+  const chip = document.createElement('span');
+  chip.className = penalty ? 'penalty' : 'penalty zero';
+  chip.textContent = formatMod(penalty) || '+0';
+  chip.title = `${describeStatus(state, sheet.wildCard)} — ${formatMod(penalty) || 'no'} modifier from wounds and Fatigue`;
 
   // An Extra has no wound track, so Incapacitated needs its own control.
   const out = isIncapacitated(state, sheet.wildCard);
@@ -1008,7 +1031,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
   down.addEventListener('click', () =>
     change(setWounds(state, out ? 0 : woundMax + 1, sheet.wildCard)),
   );
-  strip.append(down);
+  half.append(down);
 
   const soakable = lastDamage.get(token.id) ?? 0;
   if (soakable > 0 && sheet.wildCard) {
@@ -1018,13 +1041,17 @@ function statusStrip(sheet: Sheet): HTMLElement {
     button.title = `Spend a Benny and roll Vigor to shrug off ${soakable} wound(s)`;
     button.disabled = (bennies.get(sheet.id) ?? 0) === 0;
     button.addEventListener('click', () => void attemptSoak(sheet, token.id, state, soakable));
-    strip.append(button);
+    half.append(button);
   }
 
-  // Bennies on their own line, and the Marshal's modifiers on theirs: the first
-  // row is what the character is carrying, the second is what the world is doing
-  // to them, and they are read at different moments.
-  block.append(modifierRow(token, state), bennyGroup(sheet));
+  // Last in the half, and pushed to its right edge by the stylesheet.
+  half.append(chip);
+  strip.append(half);
+
+  // The Marshal's modifiers join the same row, behind a divider: they are read
+  // together with the wounds — both answer "what is this roll at?" — and the
+  // green tint is what says which half is which.
+  strip.append(modifierGroup(token, state));
   return block;
 }
 
@@ -1032,11 +1059,11 @@ function statusStrip(sheet: Sheet): HTMLElement {
 let showConditions = false;
 
 /**
- * The green track: everything the Marshal calls, as opposed to what the
- * character is carrying.
+ * The green half of the row: everything the Marshal calls, as opposed to what
+ * the character is carrying.
  *
  * A dial from −4 to +4 for the one-off ("that's a tough climb, −2") plus named
- * conditions from the book, which carry their page and their exact wording in a
+ * conditions from the book, which carry their page and exact wording in a
  * tooltip so nobody has to remember whether Dark is −2 or −4.
  *
  * Everything here is on the *roller*: it applies to every trait roll this
@@ -1045,9 +1072,9 @@ let showConditions = false;
  * standing here they would quietly follow the character into their next Notice
  * roll. Hence the Clear button sitting right next to them.
  */
-function modifierRow(token: TokenLike, state: TokenState): HTMLElement {
-  const row = document.createElement('div');
-  row.className = 'status modifiers';
+function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
+  const group = document.createElement('div');
+  group.className = 'modgroup';
   const change = (next: TokenState): void => {
     void updateTokenState(token.id, () => next).then(refreshTokens);
   };
@@ -1059,7 +1086,9 @@ function modifierRow(token: TokenLike, state: TokenState): HTMLElement {
     const pip = document.createElement('button');
     const on = n < 0 ? manual <= n : manual >= n;
     pip.className = on ? 'pip on situational' : 'pip';
-    pip.textContent = String(Math.abs(n));
+    // Signed, because a pip reading "2" in a track that runs both ways is a
+    // question rather than a label.
+    pip.textContent = formatMod(n);
     pip.title = `${formatMod(n)} to every trait roll`;
     pip.addEventListener('click', () => change(setManualMod(state, manual === n ? 0 : n)));
     return pip;
@@ -1069,16 +1098,24 @@ function modifierRow(token: TokenLike, state: TokenState): HTMLElement {
   split.className = 'mod-zero';
   track.append(split);
   for (let n = 1; n <= MANUAL_RANGE; n++) track.append(dial(n));
-  row.append(labelled('Modifier', track));
+  group.append(labelled('Modifier', track));
 
   const active = situationsOf(state);
   const total = manual + active.reduce((sum, s) => sum + s.value, 0);
+  const parts = [
+    ...active.map((s) => ({ label: s.label, value: s.value, kind: 'situational' as const })),
+    ...(manual ? [{ label: 'Modifier', value: manual, kind: 'situational' as const }] : []),
+  ];
+
+  // Clear before Conditions: unfolding the list is the frequent, harmless click
+  // and belongs next to what it unfolds.
   if (total) {
-    const chip = document.createElement('span');
-    chip.className = 'penalty situational';
-    chip.textContent = formatMod(total);
-    chip.title = `${describeMods([...active.map((s) => ({ label: s.label, value: s.value, kind: 'situational' as const })), ...(manual ? [{ label: 'Modifier', value: manual, kind: 'situational' as const }] : [])])} — ${formatMod(total)} to every trait roll`;
-    row.append(chip);
+    const clear = document.createElement('button');
+    clear.className = 'toggle';
+    clear.textContent = 'Clear';
+    clear.title = 'Back to no situational modifier';
+    clear.addEventListener('click', () => change(clearModifiers(state)));
+    group.append(clear);
   }
 
   const more = document.createElement('button');
@@ -1089,16 +1126,16 @@ function modifierRow(token: TokenLike, state: TokenState): HTMLElement {
     showConditions = !showConditions;
     renderSheetArea();
   });
-  row.append(more);
+  group.append(more);
 
-  if (total) {
-    const clear = document.createElement('button');
-    clear.className = 'toggle';
-    clear.textContent = 'Clear';
-    clear.title = 'Back to no situational modifier';
-    clear.addEventListener('click', () => change(clearModifiers(state)));
-    row.append(clear);
-  }
+  // Last, and pushed hard right, so the two totals line up down the panel.
+  const chip = document.createElement('span');
+  chip.className = total ? 'penalty situational' : 'penalty situational zero';
+  chip.textContent = formatMod(total) || '+0';
+  chip.title = parts.length
+    ? `${describeMods(parts)} — ${formatMod(total)} to every trait roll`
+    : 'Nothing the Marshal has called';
+  group.append(chip);
 
   // Active conditions are always visible; the full list folds away, because ten
   // buttons above a character sheet is a lot of furniture for a player who is
@@ -1108,16 +1145,16 @@ function modifierRow(token: TokenLike, state: TokenState): HTMLElement {
   for (const situation of SITUATIONS) {
     const on = hasCondition(state, situation.key);
     if (!on && !showConditions) continue;
-    const chip = document.createElement('button');
-    chip.className = on ? 'cond on' : 'cond';
-    chip.textContent = `${situation.label} ${formatMod(situation.value)}`;
-    chip.title = situation.note;
-    chip.addEventListener('click', () => change(toggleCondition(state, situation.key)));
-    chips.append(chip);
+    const button = document.createElement('button');
+    button.className = on ? 'cond on' : 'cond';
+    button.textContent = `${situation.label} ${formatMod(situation.value)}`;
+    button.title = situation.note;
+    button.addEventListener('click', () => change(toggleCondition(state, situation.key)));
+    chips.append(button);
   }
-  if (chips.childElementCount) row.append(chips);
+  if (chips.childElementCount) group.append(chips);
 
-  return row;
+  return group;
 }
 
 /**
@@ -1472,8 +1509,6 @@ function render(): void {
     sheetEl.append(description);
   }
 
-  const bind = bindBar(sheet);
-  if (bind) sheetEl.append(bind);
   sheetEl.append(statusStrip(sheet));
 
   const derived = document.createElement('div');
@@ -1499,7 +1534,37 @@ function render(): void {
   // makes are the same number by construction, and the log gets the itemisation.
   const mods = modsFor(sheet);
   const penalty = mods.total;
-  const withPenalty = (mod: number | undefined): string => formatMod((mod ?? 0) + penalty);
+
+  /**
+   * `d6-1+2` — the die, then the character's own modifier, then wounds in red
+   * and the Marshal's call in green.
+   *
+   * Kept as three terms rather than summed because "d6-5" tells you the answer
+   * and hides the question. The colours are the same two used on the pips, the
+   * chips and the log.
+   */
+  const dieLabel = (base: string, mod: number | undefined): HTMLElement => {
+    const wrap = document.createElement('span');
+    wrap.className = 'die';
+    const own = document.createElement('span');
+    own.textContent = `${base}${formatMod(mod ?? 0)}`;
+    wrap.append(own);
+    if (mods.status) {
+      const red = document.createElement('span');
+      red.className = 'mod-status';
+      red.textContent = formatMod(mods.status);
+      red.title = describeMods(mods.parts.filter((part) => part.kind === 'status'));
+      wrap.append(red);
+    }
+    if (mods.situational) {
+      const green = document.createElement('span');
+      green.className = 'mod-situational';
+      green.textContent = formatMod(mods.situational);
+      green.title = describeMods(mods.parts.filter((part) => part.kind === 'situational'));
+      wrap.append(green);
+    }
+    return wrap;
+  };
 
   sheetEl.append(section('Attributes'));
   const attributes = document.createElement('div');
@@ -1509,7 +1574,7 @@ function render(): void {
     if (!trait) continue;
     const label = attribute[0]!.toUpperCase() + attribute.slice(1);
     attributes.append(
-      traitButton(label, `d${trait.die}${withPenalty(trait.mod)}`, false, () => {
+      traitButton(label, dieLabel(`d${trait.die}`, trait.mod), false, () => {
         publishTrait(sheet, label, rollAttribute(sheet, attribute as Attribute, penalty), mods);
       }),
     );
@@ -1541,7 +1606,7 @@ function render(): void {
     skills.append(
       traitButton(
         skill,
-        trait ? `d${trait.die}${withPenalty(trait.mod)}` : `d4${withPenalty(-2)}`,
+        trait ? dieLabel(`d${trait.die}`, trait.mod) : dieLabel('d4', -2),
         !trait,
         () => publishTrait(sheet, skill, rollSkill(sheet, skill, penalty), mods),
       ),
@@ -1556,10 +1621,7 @@ function render(): void {
     rest.className = 'trait untrained roll-untrained';
     const label = document.createElement('span');
     label.textContent = `Untrained (${untrained.length})`;
-    const die = document.createElement('span');
-    die.className = 'die';
-    die.textContent = `d4${withPenalty(-2)}`;
-    rest.append(label, die);
+    rest.append(label, dieLabel('d4', -2));
     rest.title = 'Roll d4−2 for any untrained skill';
     rest.addEventListener('click', () =>
       publishTrait(
@@ -1590,6 +1652,11 @@ function render(): void {
     p.textContent = sheet.advances;
     sheetEl.append(section('Advances'), p);
   }
+
+  // Which token this is: reference, consulted when something looks wrong, so it
+  // sits at the foot rather than taking a line at the top of every sheet.
+  const bind = bindBar(sheet);
+  if (bind) sheetEl.append(bind);
 }
 
 /**
