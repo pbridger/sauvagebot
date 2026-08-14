@@ -17,6 +17,31 @@ class FakeBackend implements Backend {
   }
 }
 
+/**
+ * A store that accepts a write, confirms it once — which is exactly what
+ * `VerifiedStore`'s read-back sees — and has lost it by the next read. This is
+ * the shape of the failure seen in the live room: the hand-out reported success
+ * for a character who then showed none.
+ */
+class ForgetfulBackend extends FakeBackend {
+  private pending: string[] = [];
+  constructor(private readonly forgets: (key: string) => boolean) {
+    super();
+  }
+  override async set(update: Record<string, unknown>): Promise<void> {
+    await super.set(update);
+    for (const key of Object.keys(update)) if (this.forgets(key)) this.pending.push(key);
+  }
+  override async get(): Promise<Record<string, unknown>> {
+    const snapshot = await super.get();
+    // The verifying read still sees it; anything later does not.
+    const dropping = this.pending;
+    this.pending = [];
+    for (const key of dropping) delete this.data[key];
+    return snapshot;
+  }
+}
+
 const newBank = () => {
   const backend = new FakeBackend();
   return {
@@ -142,6 +167,21 @@ describe('when the room runs out of space part way through', () => {
     const outcome = await bank.newSession(party);
     expect(outcome.failed).toEqual([]);
     expect(outcome.done).toEqual(['AA', 'BB', 'CC', 'DD']);
+  });
+});
+
+describe('a write that passes verification and then vanishes', () => {
+  it('is reported rather than announced as a success', async () => {
+    const backend = new ForgetfulBackend((key) => key.endsWith('ed'));
+    const bank = new BennyBank(
+      new VerifiedStore(backend, { capacity: ROOM_CAPACITY, onWarning: () => {} }),
+    );
+    const party = [wildCard('reggie'), wildCard('ed')];
+
+    const outcome = await bank.newSession(party);
+    expect(outcome.done).toEqual(['REGGIE']);
+    expect(outcome.failed.map((f) => f.name)).toEqual(['ED']);
+    expect(outcome.failed[0]!.error.message).toMatch(/did not survive/);
   });
 });
 

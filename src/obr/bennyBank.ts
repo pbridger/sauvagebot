@@ -85,29 +85,58 @@ export class BennyBank {
    * collected and handed back so somebody can say so.
    */
   async newSession(sheets: readonly Sheet[]): Promise<BennyOutcome> {
-    const outcome: BennyOutcome = { done: [], failed: [] };
-    for (const sheet of sheets) {
-      const target = sheet.wildCard ? startOfSession() : 0;
-      if (!sheet.wildCard && (await this.get(sheet.id)) === target) continue;
-      try {
-        await this.set(sheet.id, target);
-        if (sheet.wildCard) outcome.done.push(sheet.name);
-      } catch (error) {
-        outcome.failed.push({ name: sheet.name, error: error as Error });
-      }
-    }
-    return outcome;
+    return this.applyAll(sheets, (sheet) => (sheet.wildCard ? startOfSession() : 0), {
+      includeExtras: true,
+    });
   }
 
   /** A Benny each to every Wild Card, for a Joker or for the Marshal's own reasons. */
   async awardAll(sheets: readonly Sheet[], count = 1): Promise<BennyOutcome> {
+    return this.applyAll(sheets, async (sheet) => award(await this.get(sheet.id), count));
+  }
+
+  /**
+   * Write a count for the whole party, then **re-read the store and check**.
+   *
+   * The re-read is not belt and braces. `VerifiedStore` reads each key back after
+   * writing it, and a hand-out was once reported as complete for a character who
+   * then showed zero — so that per-key check can pass while the value does not
+   * survive. Whatever the cause (a host-side drop the SDK's own read does not
+   * see, another client's write landing on top), the honest thing is to look at
+   * the store afterwards rather than to trust the report.
+   */
+  private async applyAll(
+    sheets: readonly Sheet[],
+    target: (sheet: Sheet) => number | Promise<number>,
+    options: { includeExtras?: boolean } = {},
+  ): Promise<BennyOutcome> {
     const outcome: BennyOutcome = { done: [], failed: [] };
-    for (const sheet of sheets.filter((s) => s.wildCard)) {
+    const expected = new Map<string, { name: string; count: number }>();
+
+    for (const sheet of sheets) {
+      if (!sheet.wildCard && !options.includeExtras) continue;
+      const count = await target(sheet);
+      // An Extra with no entry needs no write to stay at nothing.
+      if (!sheet.wildCard && (await this.get(sheet.id)) === count) continue;
       try {
-        await this.award(sheet.id, count);
-        outcome.done.push(sheet.name);
+        await this.set(sheet.id, count);
+        if (sheet.wildCard) expected.set(sheet.id, { name: sheet.name, count });
       } catch (error) {
         outcome.failed.push({ name: sheet.name, error: error as Error });
+      }
+    }
+
+    const after = await this.all();
+    for (const [id, { name, count }] of expected) {
+      const got = after.get(id) ?? 0;
+      if (got === count) outcome.done.push(name);
+      else {
+        outcome.failed.push({
+          name,
+          error: new Error(
+            `wrote ${count} to ${this.key(id)} and read back ${got} — the write did not survive`,
+          ),
+        });
       }
     }
     return outcome;

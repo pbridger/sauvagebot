@@ -625,9 +625,13 @@ async function handOut(
       publish({ label, expression: 'benny', explained: `${explained} ${outcome.done.join(', ')}` });
     }
     if (outcome.failed.length) {
+      const { fraction } = await store.usage();
       notify(
-        `no room for ${outcome.failed.map((f) => f.name).join(', ')} — ` +
-          `${describe(outcome.failed[0]!.error)}. Free some roster space and try again.`,
+        `${outcome.failed.map((f) => f.name).join(', ')} did not get theirs — ` +
+          describe(outcome.failed[0]!.error) +
+          (fraction > 0.75
+            ? ` Roster storage is ${Math.round(fraction * 100)}% full, which is the likely cause.`
+            : ''),
       );
     }
   } catch (error) {
