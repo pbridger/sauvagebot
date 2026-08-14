@@ -1079,9 +1079,14 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
     void updateTokenState(token.id, () => next).then(refreshTokens);
   };
 
+  // Line one is the dial and its total, and must not wrap — the green number
+  // belongs beside the pips that produce it. The buttons go on line two with the
+  // condition chips, where there is room for them.
   const line = document.createElement('div');
   line.className = 'modline';
-  group.append(line);
+  const controls = document.createElement('div');
+  controls.className = 'modcontrols';
+  group.append(line, controls);
 
   const track = document.createElement('div');
   track.className = 'pips mod-track';
@@ -1117,7 +1122,7 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
   clear.disabled = total === 0 && !active.length;
   clear.title = 'Back to no situational modifier';
   clear.addEventListener('click', () => change(clearModifiers(state)));
-  line.append(clear);
+  controls.append(clear);
 
   const more = document.createElement('button');
   more.className = showConditions ? 'toggle cond-toggle on' : 'toggle cond-toggle';
@@ -1127,7 +1132,7 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
     showConditions = !showConditions;
     renderSheetArea();
   });
-  line.append(more);
+  controls.append(more);
 
   // Last, and pushed hard right, so the two totals line up down the panel.
   const chip = document.createElement('span');
@@ -1153,7 +1158,7 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
     button.addEventListener('click', () => change(toggleCondition(state, situation.key)));
     chips.append(button);
   }
-  if (chips.childElementCount) group.append(chips);
+  if (chips.childElementCount) controls.append(chips);
 
   return group;
 }

@@ -362,8 +362,9 @@ img.portrait {
   min-width: 0;
 }
 .modgroup { flex-direction: column; align-items: stretch; gap: 4px; }
-/* The controls and their total share one line that does not wrap, so the green
-   number never drops below the row it belongs to. */
+/* The dial and its total share one line that does not wrap, so the green number
+   never drops below the pips it belongs to. The buttons and the condition chips
+   go on the line beneath, where they can wrap freely. */
 .modline {
   display: flex;
   align-items: center;
@@ -371,9 +372,19 @@ img.portrait {
   flex-wrap: nowrap;
   min-width: 0;
 }
+.modcontrols {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  min-width: 0;
+}
+/* The chips take the whole width beneath the two buttons rather than trailing
+   off the end of them. */
+.modcontrols > .conditions { flex-basis: 100%; }
 /* Both totals hard right of the controls that produce them, so they line up. */
 .statushalf > .penalty,
-.modline > .penalty { margin-left: auto; }
+.modline > .penalty { margin-left: auto; flex: none; }
 
 .mod-track { align-items: center; flex-wrap: nowrap; }
 .mod-track button.pip {
