@@ -156,7 +156,26 @@ async function animate(thrown: DiceThrow): Promise<void> {
     };
     const distance = Math.sqrt(reach.x * reach.x + reach.y * reach.y) + 100;
     const boost = (Math.random() + 3) * distance * self.strength;
-    return self.getNotationVectors(notationString, reach, boost, distance);
+    const thrownVectors = self.getNotationVectors(notationString, reach, boost, distance) as {
+      vectors: { pos: { x: number; y: number; z: number } }[];
+    };
+
+    // One hand, one point of release. The library derives each die's spawn point
+    // from its own randomised direction, so a trait die and its Wild Die could
+    // enter from opposite ends of the same edge and read as two people rolling.
+    // Overwriting every position with the first die's — after the library has
+    // worked it out, so its aspect-ratio correction still applies — puts them all
+    // in one hand while leaving their directions and spins untouched, which is what
+    // makes them scatter on the way out.
+    const first = thrownVectors.vectors[0]?.pos;
+    if (first) {
+      for (const vector of thrownVectors.vectors) {
+        // A little height between them, or dice launched from one point start
+        // interpenetrating and the solver flings them apart.
+        vector.pos = { x: first.x, y: first.y, z: first.z + (vector.pos.z - first.z) * 0.25 };
+      }
+    }
+    return thrownVectors;
   };
 
   try {

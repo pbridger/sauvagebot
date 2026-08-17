@@ -131,25 +131,32 @@ export function waves(dice: readonly DieEvent[]): DieEvent[][] {
 /**
  * One wave as dice-box notation with predetermined values.
  *
- * `1d8@7+1d6@3` — a set per die size, values in the order the dice appear. Runs of
- * the same size are merged so four d6 are one set rather than four, which is what
- * the library's own examples do (`6d6@4,4,4,4,4,4`).
+ * `1d8+1d6@6,6` — the dice, then **one** `@` list for all of them.
  *
- * !! The alignment of `@` values across *multiple* sets is inferred from the
- * minified bundle (`getNotationVectors` walks the sets while the result list is
- * indexed per die) and is the first thing the spike page checks. If it turns out
- * to be per-set rather than flat, this one function changes and nothing else does.
+ * Both halves of that shape were got wrong first time, and both were wrong in ways
+ * a unit test could not see, so they are worth recording:
+ *
+ *  1. **One `@`, at the end.** `1d8@7+1d6@3` looks reasonable and quietly throws a
+ *     single die: the parser does `notation.split('@')` and treats everything before
+ *     the first `@` as the whole dice expression, so the d6 was never a die at all —
+ *     it was scanned for numbers and became part of the value list. Which is exactly
+ *     "only one die is rolled, and it is not the Wild Die".
+ *  2. **Group by size, not by adjacency.** The parser merges sets that agree on size
+ *     and operator, so `1d6+1d8+1d6` becomes *two* sets — two d6 and one d8 — and
+ *     the dice are then created in set order. A value list in the original order
+ *     would be handed to the wrong dice. Grouping here means the order this function
+ *     writes is the order the renderer builds.
  */
 export function notation(wave: readonly DieEvent[]): string {
   const sets: { sides: number; values: number[] }[] = [];
   for (const die of wave) {
-    const last = sets[sets.length - 1];
-    if (last && last.sides === die.sides) last.values.push(die.value);
+    const existing = sets.find((set) => set.sides === die.sides);
+    if (existing) existing.values.push(die.value);
     else sets.push({ sides: die.sides, values: [die.value] });
   }
-  return sets
-    .map((set) => `${set.values.length}d${set.sides}@${set.values.join(',')}`)
-    .join('+');
+  const dice = sets.map((set) => `${set.values.length}d${set.sides}`).join('+');
+  const values = sets.flatMap((set) => set.values);
+  return `${dice}@${values.join(',')}`;
 }
 
 /** How long to hold between an ace landing and the die it bought being thrown. */

@@ -75,10 +75,15 @@ function button(label: string, run: () => Promise<void>): void {
   buttons.append(element);
 }
 
-// 1. Mixed sets. The notation is built by the same function the tray uses.
+// 1. Mixed sets. Measured 2026-08-17: `1d8@7+1d6@3` throws a *single* die, because
+// the parser splits on the first `@` and reads the rest as values. One list, at the
+// end. `notation()` builds it; this button proves the shape.
 button('1. Mixed sets — d8 must show 7, d6 must show 3', async () => {
   await ready;
-  const wanted = '1d8@7+1d6@3';
+  const wanted = notation([
+    { sides: 8, value: 7, chain: 1, step: 0, role: 'trait' },
+    { sides: 6, value: 3, chain: 2, step: 0, role: 'wild' },
+  ]);
   const result = await box.roll(wanted);
   const rolls = result.sets.flatMap((set) => set.rolls);
   say(`asked ${wanted} → reported ${reported(rolls)} (check the faces)`);

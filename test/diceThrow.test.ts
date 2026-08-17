@@ -62,8 +62,10 @@ describe('waves', () => {
     const dice: DieEvent[] = [];
     new Roller(new JavaRandom(34), (d) => dice.push(d)).rollSavageWorlds(1, 8, 6);
 
+    // The trait die and the Wild Die go out together — one wave, one throw — and the
+    // ace the Wild Die earned follows on the next beat.
     const staged = waves(dice);
-    expect(staged.map((wave) => notation(wave))).toEqual(['1d8@6+1d6@6', '1d6@4']);
+    expect(staged.map((wave) => notation(wave))).toEqual(['1d8+1d6@6,6', '1d6@4']);
   });
 });
 
@@ -72,22 +74,32 @@ describe('notation', () => {
     expect(notation([die({ value: 1 }), die({ value: 2 }), die({ value: 3 })])).toBe('3d6@1,2,3');
   });
 
-  it('keeps sizes in the order they were rolled', () => {
+  it('puts one value list at the end, not one per set', () => {
+    // `1d8@7+1d6@3` was the first attempt and it throws a single die: the parser
+    // splits on the first `@` and everything after it is scanned for numbers, so the
+    // d6 stopped being a die. The symptom was "only one die rolls, and it is not the
+    // Wild Die".
     expect(notation([die({ sides: 8, value: 7 }), die({ sides: 6, value: 3 })])).toBe(
-      '1d8@7+1d6@3',
+      '1d8+1d6@7,3',
     );
   });
 
-  it('does not merge across an intervening size', () => {
-    // Merging non-adjacent sets would reorder the values against the dice, which is
-    // the one thing predetermined notation cannot survive.
+  it('groups sizes even when they are not adjacent, and orders values to match', () => {
+    // The parser merges sets of equal size, then creates dice set by set — so a
+    // value list in the dice's original order would be handed to the wrong dice.
     expect(
       notation([
         die({ sides: 6, value: 1 }),
         die({ sides: 8, value: 2 }),
         die({ sides: 6, value: 3 }),
       ]),
-    ).toBe('1d6@1+1d8@2+1d6@3');
+    ).toBe('2d6+1d8@1,3,2');
+  });
+
+  it('keeps the first size seen first', () => {
+    expect(notation([die({ sides: 4, value: 4 }), die({ sides: 20, value: 11 })])).toBe(
+      '1d4+1d20@4,11',
+    );
   });
 });
 
