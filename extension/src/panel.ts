@@ -2467,6 +2467,16 @@ async function refreshSeats(): Promise<void> {
   mySeat = seats[OBR.player.id] ?? mySeat;
 
   if (!isGM) return;
+  // Nothing cosmetic gets written into a room that is nearly full. The whole-document
+  // limit is a band rather than a number and overflow is silent, so the cost of
+  // guessing wrong is somebody's roster — and a seat that has to be re-picked next
+  // session is not worth going anywhere near that. Seats still work for this
+  // session; they just are not remembered.
+  const { fraction } = await store.usage();
+  if (fraction > 0.85) {
+    console.warn('room storage %d%% full — not saving dice seats', Math.round(fraction * 100));
+    return;
+  }
   for (const [id, seat] of Object.entries(seats)) {
     if (current[id] === seat) continue;
     await saveSeat(id, seat);
@@ -2693,14 +2703,23 @@ OBR.onReady(async () => {
     if (!saving) void reload();
   });
 
-  // Seats before settings: the GM's client is what writes them, and my own seat is
-  // read back out of what it wrote.
-  await refreshSeats();
-  await readMyDiceSettings();
-  if (animate) await openTray();
-
   initiative = await readInitiative();
   await reload();
+
+  // Dice setup comes *after* the roster is on screen, and cannot take it down with
+  // it. Two awaits for a cosmetic feature used to sit ahead of `reload()`, so
+  // anything that threw in here — a party call, a metadata read, a seat write that
+  // found the room full — left a panel with no characters in it, which looks
+  // exactly like a wiped roster and is not one.
+  try {
+    // Seats before settings: the GM's client is what writes them, and my own seat is
+    // read back out of what it wrote.
+    await refreshSeats();
+    await readMyDiceSettings();
+    if (animate) await openTray();
+  } catch (error) {
+    console.warn('dice setup failed; rolling still works', error);
+  }
   if (await OBR.scene.isReady()) {
     const count = await autoBind(sheets);
     if (count) notify(`Bound ${count} token(s) to characters by name`);
