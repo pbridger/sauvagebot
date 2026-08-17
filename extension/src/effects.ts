@@ -427,3 +427,30 @@ function levelling(die: THREE.Mesh): THREE.Quaternion | undefined {
     .normalize();
   return new Quaternion().setFromUnitVectors(facing, up);
 }
+
+/**
+ * How much grip the felt has.
+ *
+ * The library sets 0.6 between dice and every surface, which is closer to rubber on
+ * concrete than to a die on baize: dice bite, stop short and rotate on the spot
+ * instead of running out. 0.28 lets a throw travel and roll the way a thrown die
+ * does. Restitution is left alone — bounce is already right, and it is what keeps the
+ * dice inside the walls.
+ */
+export const TABLE_FRICTION = 0.28;
+
+/**
+ * Loosen the contact friction, on every surface pair.
+ *
+ * Applied per throw rather than once, because the contact materials are rebuilt by
+ * `makeWorldBox` — which runs again on every resize, and an Owlbear panel is resized
+ * by the browser window. Setting it once would hold until somebody dragged their
+ * window.
+ *
+ * All three pairs, not just the table: dice-on-dice grip at 0.6 makes a handful land
+ * in a clump and stay there, which for a Wild Card roll is the pair you look at.
+ */
+export function loosenFriction(box: DiceBox, friction: number = TABLE_FRICTION): void {
+  const world = (box as unknown as { world?: { contactmaterials?: { friction: number }[] } }).world;
+  for (const contact of world?.contactmaterials ?? []) contact.friction = friction;
+}
