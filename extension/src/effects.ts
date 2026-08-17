@@ -33,22 +33,6 @@ import { LinearMipmapLinearFilter, Quaternion, Vector3 } from 'three';
 import type { DieEvent } from '../../src/dice/roller.js';
 
 /**
- * The look of the table itself.
- *
- * `green-felt` is the library's default and reads as a card table, which is
- * exactly right for a game whose initiative is a deck of cards.
- */
-export const TRAY_THEME = {
-  theme_surface: 'green-felt',
-  theme_material: 'plastic',
-  // Off by default and not currently exposed: four clatter tracks over Discord
-  // voice is not a feature. The assets are shipped, so it is a config change away.
-  sounds: false,
-  shadows: true,
-  ...physics(),
-} as const;
-
-/**
  * One consistent set of units, derived from a real die.
  *
  * Everything here follows from measuring the geometry the library already draws and
@@ -156,6 +140,25 @@ function physics(): {
     strength: 1,
   };
 }
+
+/**
+ * The look of the table itself.
+ *
+ * `green-felt` is the library's default and reads as a card table, which is
+ * exactly right for a game whose initiative is a deck of cards.
+ */
+export const TRAY_THEME = {
+  // `physics()` reads `PHYSICS`, so both must be initialised above this — see the
+  // regression test. A `const` used before its declaration is a load-time
+  // ReferenceError, which for a whole page means it simply never runs.
+  theme_surface: 'green-felt',
+  theme_material: 'plastic',
+  // Off by default and not currently exposed: four clatter tracks over Discord
+  // voice is not a feature. The assets are shipped, so it is a config change away.
+  sounds: false,
+  shadows: true,
+  ...physics(),
+} as const;
 
 /** Bone-white with black numbers: a plain, readable die for anyone with no colour. */
 const DEFAULT_COLOURS = { background: '#e8e0cf', foreground: '#1a1a1a' };
