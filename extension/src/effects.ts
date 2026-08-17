@@ -103,17 +103,18 @@ export const PHYSICS = {
    * weight it has to hold, which is the rule of thumb that keeps SPOOK contacts from
    * sagging.
    */
-  stiffness: 1.8e6,
+  stiffness: 1.8e7,
   relaxation: 3,
   iterations: 20,
   /**
-   * A 2 m/s toss, which is what a hand actually does.
+   * A 1.23 m/s toss — an underarm roll across a table rather than a hard throw, and
+   * tuned by eye rather than argued from first principles.
    *
    * The step has to be small enough that a die does not cross its own width between two
    * of them: there is no continuous collision detection here, and at 2 m/s a die covers
    * 108 units in 1/120 s against a body 104 units wide. At 1/240 it is half that.
    */
-  throwSpeed: ms(2),
+  throwSpeed: ms(1.23),
   /**
    * How finely the simulation is stepped — part of the tuning, not an implementation
    * detail. See `timestep()` for why deriving it went wrong.
@@ -144,9 +145,10 @@ export const PHYSICS = {
    * positions follow `p(kt)`, so velocities scale by `k`, accelerations by `k²`, spin by
    * `k`, and damping (a rate) by `k`. All of which is what `scaled()` does below.
    *
-   * 0.45 is a starting point, not a truth. It is a slider on the tuning page.
+   * 0.4 is where it was settled by watching it, which is the only way this one can be
+   * judged. It remains the first slider on the tuning page.
    */
-  timeScale: 0.15,
+  timeScale: 0.4,
 };
 
 /**
