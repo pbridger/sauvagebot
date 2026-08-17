@@ -45,7 +45,57 @@ export const TRAY_THEME = {
   // voice is not a feature. The assets are shipped, so it is a config change away.
   sounds: false,
   shadows: true,
+  ...physics(),
 } as const;
+
+/**
+ * Why the dice look heavy, and what actually fixes it.
+ *
+ * It is not mass. Mass does not affect how fast anything falls, and the library's
+ * values (300–400 across the die types) only matter when dice hit *each other*, where
+ * being all much of a muchness is right. The problem is the ratio of **gravity to the
+ * size dice are drawn at**:
+ *
+ *   - `baseScale` 100 and a die scale of 0.9 make a d6 about **104 units** on edge.
+ *   - Gravity is `9.8 × gravity_multiplier` = **3,920 u/s²**.
+ *   - If 104 units is a 16mm die, a metre is ~6,500 units, so gravity ought to be
+ *     around **63,700 u/s²** — sixteen times more.
+ *
+ * Falls scale with the square root of that, so everything happens about **4× slower**
+ * than it should for objects this size. That is exactly the visual signature of
+ * heaviness: it reads as a die the size of a beach ball, filmed in slow motion.
+ *
+ * Raised 4× rather than the full 16×. Somewhere around real gravity the throw stops
+ * looking like dice being rolled and starts looking like gravel being dropped, and the
+ * fixed timestep gets fragile (below). 4× halves the apparent time scale, which is the
+ * part that reads as weight.
+ *
+ * **The timestep has to come with it.** At 1/60 and a launch speed of ~6,000 u/s a die
+ * moves ~100 units per step — one whole die width — and there is no continuous
+ * collision detection here, so a fast die can pass through the table between two
+ * steps. Faster dice make that worse, hence 1/120. The iteration limit is doubled to
+ * match: it counts *steps*, not seconds, and it is what stops the headless
+ * pre-simulation running forever.
+ *
+ * Damping is deliberately left alone. It is not what makes dice look heavy, and
+ * changing four things at once would make it impossible to tell which one worked.
+ */
+function physics(): {
+  gravity_multiplier: number;
+  framerate: number;
+  iterationLimit: number;
+  strength: number;
+} {
+  return {
+    gravity_multiplier: 1600,
+    framerate: 1 / 120,
+    iterationLimit: 2000,
+    // Unchanged, and the first knob to reach for if throws now feel short: with
+    // stronger gravity a die is on the felt sooner, so the same launch speed buys a
+    // flatter, shorter arc.
+    strength: 1,
+  };
+}
 
 /** Bone-white with black numbers: a plain, readable die for anyone with no colour. */
 const DEFAULT_COLOURS = { background: '#e8e0cf', foreground: '#1a1a1a' };
@@ -161,7 +211,23 @@ export function evenLabelSizes(box: DiceBox): void {
 export const SETTLE_MS = 250;
 
 /**
- * Have dice admit they have stopped as soon as they have.
+ * How slow a die must be moving to count as still.
+ *
+ * The library sets **75** on every die body, which is not cannon's 0.1 — and in a world
+ * where a die is ~104 units across and gets launched at thousands of units a second, 75
+ * is a very loose test. A die teetering on an edge passes it easily while it is still
+ * very much in motion, and the instant it does, the library freezes the body. That, not
+ * the dwell time, is the root of dice stopping on an edge; shortening the dwell only
+ * made the existing window easier to hit.
+ *
+ * 30 is still generous — under a third of a die width per second — but it excludes the
+ * hang at the top of a teeter. `levelDice` stays as the backstop for whatever gets
+ * through.
+ */
+export const SETTLE_SPEED = 30;
+
+/**
+ * Have dice admit they have stopped as soon as they have, and not before.
  *
  * Wraps the box's own `spawnDice`, because the bodies are built inside `roll()` and
  * `cannon` has no global default to set — every `Body` writes its own
@@ -175,14 +241,16 @@ export const SETTLE_MS = 250;
 export function settleSooner(box: DiceBox, ms: number = SETTLE_MS): void {
   const self = box as unknown as {
     spawnDice?: (vector: unknown, existing?: unknown) => unknown;
-    diceList?: { body?: { sleepTimeLimit?: number } }[];
+    diceList?: { body?: { sleepTimeLimit?: number; sleepSpeedLimit?: number } }[];
   };
   const original = self.spawnDice?.bind(box);
   if (!original) return;
   self.spawnDice = (vector: unknown, existing?: unknown): unknown => {
     const made = original(vector, existing);
     for (const die of self.diceList ?? []) {
-      if (die.body) die.body.sleepTimeLimit = ms / 1000;
+      if (!die.body) continue;
+      die.body.sleepTimeLimit = ms / 1000;
+      die.body.sleepSpeedLimit = SETTLE_SPEED;
     }
     return made;
   };
