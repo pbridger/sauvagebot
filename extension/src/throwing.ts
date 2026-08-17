@@ -44,7 +44,7 @@ function rollForward(vector: {
   angle.z = (Math.random() - 0.5) * strength * 0.3;
 }
 
-interface ThrowVector {
+export interface ThrowVector {
   pos: { x: number; y: number; z: number };
   velocity: { x: number; y: number; z: number };
   angle: { x: number; y: number; z: number };
@@ -61,7 +61,11 @@ interface ThrowVector {
  * @returns a function that puts the renderer's own throw back. The replacement is an own
  *   property over a prototype method, so restoring means deleting it.
  */
-export function aimThrow(box: DiceBox, seat: Seat): () => void {
+export function aimThrow(
+  box: DiceBox,
+  seat: Seat,
+  onThrow?: (vectors: ThrowVector[]) => void,
+): () => void {
   const direction: SeatVector = jitter(seatVector(seat));
 
   (box as unknown as { startClickThrow: (n: string) => unknown }).startClickThrow = function (
@@ -105,6 +109,7 @@ export function aimThrow(box: DiceBox, seat: Seat): () => void {
         vector.pos = { x: first.x, y: first.y, z: first.z + (vector.pos.z - first.z) * 0.25 };
       }
     }
+    onThrow?.(thrown.vectors);
     return thrown;
   };
 

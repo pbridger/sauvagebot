@@ -66,7 +66,18 @@ let repeatable = true;
 async function throwDice(notationString: string, add = false): Promise<{ value: number; sides: number }[]> {
   await ready;
   applyPhysics(box);
-  const restoreThrow = aimThrow(box, seat);
+  // Measured, not assumed. Every previous round of this went wrong because a control was
+  // believed to be in the path when it was not, so the page now reports what the first
+  // die was actually launched at and how far it actually went.
+  let launched: { speed: number; from: { x: number; y: number } } | undefined;
+  const restoreThrow = aimThrow(box, seat, (vectors) => {
+    const first = vectors[0];
+    if (!first) return;
+    launched = {
+      speed: Math.hypot(first.velocity.x, first.velocity.y),
+      from: { x: first.pos.x, y: first.pos.y },
+    };
+  });
   // Every draw happens synchronously inside the call, so the seed is restored as soon as
   // it returns — see `seedRandom`.
   const restoreRandom = repeatable ? seedRandom(seed) : () => {};
@@ -76,6 +87,15 @@ async function throwDice(notationString: string, add = false): Promise<{ value: 
     const result = await rolling;
     const rolls = Array.isArray(result) ? result : result.sets.flatMap((set) => set.rolls);
     levelDice(box);
+    const die = (box as unknown as { diceList?: { position: { x: number; y: number } }[] })
+      .diceList?.[0];
+    if (launched && die) {
+      const travelled = Math.hypot(die.position.x - launched.from.x, die.position.y - launched.from.y);
+      say(
+        `launched ${launched.speed.toFixed(0)} u/s (${(launched.speed / 6495).toFixed(3)} m/s), ` +
+          `travelled ${travelled.toFixed(0)} u (${((travelled / 6495) * 100).toFixed(1)} cm)`,
+      );
+    }
     return rolls;
   } finally {
     restoreRandom();
@@ -202,8 +222,11 @@ const knobs: { label: string; get: () => number; set: (n: number) => void; min: 
     label: 'Throw speed',
     get: () => PHYSICS.throwSpeed,
     set: (n) => (PHYSICS.throwSpeed = n),
-    min: 3000, max: 30_000, step: 500,
-    show: (n) => `${(n / 6495).toFixed(2)} m/s`,
+    // 0.01 to 10 m/s. The second figure is what the die is actually launched at: the
+    // time scale multiplies it, and at 0.15 that is most of the number gone.
+    min: 65, max: 64_950, step: 65,
+    show: (n) =>
+      `${(n / 6495).toFixed(2)} m/s asked, ${((n * PHYSICS.timeScale) / 6495).toFixed(3)} m/s thrown`,
   },
   {
     label: 'Spin',
