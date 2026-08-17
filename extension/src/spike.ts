@@ -175,6 +175,16 @@ const knobs: { label: string; get: () => number; set: (n: number) => void; min: 
     show: (n) => `${n.toFixed(2)}x real time`,
   },
   {
+    // On the page because it changes how a landing feels, not just how safe the
+    // simulation is — a set of parameters is only meaningful at the step it was judged
+    // at, which is a lesson this page exists to make cheap.
+    label: 'Timestep',
+    get: () => 1 / PHYSICS.timestep,
+    set: (n) => (PHYSICS.timestep = 1 / n),
+    min: 60, max: 480, step: 60,
+    show: (n) => `1/${n.toFixed(0)} s`,
+  },
+  {
     label: 'Gravity',
     get: () => PHYSICS.gravity,
     set: (n) => (PHYSICS.gravity = n),
@@ -246,6 +256,7 @@ if (tuning) {
       `spin: { min: ${PHYSICS.spin.min.toFixed(0)}, max: ${PHYSICS.spin.max.toFixed(0)} },`,
       `angularDamping: ${PHYSICS.angularDamping},`,
       `timeScale: ${PHYSICS.timeScale.toFixed(2)},`,
+      `timestep: 1 / ${(1 / PHYSICS.timestep).toFixed(0)},`,
     ].join('\n');
   };
 

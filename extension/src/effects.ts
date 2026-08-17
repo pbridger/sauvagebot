@@ -114,6 +114,11 @@ export const PHYSICS = {
    * 108 units in 1/120 s against a body 104 units wide. At 1/240 it is half that.
    */
   throwSpeed: ms(2),
+  /**
+   * How finely the simulation is stepped — part of the tuning, not an implementation
+   * detail. See `timestep()` for why deriving it went wrong.
+   */
+  timestep: 1 / 240,
   /** Real dice tumble hard off the hand; below this they barely turn in flight. */
   spin: { min: 18, max: 34 },
   /** Air on a die is nothing. Just enough to stop numerical drift. */
@@ -181,20 +186,22 @@ export function scaled(): {
 }
 
 /**
- * A step small enough that a die cannot cross its own body between two of them.
+ * How finely the simulation is stepped.
  *
- * Derived rather than fixed, because the safe step depends on how fast dice actually
- * move, and that now varies with the time scale: at 0.15 they travel a seventh as far
- * per second as at full speed, so a step seven times longer is just as safe. Which
- * matters — the headless pre-simulation runs the *whole* settle synchronously before
- * anything is drawn, so halving the step count halves that pause.
+ * **Fixed, and not to be derived.** It was briefly computed from the throw speed — at
+ * 0.15× time scale dice cover a seventh the ground, so a coarser step looked provably
+ * "safe" against tunnelling, and it made the headless pre-simulation four times
+ * cheaper. That reasoning is sound and the result was wrong: dice went floaty.
  *
- * Two-fifths of a die width per step, bounded either side by sanity.
+ * The mistake was thinking of the step as a tunnelling guard, when it also sets how a
+ * contact resolves. `cannon`'s SPOOK solver derives its softness from `1 / (k · dt²)`,
+ * so quadrupling the step changed the feel of every landing — and, worse, it changed it
+ * *after* the numbers here had been tuned by eye against 1/240. Any parameter set is
+ * only meaningful at the step it was judged at, so the step is part of the tuning, not
+ * an implementation detail free to be optimised underneath it.
  */
 export function timestep(): number {
-  const DIE_WIDTH = 104;
-  const safe = (DIE_WIDTH * 0.4) / scaled().throwSpeed;
-  return Math.min(1 / 60, Math.max(1 / 240, safe));
+  return PHYSICS.timestep;
 }
 
 /** What the box has to be built with, since these are constructor options. */
