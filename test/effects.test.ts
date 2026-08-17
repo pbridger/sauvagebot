@@ -126,3 +126,39 @@ describe('dice colours', () => {
     expect(colourset('rebeccapurple').background).toBe('#e8e0cf');
   });
 });
+
+describe('seeded throws', () => {
+  it('produces the same numbers twice, and different ones for a different seed', async () => {
+    // The tuning page's premise: with the seed held, the only difference between two
+    // throws is the slider that moved. `Math.random` is replaced wholesale because most
+    // of a throw's randomness belongs to the renderer, not to us.
+    const { seedRandom } = await import('../extension/src/throwing.js');
+
+    const draw = (seed: number): number[] => {
+      const restore = seedRandom(seed);
+      const values = [Math.random(), Math.random(), Math.random()];
+      restore();
+      return values;
+    };
+
+    expect(draw(12_345)).toEqual(draw(12_345));
+    expect(draw(12_345)).not.toEqual(draw(9));
+  });
+
+  it('puts the real Math.random back', async () => {
+    const { seedRandom } = await import('../extension/src/throwing.js');
+    const original = Math.random;
+    seedRandom(1)();
+    expect(Math.random).toBe(original);
+  });
+
+  it('restores it even for a seed of zero', async () => {
+    const { seedRandom } = await import('../extension/src/throwing.js');
+    const original = Math.random;
+    const restore = seedRandom(0);
+    // A zero state would lock an LCG at zero forever; it falls back to 1.
+    expect(new Set([Math.random(), Math.random(), Math.random()]).size).toBe(3);
+    restore();
+    expect(Math.random).toBe(original);
+  });
+});

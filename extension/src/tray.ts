@@ -34,7 +34,6 @@ import {
   waves,
   type DiceThrow,
 } from '../../src/obr/diceThrow.js';
-import { jitter, seatVector } from '../../src/obr/seats.js';
 import {
   TRAY_THEME,
   applyPhysics,
@@ -43,8 +42,8 @@ import {
   evenLabelSizes,
   flare,
   levelDice,
-  scaled,
 } from './effects.js';
+import { aimThrow } from './throwing.js';
 
 /**
  * How long without a roll before the renderer is released.
@@ -124,44 +123,6 @@ function diceBox(): Promise<DiceBox> {
 }
 
 /**
- * Give a die a forward roll: spin about the axis across its own direction of travel,
- * so it tumbles the way it is going rather than spinning like a thrown coin.
- *
- * For a body travelling along `d` with `z` up, rolling forward means angular velocity
- * along `(-d.y, d.x, 0)` — the axis for which `ω × r` points along `d` at the contact
- * point underneath. The library's own spin is close to this but derived from a separate
- * random vector, so a die could come out back-spinning or spinning flat.
- *
- * The magnitude is an absolute number of radians per second, and can be: angular
- * velocity is the one quantity here that does not depend on the length scale, so 25
- * rad/s means the same tumble on any screen. It matters more now than it did — at
- * correct gravity a die is in the air a quarter as long, so it needs real spin to turn
- * over at all on the way down.
- */
-function rollForward(vector: {
-  velocity: { x: number; y: number; z: number };
-  angle: { x: number; y: number; z: number };
-}): void {
-  const { velocity, angle } = vector;
-  const speed = Math.hypot(velocity.x, velocity.y);
-  if (!speed) return;
-
-  const { min, max } = scaled().spin;
-  const strength = min + Math.random() * (max - min);
-  // Up to ±20° off true, so the die drifts as it rolls instead of tracking a rail.
-  const tilt = (Math.random() - 0.5) * (Math.PI / 4.5);
-  const across = {
-    x: -velocity.y / speed,
-    y: velocity.x / speed,
-  };
-  angle.x = (across.x * Math.cos(tilt) - across.y * Math.sin(tilt)) * strength;
-  angle.y = (across.x * Math.sin(tilt) + across.y * Math.cos(tilt)) * strength;
-  // A little spin about the vertical too, or a die that lands flat sits dead still
-  // rather than settling with a turn.
-  angle.z = (Math.random() - 0.5) * strength * 0.3;
-}
-
-/**
  * Throw one player's dice from their own seat.
  *
  * The library builds its throw vector in `startClickThrow`, at random, and derives
@@ -183,64 +144,7 @@ async function animate(thrown: DiceThrow): Promise<void> {
   const active = await diceBox();
   applyPhysics(active);
 
-  const direction = jitter(seatVector(thrown.seat));
-  // The method being replaced lives on the prototype, so there is no own property to
-  // put back — the restore in `finally` deletes ours and lets the prototype's random
-  // throw show through again. (Reaching for `getOwnPropertyDescriptor` here returns
-  // undefined and quietly restores nothing.)
-  //
-  // A per-throw override rather than a subclass: the seat changes with whoever
-  // rolled, and this instance is shared by everyone at the table.
-  (active as unknown as { startClickThrow: (n: string) => unknown }).startClickThrow = function (
-    notationString: string,
-  ) {
-    const self = this as unknown as {
-      display: { currentWidth: number; currentHeight: number };
-      strength: number;
-      getNotationVectors: (n: string, v: unknown, boost: number, dist: number) => unknown;
-      rolling: boolean;
-      clearDice: () => void;
-    };
-    if (self.rolling) {
-      self.clearDice();
-      self.rolling = false;
-    }
-    const reach = {
-      x: direction.x * self.display.currentWidth,
-      y: direction.y * self.display.currentHeight,
-    };
-    const distance = Math.sqrt(reach.x * reach.x + reach.y * reach.y) + 100;
-    // A real toss, not a multiple of the panel's width. The library's own boost scales
-    // with the window, so the same roll left a die harder on a big monitor than on a
-    // laptop — and a speed in metres per second is a thing that can be judged.
-    const boost = scaled().throwSpeed * (0.85 + Math.random() * 0.3);
-    const thrownVectors = self.getNotationVectors(notationString, reach, boost, distance) as {
-      vectors: {
-        pos: { x: number; y: number; z: number };
-        velocity: { x: number; y: number; z: number };
-        angle: { x: number; y: number; z: number };
-      }[];
-    };
-
-    // One hand, one point of release. The library derives each die's spawn point
-    // from its own randomised direction, so a trait die and its Wild Die could
-    // enter from opposite ends of the same edge and read as two people rolling.
-    // Overwriting every position with the first die's — after the library has
-    // worked it out, so its aspect-ratio correction still applies — puts them all
-    // in one hand while leaving their directions and spins untouched, which is what
-    // makes them scatter on the way out.
-    for (const vector of thrownVectors.vectors) rollForward(vector);
-
-    const first = thrownVectors.vectors[0]?.pos;
-    if (first) {
-      for (const vector of thrownVectors.vectors) {
-        // A little height between them, or dice launched from one point start
-        // interpenetrating and the solver flings them apart.
-        vector.pos = { x: first.x, y: first.y, z: first.z + (vector.pos.z - first.z) * 0.25 };
-      }
-    }
-    return thrownVectors;
-  };
+  const restoreThrow = aimThrow(active, thrown.seat);
 
   try {
     // Only when it actually changes. `updateConfig` rebuilds materials, and a table
@@ -279,7 +183,7 @@ async function animate(thrown: DiceThrow): Promise<void> {
       if (staged[index + 1]) await sleep(ACE_BEAT_MS);
     }
   } finally {
-    delete (active as unknown as { startClickThrow?: unknown }).startClickThrow;
+    restoreThrow();
     settled(thrown.id);
     lingerTimer = setTimeout(() => active.clearDice(), LINGER_MS);
     idleTimer = setTimeout(teardown, IDLE_MS);

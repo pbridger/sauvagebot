@@ -380,11 +380,10 @@ export function applyPhysics(box: DiceBox): void {
     framerate?: number;
   };
 
-  const now = scaled();
   const world = self.world;
   if (world) {
     // Down is negative z here: the felt is the z = 0 plane and the camera looks along it.
-    world.gravity.set(0, 0, -now.gravity);
+    world.gravity.set(0, 0, -scaled().gravity);
     if (world.solver) world.solver.iterations = PHYSICS.iterations;
     if (world.defaultContactMaterial) {
       world.defaultContactMaterial.contactEquationStiffness = PHYSICS.stiffness;
@@ -408,6 +407,11 @@ export function applyPhysics(box: DiceBox): void {
     self.physicsPatched = true;
     self.spawnDice = (vector: unknown, existing?: unknown): unknown => {
       const made = original(vector, existing);
+      // Read *here*, not where this wrapper was installed: it is installed once and
+      // then runs for every throw for the life of the box, so a value captured at
+      // install time would freeze at whatever the first throw used — and a slider that
+      // moves nothing is worse than no slider.
+      const now = scaled();
       for (const die of self.diceList ?? []) {
         const body = die.body;
         if (!body) continue;
