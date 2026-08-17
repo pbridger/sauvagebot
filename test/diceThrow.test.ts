@@ -206,9 +206,18 @@ describe('seats', () => {
 });
 
 describe('throw vectors', () => {
-  it('sends the Marshal’s dice down the screen', () => {
+  it('puts each seat on the edge it is named after', () => {
+    // `+y` is up, `+x` is right. Dice are released here and thrown towards the middle,
+    // so the Marshal's appear at the top and come down.
     expect(seatVector('n')).toEqual({ x: 0, y: 1 });
     expect(seatVector('s').y).toBe(-1);
+    expect(seatVector('w').x).toBeLessThan(0);
+    expect(seatVector('e').x).toBeGreaterThan(0);
+    expect(seatVector('nw')).toMatchObject({ x: expect.any(Number) });
+    expect(seatVector('nw').x).toBeLessThan(0);
+    expect(seatVector('nw').y).toBeGreaterThan(0);
+    expect(seatVector('se').x).toBeGreaterThan(0);
+    expect(seatVector('se').y).toBeLessThan(0);
   });
 
   it('gives every seat a direction of the same length', () => {

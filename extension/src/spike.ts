@@ -158,7 +158,7 @@ button('6. Twelve d6, then level whatever stopped on an edge', async () => {
 });
 
 // 4. Seats. Watch which edge they come in from.
-for (const from of ['n', 's', 'w', 'e'] as Seat[]) {
+for (const from of ['n', 's', 'w', 'e', 'nw', 'ne', 'sw', 'se'] as Seat[]) {
   button(`4. Seat ${seatLabel(from)}`, async () => {
     seat = from;
     await throwDice('3d6@6,6,6');

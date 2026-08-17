@@ -100,15 +100,16 @@ export interface SeatVector {
 }
 
 /**
- * The direction a seat throws in, as a unit-ish vector.
+ * Which edge of the screen a seat sits at, as a unit vector.
  *
- * The library derives the spawn point from the *sign* of the throw vector — dice
- * enter from the edge opposite the way they are travelling — so `n` throws
- * downwards and the dice appear at the top.
+ * Dice are released *at* this point and thrown towards the middle, which is the whole
+ * of the mapping: `n` is the top of the screen, so the Marshal's dice appear at the top
+ * and come down.
  *
- * !! The sign convention (`y` positive downwards, as in screen coordinates, rather
- * than upwards as in the physics world) is inferred from the bundle and is checked
- * by the spike page. If it is inverted, negate `y` here and nowhere else.
+ * `+y` is up. The camera looks down `-z` with three's default up vector, which settles
+ * a sign convention that used to be marked unverified here — and the renderer's own
+ * habit of deriving the spawn from the sign of a randomised throw vector, which made a
+ * seat mean a slightly different place every time, is no longer used at all.
  */
 export function seatVector(seat: Seat): SeatVector {
   const d = Math.SQRT1_2;
@@ -117,18 +118,21 @@ export function seatVector(seat: Seat): SeatVector {
       return { x: 0, y: 1 };
     case 's':
       return { x: 0, y: -1 };
+    // Mirrored from what stood here, and worth saying why: these used to be *throw
+    // directions*, where "west" meant "throw eastwards, spawn on the left". Now they are
+    // the edge the player sits at, so west is simply the left of the screen.
     case 'w':
-      return { x: 1, y: 0 };
-    case 'e':
       return { x: -1, y: 0 };
+    case 'e':
+      return { x: 1, y: 0 };
     case 'nw':
-      return { x: d, y: d };
-    case 'ne':
       return { x: -d, y: d };
+    case 'ne':
+      return { x: d, y: d };
     case 'sw':
-      return { x: d, y: -d };
-    case 'se':
       return { x: -d, y: -d };
+    case 'se':
+      return { x: d, y: -d };
   }
 }
 

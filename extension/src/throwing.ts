@@ -8,7 +8,7 @@
  * numbers that nothing in that page read. One implementation, used by both.
  */
 import type DiceBox from '@drdreo/dice-box-threejs';
-import { jitter, seatVector, type SeatVector } from '../../src/obr/seats.js';
+import { jitter, seatVector } from '../../src/obr/seats.js';
 import type { Seat } from '../../src/obr/diceThrow.js';
 import { scaled } from './effects.js';
 
@@ -51,28 +51,60 @@ export interface ThrowVector {
 }
 
 /**
+ * Where dice are released, per die.
+ *
+ * Three dice abreast, then a row above, and so on. The spacing exists because the first
+ * version of this put *every* die at exactly one point — "one hand, one point of
+ * release" — which starts them interpenetrating, and a solver asked to separate two
+ * bodies that occupy the same space does it with enormous force. Dice shot into the tray
+ * regardless of how gently they were thrown, because the speed they arrived with had
+ * nothing to do with the throw.
+ *
+ * 140 across and 170 up: a d20 is the biggest die here at roughly 200 units, so this is
+ * not enough to guarantee no overlap for a fistful of d20s, but it is enough that any
+ * overlap is shallow and resolves as a nudge rather than a launch. Dice tumbling out of
+ * a cup touch each other; they just do not start inside each other.
+ */
+function releasePoint(index: number, base: { x: number; y: number }, across: { x: number; y: number }): { x: number; y: number; z: number } {
+  const column = (index % 3) - 1;
+  const row = Math.floor(index / 3);
+  return {
+    x: base.x + across.x * column * 140,
+    y: base.y + across.y * column * 140,
+    z: 200 + row * 170,
+  };
+}
+
+/**
  * Throw from one edge of the screen, at a real speed, with a forward roll.
  *
- * Replaces the renderer's `startClickThrow`, which picks a random direction and derives
- * each die's spawn point from the sign of that die's own randomised vector. Three things
- * change: the direction is the player's seat, the speed is an absolute number rather
- * than a multiple of the panel width, and every die of a throw leaves from one point.
+ * The renderer's own `startClickThrow` is replaced rather than adjusted, because almost
+ * none of what it does is wanted: it picks a random direction, and derives each die's
+ * spawn from the *sign* of that die's own randomised vector — which is why dice from the
+ * same seat did not come from the same place. A seat that means "the top of the screen"
+ * has to name the point, not sample it.
  *
- * @returns a function that puts the renderer's own throw back. The replacement is an own
- *   property over a prototype method, so restoring means deleting it.
+ * So: the seat fixes the release point exactly, the throw is aimed at the middle of the
+ * tray, and the only randomness left is a few degrees on the aim and the spin. Positions
+ * are clamped inside the walls — the tray's edges are at 0.93 of the half-extent, and a
+ * die spawned outside them is a die that never appears.
  */
 export function aimThrow(
   box: DiceBox,
   seat: Seat,
   onThrow?: (vectors: ThrowVector[]) => void,
 ): () => void {
-  const direction: SeatVector = jitter(seatVector(seat));
+  // The seat is the edge the player sits at, so the dice start there and are thrown
+  // towards the middle. `+y` is up on screen: the camera looks down `-z` with three's
+  // default up vector, which is what settles the sign convention that was marked
+  // unverified in `seats.ts`.
+  const edge = seatVector(seat);
 
   (box as unknown as { startClickThrow: (n: string) => unknown }).startClickThrow = function (
     notationString: string,
   ) {
     const self = this as unknown as {
-      display: { currentWidth: number; currentHeight: number };
+      display: { containerWidth: number; containerHeight: number };
       getNotationVectors: (n: string, v: unknown, boost: number, dist: number) => unknown;
       rolling: boolean;
       clearDice: () => void;
@@ -81,34 +113,33 @@ export function aimThrow(
       self.clearDice();
       self.rolling = false;
     }
-    const reach = {
-      x: direction.x * self.display.currentWidth,
-      y: direction.y * self.display.currentHeight,
-    };
-    const distance = Math.sqrt(reach.x * reach.x + reach.y * reach.y) + 100;
-    // A real toss, not a multiple of the panel's width. The library's own boost scales
-    // with the window, so the same roll left a die harder on a big monitor.
-    const boost = scaled().throwSpeed * (0.85 + Math.random() * 0.3);
-    const thrown = self.getNotationVectors(notationString, reach, boost, distance) as {
+
+    const halfWidth = self.display.containerWidth;
+    const halfHeight = self.display.containerHeight;
+    // Aim for the middle, give or take a few degrees. The aim is the only thing jittered:
+    // jittering the release point is what made "top" mean a different place each time.
+    const aim = jitter({ x: -edge.x, y: -edge.y });
+    const speed = scaled().throwSpeed * (0.85 + Math.random() * 0.3);
+
+    const thrown = self.getNotationVectors(notationString, { x: aim.x, y: aim.y }, 1, 1) as {
       vectors: ThrowVector[];
     };
 
-    for (const vector of thrown.vectors) rollForward(vector);
+    const base = { x: edge.x * halfWidth * 0.78, y: edge.y * halfHeight * 0.78 };
+    const across = { x: -edge.y, y: edge.x };
+    const limit = { x: halfWidth * 0.86, y: halfHeight * 0.86 };
 
-    // One hand, one point of release. The library derives each die's spawn from its own
-    // randomised direction, so a trait die and its Wild Die could enter from opposite
-    // ends of the same edge and read as two people rolling. Overwriting every position
-    // with the first die's — after the library has worked it out, so its aspect-ratio
-    // correction still applies — puts them in one hand while leaving their directions
-    // and spins alone, which is what makes them scatter on the way out.
-    const first = thrown.vectors[0]?.pos;
-    if (first) {
-      for (const vector of thrown.vectors) {
-        // A little height between them, or dice launched from one point start
-        // interpenetrating and the solver flings them apart.
-        vector.pos = { x: first.x, y: first.y, z: first.z + (vector.pos.z - first.z) * 0.25 };
-      }
-    }
+    thrown.vectors.forEach((vector, index) => {
+      const at = releasePoint(index, base, across);
+      vector.pos = {
+        x: Math.max(-limit.x, Math.min(limit.x, at.x)),
+        y: Math.max(-limit.y, Math.min(limit.y, at.y)),
+        z: at.z,
+      };
+      vector.velocity = { x: aim.x * speed, y: aim.y * speed, z: -10 };
+      rollForward(vector);
+    });
+
     onThrow?.(thrown.vectors);
     return thrown;
   };
