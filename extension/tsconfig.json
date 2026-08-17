@@ -9,7 +9,11 @@
     "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node"]
+    // `vite/client` for `import.meta.env.BASE_URL`, which is how the dice renderer
+    // is told where its textures are — the same `/<repo>/` prefix problem the
+    // manifest has under GitHub Pages, solved by asking the bundler rather than by
+    // hardcoding it in a second place.
+    "types": ["node", "vite/client"]
   },
   "include": ["src/**/*.ts", "vite.config.ts"]
 }

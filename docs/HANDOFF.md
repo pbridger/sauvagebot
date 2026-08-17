@@ -269,6 +269,25 @@ also its wounds and Shaken. Fresh tokens named after the characters work too —
 Reset scene** is what clears the last fight off the tokens while keeping the
 bindings.
 
+**Animated dice.** Off by default, per person: the **🎲 Dice: off** button at the
+bottom of the panel is each player's own switch for their own machine, and it is
+remembered. On, a roll throws physical dice across a transparent overlay above the
+map and the log line waits until they stop; off, results go straight to the log as
+they always did. The dice do not decide anything — every value comes from the same
+conformance-verified engine as before, and the renderer is told what to show (see
+`OBR-DICE-PLAN.md` §1–2 for why that is honest rather than a fudge). An ace throws
+the extra die a beat after the one that earned it. Everyone rolls from their own
+edge of the screen — the Marshal from the top, players from the sides, set under
+**Table → Dice seats** and remembered between sessions — and dice are tinted with
+the roller's own Owlbear colour.
+
+**Untested, and the one that matters:** whether Owlbear lets clicks through a
+full-screen `disablePointerEvents` modal to the panel and the map underneath. If it
+does not, switching dice *on* would make the panel unclickable, which is worse than
+having no animation. Check that before a session, and turn dice off if it bites —
+`extension/dice-spike.html` (served by `npm run ext:dev`) answers the renderer's own
+unknowns without needing a room at all.
+
 **What this does not solve:** the room's ~15 kB metadata budget. Two Marshals
 running the same roster hit the same ceiling. See the rules-text switch on the
 Table tab for the stopgap, and OBR-DEADLANDS-PLAN.md §2 for what a real fix

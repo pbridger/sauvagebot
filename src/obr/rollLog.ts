@@ -57,6 +57,19 @@ export interface RollEntry {
    * line is read the fight has usually moved on.
    */
   mods?: RollMod[];
+  /**
+   * Dice for this roll are on their way over the dice channel.
+   *
+   * A hint, not the payload — the dice themselves are a separate message, because
+   * this one is sent `REMOTE` and would therefore animate on every screen except
+   * the roller's own. What the hint buys is knowing to *hold* the line: without it
+   * a receiving client cannot tell whether a roll is going to be animated, and
+   * would have to either print every line at once (spoiling the animation) or delay
+   * every line on the chance that dice are coming.
+   *
+   * Whoever rolls sets it. Whether to animate at all is the reader's own choice.
+   */
+  animated?: boolean;
   /** Kept local, never sent. Present only on the roller's own client. */
   secret?: boolean;
 }
@@ -101,6 +114,7 @@ export function isRollEntry(value: unknown): value is RollEntry {
     isOptionalNumber(entry.total) &&
     isOptionalNumber(entry.ap) &&
     (entry.applicable === undefined || typeof entry.applicable === 'boolean') &&
+    (entry.animated === undefined || typeof entry.animated === 'boolean') &&
     (entry.character === undefined || typeof entry.character === 'string') &&
     (entry.label === undefined || typeof entry.label === 'string') &&
     (entry.mods === undefined || (Array.isArray(entry.mods) && entry.mods.every(isRollMod)))

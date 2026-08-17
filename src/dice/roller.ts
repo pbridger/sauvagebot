@@ -22,15 +22,96 @@ function strikeout(text: string): string {
   return `~~${text}~~`;
 }
 
+/**
+ * What part a die played, for anything that wants to draw it differently.
+ *
+ * `'wild'` is the Savage Worlds Wild Die and the WEG d6 wild die — the one die in
+ * a roll that is not the character's own trait.
+ */
+export type DieRole = 'trait' | 'wild' | 'plain';
+
+/**
+ * One die, as it was actually rolled.
+ *
+ * This exists for the animated tray, which needs `(sides, value)` pairs rather
+ * than the explanation string, and needs to know which die bought which — the
+ * whole point of animating an ace is that the extra die arrives *after* the one
+ * that earned it.
+ */
+export interface DieEvent {
+  sides: number;
+  value: number;
+  /** Dice of one exploding chain share this. Numbered from 1 within a roller. */
+  chain: number;
+  /** 0 for the first die of a chain, 1 for the die its ace bought, and so on. */
+  step: number;
+  role: DieRole;
+}
+
+/**
+ * Told about every die as it is rolled.
+ *
+ * **Must be passive.** It may not touch the RNG, reorder anything, or throw: the
+ * conformance corpus compares this engine's output byte for byte against the Java
+ * original, and an observer with side effects would be a way to break that from
+ * the outside. Emission happens after the die is rolled, so a throwing observer
+ * could not change a value — only lose the roll, which is why the emit site
+ * swallows nothing and callers are expected to keep this trivial.
+ */
+export type DieObserver = (die: DieEvent) => void;
+
 export class Roller {
-  constructor(private readonly random: JavaRandom) {}
+  /**
+   * Chain bookkeeping for the observer. Nothing here is read by the roll logic,
+   * so it cannot affect a result — see the corpus test.
+   */
+  private chains = 0;
+  private step = 0;
+  private inChain = false;
+  private role: DieRole = 'plain';
+
+  constructor(
+    private readonly random: JavaRandom,
+    private readonly observer?: DieObserver,
+  ) {}
 
   /** `public int roll(int facetsCount)` */
   rollDie(facetsCount: number): number {
     if (facetsCount <= 0) {
       throw new EvaluationError(`Facets count should be >0: ${facetsCount}`);
     }
-    return this.random.nextInt(facetsCount) + 1;
+    const value = this.random.nextInt(facetsCount) + 1;
+    if (this.observer) {
+      // A bare `rollDie` — d66 digits, the Carcosa d20, WEG's regular dice — is a
+      // chain of one. Only `roll()` can open a longer one.
+      if (!this.inChain) {
+        this.chains++;
+        this.step = 0;
+      }
+      this.observer({
+        sides: facetsCount,
+        value,
+        chain: this.chains,
+        step: this.step,
+        role: this.role,
+      });
+      this.step++;
+    }
+    return value;
+  }
+
+  /**
+   * Tag the dice rolled inside `body`, so the Wild Die can be told from the
+   * trait die on screen. Restores the previous role even if `body` throws.
+   */
+  private as<T>(role: DieRole, body: () => T): T {
+    const previous = this.role;
+    this.role = role;
+    try {
+      return body();
+    } finally {
+      this.role = previous;
+    }
   }
 
   /**
@@ -40,6 +121,20 @@ export class Roller {
    * built this string and then discarded it — a bug fixed upstream in this fork.
    */
   roll(facetsCount: number, isOpenEnded: boolean): IntResult {
+    // The loop below *is* the exploding chain, which is why the observer is tapped
+    // here rather than at the RNG: everything downstream would otherwise have to
+    // re-derive "that die showed its maximum, so the next one is its ace".
+    this.chains++;
+    this.step = 0;
+    this.inChain = true;
+    try {
+      return this.rollChain(facetsCount, isOpenEnded);
+    } finally {
+      this.inChain = false;
+    }
+  }
+
+  private rollChain(facetsCount: number, isOpenEnded: boolean): IntResult {
     let total = 0;
     const explained: string[] = [];
 
@@ -55,6 +150,13 @@ export class Roller {
     return intResult(total, explained.join('+'));
   }
 
+  /**
+   * Fudge dice, and the one die that reaches the RNG without going through
+   * `rollDie` — so it tells the observer nothing, deliberately. A `nextInt(3)`
+   * looks exactly like a d3 from the outside, and a d3 is not a die the tray can
+   * draw. A Fudge roll therefore animates nothing and its result appears at once,
+   * which is the right behaviour for a die this game does not use.
+   */
   private rollDF(): number {
     return this.random.nextInt(3) - 1;
   }
@@ -146,11 +248,11 @@ export class Roller {
   ): IntListResult {
     const abilityDice: IntResult[] = [];
     for (let i = 0; i < diceCount; i++) {
-      abilityDice.push(this.roll(abilityDieFacets, true));
+      abilityDice.push(this.as('trait', () => this.roll(abilityDieFacets, true)));
     }
     abilityDice.sort(byValue);
 
-    const wildDie = this.roll(wildDieFacets, true);
+    const wildDie = this.as('wild', () => this.roll(wildDieFacets, true));
 
     let explained = '[';
     for (const die of abilityDice) {
@@ -228,7 +330,7 @@ export class Roller {
       throw new EvaluationError(`Dice count should be at least 1: ${diceCount}`);
     }
 
-    const wildDieValue = this.roll(6, true).value;
+    const wildDieValue = this.as('wild', () => this.roll(6, true)).value;
 
     const regularDiceValues: number[] = [];
     for (let i = 0; i < diceCount - 1; i++) {

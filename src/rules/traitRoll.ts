@@ -10,6 +10,7 @@ import { CommandContext } from '../dice/evaluator.js';
 import { RollInterpreter } from '../dice/interpreter.js';
 import { JavaRandom } from '../dice/javaRandom.js';
 import { parse } from '../dice/parser.js';
+import type { DieEvent } from '../dice/roller.js';
 import { traitDie, type DieSides, type Sheet } from './sheet.js';
 
 export interface TraitRollRequest {
@@ -33,6 +34,14 @@ export interface TraitRollResult {
   expression: string;
   /** The engine's explanation, e.g. `s8+1: [7; w3] +1 = **8**`. */
   explained: string;
+  /**
+   * Every die that was rolled, in the order it was rolled, for the animated tray.
+   *
+   * Always collected rather than gated behind a flag: it is one array push per die
+   * on a code path that already builds strings, and a flag would mean two ways for
+   * the same roll to behave.
+   */
+  dice: DieEvent[];
 }
 
 export function rollTrait(
@@ -40,10 +49,11 @@ export function rollTrait(
   random: JavaRandom = new JavaRandom(),
 ): TraitRollResult {
   const expression = traitExpression(request);
-  const explained = new RollInterpreter(new CommandContext(random))
+  const dice: DieEvent[] = [];
+  const explained = new RollInterpreter(new CommandContext(random, (die) => dice.push(die)))
     .run(parse([expression]))
     .trim();
-  return { expression, explained };
+  return { expression, explained, dice };
 }
 
 /** Roll a named skill off a sheet, applying the untrained d4−2 where it applies. */

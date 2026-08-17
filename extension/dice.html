@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Deadlands dice</title>
+    <style>
+      /*
+        A window-sized, transparent, click-through page. The modal is opened with
+        `disablePointerEvents`, so nothing here can steal a click from the map, but
+        the page must also not paint over it — hence no background anywhere, on
+        `html` and `body` as well as the canvas holder.
+      */
+      html,
+      body,
+      #tray {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        pointer-events: none;
+      }
+      #tray canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tray"></div>
+    <script type="module" src="/src/tray.ts"></script>
+  </body>
+</html>

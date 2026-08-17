@@ -109,6 +109,27 @@ import {
   writeInitiative,
 } from './backends.js';
 
+import {
+  DICE_CHANNEL,
+  DICE_SETTLED_CHANNEL,
+  MAX_DICE,
+  REVEAL_CAP_MS,
+  TRAY_MODAL_ID,
+  isDiceThrow,
+  revealDelay,
+  type DiceThrow,
+  type Seat,
+} from '../../src/obr/diceThrow.js';
+import {
+  DICE_PREFIX,
+  PLAYER_SEATS,
+  SEAT_PREFIX,
+  assignSeats,
+  seatLabel,
+  type Seated,
+} from '../../src/obr/seats.js';
+import type { DieEvent } from '../../src/dice/roller.js';
+
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 const bar = { who: el<HTMLSelectElement>('who'), file: el<HTMLInputElement>('file') };
 const sheetEl = el('sheet');
@@ -150,6 +171,28 @@ let selectedTokenIds: string[] = [];
 let saving = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
+// ------------------------------------------------------- animated dice
+/**
+ * Whether *this* reader wants the animation. Not a property of a roll: whoever rolls
+ * always sends their dice, and each person at the table decides for themselves
+ * whether to watch them.
+ */
+let animate = false;
+/** Where my dice come in from. Everyone's seat is worked out from the party list. */
+let mySeat: Seat = 'n';
+/** Everyone in the room, for the Marshal's seat picker. */
+let party: Seated[] = [];
+/** Their seats, as last worked out or reassigned by hand. */
+let seats: Record<string, Seat> = {};
+/**
+ * Lines whose dice are still in the air, and the timer that will print them anyway.
+ *
+ * A held line is in the log already — `renderLog` skips it — so nothing about the
+ * result depends on the tray: the timer prints it whatever happens, and the tray
+ * saying "settled" only ever makes that happen sooner.
+ */
+const held = new Map<string, ReturnType<typeof setTimeout>>();
+
 // ---------------------------------------------------------------- chrome
 
 function notify(message: string | undefined): void {
@@ -174,24 +217,92 @@ function describe(error: unknown): string {
  * screen. Keeping it local works because the person hiding the roll is the one
  * making it.
  */
-function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>): void {
+function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>, dice: DieEvent[] = []): void {
   const total = partial.total ?? totalOf(partial.explained);
+  // Over the cap there is no animation: `20d20!` is a legal expression and an
+  // unwatchable throw, and a locked-up tab is worse than an unanimated result.
+  const throwable = dice.length > 0 && dice.length <= MAX_DICE;
   const entry: RollEntry = {
     ...partial,
     id: newRollId(),
     at: Date.now(),
     by: me,
     ...(total === undefined ? {} : { total }),
+    ...(throwable ? { animated: true } : {}),
     ...(secretRolls ? { secret: true } : {}),
   };
   log.add(entry);
-  renderLog();
+  if (throwable) void sendDice(entry, dice);
+  // Our own dice are in hand, so the hold can be the length of the throw straight
+  // away rather than the six-second backstop a remote line starts on.
+  show(entry, dice);
   if (!entry.secret) {
     // REMOTE: everyone but us, since we have already added it ourselves.
     void OBR.broadcast
       .sendMessage(ROLL_CHANNEL, forBroadcast(entry), { destination: 'REMOTE' })
       .catch((error: unknown) => notify(`could not share that roll: ${describe(error)}`));
   }
+}
+
+/**
+ * Send the dice to the trays.
+ *
+ * `ALL` rather than `REMOTE`, unlike the log line: the roller's own tray is a
+ * different iframe from this one and needs the message too — which is the whole
+ * reason dice do not ride along on `RollEntry`. A secret roll goes `LOCAL`, so the
+ * Marshal's hidden roll throws dice on the Marshal's screen and nobody else's.
+ */
+async function sendDice(entry: RollEntry, dice: DieEvent[]): Promise<void> {
+  const thrown: DiceThrow = {
+    id: entry.id,
+    dice,
+    seat: mySeat,
+    ...(myColour ? { colour: myColour } : {}),
+  };
+  try {
+    // Only opened when it is wanted: a reader with animation off never loads the
+    // renderer at all, and the overlay tears itself down when the table goes quiet.
+    if (animate) await openTray();
+    await OBR.broadcast.sendMessage(DICE_CHANNEL, thrown, {
+      destination: entry.secret ? 'LOCAL' : 'ALL',
+    });
+  } catch (error) {
+    // A roll must never fail because the dice could not be drawn.
+    console.warn('could not send dice', error);
+  }
+}
+
+/**
+ * Put a line in the log — now, or when this reader's dice have landed.
+ *
+ * Holding it back is the point of the animation: a line that says `= **8**` while
+ * the dice are still tumbling has already given away the ending, and the staged ace
+ * is then a re-enactment of something you have read. Anyone with animation off, and
+ * any roll with no dice in it, prints immediately.
+ */
+function show(entry: RollEntry, dice?: DieEvent[]): void {
+  if (animate && entry.animated) {
+    // A fallback, not the mechanism: the tray's own "settled" normally gets here
+    // first. This is what covers a tray that was never opened, was torn down for
+    // idleness, or has quietly died.
+    //
+    // With the dice to hand — always true of our own roll — the wait is roughly how
+    // long the throw takes. Without them it is the flat backstop until the dice
+    // arrive on their own channel and shorten it.
+    held.set(
+      entry.id,
+      setTimeout(() => reveal(entry.id), dice ? revealDelay(dice) : REVEAL_CAP_MS),
+    );
+  }
+  renderLog();
+}
+
+function reveal(id: string): void {
+  const timer = held.get(id);
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  held.delete(id);
+  renderLog();
 }
 
 /**
@@ -213,21 +324,30 @@ function named(sheet: Sheet): { character?: string } {
   return who ? { character: who } : {};
 }
 
-/** Publish a roll made off a sheet, with its modifier breakdown attached. */
+/**
+ * Publish a roll made off a sheet, with its modifier breakdown attached.
+ *
+ * Every trait roll arrives here carrying its own dice, so animation needs no
+ * separate wiring per call site — a Shooting roll, a Soak and an untrained d4−2 all
+ * come through `TraitRollResult`.
+ */
 function publishTrait(
   sheet: Sheet,
   label: string,
-  result: { expression: string; explained: string },
+  result: { expression: string; explained: string; dice?: DieEvent[] },
   mods: RollBreakdown,
 ): void {
   const who = rollerName(sheet);
-  publish({
-    ...(who ? { character: who } : {}),
-    label,
-    expression: result.expression,
-    explained: result.explained,
-    ...(mods.parts.length ? { mods: mods.parts } : {}),
-  });
+  publish(
+    {
+      ...(who ? { character: who } : {}),
+      label,
+      expression: result.expression,
+      explained: result.explained,
+      ...(mods.parts.length ? { mods: mods.parts } : {}),
+    },
+    result.dice ?? [],
+  );
 }
 
 /**
@@ -237,7 +357,12 @@ function publishTrait(
  */
 function renderLog(): void {
   logEl.replaceChildren(
-    ...log.list().map((entry) => {
+    ...log
+      // Held lines are in the log but not yet on screen — their dice are still in
+      // the air. See `show`.
+      .list()
+      .filter((entry) => !held.has(entry.id))
+      .map((entry) => {
       const line = document.createElement('div');
       line.className = 'entry';
       if (entry.secret) line.classList.add('secret');
@@ -559,6 +684,9 @@ function renderTable(): HTMLElement {
 
   wrap.append(rosterBlock());
   wrap.append(sessionBlock());
+  // Nothing to seat in an empty room: a Marshal building a map on their own does
+  // not need a block that lists only themselves.
+  if (party.some((player) => !player.gm)) wrap.append(seatBlock());
   wrap.append(storageBlock());
   // Last, because it is the only block you go looking for rather than glance at:
   // adding a mook is a thing you do once a scene, not once a round.
@@ -572,6 +700,62 @@ function renderTable(): HTMLElement {
   });
   wrap.append(storage);
 
+  return wrap;
+}
+
+/**
+ * Where everyone's dice come in from.
+ *
+ * The Marshal's block, because seats are shared: two players cannot each decide
+ * which edge is theirs. Whether the dice are *animated* is not here — that is each
+ * player's own choice about their own machine, and it lives in the footer where
+ * every player can reach it.
+ *
+ * Only worth showing when there is somebody to seat, so a solo Marshal preparing a
+ * map does not get a block listing themselves.
+ */
+function seatBlock(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  wrap.append(
+    paneHeading(
+      'Dice seats',
+      'Animated dice come in from the same edge every session, so you can tell ' +
+        'whose roll it is before you read it. Players switch the animation on or ' +
+        'off for themselves, at the bottom of the panel.',
+    ),
+  );
+
+  const list = document.createElement('div');
+  list.className = 'creature-list';
+  for (const player of party) {
+    const row = document.createElement('div');
+    row.className = 'creature';
+
+    const name = document.createElement('span');
+    name.className = 'creature-meta';
+    name.textContent = player.gm ? `${player.name} (Marshal)` : player.name;
+    row.append(name);
+
+    const pick = document.createElement('select');
+    pick.className = 'seat-pick';
+    // The Marshal's own seat is fixed at the top: it is the one seat the layout
+    // assumes, and every other seat is defined by not being it.
+    pick.disabled = player.gm;
+    for (const seat of player.gm ? (['n'] as Seat[]) : PLAYER_SEATS) {
+      const option = document.createElement('option');
+      option.value = seat;
+      option.textContent = seatLabel(seat);
+      pick.append(option);
+    }
+    pick.value = seats[player.id] ?? (player.gm ? 'n' : PLAYER_SEATS[0]!);
+    pick.addEventListener('change', () => {
+      void moveSeat(player.id, pick.value as Seat);
+    });
+    row.append(pick);
+    list.append(row);
+  }
+  wrap.append(list);
   return wrap;
 }
 
@@ -2155,19 +2339,25 @@ function rollFreeform(
   const trimmed = expression.trim();
   if (!trimmed) return;
   try {
-    const explained = new RollInterpreter(new CommandContext(new JavaRandom()))
+    const dice: DieEvent[] = [];
+    const explained = new RollInterpreter(
+      new CommandContext(new JavaRandom(), (die) => dice.push(die)),
+    )
       .run(parse([trimmed]))
       .trim();
-    publish({
-      expression: trimmed,
-      explained,
-      // The only things that may be applied as damage: a weapon's damage roll
-      // and anything typed into the box.
-      applicable: true,
-      ...(label ? { label } : {}),
-      ...(character ? { character } : {}),
-      ...(ap ? { ap } : {}),
-    });
+    publish(
+      {
+        expression: trimmed,
+        explained,
+        // The only things that may be applied as damage: a weapon's damage roll
+        // and anything typed into the box.
+        applicable: true,
+        ...(label ? { label } : {}),
+        ...(character ? { character } : {}),
+        ...(ap ? { ap } : {}),
+      },
+      dice,
+    );
   } catch (error) {
     // A typo is not worth broadcasting; show it to whoever typed it.
     log.add({
@@ -2179,6 +2369,153 @@ function rollFreeform(
       secret: true,
     });
     renderLog();
+  }
+}
+
+// ---------------------------------------------------------------- animated dice
+
+/**
+ * Open the overlay the dice are drawn on.
+ *
+ * A full-screen modal with no backdrop, no paper and — the part that makes it a
+ * dice tray rather than a dialog — `disablePointerEvents`, so it draws over the map
+ * without taking a single click away from it.
+ *
+ * Called before every throw rather than once at startup, because the tray tears
+ * itself down when the table has been quiet for a while: reopening it is cheaper
+ * than leaving a WebGL context and an animation loop running over the map all
+ * session. Opening one that is already open is a no-op we do not need to detect.
+ */
+async function openTray(): Promise<void> {
+  try {
+    await OBR.modal.open({
+      id: TRAY_MODAL_ID,
+      // Same origin, and under whatever prefix this build was deployed to — the
+      // `/<repo>/` problem the manifest has, answered by the bundler.
+      url: `${window.location.origin}${import.meta.env.BASE_URL}dice.html`,
+      fullScreen: true,
+      hideBackdrop: true,
+      hidePaper: true,
+      disablePointerEvents: true,
+    });
+  } catch (error) {
+    // Already open, or modals refused: either way the roll goes on and the line
+    // appears on the fallback timer.
+    console.warn('could not open the dice tray', error);
+  }
+}
+
+/** My OBR party colour, borrowed to tint my dice so nobody has to read a name. */
+let myColour: string | undefined;
+
+/**
+ * Work out everyone's seat and remember them.
+ *
+ * Run by the GM only. The seats are shared state — two players cannot each decide
+ * independently which edge is theirs — and a room with several players all writing
+ * the same keys is how a seat ends up flip-flopping between sessions. Players read
+ * what the Marshal's client wrote.
+ */
+async function refreshSeats(): Promise<void> {
+  const others = await OBR.party.getPlayers();
+  const stored = await store.readAll();
+  const current: Record<string, Seat> = {};
+  for (const [key, value] of Object.entries(stored)) {
+    if (key.startsWith(SEAT_PREFIX) && typeof value === 'string') {
+      current[key.slice(SEAT_PREFIX.length)] = value as Seat;
+    }
+  }
+
+  // `getPlayers` is everyone *else*, so we are added by hand or the roller's own
+  // seat would be missing from the room the roller is in.
+  party = [
+    { id: OBR.player.id, name: me, gm: isGM },
+    ...others.map((player) => ({
+      id: player.id,
+      name: player.name,
+      gm: player.role === 'GM',
+    })),
+  ];
+  seats = assignSeats(party, current);
+  mySeat = seats[OBR.player.id] ?? mySeat;
+
+  if (!isGM) return;
+  for (const [id, seat] of Object.entries(seats)) {
+    if (current[id] === seat) continue;
+    await saveSeat(id, seat);
+  }
+}
+
+async function saveSeat(id: string, seat: Seat): Promise<void> {
+  try {
+    await store.write(`${SEAT_PREFIX}${id}`, seat);
+  } catch (error) {
+    // A seat is a nicety; the room budget and the roster come first.
+    console.warn('could not save a dice seat', error);
+  }
+}
+
+/**
+ * Move a player to a seat, swapping with whoever was already there.
+ *
+ * Swapping rather than refusing: the Marshal moving Jen to the left has said what
+ * they want, and leaving two people on one edge — or silently doing nothing — are
+ * both worse answers than the other player taking the seat Jen just left.
+ */
+async function moveSeat(id: string, seat: Seat): Promise<void> {
+  const displaced = Object.entries(seats).find(([other, held]) => held === seat && other !== id);
+  const vacated = seats[id];
+  seats[id] = seat;
+  await saveSeat(id, seat);
+  if (displaced && vacated) {
+    seats[displaced[0]] = vacated;
+    await saveSeat(displaced[0], vacated);
+  }
+  if (id === OBR.player.id) {
+    mySeat = seat;
+    renderDiceToggle();
+  }
+  renderSheetArea();
+}
+
+/** Read my own seat and my own animation preference back out of the room. */
+async function readMyDiceSettings(): Promise<void> {
+  const seat = await store.read<Seat>(`${SEAT_PREFIX}${OBR.player.id}`);
+  if (seat) mySeat = seat;
+  // Absent means off. Animation is opt-in: it is the setting most likely to be
+  // wrong for somebody's laptop, and an unasked-for physics simulation over the map
+  // is a worse first impression than a plain log.
+  animate = (await store.read<boolean>(`${DICE_PREFIX}${OBR.player.id}`)) === true;
+  renderDiceToggle();
+}
+
+function renderDiceToggle(): void {
+  const button = el<HTMLButtonElement>('anim');
+  button.textContent = animate ? '🎲 Dice: on' : '🎲 Dice: off';
+  button.setAttribute('aria-pressed', String(animate));
+  button.title = animate
+    ? `Rolling animates in front of you, from ${seatLabel(mySeat).toLowerCase()}. The result appears when the dice stop.`
+    : 'Rolling goes straight to the log. Turn on for animated dice over the map.';
+}
+
+async function toggleDice(): Promise<void> {
+  animate = !animate;
+  renderDiceToggle();
+  if (!animate) {
+    // Reveal everything being held, or a line rolled a moment ago would be
+    // stranded by the switch that was meant to make things faster.
+    for (const id of [...held.keys()]) reveal(id);
+    await OBR.modal.close(TRAY_MODAL_ID).catch(() => {
+      // Nothing open, which is the state we wanted.
+    });
+  } else {
+    await openTray();
+  }
+  try {
+    await store.write(`${DICE_PREFIX}${OBR.player.id}`, animate);
+  } catch (error) {
+    // Not worth interrupting anyone over; it is a preference.
+    console.warn('could not save the dice preference', error);
   }
 }
 
@@ -2235,6 +2572,7 @@ OBR.onReady(async () => {
   bank = new BennyBank(store);
   me = await OBR.player.getName();
   isGM = (await OBR.player.getRole()) === 'GM';
+  myColour = await OBR.player.getColor();
   // A guard rail, not a permission: any client could still write these keys.
   // What it prevents is a player hitting "New session" by accident and wiping
   // the party's Bennies, which has no undo.
@@ -2249,12 +2587,44 @@ OBR.onReady(async () => {
     // `secret` is meaningless on the wire; never honour a claim of it.
     const { secret, ...entry } = event.data;
     void secret;
-    if (log.add(entry)) renderLog();
+    if (log.add(entry)) show(entry);
+  });
+
+  // The dice for a roll, on their own channel — see `sendDice`. This panel listens
+  // as well as its tray, because knowing how many waves are coming is what turns
+  // the fallback reveal from a flat six seconds into roughly how long the throw
+  // will actually take.
+  OBR.broadcast.onMessage(DICE_CHANNEL, (event) => {
+    if (!isDiceThrow(event.data)) return;
+    const thrown = event.data;
+    if (!held.has(thrown.id)) return;
+    clearTimeout(held.get(thrown.id));
+    held.set(
+      thrown.id,
+      setTimeout(() => reveal(thrown.id), revealDelay(thrown.dice)),
+    );
+  });
+
+  // My own tray, telling me its dice have stopped. The line it has been holding
+  // goes up now rather than on the fallback timer.
+  OBR.broadcast.onMessage(DICE_SETTLED_CHANNEL, (event) => {
+    const data = event.data as { id?: unknown };
+    if (data && typeof data.id === 'string') reveal(data.id);
   });
 
   OBR.player.onChange((player) => {
     me = player.name;
+    myColour = player.color;
     void onSelectionChange();
+  });
+
+  // Somebody joining or leaving changes who needs a seat. The Marshal's client is
+  // the one that writes them, but everybody re-reads: a player who arrives second
+  // still has to learn which edge is theirs.
+  OBR.party.onChange(() => {
+    void refreshSeats().then(() => {
+      if (tab === 'table') renderSheetArea();
+    });
   });
 
   // Bindings live in item metadata, which is per-scene — so every new map starts
@@ -2302,12 +2672,19 @@ OBR.onReady(async () => {
     rollTyped(false);
   });
   el('roll-secret').addEventListener('click', () => rollTyped(true));
+  el('anim').addEventListener('click', () => void toggleDice());
 
   // Another player editing their own sheet must show up here without a reload.
   // Our own writes are skipped: re-rendering mid-edit would blow away focus.
   OBR.room.onMetadataChange(() => {
     if (!saving) void reload();
   });
+
+  // Seats before settings: the GM's client is what writes them, and my own seat is
+  // read back out of what it wrote.
+  await refreshSeats();
+  await readMyDiceSettings();
+  if (animate) await openTray();
 
   initiative = await readInitiative();
   await reload();

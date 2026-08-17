@@ -20,11 +20,14 @@
     "ext:typecheck": "tsc -p extension/tsconfig.json"
   },
   "dependencies": {
+    "@drdreo/dice-box-threejs": "^1.1.0",
     "@owlbear-rodeo/sdk": "^3.1.0",
     "antlr4ng": "^3.0.4",
+    "cannon-es": "^0.20.0",
     "discord.js": "^14.16.3",
     "ioredis": "^5.4.1",
-    "pdfjs-dist": "^4.10.38"
+    "pdfjs-dist": "^4.10.38",
+    "three": "^0.176.0"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

@@ -90,7 +90,7 @@ export class RollInterpreter {
   }
 
   private ironSworn(statement: Extract<Statement, { kind: 'IronSwornRoll' }>): string {
-    const roller = new Roller(this.context.random);
+    const roller = new Roller(this.context.random, this.context.observer);
     const d6 = roller.rollDie(6);
     const modifier = this.modifierValue(statement.modifierExpression, statement.modifierOperator);
     // A modified roll can't exceed 10.

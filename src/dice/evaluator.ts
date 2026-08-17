@@ -8,7 +8,7 @@
  */
 
 import { JavaRandom } from './javaRandom.js';
-import { Roller } from './roller.js';
+import { Roller, type DieObserver } from './roller.js';
 import { rollGygaxRange, rollSwordWorldPower } from './specialRollers.js';
 import { EvaluationError, Limits } from './results.js';
 import {
@@ -23,7 +23,15 @@ const i32 = (n: number): number => n | 0;
 
 export class CommandContext {
   readonly variables = new Map<string, number[]>();
-  constructor(readonly random: JavaRandom = new JavaRandom()) {}
+  /**
+   * @param observer told about every die rolled, for the animated tray. Optional
+   *   and passive: the Discord path never passes one, and `Roller` guarantees a
+   *   roll evaluates identically with and without it.
+   */
+  constructor(
+    readonly random: JavaRandom = new JavaRandom(),
+    readonly observer?: DieObserver,
+  ) {}
 }
 
 class ExpressionContext {
@@ -65,7 +73,7 @@ class Evaluator {
   private readonly roller: Roller;
 
   constructor(private readonly context: ExpressionContext) {
-    this.roller = new Roller(context.commandContext.random);
+    this.roller = new Roller(context.commandContext.random, context.commandContext.observer);
   }
 
   eval(e: Expression): number[] {

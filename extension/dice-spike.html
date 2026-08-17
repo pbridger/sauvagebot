@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dice spike</title>
+    <style>
+      body {
+        margin: 0;
+        font: 13px/1.4 system-ui, sans-serif;
+        color: #eee;
+        background: #23282e;
+      }
+      #tray {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+      }
+      #panel {
+        position: relative;
+        z-index: 1;
+        padding: 10px 12px;
+        max-width: 620px;
+      }
+      button {
+        margin: 0 4px 4px 0;
+        padding: 3px 8px;
+      }
+      #out {
+        white-space: pre-wrap;
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        background: #0008;
+        padding: 8px;
+        border-radius: 4px;
+      }
+      h1 {
+        font-size: 15px;
+      }
+      li {
+        margin-bottom: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="tray"></div>
+    <div id="panel">
+      <h1>Dice spike — claims to check before wiring this into Owlbear</h1>
+      <p>
+        Each button prints what the renderer <em>reported</em>. The thing to check is that the
+        number on the die facing you matches the number printed. These claims were read out of a
+        minified bundle rather than tested, which is why they are here.
+      </p>
+      <ol>
+        <li><b>Mixed sets:</b> a trait die and a Wild Die of different sizes and values.</li>
+        <li><b>add():</b> one more die onto a tray that has already settled — a staged ace.</li>
+        <li><b>d4:</b> takes a different face-swap path in the library to every other die.</li>
+        <li><b>Seats:</b> dice should enter from the named edge, every time.</li>
+      </ol>
+      <div id="buttons"></div>
+      <div id="out">…</div>
+    </div>
+    <script type="module" src="/src/spike.ts"></script>
+  </body>
+</html>

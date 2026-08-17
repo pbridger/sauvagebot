@@ -1,5 +1,13 @@
 node_modules/
 dist/
+# Build output. CI builds it from source on every push to typescript-rewrite
+# (.github/workflows/pages.yml) and Pages serves that, so the copy that used to be
+# committed here was never the one anybody loaded — and with the dice renderer in
+# the bundle it would now be 2.2MB of minified JS and webp per push.
+dist-extension/
+# Copied out of the dice renderer at build time — a dependency's 1.6MB of webp,
+# not ours to version. See `diceAssets()` in extension/vite.config.ts.
+extension/public/dice/
 *.log
 .env
 .token

@@ -1,6 +1,36 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+
+/**
+ * Put the dice renderer's textures where it will look for them.
+ *
+ * The library fetches them at runtime from its configured `assetPath`, so they have
+ * to be real files under the site root — 1.6MB of webp that belongs to a dependency
+ * and therefore should not live in the repository. Copying into `public/dice` covers
+ * both cases in one go: `vite dev` serves `public/` as-is, and a build copies it to
+ * the output. `public/dice` is gitignored.
+ *
+ * Sounds are not copied. They are off by default (four clatter tracks over Discord
+ * voice is not a feature) and are another 672kB; switching them on means adding
+ * `sounds` to this list.
+ */
+function diceAssets(): Plugin {
+  return {
+    name: 'savagebot-dice-assets',
+    buildStart() {
+      const from = resolve(__dirname, '../node_modules/@drdreo/dice-box-threejs/dist/textures');
+      const to = resolve(__dirname, 'public/dice/textures');
+      if (!existsSync(from)) {
+        // A fresh clone without `npm install` yet: the build will fail for better
+        // reasons than a missing texture.
+        this.warn('dice textures not found in node_modules; skipping copy');
+        return;
+      }
+      cpSync(from, to, { recursive: true });
+    },
+  };
+}
 
 /**
  * Where this build will be served from.
@@ -53,7 +83,7 @@ function manifestBase(): Plugin {
 export default defineConfig({
   root: __dirname,
   base,
-  plugins: [manifestBase()],
+  plugins: [diceAssets(), manifestBase()],
   server: {
     host: true,
     port: 5173,
@@ -63,10 +93,14 @@ export default defineConfig({
     outDir: '../dist-extension',
     emptyOutDir: true,
     rollupOptions: {
-      // Two pages: the extension proper, and the scratch harness kept from
-      // milestone 0. Each has its own manifest so they load independently.
+      // Three pages: the extension proper, the dice overlay it opens as a
+      // full-screen modal, and the scratch harness kept from milestone 0. The
+      // overlay is a separate entry so the renderer and its textures are a chunk
+      // nobody loads unless dice are actually being animated.
       input: {
         main: resolve(__dirname, 'index.html'),
+        dice: resolve(__dirname, 'dice.html'),
+        spike: resolve(__dirname, 'dice-spike.html'),
         probe: resolve(__dirname, 'probe.html'),
       },
     },

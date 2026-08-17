@@ -42,7 +42,14 @@
 
     <section id="log" aria-live="polite"></section>
 
-    <footer><span id="budget"></span><span id="saved"></span></footer>
+    <footer>
+      <!--
+        Not in the Table pane with the rest of the settings: that tab is the
+        Marshal's, and animation is each player's own choice about their own machine.
+      -->
+      <button id="anim" type="button" aria-pressed="false">🎲 Dice: off</button>
+      <span id="budget"></span><span id="saved"></span>
+    </footer>
 
     <script type="module" src="/src/panel.ts"></script>
   </body>

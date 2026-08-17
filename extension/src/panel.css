@@ -254,6 +254,27 @@ footer {
 #budget.warn { color: var(--accent); font-weight: 700; }
 #saved.saved { color: var(--accent); font-weight: 700; }
 
+/* The animation switch sits at the far left of the footer, where the storage
+   figure already lives — it is the same kind of thing: status you glance at, not a
+   control you reach for mid-fight. `margin-right: auto` keeps the other two spans
+   where they were rather than spreading all three across the width. */
+#anim {
+  flex: none;
+  margin-right: auto;
+  padding: 0 5px;
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  cursor: pointer;
+}
+#anim[aria-pressed='true'] {
+  color: var(--paper);
+  border-color: var(--accent);
+}
+
 body.editing input,
 body.editing select,
 body.editing textarea {
@@ -780,6 +801,11 @@ p.description {
 }
 
 .creature-list { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+/* The seat picker reuses the creature row: a name on the left, one control on the
+   right. `flex: none` on the select keeps a long player name from squeezing the
+   thing you came here to click — the same overflow that put the Conditions counter
+   off-panel. */
+.seat-pick { flex: none; font: inherit; font-size: 10.5px; padding: 0 2px; }
 .creature { display: flex; align-items: baseline; gap: 8px; }
 button.creature-name {
   flex: 1;
