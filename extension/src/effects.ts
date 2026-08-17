@@ -103,7 +103,7 @@ export const PHYSICS = {
    * weight it has to hold, which is the rule of thumb that keeps SPOOK contacts from
    * sagging.
    */
-  stiffness: 1e9,
+  stiffness: 1.8e6,
   relaxation: 3,
   iterations: 20,
   /**
@@ -114,7 +114,6 @@ export const PHYSICS = {
    * 108 units in 1/120 s against a body 104 units wide. At 1/240 it is half that.
    */
   throwSpeed: ms(2),
-  timestep: 1 / 240,
   /** Real dice tumble hard off the hand; below this they barely turn in flight. */
   spin: { min: 18, max: 34 },
   /** Air on a die is nothing. Just enough to stop numerical drift. */
@@ -142,7 +141,7 @@ export const PHYSICS = {
    *
    * 0.45 is a starting point, not a truth. It is a slider on the tuning page.
    */
-  timeScale: 0.45,
+  timeScale: 0.15,
 };
 
 /**
@@ -169,11 +168,33 @@ export function scaled(): {
     spin: { min: PHYSICS.spin.min * k, max: PHYSICS.spin.max * k },
     linearDamping: PHYSICS.linearDamping * k,
     angularDamping: PHYSICS.angularDamping * k,
-    // A die is "still" at a slower speed when everything is slower, and has to hold it
-    // for correspondingly longer in wall-clock time.
     stillSpeed: PHYSICS.stillSpeed * k,
-    stillFor: PHYSICS.stillFor / k,
+    // **Not** scaled, and this is the one deliberate break in the transformation.
+    // Strictly it should be `stillFor / k` — 1.7 seconds at 0.15 — but this dwell is
+    // not physics, it is how long we wait before believing a die has stopped, and it is
+    // watched in wall-clock time by a person. Stretching it would put the pause between
+    // a die stopping and its flare back where it was before it was cut to 250ms.
+    // Safe because the *speed* threshold above is scaled: a die under 3 units/s for a
+    // quarter second has genuinely finished.
+    stillFor: PHYSICS.stillFor,
   };
+}
+
+/**
+ * A step small enough that a die cannot cross its own body between two of them.
+ *
+ * Derived rather than fixed, because the safe step depends on how fast dice actually
+ * move, and that now varies with the time scale: at 0.15 they travel a seventh as far
+ * per second as at full speed, so a step seven times longer is just as safe. Which
+ * matters — the headless pre-simulation runs the *whole* settle synchronously before
+ * anything is drawn, so halving the step count halves that pause.
+ *
+ * Two-fifths of a die width per step, bounded either side by sanity.
+ */
+export function timestep(): number {
+  const DIE_WIDTH = 104;
+  const safe = (DIE_WIDTH * 0.4) / scaled().throwSpeed;
+  return Math.min(1 / 60, Math.max(1 / 240, safe));
 }
 
 /** What the box has to be built with, since these are constructor options. */
@@ -185,9 +206,11 @@ function physics(): {
 } {
   return {
     gravity_multiplier: scaled().gravity / 9.8,
-    framerate: PHYSICS.timestep,
-    // Counts steps, not seconds, and the step is now four times smaller than stock.
-    iterationLimit: 4000,
+    framerate: timestep(),
+    // Counts steps, not seconds. Slow motion means a longer settle in simulated
+    // seconds as well as real ones, so this needs headroom: it is what stops the
+    // pre-simulation looping forever, and hitting it freezes dice mid-air.
+    iterationLimit: 8000,
     strength: 1,
   };
 }
@@ -371,7 +394,7 @@ export function applyPhysics(box: DiceBox): void {
       contact.contactEquationRelaxation = PHYSICS.relaxation;
     }
   }
-  self.framerate = PHYSICS.timestep;
+  self.framerate = timestep();
 
   const original = self.spawnDice?.bind(box);
   if (original && !self.physicsPatched) {

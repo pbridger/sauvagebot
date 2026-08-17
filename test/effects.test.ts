@@ -13,7 +13,7 @@
  * "does this module evaluate?" a thing CI can answer.
  */
 import { describe, it, expect } from 'vitest';
-import { PHYSICS, TRAY_THEME, colourset, scaled } from '../extension/src/effects.js';
+import { PHYSICS, TRAY_THEME, colourset, scaled, timestep } from '../extension/src/effects.js';
 
 /** Units per metre, fixed by measuring the die the library draws. */
 const U = 6495;
@@ -47,8 +47,10 @@ describe('physics in real units', () => {
     expect(now.throwSpeed).toBeCloseTo(PHYSICS.throwSpeed * k, 5);
     expect(now.spin.max).toBeCloseTo(PHYSICS.spin.max * k, 5);
     expect(now.stillSpeed).toBeCloseTo(PHYSICS.stillSpeed * k, 5);
-    // A die has to hold still for longer in wall-clock time when time is slowed.
-    expect(now.stillFor).toBeGreaterThan(PHYSICS.stillFor);
+    // The one deliberate exception: the dwell before believing a die has stopped is
+    // watched by a person in wall-clock time, so it is not stretched. Scaling it would
+    // put back the 1.7-second pause between a die stopping and its flare.
+    expect(now.stillFor).toBe(PHYSICS.stillFor);
     // And the box is built with the scaled figure, not the real one.
     expect((TRAY_THEME.gravity_multiplier * 9.8) / now.gravity).toBeCloseTo(1, 2);
   });
@@ -69,9 +71,24 @@ describe('physics in real units', () => {
 
   it('steps finely enough that a die cannot cross its own width', () => {
     // No continuous collision detection: a die that moves further than its own body in
-    // one step can pass through the table.
+    // one step can pass through the table. The step is derived from the throw speed, so
+    // this has to hold at any time scale, not just the one shipped.
     const dieWidth = 104;
-    expect(scaled().throwSpeed * TRAY_THEME.framerate).toBeLessThan(dieWidth);
+    const shipped = PHYSICS.timeScale;
+    try {
+      // `timestep()` rather than `TRAY_THEME.framerate`: the theme is built once at
+      // module load, while the step is recomputed per throw — which is what makes the
+      // time-scale slider safe to move at runtime.
+      for (const k of [0.15, 0.3, 0.5, 1]) {
+        PHYSICS.timeScale = k;
+        expect(scaled().throwSpeed * timestep()).toBeLessThan(dieWidth);
+      }
+    } finally {
+      // In a `finally`, because a failure here used to leak the changed time scale into
+      // every test after it — which then failed for a reason that had nothing to do
+      // with them.
+      PHYSICS.timeScale = shipped;
+    }
   });
 
   it('weighs about as much as a die, and grips like acrylic on baize', () => {
