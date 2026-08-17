@@ -3,10 +3,12 @@ import {
   MANUAL_RANGE,
   SITUATIONS,
   clearModifiers,
+  conditionBadges,
   describeMods,
   formatMod,
   hasCondition,
   setManualMod,
+  situationalMods,
   situationalTotal,
   situationsOf,
   toggleCondition,
@@ -104,6 +106,75 @@ describe('setting conditions', () => {
   it('is nothing at all when never set', () => {
     expect(situationalTotal(state())).toBe(0);
     expect(situationalTotal(undefined)).toBe(0);
+  });
+});
+
+/**
+ * Conditions worn by a body, as opposed to modifiers called on a roll. The one
+ * that matters here is that a target-side condition cannot reach the roll of the
+ * character wearing it.
+ */
+describe('token conditions', () => {
+  it('keeps Vulnerable out of the victim\'s own total', () => {
+    // Vulnerable gives *attackers* +2. If it summed into this character's green
+    // number they would get +2 to their own Shooting for being an easy target.
+    const easy = toggleCondition(state(), 'vulnerable');
+    expect(hasCondition(easy, 'vulnerable')).toBe(true);
+    expect(situationalTotal(easy)).toBe(0);
+    expect(situationalMods(easy)).toEqual([]);
+    expect(rollBreakdown(easy).total).toBe(0);
+  });
+
+  it('records the real figure anyway, for a later target-aware roll', () => {
+    expect(SITUATIONS.find((s) => s.key === 'vulnerable')?.value).toBe(2);
+  });
+
+  it('lets a character be Prone and Vulnerable and Stunned at once', () => {
+    // Distinct groups. Sharing one would silently clear the others — the shape
+    // of the Running/Multi-Action bug.
+    let hapless = state();
+    for (const key of ['prone', 'vulnerable', 'stunned']) {
+      hapless = toggleCondition(hapless, key);
+    }
+    expect(situationsOf(hapless).map((s) => s.key).sort()).toEqual([
+      'prone',
+      'stunned',
+      'vulnerable',
+    ]);
+  });
+
+  it('swaps Entangled for Bound, being two degrees of one thing', () => {
+    const tied = toggleCondition(toggleCondition(state(), 'entangled'), 'bound');
+    expect(situationsOf(tied).map((s) => s.key)).toEqual(['bound']);
+  });
+
+  it('still lets Distracted count against its own rolls, and draw a badge', () => {
+    const rattled = toggleCondition(state(), 'distracted');
+    expect(situationalTotal(rattled)).toBe(-2);
+    expect(conditionBadges(rattled)).toEqual(['DISTR']);
+  });
+
+  it('draws only the conditions worth drawing, in list order', () => {
+    // Switched on back-to-front; the column comes out in list order regardless,
+    // so it does not reshuffle as conditions come and go. Dark is not drawn: a
+    // DARK marker over every token says nothing the Marshal does not know.
+    let messy = state();
+    for (const key of ['bound', 'vulnerable', 'dark']) messy = toggleCondition(messy, key);
+    expect(conditionBadges(messy)).toEqual(['VULN', 'BOUND']);
+  });
+
+  it('keeps every badge short enough to place without measuring it', () => {
+    for (const situation of SITUATIONS) {
+      if (situation.badge !== undefined) {
+        expect(situation.badge.length, situation.key).toBeLessThanOrEqual(5);
+        expect(situation.badge).toBe(situation.badge.toUpperCase());
+      }
+    }
+  });
+
+  it('draws nothing for a character in no particular state', () => {
+    expect(conditionBadges(state())).toEqual([]);
+    expect(conditionBadges(undefined)).toEqual([]);
   });
 });
 

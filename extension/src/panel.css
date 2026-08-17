@@ -17,6 +17,10 @@
   --env: #2f7d4f;
   --wound-ink: #8c2f22;
   --env-ink: #2f7d4f;
+  /* A third colour for conditions that mark a body rather than modify its rolls
+     — Vulnerable, Prone, Bound. Kept in step with STATUS_SLATE in badges.ts, so
+     the chip in the panel and the badge on the token are the same thing. */
+  --marker: #41505f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -195,6 +199,9 @@ table.weapons button.dmg {
   color: var(--accent);
   font-weight: 700;
 }
+/* A shotgun's 1-3d6, laid out as the three rolls it stands for. */
+.dmg-spread { display: flex; gap: 2px; }
+.dmg-spread button.dmg { padding: 0 3px; }
 table.weapons tr.note td {
   padding-top: 0;
   padding-bottom: 4px;
@@ -428,6 +435,14 @@ button.cond.on {
   border-color: var(--env);
   color: #fff;
   font-weight: 600;
+}
+/* A condition that modifies somebody else's roll against this character. It is
+   not part of the green number, so it must not look like it is — it wears the
+   slate of the badge it draws on the token instead. */
+button.cond.marker.on {
+  background: var(--marker);
+  border-color: var(--marker);
+  color: #fff;
 }
 
 /* The same two colours on a trait button: d6-1+2 rather than d6-5. */
@@ -742,6 +757,17 @@ button.roll-untrained { border-style: dashed; }
 .pane-block h2 { margin-top: 0; }
 .pane-note { margin: 0 0 6px; font-size: 11.5px; color: var(--muted); }
 .pane-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+/* What a destructive button will and will not touch, on screen rather than in a
+   tooltip nobody hovers before clicking. */
+.reset-detail {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+}
+.reset-detail dt { font-weight: 700; color: var(--ink); }
+.reset-detail dd { margin: 0; color: var(--muted); }
 .pane-buttons button { flex: 1 1 auto; }
 
 p.description {

@@ -51,24 +51,60 @@ export interface Situation {
    * picking one clears the other rather than quietly summing to −8.
    */
   group?: string;
+  /**
+   * Whose rolls this changes.
+   *
+   * `'self'` is the ordinary case and the only one that reaches a roll today.
+   * `'others'` marks a condition whose effect lands on whoever is rolling
+   * *against* this character — Vulnerable gives the attacker +2, not the victim.
+   * There is no target in the roll path, so those contribute nothing to this
+   * character's own total and `situationalMods` filters them out. Recording the
+   * real number anyway means a later target-aware feature has it to hand.
+   */
+  affects: 'self' | 'others';
+  /**
+   * Short text for the token badge, when this is worth drawing on the map.
+   *
+   * Absent for the environmental ones: a row of DARK markers over six tokens
+   * says nothing a Marshal who set the light level does not already know. Kept
+   * to five characters, because the badge is placed without knowing its width.
+   */
+  badge?: string;
   note: string;
 }
 
 export const SITUATIONS: readonly Situation[] = [
-  { key: 'dim', label: 'Dim', value: -2, group: 'light', note: 'Twilight, light fog, night with a full moon (p157)' },
-  { key: 'dark', label: 'Dark', value: -4, group: 'light', note: 'Typical night with some ambient light; targets invisible beyond 10″ (p157)' },
-  { key: 'pitch', label: 'Pitch Dark', value: -6, group: 'light', note: 'Complete darkness, or the target is hidden or invisible (p157)' },
-  { key: 'unstable', label: 'Unstable Platform', value: -2, group: 'platform', note: 'Firing or throwing from a horse, a moving vehicle, a rooftop (p165)' },
+  { key: 'dim', label: 'Dim', value: -2, group: 'light', affects: 'self', note: 'Twilight, light fog, night with a full moon (p157)' },
+  { key: 'dark', label: 'Dark', value: -4, group: 'light', affects: 'self', note: 'Typical night with some ambient light; targets invisible beyond 10″ (p157)' },
+  { key: 'pitch', label: 'Pitch Dark', value: -6, group: 'light', affects: 'self', note: 'Complete darkness, or the target is hidden or invisible (p157)' },
+  { key: 'unstable', label: 'Unstable Platform', value: -2, group: 'platform', affects: 'self', note: 'Firing or throwing from a horse, a moving vehicle, a rooftop (p165)' },
   // Running is its own group, not part of 'action': the book penalises "all
   // actions that turn" for running (p151), and a Multi-Action costs a further −2
   // per extra action. Someone who runs and shoots twice is at −4, so grouping the
   // two together would have silently thrown one of them away.
-  { key: 'running', label: 'Running', value: -2, group: 'running', note: 'All actions this turn, when the Running die was added to Pace (p151)' },
-  { key: 'multi2', label: 'Multi-Action ×2', value: -2, group: 'action', note: 'Two actions this turn — each is at −2 (p159)' },
-  { key: 'multi3', label: 'Multi-Action ×3', value: -4, group: 'action', note: 'Three actions this turn — each is at −4 (p159)' },
-  { key: 'distracted', label: 'Distracted', value: -2, group: 'distracted', note: 'Subtract 2 from all Trait rolls until the end of their next turn (p154)' },
-  { key: 'offhand', label: 'Off-hand', value: -2, group: 'hand', note: 'Attacking with the off-hand (p158)' },
-  { key: 'improvised', label: 'Improvised weapon', value: -2, group: 'weapon', note: 'A chair, a bottle, a pistol used as a club (p157)' },
+  { key: 'running', label: 'Running', value: -2, group: 'running', affects: 'self', note: 'All actions this turn, when the Running die was added to Pace (p151)' },
+  { key: 'multi2', label: 'Multi-Action ×2', value: -2, group: 'action', affects: 'self', note: 'Two actions this turn — each is at −2 (p159)' },
+  { key: 'multi3', label: 'Multi-Action ×3', value: -4, group: 'action', affects: 'self', note: 'Three actions this turn — each is at −4 (p159)' },
+  { key: 'distracted', label: 'Distracted', value: -2, group: 'distracted', affects: 'self', badge: 'DISTR', note: 'Subtract 2 from all Trait rolls until the end of their next turn (p154)' },
+  { key: 'offhand', label: 'Off-hand', value: -2, group: 'hand', affects: 'self', note: 'Attacking with the off-hand (p158)' },
+  { key: 'improvised', label: 'Improvised weapon', value: -2, group: 'weapon', affects: 'self', note: 'A chair, a bottle, a pistol used as a club (p157)' },
+
+  // ---------------------------------------------------------------------------
+  // States a body is in, rather than modifiers the Marshal called on a roll.
+  //
+  // !! Names and effects below are SWADE conditions written from memory, pending
+  // the book — the same standing as the thresholds in `status.ts`. What is *not*
+  // a guess is that they belong on this list: each persists across rolls, which
+  // is the test this module applies.
+  //
+  // Every one has its own group, so a character can be Prone and Vulnerable and
+  // Stunned at once. Only Entangled and Bound share one, being two degrees of
+  // the same thing.
+  { key: 'prone', label: 'Prone', value: 0, group: 'posture', affects: 'others', badge: 'PRONE', note: 'Lying down. Harder to hit at range, easier to hit in melee — a target-side modifier, so it is drawn but not applied' },
+  { key: 'vulnerable', label: 'Vulnerable', value: 2, group: 'vulnerable', affects: 'others', badge: 'VULN', note: 'Attackers add 2 to rolls against this character' },
+  { key: 'stunned', label: 'Stunned', value: 0, group: 'stunned', affects: 'others', badge: 'STUN', note: 'Cannot act; counts as Vulnerable and Distracted until they recover' },
+  { key: 'entangled', label: 'Entangled', value: 0, group: 'restraint', affects: 'others', badge: 'ENTGL', note: 'Held but with limbs free — may attempt to break out' },
+  { key: 'bound', label: 'Bound', value: 0, group: 'restraint', affects: 'others', badge: 'BOUND', note: 'Wholly restrained: cannot move or act physically' },
 ];
 
 /**
@@ -124,13 +160,22 @@ export function clearModifiers<T extends ModifierState>(state: T): T {
   return { ...state, mod: 0, conditions: [] };
 }
 
+/**
+ * What this character's own trait rolls pick up.
+ *
+ * Filtered to `affects: 'self'`, and that filter is the whole reason a
+ * target-side condition can live on the same list: Vulnerable sitting in
+ * `conditions` must not quietly add +2 to the victim's own Shooting roll.
+ */
 export function situationalMods(state: ModifierState | undefined): RollMod[] {
-  const mods: RollMod[] = situationsOf(state).map((s) => ({
-    label: s.label,
-    value: s.value,
-    kind: 'situational' as const,
-    short: formatMod(s.value),
-  }));
+  const mods: RollMod[] = situationsOf(state)
+    .filter((s) => s.affects === 'self')
+    .map((s) => ({
+      label: s.label,
+      value: s.value,
+      kind: 'situational' as const,
+      short: formatMod(s.value),
+    }));
   const manual = state?.mod ?? 0;
   if (manual) {
     mods.push({
@@ -151,6 +196,22 @@ export function situationalTotal(state: ModifierState | undefined): number {
 export function formatMod(value: number): string {
   if (!value) return '';
   return value > 0 ? `+${value}` : String(value);
+}
+
+/**
+ * Short text for every active condition worth drawing on the token, in list
+ * order so the stack does not reshuffle as conditions come and go.
+ *
+ * Shaken is not here: it lives on `TokenState` as its own field, not as a
+ * condition, and the caller puts it at the head of the stack.
+ */
+export function conditionBadges(state: ModifierState | undefined): string[] {
+  // Sorted by list position rather than taken in stored order: `toggleCondition`
+  // appends, so the stored order is the order they were switched on, and a stack
+  // that reorders itself when one is cleared is hard to read at a glance.
+  return SITUATIONS.filter(
+    (s) => s.badge !== undefined && hasCondition(state, s.key),
+  ).map((s) => s.badge as string);
 }
 
 /** A one-line summary of what a total is made of, for a tooltip. */

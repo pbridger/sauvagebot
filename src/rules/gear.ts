@@ -85,6 +85,30 @@ const BARE_DAMAGE = new RegExp(String.raw`^(${DAMAGE_SHAPE})$`, 'i');
 export function isRollableDamage(damage: string): boolean {
   return !/^\s*\d+[–-]\d+d/i.test(damage);
 }
+
+/**
+ * The individual rolls a ranged damage figure stands for: `1–3d6` is `1d6`,
+ * `2d6`, `3d6`.
+ *
+ * The sheet cannot pick between them, but it can lay all three out and let the
+ * player take the one the range calls for — which is better than the text and a
+ * freeform box, and still asserts nothing about *which* band gives which. The
+ * mapping (three dice close, one far) is a convention this module deliberately
+ * does not encode until it is confirmed against the book.
+ *
+ * Returns nothing for damage that is already a single expression.
+ */
+export function damageDiceOptions(damage: string): string[] {
+  const range = /^\s*(\d+)[–-](\d+)(d\d+(?:[+–-]\d+)?)\s*$/i.exec(damage);
+  if (!range) return [];
+  const low = Number(range[1]);
+  const high = Number(range[2]);
+  const die = range[3]!;
+  if (!(high > low) || high - low > 8) return [];
+  const options: string[] = [];
+  for (let dice = low; dice <= high; dice++) options.push(`${dice}${die}`);
+  return options;
+}
 const RANGE = /\brange\s+(\d+\/\d+\/\d+)/i;
 const ROF = /\brof\s+(\d+)/i;
 const AP = /\bap\s+(\d+)/i;

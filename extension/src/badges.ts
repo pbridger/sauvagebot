@@ -22,6 +22,7 @@
  */
 import OBR, { buildLabel, type Item } from '@owlbear-rodeo/sdk';
 import { readBinding, type TokenLike } from '../../src/obr/binding.js';
+import { conditionBadges } from '../../src/rules/modifiers.js';
 import { damageBadge } from '../../src/rules/status.js';
 import { isJoker } from '../../src/rules/initiative.js';
 import { cardLabel, isRedSuit } from '../../src/game/cards.js';
@@ -34,6 +35,9 @@ const WOUND_RED = '#8c2f22';
 const FATIGUE_AMBER = '#9a6a15';
 const SHAKEN_YELLOW = '#c9a227';
 const JOKER_PURPLE = '#5b3a86';
+/* Conditions are markers, not damage: a cool slate keeps them clearly distinct
+   from the red/amber/yellow family that means "this character is hurt". */
+const STATUS_SLATE = '#41505f';
 /* A playing card is dark ink on white. Black suits on a dark pill were the one
    badge you could not read at a glance. */
 const CARD_FACE = '#f7f3e8';
@@ -111,9 +115,18 @@ export async function renderBadges(
     const sheet = byId.get(state.sheetId);
     if (!sheet) continue;
 
-    // Wounds and Fatigue below, Shaken above: two separate markers, because the
-    // two are independent. One badge meant a Shaken-but-unwounded character
-    // looked fine, and a wounded one looked Shaken.
+    // Three edges, three kinds of thing, each with a fixed home:
+    //
+    //   below   wounds and fatigue — what the character is carrying
+    //   above   the initiative card — the thing you scan the map for in a fight
+    //   right   Shaken and the temporary conditions, stacked
+    //
+    // Wounds stay separate from Shaken, which is the original lesson here: one
+    // badge for both meant a Shaken-but-unwounded character looked fine, and a
+    // wounded one looked Shaken. Shaken now sits at the head of the condition
+    // stack instead, where it belongs — it is cleared at the end of a turn, like
+    // the rest of that column, and unlike a wound.
+    //
     // Half-width horizontally, half-height vertically — and both clamped.
     //
     // The mook tokens are 768x1365 at 768 dpi, so they render 1 square wide by
@@ -133,11 +146,6 @@ export async function renderBadges(
       // takes the half-height plus a whole label.
       items.push(badge(token, damage, colour, { x: 0, y: halfHeight + LABEL_HEIGHT }));
     }
-    if (state.shaken) {
-      items.push(badge(token, 'SHAKEN', SHAKEN_YELLOW, { x: 0, y: -halfHeight - GAP }));
-    }
-    // The initiative card sits to the side, so it does not fight with SHAKEN for
-    // the space above the token during a round when both are true.
     if (state.card) {
       const joker = isJoker(state.card);
       items.push(
@@ -145,14 +153,36 @@ export async function renderBadges(
           token,
           cardLabel(state.card),
           joker ? JOKER_PURPLE : CARD_FACE,
-          // Mid-left: out of the way of SHAKEN above and the damage below, so
-          // it stays put as those come and go.
-          { x: -halfWidth - GAP * 7, y: LABEL_HEIGHT * 0.75 },
+          // Top centre, the most-scanned spot on a token during a fight, and now
+          // uncontested: SHAKEN moved to the condition column.
+          { x: 0, y: -halfHeight - GAP },
           // White on purple for a joker; ink on white for everything else.
           joker ? '#ffffff' : isRedSuit(state.card) ? CARD_RED : CARD_BLACK,
         ),
       );
     }
+
+    // The condition column, top-down beside the token. Shaken leads because it
+    // is the one that stops you acting; the rest keep their list order so the
+    // column does not reshuffle as they come and go.
+    //
+    // Placed clear of the artwork by a fixed amount, because a label's rendered
+    // width is not knowable here — enough for the widest of these ("SHAKEN" at
+    // five or six characters), which is why the badge texts are kept short.
+    const column = [
+      ...(state.shaken ? [{ text: 'SHAKEN', colour: SHAKEN_YELLOW }] : []),
+      ...conditionBadges(state).map((text) => ({ text, colour: STATUS_SLATE })),
+    ];
+    column.forEach(({ text, colour }, row) => {
+      items.push(
+        badge(token, text, colour, {
+          x: halfWidth + GAP * 12,
+          // Grown downward from a little above the middle, so one or two markers
+          // — the common case — sit level with the token rather than above it.
+          y: LABEL_HEIGHT * 0.75 + row * (LABEL_HEIGHT + GAP),
+        }),
+      );
+    });
   }
 
   if (items.length) await OBR.scene.local.addItems(items);

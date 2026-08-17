@@ -20,6 +20,7 @@ import {
   autoBindings,
   newTokenState,
   readBinding,
+  resetSceneState,
   type TokenLike,
   type TokenState,
 } from '../../src/obr/binding.js';
@@ -202,6 +203,31 @@ export async function updateTokenState(
       if (existing) item.metadata[TOKEN_KEY] = change(existing);
     }
   });
+}
+
+/**
+ * Wipe the fight off every bound token in the scene, keeping the bindings.
+ *
+ * One `updateItems` call for the lot, so the map redraws once, and so a Marshal
+ * cannot end up with half the party reset. See `resetSceneState` for exactly
+ * what is cleared.
+ *
+ * @returns how many tokens were changed.
+ */
+export async function resetAllTokens(): Promise<number> {
+  const tokens = await characterTokens();
+  const bound = tokens.filter((token) => readBinding(token.metadata));
+  if (!bound.length) return 0;
+  await OBR.scene.items.updateItems(
+    bound.map((token) => token.id),
+    (items) => {
+      for (const item of items) {
+        const existing = readBinding(item.metadata);
+        if (existing) item.metadata[TOKEN_KEY] = resetSceneState(existing);
+      }
+    },
+  );
+  return bound.length;
 }
 
 /**

@@ -238,6 +238,31 @@ The track lives on the token (`TokenState`, beside wounds) because it describes 
 body in a scene, not a character. Conditions are stored **by key**, so retuning a
 value does not require migrating bound tokens.
 
+### Token conditions (added 2026-08-17)
+
+Prone, Vulnerable, Stunned, Entangled and Bound share the same `conditions` list
+rather than getting a field of their own — they pass the same persistence test,
+and reusing the list meant no new metadata, no migration, and no change to the
+guard. They cost nothing against the 15 kB room budget: this is item metadata,
+which measured ~512 kB.
+
+What separates them from the green modifiers is a new `affects` flag.
+`'others'` means the effect lands on whoever rolls *against* this character —
+Vulnerable is +2 for the attacker, not for the victim — and `situationalMods`
+filters those out, which is the only reason they can share the list safely.
+Their real values are recorded anyway, so the per-roll modifier box (still the
+obvious next feature, and the only place a target is known) has them to hand.
+
+Conditions carrying a `badge` are drawn on the token. The map now reads: wounds
+and fatigue **below**, initiative card **above**, Shaken and conditions stacked
+to the **right**. Shaken sits at the head of that column rather than merging into
+the damage badge, which was tried and reverted — one badge for both meant a
+Shaken-but-unwounded character looked fine and a wounded one looked Shaken.
+
+!! The five condition names and effects are SWADE from memory, pending the book —
+the same standing as the thresholds in `status.ts`. Their *presence* on this list
+is not a guess; their wording may be. !!
+
 ### Still to build, now unblocked
 
 Huckster hexes and the deal with the devil, Fear Level, Grit, Harrowed, and mad science

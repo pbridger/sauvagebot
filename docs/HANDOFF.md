@@ -252,6 +252,23 @@ takes `VITE_BASE` and rewrites the manifests' paths to match (see
 `extension/vite.config.ts`). Building without it — `npm run ext:build` — still
 produces a root-served build for local work.
 
+**Shipping an update.** Push to `typescript-rewrite` and that is the whole
+deployment: Actions rebuilds, Pages republishes, and OBR fetches the popover
+fresh every time the panel opens. Nobody re-adds the extension. Two caveats,
+both measured: Pages serves `index.html` and `manifest.json` with
+`Cache-Control: max-age=600`, so a client can hold a ten-minute-old copy — and a
+tab already open keeps running the build it loaded, so a reload is what picks up
+a change mid-session. Hashed asset filenames mean there is no danger of a new
+`index.html` pulling stale JS, only of an old `index.html` being used a while
+longer.
+
+**Moving characters between maps.** Copy/paste carries item metadata, verified in
+the live room 2026-08-17: a token pasted into another room keeps its binding, and
+also its wounds and Shaken. Fresh tokens named after the characters work too —
+`autoBind` matches by name on scene open. Either way, **Table → This scene →
+Reset scene** is what clears the last fight off the tokens while keeping the
+bindings.
+
 **What this does not solve:** the room's ~15 kB metadata budget. Two Marshals
 running the same roster hit the same ceiling. See the rules-text switch on the
 Table tab for the stopgap, and OBR-DEADLANDS-PLAN.md §2 for what a real fix

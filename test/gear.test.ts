@@ -2,7 +2,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
-import { damageExpression, explodeDice, parseGear, weaponSkill } from '../src/rules/gear.js';
+import {
+  damageDiceOptions,
+  damageExpression,
+  explodeDice,
+  isRollableDamage,
+  parseGear,
+  weaponSkill,
+} from '../src/rules/gear.js';
 
 const reggie = parseArchetypeCards(
   readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
@@ -142,5 +149,46 @@ describe('which skill swings the weapon', () => {
   it('falls back on the name when there is neither', () => {
     expect(weaponSkill({ name: 'scattergun' })).toBe('Shooting');
     expect(weaponSkill({ name: 'cavalry sabre' })).toBe('Fighting');
+  });
+});
+
+/**
+ * A shotgun does one, two or three dice depending on the range band. The sheet
+ * cannot know the range, so it offers all three rather than guessing — and
+ * deliberately does not label which is which, because that mapping has not been
+ * checked against the book.
+ */
+describe('ranged damage', () => {
+  it('lays a shotgun out as the three rolls it stands for', () => {
+    expect(damageDiceOptions('1–3d6')).toEqual(['1d6', '2d6', '3d6']);
+  });
+
+  it('reads a hyphen as well as the en-dash the book prints', () => {
+    expect(damageDiceOptions('1-3d6')).toEqual(['1d6', '2d6', '3d6']);
+  });
+
+  it('carries a modifier onto every option', () => {
+    expect(damageDiceOptions('1–2d6+1')).toEqual(['1d6+1', '2d6+1']);
+  });
+
+  it('offers nothing for damage that is already one expression', () => {
+    // These are rollable as they stand, and each is a shape the parser has been
+    // wrong about before.
+    for (const damage of ['2d6', '2d6+1', 'Str+d4', 'Str+d4+1', '2d6–1']) {
+      expect(damageDiceOptions(damage), damage).toEqual([]);
+      expect(isRollableDamage(damage), damage).toBe(true);
+    }
+  });
+
+  it('agrees with isRollableDamage about which is which', () => {
+    // Every damage the sheet refuses to roll as one expression must have options
+    // to offer instead, or the cell falls back to dead text.
+    expect(isRollableDamage('1–3d6')).toBe(false);
+    expect(damageDiceOptions('1–3d6').length).toBeGreaterThan(0);
+  });
+
+  it('refuses a nonsensical range rather than emitting a hundred buttons', () => {
+    expect(damageDiceOptions('3–1d6')).toEqual([]);
+    expect(damageDiceOptions('1–99d6')).toEqual([]);
   });
 });

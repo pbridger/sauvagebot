@@ -8,8 +8,10 @@ import {
   newTokenState,
   orphanedTokens,
   readBinding,
+  resetSceneState,
   tokensForSheet,
   type TokenLike,
+  type TokenState,
 } from '../src/obr/binding.js';
 
 const token = (id: string, name: string, bound?: string, layer = 'CHARACTER'): TokenLike => ({
@@ -133,5 +135,35 @@ describe('finding trouble', () => {
     expect(duplicateWildCard(two, { id: 'x', wildCard: true })).toBe(true);
     expect(duplicateWildCard(two, { id: 'x', wildCard: false })).toBe(false);
     expect(duplicateWildCard([two[0]!], { id: 'x', wildCard: true })).toBe(false);
+  });
+});
+
+/**
+ * Confirmed in the live room on 2026-08-17: a token copied into a *new room*
+ * arrives with its wounds and Shaken marker intact. So the fight follows the
+ * token, and the map needs a way to put it back.
+ */
+describe('resetting a scene', () => {
+  it('takes the whole fight off, and leaves the binding on', () => {
+    const spent: TokenState = {
+      sheetId: 'reggie',
+      wounds: 2,
+      fatigue: 1,
+      shaken: true,
+      card: { rank: 12, suit: 'SPADES' },
+      mod: -3,
+      conditions: ['dark', 'vulnerable'],
+    };
+    expect(resetSceneState(spent)).toEqual(newTokenState('reggie'));
+    expect(resetSceneState(spent).sheetId).toBe('reggie');
+  });
+
+  it('is a no-op on a token that was already clean', () => {
+    const fresh = newTokenState('reggie');
+    expect(resetSceneState(fresh)).toEqual(fresh);
+  });
+
+  it('leaves nothing behind that a guard would reject', () => {
+    expect(isTokenState(resetSceneState(newTokenState('reggie')))).toBe(true);
   });
 });

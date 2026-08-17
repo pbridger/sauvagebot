@@ -16,6 +16,7 @@ import {
 } from '../../src/rules/sheet.js';
 import { parseArchetypeCards } from '../../src/rules/importArchetypeCard.js';
 import {
+  damageDiceOptions,
   damageExpression,
   isRollableDamage,
   parseGear,
@@ -74,6 +75,8 @@ import {
   formatMod,
   hasCondition,
   setManualMod,
+  situationalMods,
+  situationalTotal,
   situationsOf,
   toggleCondition,
 } from '../../src/rules/modifiers.js';
@@ -98,6 +101,7 @@ import {
   characterTokens,
   freshInitiative,
   readInitiative,
+  resetAllTokens,
   roomStore,
   setCards,
   unbindToken,
@@ -513,11 +517,16 @@ async function openSheetFor(tokenId: string): Promise<void> {
 
 async function endFight(): Promise<void> {
   await setCards(new Map(tokens.map((token) => [token.id, undefined])));
+  await clearInitiative();
+  await refreshTokens();
+}
+
+/** The deck and the round bookkeeping, without touching the tokens. */
+async function clearInitiative(): Promise<void> {
   await writeInitiative(undefined);
   initiative = undefined;
   lastDraws = new Map();
   acted = new Set();
-  await refreshTokens();
 }
 
 function setTab(next: Tab): void {
@@ -593,6 +602,7 @@ function renderTable(): HTMLElement {
     ]),
   );
   wrap.append(session);
+  wrap.append(sceneBlock());
 
   wrap.append(storageBlock());
 
@@ -604,6 +614,85 @@ function renderTable(): HTMLElement {
   });
   wrap.append(storage);
 
+  return wrap;
+}
+
+/**
+ * Wipe the last fight off the map.
+ *
+ * The workflow this is for: copying tokens onto a new map, or reusing the same
+ * one for the next scene. Token metadata travels with a duplicated token, which
+ * is what makes the binding survive — and means the wounds, the Shaken marker
+ * and whatever the Marshal called last session travel too. A stale −4 nobody set
+ * is the worst kind of bug at a table, because there is no reason to look for it.
+ *
+ * Spelled out on screen rather than left to a tooltip. It is destructive, it is
+ * not undoable through this panel, and "reset" could plausibly mean anything from
+ * clearing wounds to wiping the roster.
+ */
+function sceneBlock(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  wrap.append(
+    paneHeading(
+      'This scene',
+      'Wounds, conditions and initiative live on the tokens, so they follow a ' +
+        'token that gets copied to a new map. This puts the map back to before ' +
+        'the fight.',
+    ),
+  );
+
+  const detail = document.createElement('dl');
+  detail.className = 'reset-detail';
+  const rows: [string, string][] = [
+    ['Cleared', 'Wounds, Fatigue, Shaken, every condition and hand-dialled modifier, dealt initiative cards, and the current round'],
+    ['Kept', 'Which sheet each token is bound to, and everything on the sheets themselves — Bennies included'],
+  ];
+  for (const [term, description] of rows) {
+    const dt = document.createElement('dt');
+    dt.textContent = term;
+    const dd = document.createElement('dd');
+    dd.textContent = description;
+    detail.append(dt, dd);
+  }
+  wrap.append(detail);
+
+  wrap.append(
+    paneButtons([
+      [
+        'Reset scene',
+        'Clear wounds, conditions and initiative from every bound token in this scene',
+        () => {
+          if (
+            !confirm(
+              'Reset this scene?\n\n' +
+                'Cleared from every bound token: wounds, Fatigue, Shaken, all conditions, ' +
+                'the hand-dialled modifier, and any dealt initiative card. The current ' +
+                'round ends.\n\n' +
+                'Kept: token bindings, and the sheets themselves including Bennies.',
+            )
+          ) {
+            return;
+          }
+          void (async () => {
+            try {
+              const count = await resetAllTokens();
+              await clearInitiative();
+              await refreshTokens();
+              renderSheetArea();
+              notify(
+                count
+                  ? `Reset ${count} token${count === 1 ? '' : 's'} — wounds, conditions and initiative cleared`
+                  : 'No bound tokens in this scene',
+              );
+            } catch (error) {
+              notify(describe(error));
+            }
+          })();
+        },
+      ],
+    ]),
+  );
   return wrap;
 }
 
@@ -1223,12 +1312,12 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
   for (let n = -MANUAL_RANGE; n <= MANUAL_RANGE; n++) track.append(dial(n));
   line.append(labelled('Modifier', track));
 
+  // Straight from the rules module rather than re-added here: a target-side
+  // condition like Vulnerable must not reach this total, and one filter in one
+  // place is the only way that stays true.
   const active = situationsOf(state);
-  const total = manual + active.reduce((sum, s) => sum + s.value, 0);
-  const parts = [
-    ...active.map((s) => ({ label: s.label, value: s.value, kind: 'situational' as const })),
-    ...(manual ? [{ label: 'Modifier', value: manual, kind: 'situational' as const }] : []),
-  ];
+  const parts = situationalMods(state);
+  const total = situationalTotal(state);
 
   // Always present, disabled when there is nothing to clear: a button that comes
   // and goes shifts everything beside it every time a modifier is set.
@@ -1268,8 +1357,15 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
     const on = hasCondition(state, situation.key);
     if (!on && !showConditions) continue;
     const button = document.createElement('button');
-    button.className = on ? 'cond on' : 'cond';
-    button.textContent = `${situation.label} ${formatMod(situation.value)}`;
+    // Green means "this changes the green number". A target-side condition does
+    // not — it is a marker on the token and a note for whoever shoots at them —
+    // so it gets the slate of its badge instead, and shows no figure, because
+    // "Vulnerable +2" reads as a bonus for the wrong person.
+    const marker = situation.affects === 'others';
+    button.className = [marker ? 'cond marker' : 'cond', on ? 'on' : ''].join(' ').trim();
+    button.textContent = marker
+      ? situation.label
+      : `${situation.label} ${formatMod(situation.value)}`.trim();
     button.title = situation.note;
     button.addEventListener('click', () => change(toggleCondition(state, situation.key)));
     chips.append(button);
@@ -1833,9 +1929,26 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
       row.append(rangeCell);
 
       const damageCell = document.createElement('td');
-      if (weapon.damage && !isRollableDamage(weapon.damage)) {
-        // A shotgun's "1–3d6" depends on the range to the target, which the
-        // sheet cannot know. Show it rather than guess which third is right.
+      const options = weapon.damage ? damageDiceOptions(weapon.damage) : [];
+      if (weapon.damage && options.length) {
+        // A shotgun's "1–3d6" depends on the range to the target, which the sheet
+        // cannot know — so it offers all three rather than guessing which third
+        // is right. Unlabelled by band on purpose: which count goes with which
+        // range is a rule this build has not verified.
+        const spread = document.createElement('div');
+        spread.className = 'dmg-spread';
+        for (const option of options) {
+          const button = document.createElement('button');
+          button.className = 'dmg';
+          button.textContent = option;
+          button.title = `Roll ${option} — dice depend on the range band (${weapon.damage})`;
+          button.addEventListener('click', () =>
+            rollFreeform(option, `${weapon.name} damage`, rollerName(sheet), weapon.ap),
+          );
+          spread.append(button);
+        }
+        damageCell.append(spread);
+      } else if (weapon.damage && !isRollableDamage(weapon.damage)) {
         damageCell.textContent = weapon.damage;
         damageCell.title = 'Dice depend on range — roll it in the box below';
       } else if (weapon.damage) {

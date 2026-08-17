@@ -22,12 +22,18 @@
  *
  * ## The scene problem, and auto-binding
  *
- * Item metadata is per-scene, so every binding is lost when the GM opens a new
- * map. Re-binding six PCs at the start of each scene would be miserable, so
+ * Item metadata is per-scene, so a *fresh* token on a new map has no binding.
+ * Re-binding six PCs at the start of each scene would be miserable, so
  * `autoBindings` matches tokens to characters by name. It never overwrites an
  * existing binding, and never guesses when a name is ambiguous — a wrong
  * automatic bind is worse than no bind, because nobody would think to check.
  * Wild Cards take one token; Extras take as many as share the name.
+ *
+ * A **copied** token is the other case, and it was measured in the live room on
+ * 2026-08-17: metadata travels with a token pasted into a different room, wounds
+ * and Shaken included. Good news for the binding, which is the point of copying;
+ * bad news for everything else on there, since a new map is usually a new fight.
+ * Hence `resetSceneState`.
  */
 import { SUITS, type Card } from '../game/cards.js';
 import type { ModifierState } from '../rules/modifiers.js';
@@ -86,6 +92,23 @@ function isCard(value: unknown): value is Card {
 export function readBinding(metadata: Record<string, unknown> | undefined): TokenState | undefined {
   const value = metadata?.[TOKEN_KEY];
   return isTokenState(value) ? value : undefined;
+}
+
+/**
+ * Everything the fight put on a token, taken back off — leaving the binding.
+ *
+ * This is the companion to duplicating tokens onto a new map: the pointer to the
+ * sheet is what you want to keep, and the wounds, the Shaken marker, the dealt
+ * card and the Marshal's called modifiers are all things that were true of the
+ * *last* scene. Carried forward silently they are worse than useless, because
+ * nobody thinks to look at a number they did not just set.
+ *
+ * Deliberately not touched: `sheetId`, so nothing needs re-binding, and nothing
+ * on the sheet itself — Bennies are a session-level thing and belong to "New
+ * session", not to opening a map.
+ */
+export function resetSceneState(state: TokenState): TokenState {
+  return newTokenState(state.sheetId);
 }
 
 /** The minimum this module needs to know about an OBR item. */
