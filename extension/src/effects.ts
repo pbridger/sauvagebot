@@ -105,7 +105,44 @@ export function decorate(
 ): void {
   void dice;
   void results;
-  sharpen(box);
+  if (sharpen(box)) {
+    // A frame, or the change is invisible: this runs once the dice are asleep and the
+    // library's own loop has stopped, so the sharpened texture would not be drawn
+    // until something else happened to redraw — which, on a settled table, is never.
+    const renderer = (box as unknown as { renderer?: THREE.WebGLRenderer }).renderer;
+    renderer?.render(box.scene, box.camera);
+  }
+}
+
+/**
+ * Give the d4 the same label resolution as every other die.
+ *
+ * Must be called on a fresh box, before `initialize()`: materials are built on first
+ * use and cached, and this changes how big they are drawn.
+ *
+ * The library sizes its label canvas per shape, and the d4's arithmetic comes out a
+ * quarter the size of everything else's — `POT(50 + 1) · 4 = 128²`, against
+ * `POT(50 + 50·2·1) · 4 = 512²` for a d6 or a d20. A d4 also carries *three* numerals
+ * per face, so it is the one die that most needs the resolution and is the only one
+ * that does not get it.
+ *
+ * That is why enabling anisotropic filtering did not touch it: anisotropy fixes
+ * *minification*, where several texels fall in one pixel. A 128² label stretched
+ * across a die that size is the opposite problem — one texel covering several pixels,
+ * which no sampler flag can help. Both fixes are needed and they fix different things.
+ *
+ * Raised to 512 and no further on purpose: one material is built per face value, so a
+ * d20 holds twenty of them, and 512² RGBA is already ~1MB each.
+ */
+export function evenLabelSizes(box: DiceBox): void {
+  const factory = (box as unknown as {
+    DiceFactory?: { calc_texture_size?: (n: number) => number };
+  }).DiceFactory;
+  if (!factory?.calc_texture_size) return;
+  const original = factory.calc_texture_size.bind(factory);
+  // The caller multiplies by four, so a floor of 128 here is a 512² canvas — the
+  // same as every other shape already gets, rather than an arbitrary bump.
+  factory.calc_texture_size = (n: number): number => Math.max(128, original(n));
 }
 
 /**
@@ -122,11 +159,12 @@ export function decorate(
  * Cheap to call after every wave: the library caches materials per die type and
  * colour, so this touches each one once and then finds it already done.
  */
-function sharpen(box: DiceBox): void {
+function sharpen(box: DiceBox): boolean {
   const renderer = (box as unknown as { renderer?: THREE.WebGLRenderer }).renderer;
   const max = renderer?.capabilities.getMaxAnisotropy?.() ?? 1;
-  if (max <= 1) return;
+  if (max <= 1) return false;
 
+  let changed = false;
   box.scene.traverse((object) => {
     const materials = (object as THREE.Mesh).material;
     if (!materials) return;
@@ -137,8 +175,10 @@ function sharpen(box: DiceBox): void {
       map.generateMipmaps = true;
       map.minFilter = LinearMipmapLinearFilter;
       map.needsUpdate = true;
+      changed = true;
     }
   });
+  return changed;
 }
 
 /**

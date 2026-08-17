@@ -2596,6 +2596,27 @@ async function exportRoster(): Promise<void> {
 
 // ---------------------------------------------------------------- wiring
 
+/**
+ * Run one startup step, and do not let it take the panel with it.
+ *
+ * `onReady` is a long sequence of awaits, and it used to be one failure long: a
+ * throw anywhere in it meant everything after it never ran. That is how a stale
+ * listener for a deleted button — `el('anim')`, one line — produced a panel with no
+ * characters in it and the appearance of a wiped roster.
+ *
+ * So each step that is not load-bearing for the roster is wrapped. The failure of any
+ * one of them costs exactly itself: no seats, or no auto-binding, or no initiative
+ * state, with a named warning in the console. The roster is loaded *first*, because it
+ * is the one thing here that is irreplaceable.
+ */
+async function step(what: string, run: () => Promise<void>): Promise<void> {
+  try {
+    await run();
+  } catch (error) {
+    console.warn(`${what} failed at startup; the rest of the panel is fine`, error);
+  }
+}
+
 OBR.onReady(async () => {
   // No notice-bar sink for the store's capacity warning: the footer already shows
   // the percentage the moment it passes 80%, and `reload` refreshes it after every
@@ -2607,16 +2628,22 @@ OBR.onReady(async () => {
   // descriptions" is a thing that happened to a character, not a running total.
   roster = new Roster(store, notify);
   bank = new BennyBank(store);
-  me = await OBR.player.getName();
-  isGM = (await OBR.player.getRole()) === 'GM';
-  myColour = await OBR.player.getColor();
+
+  // Who I am, which the roster needs: a player sees their own sheets, the Marshal
+  // sees all of them. Defaults stand if this fails, and a wrong default here shows
+  // the wrong sheets rather than none.
+  await step('reading your name and role', async () => {
+    me = await OBR.player.getName();
+    isGM = (await OBR.player.getRole()) === 'GM';
+  });
   // A guard rail, not a permission: any client could still write these keys.
   // What it prevents is a player hitting "New session" by accident and wiping
   // the party's Bennies, which has no undo.
   el('tab-table').hidden = !isGM;
-  // Set at runtime as well as in the manifest: OBR caches the manifest, so a
-  // height change there alone would not reach an already-installed extension.
-  await OBR.action.setHeight(900);
+
+  // The characters, before anything else and before any listener is attached. Nothing
+  // below this line can stop them appearing.
+  await step('loading the roster', () => reload());
 
 
   OBR.broadcast.onMessage(ROLL_CHANNEL, (event) => {
@@ -2718,26 +2745,28 @@ OBR.onReady(async () => {
     if (!saving) void reload();
   });
 
-  initiative = await readInitiative();
-  await reload();
-
-  // Dice setup comes *after* the roster is on screen, and cannot take it down with
-  // it. Two awaits for a cosmetic feature used to sit ahead of `reload()`, so
-  // anything that threw in here — a party call, a metadata read, a seat write that
-  // found the room full — left a panel with no characters in it, which looks
-  // exactly like a wiped roster and is not one.
-  try {
+  // Everything from here is a nicety, in rough order of how much it is missed.
+  await step('reading the round', async () => {
+    initiative = await readInitiative();
+    renderSheetArea();
+  });
+  await step('binding tokens by name', async () => {
+    if (!(await OBR.scene.isReady())) return;
+    const count = await autoBind(sheets);
+    if (count) notify(`Bound ${count} token(s) to characters by name`);
+  });
+  await step('reading the selection', () => onSelectionChange());
+  await step('setting the panel height', () =>
+    // Set at runtime as well as in the manifest: OBR caches the manifest, so a
+    // height change there alone would not reach an already-installed extension.
+    OBR.action.setHeight(900),
+  );
+  await step('setting up dice', async () => {
+    myColour = await OBR.player.getColor();
     // Seats before settings: the GM's client is what writes them, and my own seat is
     // read back out of what it wrote.
     await refreshSeats();
     await readMyDiceSettings();
     if (animate) await openTray();
-  } catch (error) {
-    console.warn('dice setup failed; rolling still works', error);
-  }
-  if (await OBR.scene.isReady()) {
-    const count = await autoBind(sheets);
-    if (count) notify(`Bound ${count} token(s) to characters by name`);
-  }
-  await onSelectionChange();
+  });
 });

@@ -35,7 +35,7 @@ import {
   type DiceThrow,
 } from '../../src/obr/diceThrow.js';
 import { jitter, seatVector } from '../../src/obr/seats.js';
-import { TRAY_THEME, colourset, decorate, flare } from './effects.js';
+import { TRAY_THEME, colourset, decorate, evenLabelSizes, flare } from './effects.js';
 
 /**
  * How long without a roll before the renderer is released.
@@ -97,6 +97,9 @@ function diceBox(): Promise<DiceBox> {
         // `manifestBase()` plugin fixes for the manifest.
         assetPath: `${import.meta.env.BASE_URL}dice/`,
       });
+      // Before `initialize()`, because it changes the size of materials that are
+      // built on first use and then cached.
+      evenLabelSizes(created);
       await created.initialize();
       box = created;
       return created;
