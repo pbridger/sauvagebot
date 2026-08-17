@@ -120,8 +120,15 @@ export interface ModifierState {
   conditions?: string[];
 }
 
-/** How far the manual track runs either side of zero. */
-export const MANUAL_RANGE = 4;
+/**
+ * How far the manual track runs either side of zero.
+ *
+ * Six, not four: the named conditions already reach −6 (Pitch Dark), so a dial
+ * that stopped at four could not express by hand what the list expresses by
+ * name — and the Marshal's own call is the one that has no book value to fall
+ * back on.
+ */
+export const MANUAL_RANGE = 6;
 
 export function findSituation(key: string): Situation | undefined {
   return SITUATIONS.find((s) => s.key === key);

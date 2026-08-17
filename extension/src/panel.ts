@@ -557,30 +557,49 @@ function renderTable(): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'table-pane';
 
-  const roster = document.createElement('div');
-  roster.className = 'pane-block';
-  roster.append(paneHeading('Roster', `${sheets.length} character(s)`));
-  roster.append(
-    paneButtons([
-      ['New character', 'A blank sheet to fill in by hand', () => void addBlank()],
-      ['Paste stat blocks…', 'Add NPCs from any book', () => {
-        pasting = true;
-        renderSheetArea();
-      }],
-      ['Import…', 'Archetype cards, or a roster JSON', () => bar.file.click()],
-      ['Export', 'Download the whole roster', () => void exportRoster()],
-    ]),
-  );
-  wrap.append(roster);
-  wrap.append(privateBlock());
+  wrap.append(rosterBlock());
+  wrap.append(sessionBlock());
+  wrap.append(storageBlock());
+  // Last, because it is the only block you go looking for rather than glance at:
+  // adding a mook is a thing you do once a scene, not once a round.
   wrap.append(bestiaryBlock());
 
-  const session = document.createElement('div');
-  session.className = 'pane-block';
-  session.append(
-    paneHeading('Session', 'Unused Bennies are lost when a session ends'),
+  const storage = document.createElement('p');
+  storage.className = 'pane-note';
+  storage.id = 'pane-storage';
+  void store.usage().then(({ used, capacity, fraction }) => {
+    storage.textContent = `Roster storage: ${used} of ${capacity} chars (${Math.round(fraction * 100)}%)`;
+  });
+  wrap.append(storage);
+
+  return wrap;
+}
+
+/**
+ * Starting things and ending them: the session, and the scene.
+ *
+ * One block because they are the same question at two scales — "what carries over
+ * from the last one?" Bennies are the session's answer and live on the sheets;
+ * wounds, conditions and initiative are the scene's and live on the tokens. Two
+ * blocks made that look like two unrelated features.
+ *
+ * The reset is spelled out on screen rather than left to a tooltip. It is
+ * destructive, it is not undoable through this panel, and "reset" could plausibly
+ * mean anything from clearing wounds to wiping the roster.
+ */
+function sessionBlock(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  wrap.append(
+    paneHeading(
+      'Session and scene',
+      'Bennies belong to the session and live on the sheets. Wounds, conditions ' +
+        'and initiative belong to the scene and live on the tokens — so they ' +
+        'follow a token copied to a new map.',
+    ),
   );
-  session.append(
+
+  wrap.append(
     paneButtons([
       [
         'New session',
@@ -601,52 +620,12 @@ function renderTable(): HTMLElement {
       ],
     ]),
   );
-  wrap.append(session);
-  wrap.append(sceneBlock());
-
-  wrap.append(storageBlock());
-
-  const storage = document.createElement('p');
-  storage.className = 'pane-note';
-  storage.id = 'pane-storage';
-  void store.usage().then(({ used, capacity, fraction }) => {
-    storage.textContent = `Roster storage: ${used} of ${capacity} chars (${Math.round(fraction * 100)}%)`;
-  });
-  wrap.append(storage);
-
-  return wrap;
-}
-
-/**
- * Wipe the last fight off the map.
- *
- * The workflow this is for: copying tokens onto a new map, or reusing the same
- * one for the next scene. Token metadata travels with a duplicated token, which
- * is what makes the binding survive — and means the wounds, the Shaken marker
- * and whatever the Marshal called last session travel too. A stale −4 nobody set
- * is the worst kind of bug at a table, because there is no reason to look for it.
- *
- * Spelled out on screen rather than left to a tooltip. It is destructive, it is
- * not undoable through this panel, and "reset" could plausibly mean anything from
- * clearing wounds to wiping the roster.
- */
-function sceneBlock(): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.className = 'pane-block';
-  wrap.append(
-    paneHeading(
-      'This scene',
-      'Wounds, conditions and initiative live on the tokens, so they follow a ' +
-        'token that gets copied to a new map. This puts the map back to before ' +
-        'the fight.',
-    ),
-  );
 
   const detail = document.createElement('dl');
   detail.className = 'reset-detail';
   const rows: [string, string][] = [
-    ['Cleared', 'Wounds, Fatigue, Shaken, every condition and hand-dialled modifier, dealt initiative cards, and the current round'],
-    ['Kept', 'Which sheet each token is bound to, and everything on the sheets themselves — Bennies included'],
+    ['Reset clears', 'Wounds, Fatigue, Shaken, every condition and hand-dialled modifier, dealt initiative cards, and the current round'],
+    ['Reset keeps', 'Which sheet each token is bound to, and everything on the sheets themselves — Bennies included'],
   ];
   for (const [term, description] of rows) {
     const dt = document.createElement('dt');
@@ -810,39 +789,53 @@ async function handOut(
 }
 
 /**
- * Which characters the players cannot see, in one place.
+ * Every character in the room, with what you do to a roster and what you do to
+ * one character in the same place.
  *
- * The per-sheet tick is in the editor, but "what have I hidden?" is a question
- * about the table rather than about a character — and a mook left private after
- * the reveal is a small, silent annoyance. So the list lives here, with the
- * switch next to each name.
+ * The hidden ones used to have a block of their own, which read as a second
+ * roster and answered "what have I hidden?" at the cost of asking "where is
+ * everyone else?". One list marked with who is hidden answers both, and the
+ * switch stays next to the name — a mook left private after the reveal is a
+ * small, silent annoyance.
  */
-function privateBlock(): HTMLElement {
+function rosterBlock(): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'pane-block';
   const hidden = sheets.filter((sheet) => sheet.private);
   wrap.append(
     paneHeading(
-      "Marshal's characters",
-      hidden.length
-        ? `${hidden.length} hidden from players' pickers, sheets and initiative names. ` +
-          'A screen, not a lock — room data is readable by every client.'
-        : 'Nothing hidden. Tick "Marshal\'s only" while editing a sheet to hide it.',
+      'Roster',
+      `${sheets.length} character${sheets.length === 1 ? '' : 's'}` +
+        (hidden.length
+          ? `, ${hidden.length} hidden from players' pickers, sheets and initiative ` +
+            'names. A screen, not a lock — room data is readable by every client.'
+          : '. Hide one with "Marshal\'s only" here or while editing it.'),
     ),
   );
+  wrap.append(
+    paneButtons([
+      ['New character', 'A blank sheet to fill in by hand', () => void addBlank()],
+      ['Paste stat blocks…', 'Add NPCs from any book', () => {
+        pasting = true;
+        renderSheetArea();
+      }],
+      ['Import…', 'Archetype cards, or a roster JSON', () => bar.file.click()],
+      ['Export', 'Download the whole roster', () => void exportRoster()],
+    ]),
+  );
 
-  if (!hidden.length) return wrap;
+  if (!sheets.length) return wrap;
 
   const list = document.createElement('div');
   list.className = 'creature-list';
-  for (const sheet of hidden) {
+  for (const sheet of sheets) {
     const row = document.createElement('div');
-    row.className = 'creature';
+    row.className = sheet.private ? 'creature hidden-sheet' : 'creature';
 
     const open = document.createElement('button');
     open.className = 'creature-name';
     open.textContent = sheet.name;
-    open.title = 'Open this sheet';
+    open.title = `Open ${sheet.name}'s sheet`;
     open.addEventListener('click', () => {
       selectedId = sheet.id;
       renderRoster();
@@ -850,18 +843,27 @@ function privateBlock(): HTMLElement {
     });
     row.append(open);
 
-    const reveal = document.createElement('button');
-    reveal.className = 'creature-add';
-    reveal.textContent = 'Reveal';
-    reveal.title = 'Let the players see this sheet';
-    reveal.addEventListener('click', () => {
+    const kind = document.createElement('span');
+    kind.className = 'creature-meta';
+    kind.textContent = [sheet.wildCard ? 'Wild Card' : 'Extra', sheet.private ? 'hidden' : '']
+      .filter(Boolean)
+      .join(' · ');
+    row.append(kind);
+
+    const toggle = document.createElement('button');
+    toggle.className = 'creature-add';
+    toggle.textContent = sheet.private ? 'Reveal' : 'Hide';
+    toggle.title = sheet.private
+      ? 'Let the players see this sheet'
+      : "Marshal's only: keep this out of players' pickers and initiative names";
+    toggle.addEventListener('click', () => {
       void (async () => {
-        await roster.save({ ...sheet, private: false });
+        await roster.save({ ...sheet, private: !sheet.private });
         await reload();
         renderSheetArea();
       })();
     });
-    row.append(reveal);
+    row.append(toggle);
     list.append(row);
   }
   wrap.append(list);
@@ -874,6 +876,8 @@ function privateBlock(): HTMLElement {
  * A preset is added exactly as a pasted block would be, because it *is* one —
  * the same parser reads both, so there is no second code path to keep honest.
  */
+const BESTIARY_RESULTS = 10;
+
 function bestiaryBlock(): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'pane-block';
@@ -890,7 +894,7 @@ function bestiaryBlock(): HTMLElement {
 
   const show = (): void => {
     results.replaceChildren();
-    for (const creature of searchCreatures(search.value, 12)) {
+    for (const creature of searchCreatures(search.value, BESTIARY_RESULTS)) {
       const row = document.createElement('div');
       row.className = 'creature';
 
@@ -1267,7 +1271,7 @@ let showConditions = false;
  * The green half of the row: everything the Marshal calls, as opposed to what
  * the character is carrying.
  *
- * A dial from −4 to +4 for the one-off ("that's a tough climb, −2") plus named
+ * A dial from −6 to +6 for the one-off ("that's a tough climb, −2") plus named
  * conditions from the book, which carry their page and exact wording in a
  * tooltip so nobody has to remember whether Dark is −2 or −4.
  *
@@ -1310,7 +1314,11 @@ function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
   // A +0 pip rather than a separator: zero is a value on this track, and the
   // one you most often want to get back to.
   for (let n = -MANUAL_RANGE; n <= MANUAL_RANGE; n++) track.append(dial(n));
-  line.append(labelled('Modifier', track));
+  // No "Modifier" caption: thirteen pips and a total need the whole line. A row
+  // of signed pips beside a green total does not need naming, and each pip says
+  // what it does on hover.
+  track.title = `Modifier the Marshal called, ${formatMod(-MANUAL_RANGE)} to ${formatMod(MANUAL_RANGE)}`;
+  line.append(track);
 
   // Straight from the rules module rather than re-added here: a target-side
   // condition like Vulnerable must not reach this total, and one filter in one
@@ -2215,7 +2223,14 @@ async function exportRoster(): Promise<void> {
 // ---------------------------------------------------------------- wiring
 
 OBR.onReady(async () => {
-  store = roomStore(notify);
+  // No notice-bar sink for the store's capacity warning: the footer already shows
+  // the percentage the moment it passes 80%, and `reload` refreshes it after every
+  // write. The same fact in two places meant the top of the panel was permanently
+  // occupied by something the bottom said better, and a notice you cannot dismiss
+  // is a notice you learn to read past. It still goes to the console.
+  store = roomStore();
+  // The roster's own warnings do keep the notice bar — "saved without their
+  // descriptions" is a thing that happened to a character, not a running total.
   roster = new Roster(store, notify);
   bank = new BennyBank(store);
   me = await OBR.player.getName();

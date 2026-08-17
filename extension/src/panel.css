@@ -393,10 +393,12 @@ img.portrait {
 .statushalf > .penalty,
 .modline > .penalty { margin-left: auto; flex: none; }
 
-.mod-track { align-items: center; flex-wrap: nowrap; }
+.mod-track { align-items: center; flex-wrap: nowrap; gap: 2px; }
+/* Thirteen pips, -6 to +6, on one line that must not wrap. Narrower than they
+   were at nine, and they lost their "Modifier" label to pay for the width. */
 .mod-track button.pip {
   width: auto;
-  min-width: 21px;
+  min-width: 19px;
   height: 17px;
   padding: 0 2px;
   border-radius: 8px;
@@ -789,6 +791,12 @@ button.creature-name {
 }
 button.creature-name:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 .creature-meta { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+/* Hide/Reveal at the end of a roster row: a small action that must not grow and
+   must not push the name off. */
+button.creature-add { flex: none; padding: 1px 7px; font-size: 10.5px; }
+/* A hidden sheet reads as one of the roster, dimmed — not as a separate list.
+   The players cannot see it, which is a state, not a category. */
+.creature.hidden-sheet button.creature-name { font-style: italic; color: var(--muted); }
 .pane-block input[type='search'] {
   width: 100%;
   font: inherit;
