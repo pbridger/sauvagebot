@@ -15,7 +15,7 @@ import DiceBox from '@drdreo/dice-box-threejs';
 import { notation, waves } from '../../src/obr/diceThrow.js';
 import { jitter, seatLabel, seatVector, type SeatVector } from '../../src/obr/seats.js';
 import type { Seat } from '../../src/obr/diceThrow.js';
-import { TRAY_THEME, colourset } from './effects.js';
+import { TRAY_THEME, colourset, evenLabelSizes, settleSooner } from './effects.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
 import { Roller, type DieEvent } from '../../src/dice/roller.js';
 
@@ -30,6 +30,10 @@ const box = new DiceBox(document.getElementById('tray') as HTMLElement, {
   ...TRAY_THEME,
   assetPath: `${import.meta.env.BASE_URL}dice/`,
 });
+// The same two adjustments the tray makes, or the spike would be measuring a
+// different renderer from the one in the room.
+evenLabelSizes(box);
+settleSooner(box);
 const ready = box.initialize();
 
 /** The seat override the tray uses, duplicated here so the spike tests it too. */

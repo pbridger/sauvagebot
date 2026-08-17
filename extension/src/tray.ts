@@ -35,7 +35,14 @@ import {
   type DiceThrow,
 } from '../../src/obr/diceThrow.js';
 import { jitter, seatVector } from '../../src/obr/seats.js';
-import { TRAY_THEME, colourset, decorate, evenLabelSizes, flare } from './effects.js';
+import {
+  TRAY_THEME,
+  colourset,
+  decorate,
+  evenLabelSizes,
+  flare,
+  settleSooner,
+} from './effects.js';
 
 /**
  * How long without a roll before the renderer is released.
@@ -100,6 +107,10 @@ function diceBox(): Promise<DiceBox> {
       // Before `initialize()`, because it changes the size of materials that are
       // built on first use and then cached.
       evenLabelSizes(created);
+      // A die's own physics decides when it has settled, and its default dwell is a
+      // full second — the gap between a die stopping and its flare, its ace, and the
+      // log line.
+      settleSooner(created);
       await created.initialize();
       box = created;
       return created;

@@ -146,6 +146,49 @@ export function evenLabelSizes(box: DiceBox): void {
 }
 
 /**
+ * How long a die must lie still before the physics world calls it settled.
+ *
+ * Not a timer of ours — it is `cannon`'s `sleepTimeLimit`, and its default is a whole
+ * **second**. That second is the gap between a die visibly stopping and everything
+ * that keys off it: the flare on an ace, the next die of a chain being thrown, and the
+ * log line being revealed. Nothing was waiting on purpose; the world simply had not
+ * admitted the die had stopped yet.
+ *
+ * A quarter of a second is enough dwell to tell "stopped" from "rolling slowly", given
+ * the speed threshold is left alone. The risk of going lower is a die that is still
+ * teetering being frozen where it stands, which reads as a snap.
+ */
+export const SETTLE_MS = 250;
+
+/**
+ * Have dice admit they have stopped as soon as they have.
+ *
+ * Wraps the box's own `spawnDice`, because the bodies are built inside `roll()` and
+ * `cannon` has no global default to set — every `Body` writes its own
+ * `sleepTimeLimit` in its constructor. Applied to the whole list each time rather than
+ * to the new die alone: it is a handful of numbers and the list is short.
+ *
+ * The speed threshold (`sleepSpeedLimit`, 0.1) is deliberately untouched. That one
+ * decides *whether* a die counts as still, and loosening it would freeze dice that are
+ * genuinely rolling.
+ */
+export function settleSooner(box: DiceBox, ms: number = SETTLE_MS): void {
+  const self = box as unknown as {
+    spawnDice?: (vector: unknown, existing?: unknown) => unknown;
+    diceList?: { body?: { sleepTimeLimit?: number } }[];
+  };
+  const original = self.spawnDice?.bind(box);
+  if (!original) return;
+  self.spawnDice = (vector: unknown, existing?: unknown): unknown => {
+    const made = original(vector, existing);
+    for (const die of self.diceList ?? []) {
+      if (die.body) die.body.sleepTimeLimit = ms / 1000;
+    }
+    return made;
+  };
+}
+
+/**
  * Turn on anisotropic filtering for the dice faces.
  *
  * The numbers are drawn to a canvas and used as an ordinary texture, and the library
