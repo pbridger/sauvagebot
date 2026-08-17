@@ -131,7 +131,21 @@ import {
 } from '../../src/obr/seats.js';
 import type { DieEvent } from '../../src/dice/roller.js';
 
-const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
+/**
+ * Look up an element by id.
+ *
+ * It throws rather than casting a `null` into an `HTMLElement`, which is what the
+ * `as T` alone used to do: removing a button from `index.html` and forgetting its
+ * listener here typechecked, then failed at load with `Cannot read properties of
+ * null` and no clue which element — and because it happened in the middle of
+ * `onReady`, it took the roster with it. A named error is the difference between a
+ * two-minute fix and a panel that looks like it lost your characters.
+ */
+const el = <T extends HTMLElement>(id: string): T => {
+  const found = document.getElementById(id);
+  if (!found) throw new Error(`panel is missing #${id}`);
+  return found as T;
+};
 const bar = { who: el<HTMLSelectElement>('who'), file: el<HTMLInputElement>('file') };
 const sheetEl = el('sheet');
 const logEl = el('log');
@@ -2695,7 +2709,8 @@ OBR.onReady(async () => {
     rollTyped(false);
   });
   el('roll-secret').addEventListener('click', () => rollTyped(true));
-  el('anim').addEventListener('click', () => void toggleDice());
+  // The animated-dice switch is in the character editor now, wired through
+  // `renderEditor`'s hooks. There is deliberately no footer button to bind here.
 
   // Another player editing their own sheet must show up here without a reload.
   // Our own writes are skipped: re-rendering mid-edit would blow away focus.
