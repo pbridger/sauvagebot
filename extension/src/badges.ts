@@ -176,7 +176,7 @@ export async function renderBadges(
     column.forEach(({ text, colour }, row) => {
       items.push(
         badge(token, text, colour, {
-          x: halfWidth + GAP * 12,
+          x: halfWidth + GAP * 14,
           // Grown downward from a little above the middle, so one or two markers
           // — the common case — sit level with the token rather than above it.
           y: LABEL_HEIGHT * 0.75 + row * (LABEL_HEIGHT + GAP),

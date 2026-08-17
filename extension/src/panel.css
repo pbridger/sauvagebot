@@ -200,7 +200,7 @@ table.weapons button.dmg {
   font-weight: 700;
 }
 /* A shotgun's 1-3d6, laid out as the three rolls it stands for. */
-.dmg-spread { display: flex; gap: 2px; }
+.dmg-spread { display: flex; flex-wrap: wrap; gap: 2px; }
 .dmg-spread button.dmg { padding: 0 3px; }
 table.weapons tr.note td {
   padding-top: 0;
