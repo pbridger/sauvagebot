@@ -13,7 +13,7 @@
  * "does this module evaluate?" a thing CI can answer.
  */
 import { describe, it, expect } from 'vitest';
-import { PHYSICS, TRAY_THEME, colourset } from '../extension/src/effects.js';
+import { PHYSICS, TRAY_THEME, colourset, scaled } from '../extension/src/effects.js';
 
 /** Units per metre, fixed by measuring the die the library draws. */
 const U = 6495;
@@ -33,10 +33,32 @@ describe('the tray module loads at all', () => {
 });
 
 describe('physics in real units', () => {
-  it('falls at 9.81 m/s²', () => {
+  it('falls at 9.81 m/s², before the playback speed is applied', () => {
     expect(PHYSICS.gravity / U).toBeCloseTo(9.81, 1);
-    // The library multiplies by 9.8, so the multiplier has to undo that.
-    expect((TRAY_THEME.gravity_multiplier * 9.8) / U).toBeCloseTo(9.81, 1);
+  });
+
+  it('scales time consistently rather than fudging one number', () => {
+    // The whole point: p(kt) means velocity scales by k, acceleration by k², spin by k.
+    // Weakening gravity alone instead would change the shape of the trajectory — dice
+    // sailing further before landing, which is what "skating" looked like.
+    const k = PHYSICS.timeScale;
+    const now = scaled();
+    expect(now.gravity).toBeCloseTo(PHYSICS.gravity * k * k, 5);
+    expect(now.throwSpeed).toBeCloseTo(PHYSICS.throwSpeed * k, 5);
+    expect(now.spin.max).toBeCloseTo(PHYSICS.spin.max * k, 5);
+    expect(now.stillSpeed).toBeCloseTo(PHYSICS.stillSpeed * k, 5);
+    // A die has to hold still for longer in wall-clock time when time is slowed.
+    expect(now.stillFor).toBeGreaterThan(PHYSICS.stillFor);
+    // And the box is built with the scaled figure, not the real one.
+    expect((TRAY_THEME.gravity_multiplier * 9.8) / now.gravity).toBeCloseTo(1, 2);
+  });
+
+  it('plays back slower than real time, because the tray is magnified', () => {
+    expect(PHYSICS.timeScale).toBeGreaterThan(0.1);
+    expect(PHYSICS.timeScale).toBeLessThanOrEqual(1);
+    // A die should take long enough to cross the 21.6cm tray to be watchable.
+    const seconds = 0.216 / (scaled().throwSpeed / U);
+    expect(seconds).toBeGreaterThan(0.18);
   });
 
   it('throws at something a hand could do', () => {
@@ -49,7 +71,7 @@ describe('physics in real units', () => {
     // No continuous collision detection: a die that moves further than its own body in
     // one step can pass through the table.
     const dieWidth = 104;
-    expect(PHYSICS.throwSpeed * TRAY_THEME.framerate).toBeLessThan(dieWidth);
+    expect(scaled().throwSpeed * TRAY_THEME.framerate).toBeLessThan(dieWidth);
   });
 
   it('weighs about as much as a die, and grips like acrylic on baize', () => {
@@ -62,7 +84,7 @@ describe('physics in real units', () => {
   it('holds a die up without letting it sink', () => {
     // The clunk: contact stiffness is absolute, so it has to be well above the weight
     // it carries or dice press into the felt and get shoved back out.
-    expect(PHYSICS.stiffness).toBeGreaterThan(100 * PHYSICS.mass * PHYSICS.gravity);
+    expect(PHYSICS.stiffness).toBeGreaterThan(100 * PHYSICS.mass * scaled().gravity);
   });
 
   it('calls a die still at a couple of centimetres a second', () => {

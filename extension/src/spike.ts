@@ -166,6 +166,15 @@ button('5. A real trait roll that aces (seed 34)', async () => {
  */
 const knobs: { label: string; get: () => number; set: (n: number) => void; min: number; max: number; step: number; show: (n: number) => string }[] = [
   {
+    // First, because it is the one that decides whether this looks like dice being
+    // rolled or dice being fired. The tray is 21.6cm across and fills the screen.
+    label: 'Time scale',
+    get: () => PHYSICS.timeScale,
+    set: (n) => (PHYSICS.timeScale = n),
+    min: 0.15, max: 1, step: 0.05,
+    show: (n) => `${n.toFixed(2)}x real time`,
+  },
+  {
     label: 'Gravity',
     get: () => PHYSICS.gravity,
     set: (n) => (PHYSICS.gravity = n),
@@ -236,6 +245,7 @@ if (tuning) {
       `throwSpeed: ${Math.round(PHYSICS.throwSpeed)},   // ${(PHYSICS.throwSpeed / 6495).toFixed(2)} m/s`,
       `spin: { min: ${PHYSICS.spin.min.toFixed(0)}, max: ${PHYSICS.spin.max.toFixed(0)} },`,
       `angularDamping: ${PHYSICS.angularDamping},`,
+      `timeScale: ${PHYSICS.timeScale.toFixed(2)},`,
     ].join('\n');
   };
 

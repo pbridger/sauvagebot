@@ -36,7 +36,6 @@ import {
 } from '../../src/obr/diceThrow.js';
 import { jitter, seatVector } from '../../src/obr/seats.js';
 import {
-  PHYSICS,
   TRAY_THEME,
   applyPhysics,
   colourset,
@@ -44,6 +43,7 @@ import {
   evenLabelSizes,
   flare,
   levelDice,
+  scaled,
 } from './effects.js';
 
 /**
@@ -146,7 +146,7 @@ function rollForward(vector: {
   const speed = Math.hypot(velocity.x, velocity.y);
   if (!speed) return;
 
-  const { min, max } = PHYSICS.spin;
+  const { min, max } = scaled().spin;
   const strength = min + Math.random() * (max - min);
   // Up to ±20° off true, so the die drifts as it rolls instead of tracking a rail.
   const tilt = (Math.random() - 0.5) * (Math.PI / 4.5);
@@ -213,7 +213,7 @@ async function animate(thrown: DiceThrow): Promise<void> {
     // A real toss, not a multiple of the panel's width. The library's own boost scales
     // with the window, so the same roll left a die harder on a big monitor than on a
     // laptop — and a speed in metres per second is a thing that can be judged.
-    const boost = PHYSICS.throwSpeed * (0.85 + Math.random() * 0.3);
+    const boost = scaled().throwSpeed * (0.85 + Math.random() * 0.3);
     const thrownVectors = self.getNotationVectors(notationString, reach, boost, distance) as {
       vectors: {
         pos: { x: number; y: number; z: number };

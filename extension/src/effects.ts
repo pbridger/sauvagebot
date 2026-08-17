@@ -123,7 +123,58 @@ export const PHYSICS = {
   /** 2 cm/s, and a quarter second of it, before a die counts as stopped. */
   stillSpeed: ms(0.02),
   stillFor: 0.25,
+  /**
+   * How fast to play the whole thing back.
+   *
+   * The one number here that is not physics, and it is needed *because* the rest of it
+   * now is. The tray is 21.6 cm across and it fills the screen, so a die is magnified
+   * perhaps sixfold over how you would ever see one on a table. At that magnification a
+   * true 2 m/s throw crosses the entire visible area in **a tenth of a second** — it
+   * reads as being fired from a cannon, which is exactly what happens when correct
+   * physics is watched through a magnifying glass. Every sports replay of a small fast
+   * object has the same problem and the same answer.
+   *
+   * Scaling time is not the same as weakening gravity, which is what went wrong before.
+   * Weaken gravity alone and dice fly *further* before landing — flatter, skating
+   * trajectories. Scale time properly and the trajectory is identical, just slower:
+   * positions follow `p(kt)`, so velocities scale by `k`, accelerations by `k²`, spin by
+   * `k`, and damping (a rate) by `k`. All of which is what `scaled()` does below.
+   *
+   * 0.45 is a starting point, not a truth. It is a slider on the tuning page.
+   */
+  timeScale: 0.45,
 };
+
+/**
+ * The parameters as the simulation should actually receive them, with the time scale
+ * folded in.
+ *
+ * Kept apart from `PHYSICS` so that what is written there stays *real* — 9.81, 4 grams,
+ * 2 m/s — and can be checked against the world. This is the only place the pretence
+ * happens, and it is one consistent transformation rather than a set of fudges.
+ */
+export function scaled(): {
+  gravity: number;
+  throwSpeed: number;
+  spin: { min: number; max: number };
+  linearDamping: number;
+  angularDamping: number;
+  stillSpeed: number;
+  stillFor: number;
+} {
+  const k = PHYSICS.timeScale;
+  return {
+    gravity: PHYSICS.gravity * k * k,
+    throwSpeed: PHYSICS.throwSpeed * k,
+    spin: { min: PHYSICS.spin.min * k, max: PHYSICS.spin.max * k },
+    linearDamping: PHYSICS.linearDamping * k,
+    angularDamping: PHYSICS.angularDamping * k,
+    // A die is "still" at a slower speed when everything is slower, and has to hold it
+    // for correspondingly longer in wall-clock time.
+    stillSpeed: PHYSICS.stillSpeed * k,
+    stillFor: PHYSICS.stillFor / k,
+  };
+}
 
 /** What the box has to be built with, since these are constructor options. */
 function physics(): {
@@ -133,7 +184,7 @@ function physics(): {
   strength: number;
 } {
   return {
-    gravity_multiplier: PHYSICS.gravity / 9.8,
+    gravity_multiplier: scaled().gravity / 9.8,
     framerate: PHYSICS.timestep,
     // Counts steps, not seconds, and the step is now four times smaller than stock.
     iterationLimit: 4000,
@@ -299,10 +350,11 @@ export function applyPhysics(box: DiceBox): void {
     framerate?: number;
   };
 
+  const now = scaled();
   const world = self.world;
   if (world) {
     // Down is negative z here: the felt is the z = 0 plane and the camera looks along it.
-    world.gravity.set(0, 0, -PHYSICS.gravity);
+    world.gravity.set(0, 0, -now.gravity);
     if (world.solver) world.solver.iterations = PHYSICS.iterations;
     if (world.defaultContactMaterial) {
       world.defaultContactMaterial.contactEquationStiffness = PHYSICS.stiffness;
@@ -333,10 +385,10 @@ export function applyPhysics(box: DiceBox): void {
         // Inertia is computed from mass and shape at construction, so a mass set
         // afterwards means nothing until this is called.
         body.updateMassProperties?.();
-        body.linearDamping = PHYSICS.linearDamping;
-        body.angularDamping = PHYSICS.angularDamping;
-        body.sleepSpeedLimit = PHYSICS.stillSpeed;
-        body.sleepTimeLimit = PHYSICS.stillFor;
+        body.linearDamping = now.linearDamping;
+        body.angularDamping = now.angularDamping;
+        body.sleepSpeedLimit = now.stillSpeed;
+        body.sleepTimeLimit = now.stillFor;
       }
       return made;
     };
