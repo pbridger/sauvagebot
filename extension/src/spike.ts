@@ -15,7 +15,13 @@ import DiceBox from '@drdreo/dice-box-threejs';
 import { notation, waves } from '../../src/obr/diceThrow.js';
 import { jitter, seatLabel, seatVector, type SeatVector } from '../../src/obr/seats.js';
 import type { Seat } from '../../src/obr/diceThrow.js';
-import { TRAY_THEME, colourset, evenLabelSizes, settleSooner } from './effects.js';
+import {
+  TRAY_THEME,
+  colourset,
+  evenLabelSizes,
+  levelDice,
+  settleSooner,
+} from './effects.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
 import { Roller, type DieEvent } from '../../src/dice/roller.js';
 
@@ -107,7 +113,18 @@ button('2. add() — one d8 showing 8, then another showing 2', async () => {
 button('3. d4 — must show 3', async () => {
   await ready;
   const result = await box.roll('1d4@3');
+  levelDice(box);
   say(`d4 reported ${reported(result.sets.flatMap((s) => s.rolls))}`);
+});
+
+// 6. Edge cases, literally: throw a handful hard and watch for a die frozen on an
+// edge. Levelling should tip any of them onto the face the result names.
+button('6. Twelve d6, then level whatever stopped on an edge', async () => {
+  await ready;
+  const values = Array.from({ length: 12 }, (_, i) => (i % 6) + 1);
+  await box.roll(`12d6@${values.join(',')}`);
+  levelDice(box);
+  say(`asked ${values.join(',')} — every die should read one of those, flat`);
 });
 
 // 4. Seats. Watch which edge they come in from.

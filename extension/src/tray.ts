@@ -41,6 +41,7 @@ import {
   decorate,
   evenLabelSizes,
   flare,
+  levelDice,
   settleSooner,
 } from './effects.js';
 
@@ -210,6 +211,10 @@ async function animate(thrown: DiceThrow): Promise<void> {
           ? (await active.roll(notation(wave))).sets.flatMap((set) => set.rolls)
           : await active.add(notation(wave));
       try {
+        // Before anything else looks at the dice: a die that stopped on an edge is
+        // tipped onto the face the result refers to, so the flare below lights the
+        // face you are actually reading.
+        levelDice(active);
         decorate(active, wave, results);
         // The dice that bought another one flare where they lie, and the beat that
         // follows is that flare: cause, then effect, rather than two throws in a row.

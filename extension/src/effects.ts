@@ -29,7 +29,7 @@
 import type DiceBox from '@drdreo/dice-box-threejs';
 import type { DiceResult } from '@drdreo/dice-box-threejs';
 import type * as THREE from 'three';
-import { LinearMipmapLinearFilter } from 'three';
+import { LinearMipmapLinearFilter, Quaternion, Vector3 } from 'three';
 import type { DieEvent } from '../../src/dice/roller.js';
 
 /**
@@ -321,4 +321,109 @@ function faceMaterials(
   } catch {
     return materials;
   }
+}
+
+/**
+ * How far off level a die may come to rest before it is nudged flat, and how long
+ * the nudge takes.
+ */
+const LEVEL_TOLERANCE = 0.14; // radians, ~8°
+const LEVEL_MS = 140;
+
+/**
+ * Settle a die that stopped on an edge or a corner.
+ *
+ * ## Why one stops there at all
+ *
+ * `cannon` decides a body is asleep from its *speed alone*, and a die teetering on an
+ * edge is momentarily slow at the top of its arc — it decelerates, hangs, then topples.
+ * The moment the world calls it asleep, the library sets `body.type = KINEMATIC`, which
+ * freezes it exactly where it is. With the stock one-second dwell the die had almost
+ * always fallen before the timer ran out; at 250ms the hang fits inside the window, so
+ * shortening the dwell did not create this, it made a latent case common.
+ *
+ * ## Why levelling rather than more physics
+ *
+ * The die's *value* was never in doubt — it comes from the engine, and the library
+ * picks the face nearest to up and swaps the engine's number onto it. So a die on an
+ * edge is only ever a presentation problem, and the honest fix is to show the face the
+ * result already refers to. Waking it for another topple would be the physical answer
+ * and risks a die that never settles; this is bounded, deterministic, and lands on the
+ * face the log is talking about.
+ *
+ * Only the mesh is rotated. The body is kinematic by this point and nothing simulates
+ * it again, so the two cannot drift apart in any way that will be seen.
+ */
+export function levelDice(box: DiceBox): void {
+  const renderer = (box as unknown as { renderer?: THREE.WebGLRenderer }).renderer;
+  const dice = (box as unknown as { diceList?: THREE.Mesh[] }).diceList ?? [];
+  if (!renderer || !dice.length) return;
+
+  const tilted: { die: THREE.Mesh; from: THREE.Quaternion; to: THREE.Quaternion }[] = [];
+  for (const die of dice) {
+    const correction = levelling(die);
+    if (!correction) continue;
+    tilted.push({
+      die,
+      from: die.quaternion.clone(),
+      to: correction.multiply(die.quaternion).clone(),
+    });
+  }
+  if (!tilted.length) return;
+
+  const started = performance.now();
+  const step = (): void => {
+    const t = Math.min(1, (performance.now() - started) / LEVEL_MS);
+    // Ease out: it should look like the die tipping over the last few degrees under
+    // its own weight, not like a hand straightening it.
+    const eased = 1 - Math.pow(1 - t, 3);
+    for (const { die, from, to } of tilted) die.quaternion.slerpQuaternions(from, to, eased);
+    renderer.render(box.scene, box.camera);
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/**
+ * The rotation that would bring this die's nearest face to level, or nothing if it is
+ * already flat enough to look settled.
+ *
+ * The face is found the same way the library finds the one it reports — smallest angle
+ * between a group's rotated normal and up, with the d4 measured against *down*, since
+ * its value is the face on the table. Reading it any other way would risk levelling a
+ * die onto a face other than the one whose number is showing.
+ */
+function levelling(die: THREE.Mesh): THREE.Quaternion | undefined {
+  const body = (die as unknown as { body?: { quaternion: THREE.Quaternion } }).body;
+  const shape = (die as unknown as { shape?: string }).shape;
+  const normals = die.geometry?.getAttribute('normal');
+  if (!body || !normals) return undefined;
+
+  const up = new Vector3(0, 0, shape === 'd4' ? -1 : 1);
+  let closest: number | undefined;
+  let best = Math.PI * 2;
+  die.geometry.groups.forEach((group, index) => {
+    if (group.materialIndex === 0) return;
+    const at = index * 9;
+    const normal = new Vector3(
+      normals.array[at] as number,
+      normals.array[at + 1] as number,
+      normals.array[at + 2] as number,
+    ).applyQuaternion(body.quaternion);
+    const angle = normal.angleTo(up);
+    if (angle < best) {
+      best = angle;
+      closest = at;
+    }
+  });
+  if (closest === undefined || best <= LEVEL_TOLERANCE) return undefined;
+
+  const facing = new Vector3(
+    normals.array[closest] as number,
+    normals.array[closest + 1] as number,
+    normals.array[closest + 2] as number,
+  )
+    .applyQuaternion(body.quaternion)
+    .normalize();
+  return new Quaternion().setFromUnitVectors(facing, up);
 }
