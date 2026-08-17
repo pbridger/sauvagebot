@@ -23,7 +23,7 @@ import {
   type DerivedField,
   type EntryList,
 } from '../../src/rules/sheetEdit.js';
-import { skillNames, type Sheet } from '../../src/rules/sheet.js';
+import { DICE_COLOURS, diceColourOf, skillNames, type Sheet } from '../../src/rules/sheet.js';
 import { EDGES, HINDRANCES, findEdge, findHindrance } from '../../src/rules/catalogue.js';
 import { GEAR, findGear, gearLine } from '../../src/rules/gearCatalogue.js';
 
@@ -59,6 +59,16 @@ export interface EditorHooks {
   onDelete: () => void;
   /** Marshal-only controls, chief among them marking a sheet private. */
   isGM?: boolean;
+  /**
+   * Animated dice: whether this *machine* has them on, and the switch.
+   *
+   * Passed in rather than read here because it is not part of the sheet — see the
+   * comment on the control itself. Absent leaves the row out entirely.
+   */
+  dice?: {
+    animate: boolean;
+    onToggle: () => void;
+  };
 }
 
 function field(label: string, control: HTMLElement): HTMLElement {
@@ -310,6 +320,52 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
     identity.append(field("Marshal's only", hidden));
   }
   out.append(identity);
+
+  // --- dice
+  //
+  // The colour belongs to the character and is saved on the sheet: the Marshal rolls
+  // for six of them in a fight, and a colour per player would make all six the same.
+  // Every character starts on a colour derived from its id, so a fresh roster is
+  // already distinguishable without anyone choosing anything.
+  //
+  // The switch beside it is a different kind of thing and says so: it is per machine,
+  // not per character, and turning it off on Doc's sheet turns off animation for
+  // everything this browser draws. It sits here because this is where the dice are
+  // set up, and mislabelling it would be worse than the extra word.
+  const diceBlock = document.createElement('div');
+  diceBlock.className = 'edit-block';
+
+  const colour = document.createElement('select');
+  colour.className = 'dice-colour';
+  const current = diceColourOf(sheet);
+  for (const { name, hex } of DICE_COLOURS) {
+    const option = document.createElement('option');
+    option.value = hex;
+    option.textContent = name;
+    // The swatch is the option's own background, so the list reads as colours and
+    // the names are there for anyone the colours do not work for.
+    option.style.background = hex;
+    colour.append(option);
+  }
+  colour.value = current;
+  colour.style.borderColor = current;
+  colour.addEventListener('change', () => {
+    colour.style.borderColor = colour.value;
+    change({ ...sheet, diceColour: colour.value });
+  });
+  diceBlock.append(field('Dice colour', colour));
+
+  if (hooks.dice) {
+    const animate = document.createElement('input');
+    animate.type = 'checkbox';
+    animate.checked = hooks.dice.animate;
+    animate.title =
+      'Animated 3D dice over the map, for this browser only — not a property of ' +
+      'this character. Off means results go straight to the log.';
+    animate.addEventListener('change', () => hooks.dice?.onToggle());
+    diceBlock.append(field('Animate (this device)', animate));
+  }
+  out.append(diceBlock);
 
   // --- derived
   const derived = document.createElement('div');

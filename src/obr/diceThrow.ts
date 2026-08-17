@@ -163,6 +163,31 @@ export function notation(wave: readonly DieEvent[]): string {
 export const ACE_BEAT_MS = 450;
 
 /**
+ * The dice of a wave in the order the renderer will create them.
+ *
+ * `notation` groups by die size, and the renderer builds its dice set by set, so this
+ * is what lines the engine's dice up with the renderer's results — needed to point an
+ * effect at the right die on the table. Same grouping, same order, one place.
+ */
+export function inNotationOrder(wave: readonly DieEvent[]): DieEvent[] {
+  const sizes = [...new Set(wave.map((die) => die.sides))];
+  return sizes.flatMap((sides) => wave.filter((die) => die.sides === sides));
+}
+
+/**
+ * Which dice of this wave bought another one.
+ *
+ * Read off the chains rather than by comparing a value to its die's size: an ace is
+ * "this chain continues", which is the engine's own reason for rolling again, and it
+ * stays right if a future die ever explodes on something other than its maximum.
+ */
+export function acedIn(wave: readonly DieEvent[], next: readonly DieEvent[] | undefined): Set<number> {
+  if (!next) return new Set();
+  const continuing = new Set(next.map((die) => die.chain));
+  return new Set(wave.filter((die) => continuing.has(die.chain)).map((die) => die.chain));
+}
+
+/**
  * Reveal the result anyway after this long, however the tray is getting on.
  *
  * The log is the source of truth and the tray is decoration: a stalled physics

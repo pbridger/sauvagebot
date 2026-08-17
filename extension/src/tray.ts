@@ -27,13 +27,15 @@ import {
   ACE_BEAT_MS,
   DICE_CHANNEL,
   DICE_SETTLED_CHANNEL,
+  acedIn,
+  inNotationOrder,
   isDiceThrow,
   notation,
   waves,
   type DiceThrow,
 } from '../../src/obr/diceThrow.js';
 import { jitter, seatVector } from '../../src/obr/seats.js';
-import { TRAY_THEME, colourset, decorate } from './effects.js';
+import { TRAY_THEME, colourset, decorate, flare } from './effects.js';
 
 /**
  * How long without a roll before the renderer is released.
@@ -189,20 +191,26 @@ async function animate(thrown: DiceThrow): Promise<void> {
     }
 
     for (const [index, wave] of staged.entries()) {
-      // A beat between an ace landing and the die it bought being thrown. It is a
-      // deliberate pause, not a wait on anything: the whole chain was rolled before
-      // this page heard about it.
-      if (index > 0) await sleep(ACE_BEAT_MS);
       const results =
         index === 0
           ? (await active.roll(notation(wave))).sets.flatMap((set) => set.rolls)
           : await active.add(notation(wave));
       try {
         decorate(active, wave, results);
+        // The dice that bought another one flare where they lie, and the beat that
+        // follows is that flare: cause, then effect, rather than two throws in a row.
+        for (const [at, die] of inNotationOrder(wave).entries()) {
+          if (!acedIn(wave, staged[index + 1]).has(die.chain)) continue;
+          const shown = results[at];
+          if (shown) flare(active, shown.id, die.value, ACE_BEAT_MS);
+        }
       } catch (error) {
         // An effect is the least important thing on this page.
         console.warn('dice effect failed', error);
       }
+      // A deliberate pause, not a wait on anything: the whole chain was rolled
+      // before this page heard about it.
+      if (staged[index + 1]) await sleep(ACE_BEAT_MS);
     }
   } finally {
     delete (active as unknown as { startClickThrow?: unknown }).startClickThrow;

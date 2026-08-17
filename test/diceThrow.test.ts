@@ -17,6 +17,12 @@ import {
   type DiceThrow,
 } from '../src/obr/diceThrow.js';
 import { assignSeats, seatVector, jitter, GM_SEAT, type Seated } from '../src/obr/seats.js';
+import {
+  DICE_COLOURS,
+  defaultDiceColour,
+  diceColourOf,
+  emptySheet,
+} from '../src/rules/sheet.js';
 
 function die(partial: Partial<DieEvent>): DieEvent {
   return { sides: 6, value: 3, chain: 1, step: 0, role: 'plain', ...partial };
@@ -220,5 +226,36 @@ describe('throw vectors', () => {
       const angle = Math.abs(Math.atan2(shaken.x, shaken.y));
       expect(angle).toBeLessThanOrEqual(Math.PI / 18 + 1e-9);
     }
+  });
+});
+
+describe('dice colours', () => {
+  it('gives a character the same colour every time', () => {
+    expect(defaultDiceColour('reggie')).toBe(defaultDiceColour('reggie'));
+  });
+
+  it('does not hand out Bone by default', () => {
+    // Bone is the fallback for an unrecognised colour, so two characters landing on
+    // it should be somebody's choice rather than a coincidence.
+    const bone = DICE_COLOURS[0]!.hex;
+    for (const id of ['a', 'b', 'doc-holliday', '01H8', 'reggie', 'x'.repeat(40)]) {
+      expect(defaultDiceColour(id)).not.toBe(bone);
+    }
+  });
+
+  it('only ever picks from the palette', () => {
+    const palette = DICE_COLOURS.map((colour) => colour.hex);
+    for (let n = 0; n < 200; n++) expect(palette).toContain(defaultDiceColour(`id-${n}`));
+  });
+
+  it('spreads a party of six over several colours', () => {
+    const party = ['jed', 'paige', 'ed', 'doc', 'reggie', 'sam'].map(defaultDiceColour);
+    expect(new Set(party).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it('prefers a colour the sheet actually carries', () => {
+    const sheet = { ...emptySheet('reggie', 'Reggie'), diceColour: '#a32e26' };
+    expect(diceColourOf(sheet)).toBe('#a32e26');
+    expect(diceColourOf(emptySheet('reggie', 'Reggie'))).toBe(defaultDiceColour('reggie'));
   });
 });

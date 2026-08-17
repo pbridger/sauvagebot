@@ -10,6 +10,7 @@
 import OBR from '@owlbear-rodeo/sdk';
 import {
   ATTRIBUTES,
+  diceColourOf,
   skillNames,
   type Attribute,
   type Sheet,
@@ -217,7 +218,11 @@ function describe(error: unknown): string {
  * screen. Keeping it local works because the person hiding the roll is the one
  * making it.
  */
-function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>, dice: DieEvent[] = []): void {
+function publish(
+  partial: Omit<RollEntry, 'id' | 'at' | 'by'>,
+  dice: DieEvent[] = [],
+  colour?: string,
+): void {
   const total = partial.total ?? totalOf(partial.explained);
   // Over the cap there is no animation: `20d20!` is a legal expression and an
   // unwatchable throw, and a locked-up tab is worse than an unanimated result.
@@ -232,7 +237,7 @@ function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>, dice: DieEvent[] 
     ...(secretRolls ? { secret: true } : {}),
   };
   log.add(entry);
-  if (throwable) void sendDice(entry, dice);
+  if (throwable) void sendDice(entry, dice, colour);
   // Our own dice are in hand, so the hold can be the length of the throw straight
   // away rather than the six-second backstop a remote line starts on.
   show(entry, dice);
@@ -252,12 +257,15 @@ function publish(partial: Omit<RollEntry, 'id' | 'at' | 'by'>, dice: DieEvent[] 
  * reason dice do not ride along on `RollEntry`. A secret roll goes `LOCAL`, so the
  * Marshal's hidden roll throws dice on the Marshal's screen and nobody else's.
  */
-async function sendDice(entry: RollEntry, dice: DieEvent[]): Promise<void> {
+async function sendDice(entry: RollEntry, dice: DieEvent[], colour?: string): Promise<void> {
+  // The character's colour where there is a character, and the player's own where
+  // there is not — a table roll typed into the box belongs to whoever typed it.
+  const paint = colour ?? myColour;
   const thrown: DiceThrow = {
     id: entry.id,
     dice,
     seat: mySeat,
-    ...(myColour ? { colour: myColour } : {}),
+    ...(paint ? { colour: paint } : {}),
   };
   try {
     // Only opened when it is wanted: a reader with animation off never loads the
@@ -347,6 +355,7 @@ function publishTrait(
       ...(mods.parts.length ? { mods: mods.parts } : {}),
     },
     result.dice ?? [],
+    diceColourOf(sheet),
   );
 }
 
@@ -543,6 +552,10 @@ function renderSheetArea(): void {
         onChange: scheduleSave,
         onDelete: () => void deleteCharacter(sheet),
         isGM,
+        dice: {
+          animate,
+          onToggle: () => void toggleDice(),
+        },
       }),
     );
     return;
@@ -2135,7 +2148,13 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
           button.textContent = option;
           button.title = `Roll ${option} — dice depend on the range band (${weapon.damage})`;
           button.addEventListener('click', () =>
-            rollFreeform(option, `${weapon.name} damage`, rollerName(sheet), weapon.ap),
+            rollFreeform(
+              option,
+              `${weapon.name} damage`,
+              rollerName(sheet),
+              weapon.ap,
+              diceColourOf(sheet),
+            ),
           );
           spread.append(button);
         }
@@ -2151,7 +2170,13 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
         button.textContent = weapon.damage;
         button.title = `Roll ${expression}`;
         button.addEventListener('click', () =>
-          rollFreeform(expression, `${weapon.name} damage`, rollerName(sheet), weapon.ap),
+          rollFreeform(
+            expression,
+            `${weapon.name} damage`,
+            rollerName(sheet),
+            weapon.ap,
+            diceColourOf(sheet),
+          ),
         );
         damageCell.append(button);
       } else {
@@ -2335,6 +2360,7 @@ function rollFreeform(
   label?: string,
   character?: string,
   ap?: number,
+  colour?: string,
 ): void {
   const trimmed = expression.trim();
   if (!trimmed) return;
@@ -2357,6 +2383,7 @@ function rollFreeform(
         ...(ap ? { ap } : {}),
       },
       dice,
+      colour,
     );
   } catch (error) {
     // A typo is not worth broadcasting; show it to whoever typed it.
@@ -2471,10 +2498,7 @@ async function moveSeat(id: string, seat: Seat): Promise<void> {
     seats[displaced[0]] = vacated;
     await saveSeat(displaced[0], vacated);
   }
-  if (id === OBR.player.id) {
-    mySeat = seat;
-    renderDiceToggle();
-  }
+  if (id === OBR.player.id) mySeat = seat;
   renderSheetArea();
 }
 
@@ -2486,21 +2510,10 @@ async function readMyDiceSettings(): Promise<void> {
   // wrong for somebody's laptop, and an unasked-for physics simulation over the map
   // is a worse first impression than a plain log.
   animate = (await store.read<boolean>(`${DICE_PREFIX}${OBR.player.id}`)) === true;
-  renderDiceToggle();
-}
-
-function renderDiceToggle(): void {
-  const button = el<HTMLButtonElement>('anim');
-  button.textContent = animate ? '🎲 Dice: on' : '🎲 Dice: off';
-  button.setAttribute('aria-pressed', String(animate));
-  button.title = animate
-    ? `Rolling animates in front of you, from ${seatLabel(mySeat).toLowerCase()}. The result appears when the dice stop.`
-    : 'Rolling goes straight to the log. Turn on for animated dice over the map.';
 }
 
 async function toggleDice(): Promise<void> {
   animate = !animate;
-  renderDiceToggle();
   if (!animate) {
     // Reveal everything being held, or a line rolled a moment ago would be
     // stranded by the switch that was meant to make things faster.

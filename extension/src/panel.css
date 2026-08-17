@@ -254,26 +254,6 @@ footer {
 #budget.warn { color: var(--accent); font-weight: 700; }
 #saved.saved { color: var(--accent); font-weight: 700; }
 
-/* The animation switch sits at the far left of the footer, where the storage
-   figure already lives — it is the same kind of thing: status you glance at, not a
-   control you reach for mid-fight. `margin-right: auto` keeps the other two spans
-   where they were rather than spreading all three across the width. */
-#anim {
-  flex: none;
-  margin-right: auto;
-  padding: 0 5px;
-  font: inherit;
-  font-size: 10.5px;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid var(--rule);
-  border-radius: 4px;
-  cursor: pointer;
-}
-#anim[aria-pressed='true'] {
-  color: var(--paper);
-  border-color: var(--accent);
-}
 
 body.editing input,
 body.editing select,
@@ -833,3 +813,9 @@ button.creature-add { flex: none; padding: 1px 7px; font-size: 10.5px; }
   padding: 4px 7px;
 }
 .field textarea { min-height: 46px; }
+
+/* The dice colour picker shows its own colour on its border rather than as a
+   background: a filled control at this size fights the numerals inside it, and the
+   border still reads as "this is what your dice look like" from across the panel. */
+select.dice-colour { border-width: 2px; }
+select.dice-colour option { color: #1a1a1a; }

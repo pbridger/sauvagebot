@@ -69,6 +69,16 @@ export interface Sheet {
    * everyone is trusted; it is not a defence against someone who goes looking.
    */
   private?: boolean;
+  /**
+   * What colour this character's animated dice are.
+   *
+   * On the sheet rather than on the player, because a character is the thing you
+   * recognise across the table — the Marshal rolls for six of them in a fight, and
+   * one colour per *player* would make all six the same. Absent means the colour
+   * `defaultDiceColour` picks from the character's id, so every character starts
+   * distinguishable without anybody choosing anything.
+   */
+  diceColour?: string;
 
   attributes: Partial<Record<Attribute, Trait>>;
   /** Free-form: the cards carry arcane skills and parenthetical specialisations. */
@@ -143,4 +153,46 @@ export function sheetFromJson(text: string): Sheet {
     edges: [],
     ...parsed,
   } as Sheet;
+}
+
+/**
+ * The colours animated dice come in.
+ *
+ * A short, deliberately spread-out list rather than a colour picker: these have to
+ * be told apart across a table at a glance, mid-fight, by someone who is not looking
+ * for the difference. Two greens a shade apart would be worse than either alone.
+ * Named for the Weird West, because a dropdown reading "Whisky" is easier to hold in
+ * mind than one reading "#b4792c".
+ */
+export const DICE_COLOURS: readonly { name: string; hex: string }[] = [
+  { name: 'Bone', hex: '#e8e0cf' },
+  { name: 'Blood', hex: '#a32e26' },
+  { name: 'Whisky', hex: '#b4792c' },
+  { name: 'Brass', hex: '#c9a227' },
+  { name: 'Sagebrush', hex: '#4f7a4a' },
+  { name: 'Sky', hex: '#3d7ea6' },
+  { name: 'Ink', hex: '#2f3542' },
+  { name: 'Widow', hex: '#6b4a7a' },
+  { name: 'Dust', hex: '#9a8f7a' },
+];
+
+/**
+ * The colour a character's dice start out.
+ *
+ * Derived from the id rather than assigned in order, so it does not depend on what
+ * else is in the roster: importing a character twice, or in a different order, gives
+ * the same colour both times. Bone is skipped for the default — it is the fallback
+ * for anything unrecognised, and a party where two characters happen to be Bone
+ * should be a choice somebody made rather than a coincidence.
+ */
+export function defaultDiceColour(id: string): string {
+  const palette = DICE_COLOURS.slice(1);
+  let hash = 0;
+  for (const character of id) hash = (hash * 31 + character.charCodeAt(0)) % 100_000;
+  return palette[hash % palette.length]!.hex;
+}
+
+/** The colour this character's dice are, chosen or derived. */
+export function diceColourOf(sheet: Sheet): string {
+  return sheet.diceColour ?? defaultDiceColour(sheet.id);
 }

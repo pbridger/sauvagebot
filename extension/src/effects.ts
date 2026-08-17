@@ -28,6 +28,8 @@
  */
 import type DiceBox from '@drdreo/dice-box-threejs';
 import type { DiceResult } from '@drdreo/dice-box-threejs';
+import type * as THREE from 'three';
+import { LinearMipmapLinearFilter } from 'three';
 import type { DieEvent } from '../../src/dice/roller.js';
 
 /**
@@ -90,10 +92,6 @@ function readableOn(colour: string): string {
 /**
  * Called once per wave, after the dice have been thrown.
  *
- * Deliberately empty. It exists so that the first fancy effect is an edit to one
- * function with everything it needs already in scope, rather than a change to how
- * the tray is wired — see the note at the top of this file.
- *
  * @param box the live dice box; `box.scene`, `box.camera` and `box.world` are public
  * @param dice the engine's dice for this wave, so an effect can key off `role`
  *   (the Wild Die) or off a value that aced
@@ -105,7 +103,139 @@ export function decorate(
   dice: readonly DieEvent[],
   results: readonly DiceResult[],
 ): void {
-  void box;
   void dice;
   void results;
+  sharpen(box);
+}
+
+/**
+ * Turn on anisotropic filtering for the dice faces.
+ *
+ * The numbers are drawn to a canvas and used as an ordinary texture, and the library
+ * leaves the sampler at its defaults. A die face is almost never parallel to the
+ * screen — the top of a d4 is nearly edge-on by construction — and a steeply
+ * foreshortened texture on an isotropic sampler is exactly the case mipmapping
+ * blurs: it picks a level for the *shortest* axis and throws away the detail along
+ * the long one. Anisotropy is the fix, mipmaps and trilinear minification are what
+ * make it apply, and the cost is a sampler flag rather than a bigger texture.
+ *
+ * Cheap to call after every wave: the library caches materials per die type and
+ * colour, so this touches each one once and then finds it already done.
+ */
+function sharpen(box: DiceBox): void {
+  const renderer = (box as unknown as { renderer?: THREE.WebGLRenderer }).renderer;
+  const max = renderer?.capabilities.getMaxAnisotropy?.() ?? 1;
+  if (max <= 1) return;
+
+  box.scene.traverse((object) => {
+    const materials = (object as THREE.Mesh).material;
+    if (!materials) return;
+    for (const material of Array.isArray(materials) ? materials : [materials]) {
+      const map = (material as THREE.MeshStandardMaterial).map;
+      if (!map || map.anisotropy === max) continue;
+      map.anisotropy = max;
+      map.generateMipmaps = true;
+      map.minFilter = LinearMipmapLinearFilter;
+      map.needsUpdate = true;
+    }
+  });
+}
+
+/**
+ * How bright an acing die flares, and for how long.
+ *
+ * The flare fills the beat between an ace landing and the die it bought being
+ * thrown, so the two read as cause and effect rather than as two throws.
+ */
+const FLARE_PEAK = 0.85;
+
+/**
+ * Light up the face an acing die came to rest on.
+ *
+ * ## What this does and does not glow
+ *
+ * The **face** flares, not the numeral alone. Emissive light is added across a whole
+ * material, so with the face lit the dark numeral reads as a silhouette against it —
+ * dramatic and, if anything, easier to read than a white glyph. Glowing the digit by
+ * itself would need an alpha mask of the numeral, and the library draws its labels
+ * straight onto the die canvas without keeping one. If the silhouette turns out to
+ * be the wrong look, `FLARE_PEAK` and the colour below are the two knobs.
+ *
+ * ## Two things worth knowing about the implementation
+ *
+ * The materials are **cloned onto this die first**. The library caches materials by
+ * die type and colour, so every d6 in the room shares one set — lighting a face
+ * without cloning would light that number on every die on the table.
+ *
+ * And it **renders its own frames**. The library's animation loop stops once the
+ * dice are asleep, which is exactly when this runs, so nothing would be drawn.
+ */
+export function flare(box: DiceBox, dieId: number, value: number, ms: number): void {
+  const renderer = (box as unknown as { renderer?: THREE.WebGLRenderer }).renderer;
+  const dice = (box as unknown as { diceList?: THREE.Mesh[] }).diceList;
+  const die = dice?.[dieId];
+  if (!renderer || !die) return;
+
+  const original = die.material;
+  const materials = (Array.isArray(original) ? original : [original]).map((material) =>
+    (material as THREE.MeshStandardMaterial).clone(),
+  );
+  die.material = materials;
+
+  const lit = faceMaterials(box, die, value, materials);
+  const started = performance.now();
+
+  const step = (): void => {
+    const t = Math.min(1, (performance.now() - started) / ms);
+    // Up fast, down slow: a struck match rather than a pulse.
+    const brightness = FLARE_PEAK * Math.sin(Math.PI * Math.pow(t, 0.6));
+    for (const material of lit) material.emissive.setScalar(brightness);
+    renderer.render(box.scene, box.camera);
+    if (t < 1) {
+      requestAnimationFrame(step);
+      return;
+    }
+    // Back to the shared materials, and the clones go: a fight is a lot of aces, and
+    // a leaked material per ace is a leaked GPU program per ace.
+    die.material = original;
+    for (const material of materials) material.dispose();
+  };
+  requestAnimationFrame(step);
+}
+
+/**
+ * The materials making up the face showing `value`, or all of them if that cannot be
+ * worked out.
+ *
+ * The library keeps a `values` list per die type and lays materials out with a fixed
+ * offset in front of them — the same arithmetic its own face-swapping uses, which is
+ * why this can find the face at all. `d4` is excluded on purpose: it swaps faces by
+ * rotating material indices rather than exchanging two, so the same reasoning does
+ * not hold, and a d4 flares whole. Falling back to the whole die is always safe: it
+ * is a brighter version of the right answer, never a wrong face.
+ */
+function faceMaterials(
+  box: DiceBox,
+  die: THREE.Mesh,
+  value: number,
+  materials: THREE.MeshStandardMaterial[],
+): THREE.MeshStandardMaterial[] {
+  try {
+    const factory = (box as unknown as {
+      DiceFactory: { get: (type: string) => { values: number[]; shape: string } };
+    }).DiceFactory;
+    const type = (die as unknown as { notation: { type: string } }).notation.type;
+    const spec = factory.get(type);
+    if (!spec || spec.shape === 'd4') return materials;
+    const at = spec.values.indexOf(value);
+    if (at < 0) return materials;
+    const index = at + (spec.shape === 'd10' ? 1 : 2);
+    const groups = die.geometry.groups.filter((group) => group.materialIndex === index);
+    const found = groups
+      .map((group) => materials[group.materialIndex ?? -1])
+      .filter((material): material is THREE.MeshStandardMaterial => material !== undefined);
+    return found.length ? found : materials;
+  } catch {
+    return materials;
+  }
 }
