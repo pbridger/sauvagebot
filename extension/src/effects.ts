@@ -49,37 +49,99 @@ export const TRAY_THEME = {
 } as const;
 
 /**
- * Why the dice look heavy, and what actually fixes it.
+ * One consistent set of units, derived from a real die.
  *
- * It is not mass. Mass does not affect how fast anything falls, and the library's
- * values (300–400 across the die types) only matter when dice hit *each other*, where
- * being all much of a muchness is right. The problem is the ratio of **gravity to the
- * size dice are drawn at**:
+ * Everything here follows from measuring the geometry the library already draws and
+ * asking what it would be in metres. A d6 comes out **104 world units** on edge
+ * (`baseScale` 100 × die scale 0.9, over √3); calling that a 16mm die fixes the scale
+ * of the whole world at **~6,495 units per metre**. Every other number below is then a
+ * real quantity converted once, not a value picked because it looked right:
  *
- *   - `baseScale` 100 and a die scale of 0.9 make a d6 about **104 units** on edge.
- *   - Gravity is `9.8 × gravity_multiplier` = **3,920 u/s²**.
- *   - If 104 units is a 16mm die, a metre is ~6,500 units, so gravity ought to be
- *     around **63,700 u/s²** — sixteen times more.
+ *   | in the world       | which is          |
+ *   |--------------------|-------------------|
+ *   | tray ~1400 units   | 21.6 cm across    |
+ *   | spawn 200–400      | 3–6 cm above felt |
+ *   | 13,000 u/s         | 2 m/s, a real toss|
+ *   | 130 u/s            | 2 cm/s, "stopped" |
  *
- * Falls scale with the square root of that, so everything happens about **4× slower**
- * than it should for objects this size. That is exactly the visual signature of
- * heaviness: it reads as a die the size of a beach ball, filmed in slow motion.
+ * The scale was already coherent — the geometry never needed rescaling. What was wrong
+ * was the dynamics: gravity sixteen times too weak for that size, which made falls
+ * about four times too slow, which reads as weight.
  *
- * Raised 4× rather than the full 16×. Somewhere around real gravity the throw stops
- * looking like dice being rolled and starts looking like gravel being dropped, and the
- * fixed timestep gets fragile (below). 4× halves the apparent time scale, which is the
- * part that reads as weight.
+ * ## Why the first attempt at fixing it clunked
  *
- * **The timestep has to come with it.** At 1/60 and a launch speed of ~6,000 u/s a die
- * moves ~100 units per step — one whole die width — and there is no continuous
- * collision detection here, so a fast die can pass through the table between two
- * steps. Faster dice make that worse, hence 1/120. The iteration limit is doubled to
- * match: it counts *steps*, not seconds, and it is what stops the headless
- * pre-simulation running forever.
+ * Raising gravity alone makes it worse, and this is the part worth remembering.
+ * `cannon` resolves contacts with a spring whose stiffness is an **absolute** number
+ * (`contactEquationStiffness`, default 1e7). The library gives dice a mass of 300–400,
+ * so at gravity 16,000 a die's own weight is ~5e6 — within an order of magnitude of the
+ * contact spring. The die sinks into the table under its own weight and is shoved back
+ * out: contact, penetration, correction. That is the clunk.
  *
- * Damping is deliberately left alone. It is not what makes dice look heavy, and
- * changing four things at once would make it impossible to tell which one worked.
+ * Two things fix it together: dice weigh what dice weigh (4 g), and the contact spring
+ * is stiff relative to that. Then a landing is a landing rather than a collision with a
+ * trampoline.
  */
+const UNITS_PER_METRE = 6495;
+
+/** Metres per second, in world units. */
+function ms(metresPerSecond: number): number {
+  return metresPerSecond * UNITS_PER_METRE;
+}
+
+/**
+ * Every physical parameter in one place, in real terms.
+ *
+ * Mutable, and applied per throw, so the tuning page can change any of it live and
+ * report the numbers back — see `extension/dice-spike.html`. Watching a change while
+ * you make it beats a round trip through a rebuild, and none of this can be judged from
+ * arithmetic alone.
+ */
+export const PHYSICS = {
+  /** 9.81 m/s², converted. The old value was 3,920 — a sixteenth of true. */
+  gravity: 9.81 * UNITS_PER_METRE,
+  /**
+   * 4 grams, the mass of a 16mm acrylic die, against the library's 300–400.
+   *
+   * Mass never affected how fast a die falls; what it changes is how hard the contact
+   * solver has to work, and lighter dice sit on the table instead of sinking into it.
+   */
+  mass: 4,
+  /**
+   * Acrylic on baize. The library used 0.6 — rubber on concrete — which made dice bite
+   * and stop dead instead of running out.
+   */
+  friction: 0.35,
+  /** A die on felt is a dead bounce; the walls are harder and hold dice in. */
+  restitution: 0.4,
+  wallRestitution: 0.7,
+  /**
+   * Stiff enough that 4 g of die does not push into the felt. Two orders above the
+   * weight it has to hold, which is the rule of thumb that keeps SPOOK contacts from
+   * sagging.
+   */
+  stiffness: 1e9,
+  relaxation: 3,
+  iterations: 20,
+  /**
+   * A 2 m/s toss, which is what a hand actually does.
+   *
+   * The step has to be small enough that a die does not cross its own width between two
+   * of them: there is no continuous collision detection here, and at 2 m/s a die covers
+   * 108 units in 1/120 s against a body 104 units wide. At 1/240 it is half that.
+   */
+  throwSpeed: ms(2),
+  timestep: 1 / 240,
+  /** Real dice tumble hard off the hand; below this they barely turn in flight. */
+  spin: { min: 18, max: 34 },
+  /** Air on a die is nothing. Just enough to stop numerical drift. */
+  linearDamping: 0.02,
+  angularDamping: 0.03,
+  /** 2 cm/s, and a quarter second of it, before a die counts as stopped. */
+  stillSpeed: ms(0.02),
+  stillFor: 0.25,
+};
+
+/** What the box has to be built with, since these are constructor options. */
 function physics(): {
   gravity_multiplier: number;
   framerate: number;
@@ -87,12 +149,10 @@ function physics(): {
   strength: number;
 } {
   return {
-    gravity_multiplier: 1600,
-    framerate: 1 / 120,
-    iterationLimit: 2000,
-    // Unchanged, and the first knob to reach for if throws now feel short: with
-    // stronger gravity a die is on the felt sooner, so the same launch speed buys a
-    // flatter, shorter arc.
+    gravity_multiplier: PHYSICS.gravity / 9.8,
+    framerate: PHYSICS.timestep,
+    // Counts steps, not seconds, and the step is now four times smaller than stock.
+    iterationLimit: 4000,
     strength: 1,
   };
 }
@@ -196,64 +256,88 @@ export function evenLabelSizes(box: DiceBox): void {
 }
 
 /**
- * How long a die must lie still before the physics world calls it settled.
+ * Push every physical parameter into a live box.
  *
- * Not a timer of ours — it is `cannon`'s `sleepTimeLimit`, and its default is a whole
- * **second**. That second is the gap between a die visibly stopping and everything
- * that keys off it: the flare on an ace, the next die of a chain being thrown, and the
- * log line being revealed. Nothing was waiting on purpose; the world simply had not
- * admitted the die had stopped yet.
+ * Called before each throw rather than once, for two reasons: the library rebuilds its
+ * contact materials in `makeWorldBox` on every resize — and an Owlbear panel is resized
+ * whenever the browser window is — and because `PHYSICS` is mutable, so the tuning page
+ * can turn a knob and see it on the next roll.
  *
- * A quarter of a second is enough dwell to tell "stopped" from "rolling slowly", given
- * the speed threshold is left alone. The risk of going lower is a die that is still
- * teetering being frozen where it stands, which reads as a snap.
+ * Bodies are reached by wrapping `spawnDice`, since they are built inside `roll()` and
+ * `cannon` has no per-world defaults to set: every `Body` writes its own mass, damping
+ * and sleep thresholds in its own constructor.
  */
-export const SETTLE_MS = 250;
-
-/**
- * How slow a die must be moving to count as still.
- *
- * The library sets **75** on every die body, which is not cannon's 0.1 — and in a world
- * where a die is ~104 units across and gets launched at thousands of units a second, 75
- * is a very loose test. A die teetering on an edge passes it easily while it is still
- * very much in motion, and the instant it does, the library freezes the body. That, not
- * the dwell time, is the root of dice stopping on an edge; shortening the dwell only
- * made the existing window easier to hit.
- *
- * 30 is still generous — under a third of a die width per second — but it excludes the
- * hang at the top of a teeter. `levelDice` stays as the backstop for whatever gets
- * through.
- */
-export const SETTLE_SPEED = 30;
-
-/**
- * Have dice admit they have stopped as soon as they have, and not before.
- *
- * Wraps the box's own `spawnDice`, because the bodies are built inside `roll()` and
- * `cannon` has no global default to set — every `Body` writes its own
- * `sleepTimeLimit` in its constructor. Applied to the whole list each time rather than
- * to the new die alone: it is a handful of numbers and the list is short.
- *
- * The speed threshold (`sleepSpeedLimit`, 0.1) is deliberately untouched. That one
- * decides *whether* a die counts as still, and loosening it would freeze dice that are
- * genuinely rolling.
- */
-export function settleSooner(box: DiceBox, ms: number = SETTLE_MS): void {
+export function applyPhysics(box: DiceBox): void {
   const self = box as unknown as {
+    world?: {
+      gravity: { set: (x: number, y: number, z: number) => void };
+      solver?: { iterations?: number };
+      contactmaterials?: {
+        friction: number;
+        restitution: number;
+        contactEquationStiffness: number;
+        contactEquationRelaxation: number;
+        frictionEquationStiffness: number;
+      }[];
+      defaultContactMaterial?: { contactEquationStiffness: number; friction: number };
+    };
     spawnDice?: (vector: unknown, existing?: unknown) => unknown;
-    diceList?: { body?: { sleepTimeLimit?: number; sleepSpeedLimit?: number } }[];
+    diceList?: {
+      body?: {
+        mass?: number;
+        updateMassProperties?: () => void;
+        linearDamping?: number;
+        angularDamping?: number;
+        sleepTimeLimit?: number;
+        sleepSpeedLimit?: number;
+      };
+    }[];
+    physicsPatched?: boolean;
+    framerate?: number;
   };
-  const original = self.spawnDice?.bind(box);
-  if (!original) return;
-  self.spawnDice = (vector: unknown, existing?: unknown): unknown => {
-    const made = original(vector, existing);
-    for (const die of self.diceList ?? []) {
-      if (!die.body) continue;
-      die.body.sleepTimeLimit = ms / 1000;
-      die.body.sleepSpeedLimit = SETTLE_SPEED;
+
+  const world = self.world;
+  if (world) {
+    // Down is negative z here: the felt is the z = 0 plane and the camera looks along it.
+    world.gravity.set(0, 0, -PHYSICS.gravity);
+    if (world.solver) world.solver.iterations = PHYSICS.iterations;
+    if (world.defaultContactMaterial) {
+      world.defaultContactMaterial.contactEquationStiffness = PHYSICS.stiffness;
+      world.defaultContactMaterial.friction = PHYSICS.friction;
     }
-    return made;
-  };
+    for (const contact of world.contactmaterials ?? []) {
+      contact.friction = PHYSICS.friction;
+      // The walls are told apart by the restitution the library gave them — it builds
+      // them bouncier than the felt on purpose, so dice stay in the tray.
+      contact.restitution =
+        contact.restitution >= 0.9 ? PHYSICS.wallRestitution : PHYSICS.restitution;
+      contact.contactEquationStiffness = PHYSICS.stiffness;
+      contact.frictionEquationStiffness = PHYSICS.stiffness;
+      contact.contactEquationRelaxation = PHYSICS.relaxation;
+    }
+  }
+  self.framerate = PHYSICS.timestep;
+
+  const original = self.spawnDice?.bind(box);
+  if (original && !self.physicsPatched) {
+    self.physicsPatched = true;
+    self.spawnDice = (vector: unknown, existing?: unknown): unknown => {
+      const made = original(vector, existing);
+      for (const die of self.diceList ?? []) {
+        const body = die.body;
+        if (!body) continue;
+        body.mass = PHYSICS.mass;
+        // Inertia is computed from mass and shape at construction, so a mass set
+        // afterwards means nothing until this is called.
+        body.updateMassProperties?.();
+        body.linearDamping = PHYSICS.linearDamping;
+        body.angularDamping = PHYSICS.angularDamping;
+        body.sleepSpeedLimit = PHYSICS.stillSpeed;
+        body.sleepTimeLimit = PHYSICS.stillFor;
+      }
+      return made;
+    };
+  }
 }
 
 /**
@@ -496,29 +580,3 @@ function levelling(die: THREE.Mesh): THREE.Quaternion | undefined {
   return new Quaternion().setFromUnitVectors(facing, up);
 }
 
-/**
- * How much grip the felt has.
- *
- * The library sets 0.6 between dice and every surface, which is closer to rubber on
- * concrete than to a die on baize: dice bite, stop short and rotate on the spot
- * instead of running out. 0.28 lets a throw travel and roll the way a thrown die
- * does. Restitution is left alone — bounce is already right, and it is what keeps the
- * dice inside the walls.
- */
-export const TABLE_FRICTION = 0.28;
-
-/**
- * Loosen the contact friction, on every surface pair.
- *
- * Applied per throw rather than once, because the contact materials are rebuilt by
- * `makeWorldBox` — which runs again on every resize, and an Owlbear panel is resized
- * by the browser window. Setting it once would hold until somebody dragged their
- * window.
- *
- * All three pairs, not just the table: dice-on-dice grip at 0.6 makes a handful land
- * in a clump and stay there, which for a Wild Card roll is the pair you look at.
- */
-export function loosenFriction(box: DiceBox, friction: number = TABLE_FRICTION): void {
-  const world = (box as unknown as { world?: { contactmaterials?: { friction: number }[] } }).world;
-  for (const contact of world?.contactmaterials ?? []) contact.friction = friction;
-}

@@ -36,14 +36,14 @@ import {
 } from '../../src/obr/diceThrow.js';
 import { jitter, seatVector } from '../../src/obr/seats.js';
 import {
+  PHYSICS,
   TRAY_THEME,
+  applyPhysics,
   colourset,
   decorate,
   evenLabelSizes,
   flare,
   levelDice,
-  loosenFriction,
-  settleSooner,
 } from './effects.js';
 
 /**
@@ -109,10 +109,8 @@ function diceBox(): Promise<DiceBox> {
       // Before `initialize()`, because it changes the size of materials that are
       // built on first use and then cached.
       evenLabelSizes(created);
-      // A die's own physics decides when it has settled, and its default dwell is a
-      // full second — the gap between a die stopping and its flare, its ace, and the
-      // log line.
-      settleSooner(created);
+      // Every physical parameter, derived from a real 16mm die — see `PHYSICS`.
+      applyPhysics(created);
       await created.initialize();
       box = created;
       return created;
@@ -130,15 +128,15 @@ function diceBox(): Promise<DiceBox> {
  * so it tumbles the way it is going rather than spinning like a thrown coin.
  *
  * For a body travelling along `d` with `z` up, rolling forward means angular velocity
- * along `(-d.y, d.x, 0)` — that is the axis for which `ω × r` points along `d` at the
- * contact point underneath. The library's own spin is close to this but derived from a
- * separate random vector, so a die could come out back-spinning or spinning flat.
+ * along `(-d.y, d.x, 0)` — the axis for which `ω × r` points along `d` at the contact
+ * point underneath. The library's own spin is close to this but derived from a separate
+ * random vector, so a die could come out back-spinning or spinning flat.
  *
- * Bounded, and scaled from the magnitude the library already chose rather than from a
- * number of ours: the units here are the world's, which depend on the panel size, and
- * inventing an absolute would be right on one screen only. Each die gets its own
- * magnitude and its own few degrees of tilt, so a handful of dice tumble together
- * without looking stamped from one mould.
+ * The magnitude is an absolute number of radians per second, and can be: angular
+ * velocity is the one quantity here that does not depend on the length scale, so 25
+ * rad/s means the same tumble on any screen. It matters more now than it did — at
+ * correct gravity a die is in the air a quarter as long, so it needs real spin to turn
+ * over at all on the way down.
  */
 function rollForward(vector: {
   velocity: { x: number; y: number; z: number };
@@ -148,7 +146,8 @@ function rollForward(vector: {
   const speed = Math.hypot(velocity.x, velocity.y);
   if (!speed) return;
 
-  const strength = Math.hypot(angle.x, angle.y, angle.z) * (0.65 + Math.random() * 0.7);
+  const { min, max } = PHYSICS.spin;
+  const strength = min + Math.random() * (max - min);
   // Up to ±20° off true, so the die drifts as it rolls instead of tracking a rail.
   const tilt = (Math.random() - 0.5) * (Math.PI / 4.5);
   const across = {
@@ -182,7 +181,7 @@ async function animate(thrown: DiceThrow): Promise<void> {
   clearTimeout(lingerTimer);
   clearTimeout(idleTimer);
   const active = await diceBox();
-  loosenFriction(active);
+  applyPhysics(active);
 
   const direction = jitter(seatVector(thrown.seat));
   // The method being replaced lives on the prototype, so there is no own property to
@@ -211,7 +210,10 @@ async function animate(thrown: DiceThrow): Promise<void> {
       y: direction.y * self.display.currentHeight,
     };
     const distance = Math.sqrt(reach.x * reach.x + reach.y * reach.y) + 100;
-    const boost = (Math.random() + 3) * distance * self.strength;
+    // A real toss, not a multiple of the panel's width. The library's own boost scales
+    // with the window, so the same roll left a die harder on a big monitor than on a
+    // laptop — and a speed in metres per second is a thing that can be judged.
+    const boost = PHYSICS.throwSpeed * (0.85 + Math.random() * 0.3);
     const thrownVectors = self.getNotationVectors(notationString, reach, boost, distance) as {
       vectors: {
         pos: { x: number; y: number; z: number };

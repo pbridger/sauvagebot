@@ -16,11 +16,12 @@ import { notation, waves } from '../../src/obr/diceThrow.js';
 import { jitter, seatLabel, seatVector, type SeatVector } from '../../src/obr/seats.js';
 import type { Seat } from '../../src/obr/diceThrow.js';
 import {
+  PHYSICS,
   TRAY_THEME,
+  applyPhysics,
   colourset,
   evenLabelSizes,
   levelDice,
-  settleSooner,
 } from './effects.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
 import { Roller, type DieEvent } from '../../src/dice/roller.js';
@@ -36,10 +37,10 @@ const box = new DiceBox(document.getElementById('tray') as HTMLElement, {
   ...TRAY_THEME,
   assetPath: `${import.meta.env.BASE_URL}dice/`,
 });
-// The same two adjustments the tray makes, or the spike would be measuring a
-// different renderer from the one in the room.
+// The same adjustments the tray makes, or the spike would be measuring a different
+// renderer from the one in the room.
 evenLabelSizes(box);
-settleSooner(box);
+applyPhysics(box);
 const ready = box.initialize();
 
 /** The seat override the tray uses, duplicated here so the spike tests it too. */
@@ -151,3 +152,127 @@ button('5. A real trait roll that aces (seed 34)', async () => {
   }
   say('expect d8=6, then the wild d6=6, then its ace d6=4');
 });
+
+
+// ---------------------------------------------------------------- tuning
+
+/**
+ * Live physics controls.
+ *
+ * None of this can be judged from arithmetic — "heavy" is a thing you see — so the
+ * numbers are on sliders and every throw re-reads them. The panel prints the current
+ * set as it would appear in `PHYSICS`, so a good arrangement can be copied straight
+ * back into the source rather than described.
+ */
+const knobs: { label: string; get: () => number; set: (n: number) => void; min: number; max: number; step: number; show: (n: number) => string }[] = [
+  {
+    label: 'Gravity',
+    get: () => PHYSICS.gravity,
+    set: (n) => (PHYSICS.gravity = n),
+    min: 6495, max: 130_000, step: 1000,
+    show: (n) => `${(n / 6495).toFixed(1)} m/s²`,
+  },
+  {
+    label: 'Throw speed',
+    get: () => PHYSICS.throwSpeed,
+    set: (n) => (PHYSICS.throwSpeed = n),
+    min: 3000, max: 30_000, step: 500,
+    show: (n) => `${(n / 6495).toFixed(2)} m/s`,
+  },
+  {
+    label: 'Spin',
+    get: () => PHYSICS.spin.max,
+    set: (n) => ((PHYSICS.spin.max = n), (PHYSICS.spin.min = n * 0.55)),
+    min: 5, max: 80, step: 1,
+    show: (n) => `${n.toFixed(0)} rad/s`,
+  },
+  {
+    label: 'Friction',
+    get: () => PHYSICS.friction,
+    set: (n) => (PHYSICS.friction = n),
+    min: 0.05, max: 1, step: 0.01,
+    show: (n) => n.toFixed(2),
+  },
+  {
+    label: 'Bounce',
+    get: () => PHYSICS.restitution,
+    set: (n) => (PHYSICS.restitution = n),
+    min: 0, max: 0.9, step: 0.05,
+    show: (n) => n.toFixed(2),
+  },
+  {
+    label: 'Mass',
+    get: () => PHYSICS.mass,
+    set: (n) => (PHYSICS.mass = n),
+    min: 1, max: 400, step: 1,
+    show: (n) => `${n} g`,
+  },
+  {
+    label: 'Contact stiffness',
+    get: () => Math.log10(PHYSICS.stiffness),
+    set: (n) => (PHYSICS.stiffness = Math.pow(10, n)),
+    min: 6, max: 11, step: 0.25,
+    show: (n) => `1e${n.toFixed(2)} — raise it if dice sink and clunk`,
+  },
+  {
+    label: 'Damping (angular)',
+    get: () => PHYSICS.angularDamping,
+    set: (n) => (PHYSICS.angularDamping = n),
+    min: 0, max: 0.4, step: 0.01,
+    show: (n) => n.toFixed(2),
+  },
+];
+
+const tuning = document.getElementById('tuning');
+if (tuning) {
+  const readout = document.createElement('pre');
+  const refresh = (): void => {
+    readout.textContent = [
+      `gravity: ${Math.round(PHYSICS.gravity)},   // ${(PHYSICS.gravity / 6495).toFixed(1)} m/s²`,
+      `mass: ${PHYSICS.mass},`,
+      `friction: ${PHYSICS.friction},`,
+      `restitution: ${PHYSICS.restitution},`,
+      `stiffness: ${PHYSICS.stiffness.toExponential(1)},`,
+      `throwSpeed: ${Math.round(PHYSICS.throwSpeed)},   // ${(PHYSICS.throwSpeed / 6495).toFixed(2)} m/s`,
+      `spin: { min: ${PHYSICS.spin.min.toFixed(0)}, max: ${PHYSICS.spin.max.toFixed(0)} },`,
+      `angularDamping: ${PHYSICS.angularDamping},`,
+    ].join('\n');
+  };
+
+  for (const knob of knobs) {
+    const row = document.createElement('label');
+    row.className = 'knob';
+    const name = document.createElement('span');
+    name.textContent = knob.label;
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = String(knob.min);
+    slider.max = String(knob.max);
+    slider.step = String(knob.step);
+    slider.value = String(knob.get());
+    const value = document.createElement('em');
+    value.textContent = knob.show(knob.get());
+    slider.addEventListener('input', () => {
+      knob.set(Number(slider.value));
+      value.textContent = knob.show(Number(slider.value));
+      refresh();
+    });
+    row.append(name, slider, value);
+    tuning.append(row);
+  }
+  refresh();
+  tuning.append(readout);
+
+  button('Throw a trait roll (d8 + wild d6)', async () => {
+    await ready;
+    await box.roll('1d8+1d6@5,3');
+    levelDice(box);
+    say('thrown with the current settings');
+  });
+  button('Throw six d6', async () => {
+    await ready;
+    await box.roll('6d6@1,2,3,4,5,6');
+    levelDice(box);
+    say('six thrown — watch for clumping and for dice sinking on landing');
+  });
+}

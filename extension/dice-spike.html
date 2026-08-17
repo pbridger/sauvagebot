@@ -37,6 +37,30 @@
       h1 {
         font-size: 15px;
       }
+      h2 {
+        font-size: 13px;
+        margin: 12px 0 4px;
+      }
+      .knob {
+        display: grid;
+        grid-template-columns: 130px 1fr 190px;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 2px;
+      }
+      .knob em {
+        font-style: normal;
+        color: #9fb4c7;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+      }
+      pre {
+        background: #0008;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        margin: 8px 0;
+      }
       li {
         margin-bottom: 3px;
       }
@@ -58,6 +82,12 @@
         <li><b>Seats:</b> dice should enter from the named edge, every time.</li>
       </ol>
       <div id="buttons"></div>
+      <h2>Physics</h2>
+      <p>
+        Every throw re-reads these. When it feels right, copy the block below into
+        <code>PHYSICS</code> in <code>extension/src/effects.ts</code>.
+      </p>
+      <div id="tuning"></div>
       <div id="out">…</div>
     </div>
     <script type="module" src="/src/spike.ts"></script>
