@@ -10,6 +10,26 @@ reload.
 
 ---
 
+## 2026-08-19 — One line each, and "More" for the rest
+
+`d2736ac`. Fixes the wall of text the entry below introduced.
+
+Every edge and hindrance now shows **the rulebook's own one-line summary** —
+"Elan: +2 when spending a Benny to reroll a Trait roll", "Guts: Free reroll when
+making Fear checks". The full entry is behind a small **More** button beside the
+name.
+
+The summaries are the book's, not ours: it prints them in tables at the back,
+written by the designers, leading with the mechanic. 31 of the 32 entries across
+the party's sheets have one. The odd one out is Agency Promotion, which the book
+simply never lists — it shows its full text, as does anything homebrew.
+
+A handful of improved Edges — Improved Level Headed, Improved First Strike —
+have no More button on purpose. The book writes those as "As above but…", so the
+summary is the *longer* and more useful of the two.
+
+---
+
 ## 2026-08-19 — Your edges say what the book says
 
 `cff450b`, `fa41092`.
