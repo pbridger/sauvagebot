@@ -10,6 +10,34 @@ reload.
 
 ---
 
+## 2026-08-19 — Your edges say what the book says
+
+`cff450b`, `fa41092`.
+
+**The rulebook text had numbers missing.** The script that pulls Edges and
+Hindrances out of the PDF was stripping page numbers, and its pattern was too
+greedy: it also ate any number followed by a capitalised word. Five Edges had
+lost the number that makes them work — Power Points granted "an additional Power
+Points", Improved Rapid Recharge "regains Power Points per hour", Agency
+Promotion made you "a Grade Agent" three times over. All fixed, along with 24
+entries that had a stray page number stuck on the end.
+
+**Edges and Hindrances now show the book's wording, not the card's.** The text on
+the imported cards was a summary, and summaries lose things: Pacifist's
+"undeniably evil creatures, undead, demons, and the like are fair game", Scout
+being "always considered alert for Notice rolls versus Stealth", Elan not
+applying to damage or Soak rolls. The full entries were sitting in the extension
+the whole time. Every edge and hindrance on the party's five sheets is covered.
+
+This is also the storage fix. That prose was 38% of everything stored in the
+room, and it no longer needs storing at all — the book ships inside the
+extension. **Marshal: press "Clear stored rules text" in the Table pane once.**
+Nothing disappears from the screen; the wording comes from the book instead. The
+room should drop from about three-quarters full to under half. Anything homebrew,
+or an entry the book has never heard of, is kept.
+
+---
+
 ## 2026-08-19 — Stray shots, and finding out where the room's space went
 
 `5c80dfd`, `0233223`, `581a184`.
