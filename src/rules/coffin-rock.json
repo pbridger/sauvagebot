@@ -4,7 +4,7 @@
   {
    "name": "Dorothy Testeverde’s Ghost",
    "category": "Ghosts",
-   "description": "The wraith of a murdered wife, who torments her husband for two days before he takes his own life.",
+   "description": "The wraith of a young woman.",
    "block": "Dorothy Testeverde’s Ghost\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d6, Vigor d6\nSkills: Fighting d6, Intimidation d10, Notice d10, Taunt d10, Stealth d12\nPace: 6; Parry: 5; Toughness: 5\nSpecial Abilities\n* Ethereal: Ghosts are immaterial and can only be harmed by magical attacks.\n* Fear –1: Ghosts cause Guts checks at –1 when they let themselves be seen.\n* Poltergeist: Once per day, Dorothy’s ghost can create a storm of small objects covering an area the size of a Large Burst Template. This shower of trinkets may move up to 2d6” per round. Anyone inside suffers 2d4 damage per round. The storm lasts for 2d6 rounds."
   },
   {
@@ -30,39 +30,39 @@
   {
    "name": "Jewel Patron",
    "category": "The Jewel",
-   "description": "Scruffy, hard-drinking miners working the played-out claims in the surrounding mountains, in town for a brief spell.",
+   "description": "Scruffy, hard-drinking miners, in town for a brief spell.",
    "block": "Jewel Patron\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d8, Vigor d6\nSkills: Fighting d6, Gambling d6, Notice d6, Shooting d6\nCharisma: –2; Pace: 6; Parry: 5; Toughness: 5\nHindrances: Illiterate, Mean\nGear: Colt Frontier (12/24/48, 2d6, shots 6, AP 1), knife (d6+d4)"
   },
   {
    "name": "Deputy",
    "category": "Law and Disorder",
-   "description": "Before they were deputized these worthless curs were members of the Rotten Catfish Gang. Old habits died hard.",
+   "description": "Worthless curs wearing a badge, with old habits that died hard.",
    "block": "Deputy\nAttributes: Agility d6, Smarts d4, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d6, Intimidation d4, Notice d4, Shooting d6\nCharisma: –6; Pace: 6; Parry: 5; Toughness: 5\nHindrances: Arrogant, Bloodthirsty, Mean, Illiterate, Wanted\nEdges: Combat Reflexes\nGear: Colt Frontier (12/24/48, 2d6, shots 6, AP 1)"
   },
   {
    "name": "Marshal Bryce",
    "category": "Law and Disorder",
-   "description": "The meanest junkyard dog in town, thrown in with Reverend Cheval in the hope of profiting from Coffin Rock. He keeps the peace through intimidation and violence.",
+   "description": "The meanest junkyard dog for miles. He keeps the peace through intimidation and violence.",
    "block": "Marshal Bryce\nAttributes: Agility d8, Smarts d6, Spirit d6, Strength d6, Vigor d8\nSkills: Fighting d8, Guts d6, Intimidation d10, Notice d6, Shooting d10\nCharisma: –6; Pace: 6; Parry: 6; Toughness: 6\nHindrances: Bloodthirsty, Greedy, Grim Servant o’ Death, Mean, Stubborn\nEdges: Combat Reflexes, Hip Shooting, Marksman, Quick Draw, Speed Load\nGear: Colt Dragoon (12/24/48, 2d6+1, shots 6, AP 1), quick draw holster",
    "wildCard": true
   },
   {
    "name": "Ike Turnbull",
    "category": "Fool’s Gold",
-   "description": "The assay office’s sole employee. The town has chewed his sanity to ribbons, reducing him to the paranoid killer he is today.",
+   "description": "Paranoid and murderous, his sanity chewed to ribbons.",
    "block": "Ike Turnbull\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d8, Intimidation d4, Knowledge (Mining) d8, Notice d4, Stealth d8\nCharisma: 0; Pace: 6; Parry: 6; Toughness: 5\nHindrances: Delusional (all the copper in town is his), Greedy, Grim Servant o’ Death\nEdges: Trademark Weapon (Pickaxe)\nGear: Pickaxe (2d6)",
    "wildCard": true
   },
   {
    "name": "Greedy Townsfolk",
    "category": "Fool’s Gold",
-   "description": "Good folks twisted into wealth-obsessed lunatics by the town. Ten of them share one armoury: six pitchforks and clubs, one saber, one double barrel shotgun and two Colt Frontiers — the gear line lists one of each, so give each mook what it is carrying.",
+   "description": "Ordinary folk twisted into wealth-obsessed lunatics. Ten of them share one armoury: six pitchforks and clubs, one saber, one double barrel shotgun and two Colt Frontiers — the gear line lists one of each, so give each mook what it is carrying.",
    "block": "Greedy Townsfolk\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d4, Knowledge (Trade) d8, Notice d6, Shooting d4\nCharisma: –4; Pace: 6; Parry: 4; Toughness: 5\nHindrances: Bloodthirsty, Delusion, Greedy\nGear: Pitchfork (d6+d4), saber (2d6), double barrel shotgun (12/24/48, 1-3d6, RoF 1-2), Colt Frontier (12/24/48, 2d6, AP 1)"
   },
   {
    "name": "Crawlin’ Dead",
    "category": "Undead",
-   "description": "Four poor souls killed and partially dismembered by Turnbull, free to enact revenge on a town that did not even register their passing.",
+   "description": "Corpses, partially dismembered, dragging themselves along.",
    "block": "Crawlin’ Dead\nAttributes: Agility d6, Smarts d4, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d6, Intimidation d6, Notice d4\nPace: 3; Parry: 5; Toughness: 7\nSpecial Abilities\n* Claws: d6+d4\n* Fear: Anyone who encounters a crawlin’ dead must make a Guts roll.\n* Fearless: Crawlin’ dead are immune to Fear and Intimidation.\n* Undead: +2 Toughness, +2 to recover from being Shaken. Called shots do no extra damage. Arrows, bullets, and other piercing attacks do half-damage.\n* Weakness (Head): Shots to a crawlin’ dead’s head are +2 damage, and piercing attacks do normal damage."
   },
   {
@@ -74,51 +74,51 @@
   {
    "name": "Ray Wisely",
    "category": "Wet Goods",
-   "description": "Owner of the General Store. Since things literally went bad he avoids the place, playing very low stakes poker in the Six Feet Under instead.",
+   "description": "A storekeeper with no appetite left for his own counter, happier over a hand of very low stakes poker.",
    "block": "Ray Wisely\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d4, Knowledge (Shop Management) d8, Notice d6, Persuasion d6, Shooting d4\nCharisma: 0; Pace: 6; Parry: 4; Toughness: 5\nHindrances: Anemic, Bad Dreams\nGear: Colt Frontier (12/24/48, 2d6, shots 6, AP 1)"
   },
   {
    "name": "Cultist",
    "category": "Unholy Communion",
-   "description": "The acceptable face of the Brotherhood of the New Covenant. Do not be fooled — they are still dangerously insane.",
+   "description": "Presentable, softly spoken, and dangerously insane.",
    "block": "Cultist\nAttributes: Agility d6, Smarts d4, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d6, Notice d6, Persuasion d8\nCharisma: +2; Pace: 6; Parry: 5; Toughness: 5\nHindrances: Hard of Hearing (Minor)\nEdges: Charismatic\nGear: Club (d6+d4)"
   },
   {
    "name": "Deacon Robert Plume",
    "category": "Unholy Communion",
-   "description": "One of Cheval’s first and most devout followers. He keeps the flock in line and is constantly on the look-out for fresh converts.",
+   "description": "A devout and forceful preacher, always on the look-out for fresh converts.",
    "block": "Deacon Robert Plume\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d6, Notice d6, Persuasion d8, Shooting d6\nCharisma: +2; Pace: 6; Parry: 5; Toughness: 5\nHindrances: Hard of Hearing (Minor)\nEdges: Attractive, Combat Reflexes, Command\nGear: Club (d6+d4), Colt Thunderer (12/24/48, 2d6, shots 6, AP 1)"
   },
   {
    "name": "John Daly",
    "category": "Undead",
-   "description": "A walkin’ dead who revisits the site of his old mansion nightly. If no one interferes with him, he doesn’t interfere with them.",
+   "description": "A walkin’ dead. If no one interferes with him, he doesn’t interfere with them.",
    "block": "John Daly\nAttributes: Agility d6, Smarts d4, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d6, Intimidation d6, Notice d4\nPace: 4; Parry: 5; Toughness: 7\nSpecial Abilities\n* Claws: d6+d4\n* Fear –1: Anyone who encounters a walkin’ dead must make a Guts roll.\n* Fearless: Walkin’ dead are immune to Fear and Intimidation.\n* Undead: +2 Toughness, +2 to recover from being Shaken. Called shots do no extra damage. Arrows, bullets, and other piercing attacks do half-damage.\n* Weakness (Head): Shots to a walkin’ dead’s head are +2 damage, and piercing attacks do normal damage.",
    "wildCard": true
   },
   {
    "name": "Dr. William Osgood",
    "category": "What’s Up Doc?",
-   "description": "A skilled man with a foul obsession. The corruption of Coffin Rock took a natural predilection for the cutting edge of medicine and amplified it tenfold. The book prints his Parry and Toughness as 6/4 and 7/9 — the first of each is his normal state and is what is recorded here; the second is while he is Berserk.",
+   "description": "A skilled physician with a foul obsession — a natural predilection for the cutting edge of medicine, amplified tenfold. The book prints his Parry and Toughness as 6/4 and 7/9 — the first of each is his normal state and is what is recorded here; the second is while he is Berserk.",
    "block": "Dr. William Osgood\nAttributes: Agility d6, Smarts d10, Spirit d10, Strength d6, Vigor d8\nSkills: Fighting d8, Healing d8, Intimidation d4, Notice d4, Shooting d6\nCharisma: 0; Pace: 6; Parry: 6; Toughness: 7\nHindrances: Bad Eyes (Minor), Curious, Obese, Quirk (likes touching people’s skin)\nEdges: Frenzy, Healer\nGear: scalpel (2d6)\nSpecial Abilities\n* Berserk: Dr. Osgood is permanently berserk when disturbed in his flensing operation. He gains +2 to all Fighting and Strength rolls and ignores Wound Penalties. On a Fighting die roll of 1, he hits a random adjacent target. While berserk his Parry is 4 and his Toughness 9.",
    "wildCard": true
   },
   {
    "name": "Jonah Thurgood",
    "category": "Fade to Black",
-   "description": "The town’s blacksmith and the stoutest heart in Coffin Rock. Teetotal, rarely mixes with other townsfolk, and never attends church.",
+   "description": "A blacksmith with the stoutest heart for miles. Teetotal, and keeps himself to himself.",
    "block": "Jonah Thurgood\nAttributes: Agility d6, Smarts d4, Spirit d4, Strength d10, Vigor d8\nSkills: Fighting d6, Knowledge (Blacksmith) d8, Notice d6, Persuasion d6, Repair d8, Shooting d4\nCharisma: 0; Pace: 5; Parry: 5; Toughness: 7\nEdges: Brawny\nGear: Sledgehammer (d10+d8, Parry –1), double barrel shotgun (12/24/48, 1-3d6, RoF 1-2)"
   },
   {
    "name": "Taylor Johnson",
    "category": "Six Feet Under",
-   "description": "The saloon keeper, a broken man. He is aware something strange is happening in town but has neither the courage nor imagination to come to terms with what it is.",
+   "description": "A saloon keeper, and a broken man — short on both courage and imagination.",
    "block": "Taylor Johnson\nAttributes: Agility d6, Smarts d6, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d4, Knowledge (Barkeep) d8, Notice d6, Persuasion d6, Shooting d4, Streetwise d6\nCharisma: 0; Pace: 6; Parry: 4; Toughness: 5\nGear: Shotgun (12/24/48, 1-3d6, RoF 1-2, Shots 2, +2 Shooting at short range)"
   },
   {
    "name": "Mayor Wilfred Hambly",
    "category": "Six Feet Under",
-   "description": "The mayor looks more ragged with each passing day; the pressure is straining him past his limits.",
+   "description": "Looks more ragged with each passing day, strained well past his limits.",
    "block": "Mayor Wilfred Hambly\nAttributes: Agility d6, Smarts d8, Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d4, Knowledge (Politics) d8, Notice d6, Persuasion d8, Shooting d4\nCharisma: 0; Pace: 6; Parry: 4; Toughness: 5\nHindrances: Habit (Major: Absinthe)\nGear: Gold Pocket Watch"
   },
   {
@@ -130,32 +130,32 @@
   {
    "name": "Lizzie Pierce",
    "category": "Six Feet Under",
-   "description": "A faded raven-haired beauty, now a cleaner at the Six Feet Under. A tough life has made her hard.",
+   "description": "A faded raven-haired beauty. A tough life has made her hard.",
    "block": "Lizzie Pierce\nAttributes: Agility d8, Smarts d6, Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d4, Knowledge (Dancing) d8, Notice d6, Taunt d6\nCharisma: +2; Pace: 6; Parry: 5; Toughness: 5\nEdges: Acrobat, Attractive\nGear: Boot knife (d6+d4)"
   },
   {
    "name": "Miner",
    "category": "Six Feet Under",
-   "description": "Rough-looking and somewhat crazed, coming to the end of their money and dreading the day they have to go back out to the mines.",
+   "description": "Rough-looking and somewhat crazed, coming to the end of their money.",
    "block": "Miner\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d8, Vigor d6\nSkills: Fighting d6, Gambling d6, Notice d6, Shooting d6\nCharisma: 0; Pace: 6; Parry: 5; Toughness: 5\nHindrances: Greedy, Illiterate, Mean\nGear: Colt Frontier (12/24/48, 2d6, shots 6, AP 1), knife (d6+d4)"
   },
   {
    "name": "Child Wraith",
    "category": "Ghosts",
-   "description": "Vicious, as only a spiteful little girl can be — confused and hurt by her abandonment, and lashing out at anyone she finds. Only by finding and burying her remains can she be defeated.",
+   "description": "Vicious, as only a spiteful little girl can be — confused, hurt, and lashing out at anyone she finds. She cannot be put down for good until her remains are buried.",
    "block": "Child Wraith\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d6, Vigor d6\nSkills: Fighting d6, Intimidation d10, Notice d10, Taunt d10, Stealth d12\nPace: 6; Parry: 5; Toughness: 5\nSpecial Abilities\n* Anchor: The ghost cannot travel more than a mile from her remains.\n* Ethereal: Ghosts are immaterial and can only be harmed by magical attacks.\n* Fear –2: Ghosts cause Guts checks at –2 when they let themselves be seen.\n* Hardy: Two Shaken results do not cause a wound.\n* Invisible: The ghost is naturally invisible, but can become visible at will. Attacks against an invisible target are made at –6.\n* Invulnerable: Attacks can only leave the ghost Shaken, not cause wounds.\n* Poltergeist: Once each day the ghostly girl can create a storm of small objects covering a Large Burst Template, causing 2d4 damage per round to anyone it touches. The storm may move up to 2d6” per round and lasts 2d6 rounds.\n* Terror: The ghost can reveal its most terrifying form, forcing those who witness it to make a second Guts roll at –2.\n* Weakness: The ghost is banished as soon as someone buries its mortal remains.",
    "wildCard": true
   },
   {
    "name": "Mice Swarm",
    "category": "Swarms",
-   "description": "Guarding the archive room. They fight only when cornered.",
+   "description": "They fight only when cornered.",
    "block": "Mice Swarm\nAttributes: Agility d10, Smarts d4 (A), Spirit d12, Strength d8, Vigor d10\nSkills: Notice d6, Stealth d12+1\nPace: 10; Parry: 4; Toughness: 7\nSpecial Abilities\n* Bite: When cornered, mice inflict hundreds of tiny bites every round to their victims, hitting automatically and causing 2d4 damage to everyone in the template.\n* Cowardly: The mice fight only when they have no other choice, otherwise they try to run away.\n* Split: Mice are clever enough to split into two smaller swarms (Small Burst Templates) should their foes split up. The Toughness of these smaller swarms is lowered by –2.\n* Swarm: Parry +2. Because the swarm is composed of hundreds of creatures, cutting and piercing weapons do no real damage. Area-effect weapons work normally, and a character can stomp to inflict his Strength damage each round."
   },
   {
    "name": "Blood Man",
    "category": "The Mudder Lode",
-   "description": "Twisted creations formed from the mortal remains of miners fused with the blood of Tacheene — a corrupted servant of the manitou Ahpuch.",
+   "description": "A twisted thing formed from the mortal remains of a miner, fused with corrupted blood.",
    "block": "Blood Man\nAttributes: Agility d4, Smarts d4, Spirit d8, Strength d10, Vigor d8\nSkills: Fighting d6, Shooting d6\nPace: 5; Parry: 5; Toughness: 7\nGear: Bloody Mud Blast (2/4/8, 2d6), Searing Touch (1d10+1d6)\nSpecial Abilities\n* Bloody Mud Blast: Blood men may make a ranged attack, range 2/4/8, 2d6 damage, target is set alight on a 1 in 6.\n* Construct: +2 to recover from being Shaken. Arrows, bolts, firearms and piercing attacks do half damage. Fearless. Ignores Wound Penalties. Immune to disease and poison.\n* Fear: Anyone who encounters a Blood Man must make a Guts roll.\n* Hardy: A second Shaken result does not cause a wound to a Blood Man.\n* Henchman: Blood Men get a Wild Die as though they were Wild Cards.\n* Immunity (Fire): Blood Men are immune to fire.\n* Searing Touch: 1d10+1d6, target set alight on a 1 in 6.\n* Size +1: Blood men are significantly bigger than a man.\n* Weakness (Possession): Blood Men reunited with their own ghosts lose their Henchman ability and become regular Extras.\n* Weakness (Water): Water based attacks or powers with water trappings inflict an extra d6 damage to blood men.",
    "wildCard": true,
    "maxWounds": 0
@@ -163,14 +163,14 @@
   {
    "name": "Shelly Pearl",
    "category": "Run to the Hills",
-   "description": "Beautiful, direct and deadly. She knows the officials in the town are corrupt, though she does not know how far the corruption has gone.",
+   "description": "Beautiful, direct and deadly.",
    "block": "Shelly Pearl\nAttributes: Agility d8, Smarts d6, Spirit d8, Strength d6, Vigor d8\nSkills: Fighting d6, Guts d8, Intimidation d6, Notice d8, Riding d6, Shooting d8\nCharisma: +4; Pace: 6; Parry: 5; Toughness: 6\nHindrances: Enemy (Bryce)\nEdges: Attractive, Charismatic, Dodge, Quick, Quick Load\nGear: Colt Peacemaker (12/24/48, 2d6+1, shots 6, AP 1)",
    "wildCard": true
   },
   {
    "name": "Pearl Gang Member",
    "category": "Run to the Hills",
-   "description": "Rough and tumble women who hooked up with Shelly Pearl after being victimized by Bryce and his men. Determined, dangerous, and fiercely loyal.",
+   "description": "Rough and tumble women. Determined, dangerous, and fiercely loyal to their own.",
    "block": "Pearl Gang Member\nAttributes: Agility d8, Smarts d6, Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d6, Notice d6, Shooting d6, Stealth d6, Survival d6\nCharisma: –2; Pace: 6; Parry: 5; Toughness: 5\nHindrances: Wanted (Minor)\nEdges: Quick Draw\nGear: Colt Peacemaker (12/24/48, 2d6+1, shots 6, AP 1), Colt Revolving Rifle (24/48/96, 2d8, shots 5, AP 2, Reload 2)"
   },
   {
@@ -189,33 +189,33 @@
   {
    "name": "Walkin’ Dead",
    "category": "Undead",
-   "description": "Zombies raised by minor manitous, roaming the hills looking for fresh brains to snack on.",
+   "description": "Zombies raised by minor manitous, looking for fresh brains to snack on.",
    "block": "Walkin’ Dead\nAttributes: Agility d6, Smarts d4, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d6, Intimidation d6, Notice d4\nPace: 4; Parry: 5; Toughness: 7\nSpecial Abilities\n* Claws: d6+d4\n* Fear: Anyone who encounters a walkin’ dead must make a Guts roll.\n* Fearless: Walkin’ dead are immune to Fear and Intimidation.\n* Undead: +2 Toughness, +2 to recover from being Shaken. Called shots do no extra damage. Arrows, bullets, and other piercing attacks do half-damage.\n* Weakness (Head): Shots to a walkin’ dead’s head are +2 damage, and piercing attacks do normal damage."
   },
   {
    "name": "Laughs At Darkness",
    "category": "Allies",
-   "description": "The coyote shaman, tasked by his Guardian Spirit with freeing Tacheene from his captors. He has been sending out spiritual smoke signals hoping to attract allies.",
+   "description": "A coyote shaman.",
    "block": "Laughs At Darkness\nAttributes: Agility d6, Smarts d8, Spirit d12, Strength d6, Vigor d6\nSkills: Fighting d8, Guts d8, Persuasion d8, Riding d8, Shooting d6, Stealth d6, Survival d8, Tracking d8, Tribal Medicine d12+1\nCharisma: 0; Pace: 6; Parry: 6; Toughness: 5\nHindrances: Old Ways Oath, Quirk (constant laughter)\nEdges: Arcane Background (Shamanism), Power Points, Professional (Tribal Medicine), New Power x5, Talisman Creator\nPowers: Boost/lower trait, environmental protection, greater healing, healing, protection, teleport, vision quest; 20 PP\nGear: Knife (d6+d4), peyote, Talismans (teleport and protection)"
   },
   {
    "name": "Ghost Miner",
    "category": "Ghosts",
-   "description": "Miners turned by Reverend Cheval and his cultists, or forced into the mud by the first blood men. They merge with the posse to guide them through the mine.",
+   "description": "The ghosts of miners.",
    "block": "Ghost Miner\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d6, Vigor d6\nSkills: Fighting d6, Intimidation d10, Notice d10, Taunt d10, Stealth d12\nPace: 6; Parry: 5; Toughness: 5\nSpecial Abilities\n* Anchor: The ghosts cannot travel more than a mile from their remains.\n* Ethereal: Ghosts are immaterial and can only be harmed by magical attacks.",
    "wildCard": true
   },
   {
    "name": "Reverend Cheval",
    "category": "Dust to Dust",
-   "description": "The cult leader behind the town’s corruption. For all his evil actions, Cheval is also a victim of the madness which afflicts the town.",
+   "description": "A preacher of enormous conviction, and for all his evil a victim of the same madness.",
    "block": "Reverend Cheval\nAttributes: Agility d8, Smarts d8, Spirit d8, Strength d8, Vigor d8\nSkills: Fighting d10, Guts d8, Knowledge (Occult) d8, Notice d6, Persuasion d8, Spellcasting d10\nCharisma: +2; Pace: 6; Parry: 7; Toughness: 6\nHindrances: Delusion (Major), Overconfident\nEdges: Arcane Background (Magic), Champion, Charismatic, Command, Fervor, Improved Arcane Resistance, Snakeoil Salesman\nPowers: Armor, bolt, dispel, environmental protection, fear, puppet, smite; 20 PP\nGear: Unhallowed Blade (d8+d4, Soaking wounds caused by this blade suffer a –2 penalty), Book of the New Covenant\nSpecial Abilities\n* Ahpuch Blessing: Cheval has an inexhaustible number of Power Points within 3 inches of the altar.\n* Hardy: A second Shaken result does not cause a wound to Cheval.\n* Manitou Ridden: Cheval ignores wound penalties.",
    "wildCard": true
   },
   {
    "name": "Cheval’s Cultist",
    "category": "Dust to Dust",
-   "description": "Men clad in crimson robes who guard Reverend Cheval with their lives.",
+   "description": "Men clad in crimson robes, who guard their master with their lives.",
    "block": "Cheval’s Cultist\nAttributes: Agility d6, Smarts d4, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d6, Notice d6, Persuasion d8\nCharisma: +2; Pace: 6; Parry: 5; Toughness: 5\nHindrances: Hard of Hearing (Minor)\nEdges: Charismatic\nGear: Dagger (d6+d4)"
   },
   {

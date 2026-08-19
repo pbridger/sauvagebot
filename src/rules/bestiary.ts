@@ -26,6 +26,24 @@ import type { Sheet } from './sheet.js';
 export interface Creature {
   name: string;
   category: string;
+  /**
+   * What this thing looks like, and how it carries itself. **Nothing else.**
+   *
+   * A description is copied onto the sheet by `creatureSheet`, and a sheet is
+   * visible to whoever the token is bound to — so anything written here is
+   * potentially read by a player. Coffin Rock's printed descriptions are written
+   * for the Marshal and say who is allied with whom, who is behind the town's
+   * corruption, and which building to find someone in; all of that was cut on the
+   * way in, and a future import should cut it too.
+   *
+   * Rules do stay, because they are not spoilers and losing them costs the Marshal
+   * something real: Osgood's Berserk numbers, how many shotguns ten townsfolk have
+   * between them, what a swarm's template is.
+   *
+   * `category` is deliberately *not* held to this. It is the adventure's own
+   * chapter names, several of which are places, but it never leaves the creature
+   * picker — which lives in the Table pane, hidden from players.
+   */
   description?: string;
   /** The stat block as published. */
   block: string;
