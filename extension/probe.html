@@ -43,6 +43,17 @@
     </style>
   </head>
   <body>
+    <h2>Start here</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      Open a scene first. <b>Storage report</b> measures and logs everything — per-key sizes for
+      room and scene metadata, item totals, compression on this room's real sheets, and whether
+      your role can write scene metadata. It writes nothing it does not clean up, so it is safe
+      mid-session. Run it once as GM and once as a player. <b>Deep clean</b> removes every probe
+      key from every store, shrinking oversized values first so the delete survives.
+    </p>
+    <button id="storage-report"><b>Storage report</b></button>
+    <button id="deep-clean">Deep clean</button>
+
     <h2>Identity</h2>
     <dl id="identity"></dl>
 
@@ -57,8 +68,10 @@
 
     <h2>Capacity</h2>
     <p style="margin:0 0 8px;opacity:.7">
-      Doubling search then bisection with incompressible filler, so these measure a byte budget
-      rather than a compression ratio. Item and scene need a token selected / a scene open.
+      <b>Answered in round 3 — you probably want "Storage report" instead.</b> Room ≈ 16,384 chars
+      whole-document; item 512 kB each; scene ≥ 8 MB but chunked. These fill the store with
+      incompressible filler to measure a byte budget, so they trip the rate limiter and leave
+      large values behind. Item and scene need a token selected / a scene open.
     </p>
     <button id="room-cap">Room cap</button>
     <button id="item-cap">Item cap</button>

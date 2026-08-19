@@ -17,6 +17,21 @@
  *   4. How much fits in SCENE metadata?
  *   5. Can a non-GM write item metadata?
  *
+ * Round 3 (2026-08-19) answered the capacity questions and can now be left alone:
+ *   - **room ≈ 16,384 chars**, whole-document. The blob was written on top of the
+ *     room's existing 11,720, and 4,096 fit where 8,192 did not, so the ceiling is
+ *     15,816–19,912 and 16,384 is the only round number in it.
+ *   - **item 512 kB each**, rejected at 1 MB. Unchanged.
+ *   - **scene ≥ 8 MB** — no limit found. But the store is *chunked*: clearing an
+ *     8 MB value threw `4014 Max chunk exceeded`, which is why `deepClean` shrinks
+ *     before it deletes.
+ *   - writes are rate limited; a tight sweep trips `RateLimitHit`.
+ *
+ * Round 4 is therefore not about how much fits. The room sits at 11,720 chars at
+ * rest and the design's own accounting explains only ~8,800 of them, so the open
+ * question is **where the bytes go** — which is `storageReport`, the one button
+ * worth pressing. See MECHANICS-INVENTORY.md §12.
+ *
  * Everything written lives under `com.savagebot/probe*`.
  *
  * KEEP THIS around after milestone 0 rather than deleting it: it is the only
@@ -24,6 +39,8 @@
  * will want it.
  */
 import OBR, { buildShape } from '@owlbear-rodeo/sdk';
+import { ROOM_CAPACITY } from '../../src/obr/store.js';
+import { findEntry } from '../../src/rules/catalogue.js';
 
 const PREFIX = 'com.savagebot/probe';
 const STAMP_KEY = `${PREFIX}-stamp`;
@@ -357,44 +374,418 @@ async function writeToSelectedItem(): Promise<void> {
   }
 }
 
+// ------------------------------------------------------ storage accounting
+//
+// Round 3 measured the room ceiling at 15,816–19,912 (consistent with exactly
+// 16,384) and found the room sitting at 11,720 chars at rest — but the design's
+// own accounting only explains ~8,800 of those. A total tells you that you are
+// full; it does not tell you what to move. Everything below reports per key.
+
+/** What one key costs the shared document: `"key":value,`. */
+function keyCost(key: string, value: unknown): number {
+  if (value === undefined) return 0;
+  return JSON.stringify(key).length + 1 + JSON.stringify(value).length + 1;
+}
+
 /**
- * Compression turns a marginal fit into a comfortable one: real sheet JSON is
- * highly repetitive, unlike the noise used to measure the cap. Confirms that
- * CompressionStream exists in this context and that base64 survives a round trip.
+ * Which family a key belongs to, for the grouped total.
+ *
+ * The per-key list is the evidence; the grouping is the answer. Six PC sheets
+ * spread over six keys read as noise until they are added up as "the roster".
+ */
+function family(key: string): string {
+  const known = [
+    'com.savagebot/pc/',
+    'com.savagebot/bennies/',
+    'com.savagebot/place/',
+    'com.savagebot/dice-anim/',
+    'com.savagebot/mine/',
+  ];
+  return known.find((prefix) => key.startsWith(prefix)) ?? key;
+}
+
+function reportDocument(label: string, metadata: Record<string, unknown>, capacity?: number): void {
+  const entries = Object.entries(metadata)
+    .filter(([, value]) => value !== undefined)
+    .map(([key, value]) => [key, keyCost(key, value)] as const)
+    .sort((a, b) => b[1] - a[1]);
+  const total = JSON.stringify(metadata).length;
+
+  const listed = Object.keys(metadata).length;
+  const live = entries.length;
+  log(
+    `--- ${label}: ${total} chars, ${live} live key(s)` +
+      (listed > live ? `, ${listed - live} tombstoned` : '') +
+      (capacity ? ` — ${((total / capacity) * 100).toFixed(0)}% of ${capacity}` : ''),
+  );
+
+  if (!live) {
+    log('  (empty)');
+    return;
+  }
+
+  const groups = new Map<string, { chars: number; count: number }>();
+  for (const [key, chars] of entries) {
+    const name = family(key);
+    const current = groups.get(name) ?? { chars: 0, count: 0 };
+    groups.set(name, { chars: current.chars + chars, count: current.count + 1 });
+  }
+
+  log('  by family:');
+  for (const [name, { chars, count }] of [...groups].sort((a, b) => b[1].chars - a[1].chars)) {
+    log(
+      `    ${name.padEnd(26)} ${String(chars).padStart(6)}  ${((chars / total) * 100)
+        .toFixed(1)
+        .padStart(5)}%${count > 1 ? `  (${count} keys)` : ''}`,
+    );
+  }
+
+  log('  by key:');
+  for (const [key, chars] of entries) log(`    ${key.padEnd(34)} ${String(chars).padStart(6)}`);
+}
+
+/** gzip + base64. Separated out so the report and the check cannot drift apart. */
+async function gzipBase64(raw: string): Promise<string> {
+  const stream = new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
+/**
+ * Compression, measured on **the room's real keys** rather than a synthetic roster.
+ *
+ * Round 3 got 5.1× on a made-up party and then failed the round trip with no way
+ * to tell why, because the write was unguarded and the failure branch logged
+ * neither the error nor what came back. Both are fixed here: the write is in a
+ * try, and a mismatch prints the lengths and the first divergence.
  */
 async function compressionCheck(): Promise<void> {
   if (typeof CompressionStream === 'undefined') {
     log('CompressionStream unavailable in this context', 'bad');
     return;
   }
-  const roster = Array.from({ length: 6 }, (_, i) => ({
-    id: `pc-${i}`,
-    name: `Character ${i}`,
-    wildCard: true,
-    traits: { agility: 8, smarts: 6, spirit: 6, strength: 6, vigor: 8, fighting: 8, shooting: 10 },
-    derived: { parry: 6, toughness: 7, armor: 2, pace: 6, grit: 1 },
-    edges: ['Quick', 'Level Headed', 'Marksman', 'Steady Hands'],
-    hindrances: ['Loyal', 'Stubborn', 'Vengeful (Minor)'],
-    gear: ['Colt Peacemaker', 'Winchester 76', 'Bowie knife', 'Duster', 'Horse'],
-  }));
-  const raw = JSON.stringify(roster);
+  log('--- compression, on this room’s own keys ---');
 
-  const stream = new Blob([raw]).stream().pipeThrough(new CompressionStream('gzip'));
-  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
-  let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
-  const encoded = btoa(binary);
-
-  log(`6 realistic sheets: ${raw.length} chars raw, ${encoded.length} gzip+base64`, 'ok');
-
-  const key = `${PREFIX}-compressed`;
-  await OBR.room.setMetadata({ [key]: encoded });
-  const back = (await OBR.room.getMetadata())[key];
-  log(
-    back === encoded ? 'base64 round-tripped through room metadata intact' : 'base64 round trip FAILED',
-    back === encoded ? 'ok' : 'bad',
+  const room = await OBR.room.getMetadata();
+  const sheets = Object.entries(room).filter(
+    ([key, value]) => key.startsWith('com.savagebot/pc/') && value !== undefined,
   );
+  if (!sheets.length) {
+    log('  no PC keys in this room — nothing real to measure', 'bad');
+    return;
+  }
+
+  // Per key, never one blob: `roster.ts` keeps one key per owner precisely so two
+  // players editing two characters cannot collide, and compressing them together
+  // would trade that away for a better ratio.
+  let raw = 0;
+  let packed = 0;
+  for (const [key, value] of sheets) {
+    const json = JSON.stringify(value);
+    const encoded = await gzipBase64(json);
+    raw += json.length;
+    packed += encoded.length;
+    log(
+      `  ${key.replace('com.savagebot/pc/', '').padEnd(22)} ${String(json.length).padStart(5)} → ` +
+        `${String(encoded.length).padStart(5)}  (${(json.length / encoded.length).toFixed(2)}×)`,
+    );
+  }
+  log(
+    `  ${sheets.length} sheet(s): ${raw} → ${packed}, ${(raw / packed).toFixed(2)}× overall, ` +
+      `saving ${raw - packed} chars`,
+    'ok',
+  );
+
+  // The round trip. Base64 is pure ASCII, so this should be uneventful — which is
+  // exactly why round 3's failure needs a cause rather than a shrug.
+  const key = `${PREFIX}-compressed`;
+  const sample = await gzipBase64(JSON.stringify(sheets[0]![1]));
+  try {
+    await OBR.room.setMetadata({ [key]: sample });
+  } catch (error) {
+    log(`  round trip: the WRITE threw — ${describe(error)}`, 'bad');
+    return;
+  }
+  const back = (await OBR.room.getMetadata())[key];
+  if (back === sample) {
+    log('  round trip: base64 survived room metadata intact', 'ok');
+  } else if (back === undefined) {
+    log(`  round trip FAILED: key absent after write — silently dropped (${sample.length} chars)`, 'bad');
+  } else if (typeof back !== 'string') {
+    log(`  round trip FAILED: came back as ${typeof back}, not a string`, 'bad');
+  } else {
+    const at = [...sample].findIndex((c, i) => back[i] !== c);
+    log(
+      `  round trip FAILED: sent ${sample.length} chars, got ${back.length}, ` +
+        `first difference at ${at}`,
+      'bad',
+    );
+  }
   await OBR.room.setMetadata({ [key]: undefined });
+}
+
+/**
+ * Keys nothing owns any more.
+ *
+ * Round 4 found two kinds in a live room, both small and both permanent, which is
+ * the combination that matters in an append-only-feeling 16 kB store:
+ *
+ *   - `com.savagebot/seat/<id>` — the *previous* schema. `seats.ts` says in as
+ *     many words that the key is `place/` and **not** the old `seat/`, but nothing
+ *     ever removed the old ones, so they are still being paid for.
+ *   - `com.savagebot/bennies/<sheetId>` for a character that no longer exists.
+ *     `Roster.remove` deletes the sheet and documents leaving the *rules-text*
+ *     dictionary alone; it says nothing about bennies, and does not clear them.
+ *
+ * Reported, never deleted. This harness should not be in the business of removing
+ * data it merely believes is unreferenced.
+ */
+async function orphanCheck(): Promise<void> {
+  log('--- orphaned keys (reported only, nothing is deleted) ---');
+  const room = await OBR.room.getMetadata();
+  const live = (key: string) => room[key] !== undefined;
+  const sheetIds = new Set(
+    Object.keys(room)
+      .filter((k) => k.startsWith('com.savagebot/pc/') && live(k))
+      .map((k) => k.slice('com.savagebot/pc/'.length)),
+  );
+
+  let total = 0;
+  const legacy = Object.keys(room).filter((k) => k.startsWith('com.savagebot/seat/') && live(k));
+  for (const key of legacy) {
+    const chars = keyCost(key, room[key]);
+    total += chars;
+    log(`  superseded schema: ${key} (${chars} chars) — replaced by place/`, 'bad');
+  }
+
+  const strayBennies = Object.keys(room).filter(
+    (k) =>
+      k.startsWith('com.savagebot/bennies/') &&
+      live(k) &&
+      !sheetIds.has(k.slice('com.savagebot/bennies/'.length)),
+  );
+  for (const key of strayBennies) {
+    const chars = keyCost(key, room[key]);
+    total += chars;
+    log(`  no such character: ${key} (${chars} chars)`, 'bad');
+  }
+
+  log(
+    total ? `  ${legacy.length + strayBennies.length} orphan(s), ${total} chars` : '  none',
+    total ? 'bad' : 'ok',
+  );
+}
+
+/**
+ * How much of the rules-text dictionary is already in the shipped catalogue.
+ *
+ * Round 4 made this the decisive number: `rules-text` is 4,447 chars, 38% of the
+ * room's real usage once the probe's own leftover blob is discounted. The
+ * dictionary is *already* declared best-effort and rebuildable — `roster.ts`
+ * documents it as evictable and `rebuildRulesText` regenerates it from the
+ * catalogue that ships in the bundle. So every entry the catalogue can supply is
+ * a paragraph being paid for twice.
+ *
+ * What cannot be dropped is text the book never had: a homebrew edge, or wording
+ * that came off an imported card and differs from the printed entry. This splits
+ * the dictionary into those two piles and prices them, because the *derivable*
+ * pile is the saving and the *divergent* pile is the reason it cannot simply be
+ * deleted.
+ */
+async function rulesTextCoverage(): Promise<void> {
+  log('--- rules-text vs the shipped catalogue ---');
+  const text = (await OBR.room.getMetadata())['com.savagebot/rules-text'] as
+    | Record<string, string>
+    | undefined;
+  if (!text || !Object.keys(text).length) {
+    log('  no rules-text dictionary in this room');
+    return;
+  }
+
+  let identical = 0;
+  let divergent = 0;
+  let missing = 0;
+  const cost = (name: string) => keyCost(name, text[name]);
+  const divergentNames: string[] = [];
+  const missingNames: string[] = [];
+
+  for (const name of Object.keys(text)) {
+    const found = findEntry(name)?.text;
+    if (found === undefined) {
+      missing += cost(name);
+      missingNames.push(name);
+    } else if (found.trim() === (text[name] ?? '').trim()) {
+      identical += cost(name);
+    } else {
+      divergent += cost(name);
+      divergentNames.push(name);
+    }
+  }
+
+  const total = identical + divergent + missing;
+  log(`  ${Object.keys(text).length} entries, ${total} chars`);
+  log(`    identical to the catalogue .. ${String(identical).padStart(5)}  ← droppable outright`);
+  log(`    differs from the catalogue .. ${String(divergent).padStart(5)}`);
+  log(`    not in the catalogue ........ ${String(missing).padStart(5)}`);
+  if (divergentNames.length) log(`    differing: ${divergentNames.join(', ')}`);
+  if (missingNames.length) log(`    absent:    ${missingNames.join(', ')}`);
+  log(
+    `  storing only what the catalogue cannot supply would save ${identical} chars ` +
+      `(${((identical / total) * 100).toFixed(0)}% of the dictionary)`,
+    identical ? 'ok' : 'bad',
+  );
+}
+
+/**
+ * **The one button.** Measures and logs everything, and writes nothing that is not
+ * cleaned up — so it is safe to press in a live room mid-session.
+ *
+ * Deliberately not a capacity search: the caps are known now (room 16,384; item
+ * 512 kB; scene ≥8 MB), and re-bisecting them fills the room with filler and
+ * trips the rate limiter for no new information. What was never known is where
+ * the bytes actually go, which is what this answers.
+ */
+async function storageReport(): Promise<void> {
+  log('════════ storage report ════════');
+
+  reportDocument('ROOM metadata', await OBR.room.getMetadata(), ROOM_CAPACITY);
+
+  if (await OBR.scene.isReady()) {
+    reportDocument('SCENE metadata', await OBR.scene.getMetadata());
+  } else {
+    log('--- SCENE metadata: no scene open', 'bad');
+  }
+
+  // Item metadata is per token and roomy, so the interesting figure is the total
+  // across the scene rather than any one token — that is what a move to items or
+  // to scene-scoped storage would be competing with.
+  if (await OBR.scene.isReady()) {
+    const items = await OBR.scene.items.getItems();
+    const bound = items.filter((item) => Object.keys(item.metadata ?? {}).length);
+    const chars = bound.reduce((a, item) => a + JSON.stringify(item.metadata).length, 0);
+    log(
+      `--- ITEM metadata: ${chars} chars over ${bound.length} of ${items.length} items ` +
+        `(cap is 512 kB *each*)`,
+    );
+  }
+
+  await orphanCheck();
+  await rulesTextCoverage();
+  await compressionCheck();
+
+  // Can a player write scene metadata? This decides how much of the roster can
+  // move there: villains are the Marshal's, but a PC sheet is edited by its owner,
+  // and `roster.ts` is built one-key-per-owner because of that.
+  log('--- scene metadata write permission ---');
+  const role = await OBR.player.getRole();
+  if (!(await OBR.scene.isReady())) {
+    log('  no scene open — cannot test', 'bad');
+  } else {
+    const key = `${PREFIX}-perm`;
+    try {
+      await OBR.scene.setMetadata({ [key]: 'probe' });
+      const ok = (await OBR.scene.getMetadata())[key] === 'probe';
+      log(
+        `  as ${role}: scene metadata write ${ok ? 'SUCCEEDED' : 'was silently dropped'}`,
+        ok ? 'ok' : 'bad',
+      );
+      await OBR.scene.setMetadata({ [key]: undefined });
+    } catch (error) {
+      log(`  as ${role}: scene metadata write REJECTED — ${describe(error)}`, 'bad');
+    }
+    if (role === 'GM') log('  run this again as a PLAYER — that is the answer that matters');
+  }
+
+  log('════════ end of report ════════', 'ok');
+}
+
+/**
+ * **The other button.** Remove every probe key from every store.
+ *
+ * Chunk-aware, which the old cleaner was not. Round 3 wrote an 8 MB blob to scene
+ * metadata and then could not clear it: assigning `undefined` threw `4014 Max
+ * chunk exceeded`, because the host has to sync the *existing* oversized value to
+ * apply the change. Overwriting with something tiny first shrinks the document
+ * below the chunk boundary, and only then does the delete go through.
+ */
+async function deepClean(): Promise<void> {
+  log('════════ deep clean ════════');
+
+  const room = await OBR.room.getMetadata();
+  const roomKeys = Object.keys(room).filter((k) => isProbeKey(k) && room[k] !== undefined);
+  if (roomKeys.length) {
+    await OBR.room.setMetadata(Object.fromEntries(roomKeys.map((k) => [k, undefined])));
+    const after = await OBR.room.getMetadata();
+    const left = roomKeys.filter((k) => after[k] !== undefined);
+    log(
+      `room: cleared ${roomKeys.length - left.length}/${roomKeys.length} probe key(s), ` +
+        `now ${JSON.stringify(after).length} chars`,
+      left.length ? 'bad' : 'ok',
+    );
+  } else {
+    log('room: no probe keys', 'ok');
+  }
+
+  if (await OBR.scene.isReady()) {
+    const scene = await OBR.scene.getMetadata();
+    const sceneKeys = Object.keys(scene).filter((k) => isProbeKey(k) && scene[k] !== undefined);
+    for (const key of sceneKeys) {
+      const size = JSON.stringify(scene[key]).length;
+      try {
+        // Shrink, *then* delete. One step for a small value, two for a big one —
+        // and the shrink is what makes the delete survivable at 8 MB.
+        if (size > 1024) {
+          await OBR.scene.setMetadata({ [key]: 'x' });
+          log(`  scene: shrank ${key} from ${size} chars to 1`);
+        }
+        await OBR.scene.setMetadata({ [key]: undefined });
+        log(`  scene: cleared ${key} (was ${size} chars)`, 'ok');
+      } catch (error) {
+        log(`  scene: could NOT clear ${key} (${size} chars) — ${describe(error)}`, 'bad');
+      }
+    }
+    log(
+      sceneKeys.length
+        ? `scene: now ${JSON.stringify(await OBR.scene.getMetadata()).length} chars`
+        : 'scene: no probe keys',
+      'ok',
+    );
+
+    // Probe keys on tokens, and the stray markers the attachment test builds.
+    const items = await OBR.scene.items.getItems();
+    const dirty = items.filter((item) => Object.keys(item.metadata ?? {}).some(isProbeKey));
+    if (dirty.length) {
+      await OBR.scene.items.updateItems(
+        dirty.map((i) => i.id),
+        (drafts) => {
+          for (const draft of drafts) {
+            // `undefined`, not `delete`: OBR rejects delete on the Immer draft.
+            for (const key of Object.keys(draft.metadata)) {
+              if (isProbeKey(key)) draft.metadata[key] = undefined;
+            }
+          }
+        },
+      );
+      log(`items: cleared probe keys from ${dirty.length} item(s)`, 'ok');
+    } else {
+      log('items: no probe keys', 'ok');
+    }
+
+    const locals = await OBR.scene.local.getItems();
+    const markers = locals.filter((item) => Object.keys(item.metadata ?? {}).some(isProbeKey));
+    if (markers.length) {
+      await OBR.scene.local.deleteItems(markers.map((i) => i.id));
+      log(`local: deleted ${markers.length} leftover marker(s)`, 'ok');
+    }
+  } else {
+    log('scene: not open — scene, item and local stores not cleaned', 'bad');
+  }
+
+  await OBR.player.setMetadata({ [STAMP_KEY]: undefined });
+  await showStamps();
+  log('════════ clean ════════', 'ok');
 }
 
 /**
@@ -723,6 +1114,8 @@ async function scaleTest(): Promise<void> {
 }
 
 OBR.onReady(async () => {
+  button('storage-report', storageReport);
+  button('deep-clean', deepClean);
   button('stamp', stamp);
   button('clear-stamps', clearProbeKeys);
   button('room-cap', roomCap);
@@ -738,7 +1131,7 @@ OBR.onReady(async () => {
   await showIdentity();
   await showStamps();
   await showGrid().catch(() => log('no scene open, so no grid to read', 'bad'));
-  log('ready — start with "Clear probe keys", your room still holds round 1 data');
+  log('ready — open a scene, then press "Storage report". "Deep clean" when finished.');
 
   OBR.room.onMetadataChange(() => void showStamps());
   OBR.player.onChange(() => void showIdentity());
