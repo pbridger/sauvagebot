@@ -10,6 +10,29 @@ reload.
 
 ---
 
+## 2026-08-19 — No spoilers on the sheet
+
+`9ca62b7`. A follow-up to the deploy below.
+
+Coffin Rock's printed descriptions are written for the Marshal, and the importer
+was copying them onto the sheet — where any player bound to that token can read
+them. They said which building to find Ike Turnbull in, that Marshal Bryce is in
+with Reverend Cheval, what the Blood Men are made of, and who Laughs At Darkness
+is working for.
+
+**27 of the 35 are rewritten** to appearance and bearing only. Rules stay, because
+they are not spoilers and cutting them would cost something real: Dr. Osgood's
+Berserk numbers, the ten Greedy Townsfolk's shared armoury, what template a swarm
+covers.
+
+The **category** shown in the creature picker is left as the adventure's own
+chapter names — several of which are places. That is deliberate: the picker is in
+the Table pane, which is hidden from players, so it is the one spot where the
+Marshal's own shorthand is safe. The rule is written on the type so a future
+import follows it.
+
+---
+
 ## 2026-08-19 — Coffin Rock, and a table everyone sees the same way
 
 `85657a0`, deployed from `typescript-rewrite`. Everything since the dice-feel
