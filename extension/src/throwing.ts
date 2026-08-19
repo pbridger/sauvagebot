@@ -8,8 +8,7 @@
  * numbers that nothing in that page read. One implementation, used by both.
  */
 import type DiceBox from '@drdreo/dice-box-threejs';
-import { jitter, seatVector } from '../../src/obr/seats.js';
-import type { Seat } from '../../src/obr/diceThrow.js';
+import { jitter, type SeatVector } from '../../src/obr/seats.js';
 import { scaled } from './effects.js';
 
 /**
@@ -84,21 +83,23 @@ function releasePoint(index: number, base: { x: number; y: number }, across: { x
  * same seat did not come from the same place. A seat that means "the top of the screen"
  * has to name the point, not sample it.
  *
- * So: the seat fixes the release point exactly, the throw is aimed at the middle of the
+ * So: the edge fixes the release point exactly, the throw is aimed at the middle of the
  * tray, and the only randomness left is a few degrees on the aim and the spin. Positions
  * are clamped inside the walls — the tray's edges are at 0.93 of the half-extent, and a
  * die spawned outside them is a die that never appears.
+ *
+ * It takes a vector rather than a named seat because a direction is now *derived*, from
+ * where the roller sits relative to whoever is watching (`relativeVector`), and lands on
+ * an arbitrary angle rather than one of eight compass points.
  */
 export function aimThrow(
   box: DiceBox,
-  seat: Seat,
+  edge: SeatVector,
   onThrow?: (vectors: ThrowVector[]) => void,
 ): () => void {
-  // The seat is the edge the player sits at, so the dice start there and are thrown
-  // towards the middle. `+y` is up on screen: the camera looks down `-z` with three's
-  // default up vector, which is what settles the sign convention that was marked
-  // unverified in `seats.ts`.
-  const edge = seatVector(seat);
+  // `edge` is the point on the screen's rim the dice are released at, so they start
+  // there and are thrown towards the middle. `+y` is up on screen: the camera looks down
+  // `-z` with three's default up vector, which is what settles the sign convention.
 
   (box as unknown as { startClickThrow: (n: string) => unknown }).startClickThrow = function (
     notationString: string,

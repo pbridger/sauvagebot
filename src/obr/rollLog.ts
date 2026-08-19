@@ -72,6 +72,26 @@ export interface RollEntry {
   animated?: boolean;
   /** Kept local, never sent. Present only on the roller's own client. */
   secret?: boolean;
+
+  /**
+   * Enough for any client to work the roll out against a target, and no more.
+   *
+   * The targeting table is shown to everyone — Parry, Toughness and Pace are
+   * numbers the table does arithmetic against all evening — so a receiving
+   * client has to be able to build it. It looks the defenders' stats up locally
+   * from the roster it already has; what it cannot know is anything about the
+   * *attacker*, which is what these three carry.
+   *
+   * Deliberately nothing about the Marshal's characters travels in here. An
+   * entry is broadcast to every client in the room, so a stat put in one is
+   * published, whatever the UI then chooses to draw.
+   */
+  /** The attacker's token, as the point ranges are measured from. */
+  from?: string;
+  /** The skill rolled — "Fighting", "Shooting" — deciding what it resolves against. */
+  skill?: string;
+  /** The weapon's `12/24/48`, when it had one. Absent for a melee attack. */
+  bands?: [number, number, number];
 }
 
 function isRollMod(value: unknown): value is RollMod {
@@ -117,6 +137,12 @@ export function isRollEntry(value: unknown): value is RollEntry {
     (entry.animated === undefined || typeof entry.animated === 'boolean') &&
     (entry.character === undefined || typeof entry.character === 'string') &&
     (entry.label === undefined || typeof entry.label === 'string') &&
+    (entry.from === undefined || typeof entry.from === 'string') &&
+    (entry.skill === undefined || typeof entry.skill === 'string') &&
+    (entry.bands === undefined ||
+      (Array.isArray(entry.bands) &&
+        entry.bands.length === 3 &&
+        entry.bands.every((n) => typeof n === 'number' && Number.isFinite(n)))) &&
     (entry.mods === undefined || (Array.isArray(entry.mods) && entry.mods.every(isRollMod)))
   );
 }

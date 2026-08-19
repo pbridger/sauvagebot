@@ -11,6 +11,9 @@ import {
   situationalMods,
   situationalTotal,
   situationsOf,
+  targetMods,
+  targetPills,
+  targetTotal,
   toggleCondition,
 } from '../src/rules/modifiers.js';
 import { isTokenState, newTokenState, type TokenState } from '../src/obr/binding.js';
@@ -262,5 +265,55 @@ describe('tokens bound before modifiers existed', () => {
   it('rejects a malformed one', () => {
     expect(isTokenState({ ...state(), mod: 'lots' })).toBe(false);
     expect(isTokenState({ ...state(), conditions: [4] })).toBe(false);
+  });
+});
+
+/**
+ * The counterpart to `situationalMods`. These numbers were recorded from the
+ * start with nothing to reach; the targeting table is what they now reach.
+ */
+describe("a target's own conditions, which change the attacker's roll", () => {
+  it('gives the attacker Vulnerable\'s +2', () => {
+    const vulnerable = state({ conditions: ['vulnerable'] });
+    expect(targetTotal(vulnerable)).toBe(2);
+    expect(targetMods(vulnerable).map((m) => m.label)).toEqual(['Vulnerable']);
+  });
+
+  it('keeps target-side conditions out of the target\'s own rolls', () => {
+    const vulnerable = state({ conditions: ['vulnerable'] });
+    expect(situationalTotal(vulnerable)).toBe(0);
+  });
+
+  it('keeps the attacker\'s own conditions out of the target-side total', () => {
+    expect(targetTotal(state({ conditions: ['dark'] }))).toBe(0);
+  });
+
+  it('is nothing for a target in no condition at all', () => {
+    expect(targetTotal(state())).toBe(0);
+    expect(targetPills(state())).toEqual([]);
+  });
+
+  /**
+   * Prone and Stunned are drawn but carry 0 — Prone is direction-dependent and
+   * Stunned is noted as counting for Vulnerable without the number. Both pend
+   * the book, so the pill appears and the arithmetic does not.
+   */
+  it('shows a pill for a condition it does not apply', () => {
+    const prone = state({ conditions: ['prone'] });
+    expect(targetPills(prone).map((p) => p.letter)).toEqual(['P']);
+    expect(targetTotal(prone)).toBe(0);
+  });
+
+  it('gives one letter per condition, and they do not collide', () => {
+    const letters = SITUATIONS.filter((s) => s.affects === 'others').map((s) =>
+      s.label.charAt(0).toUpperCase(),
+    );
+    expect(new Set(letters).size).toBe(letters.length);
+  });
+
+  it('stacks conditions from different groups', () => {
+    const both = toggleCondition(state({ conditions: ['prone'] }), 'vulnerable');
+    expect(targetPills(both).map((p) => p.letter).sort()).toEqual(['P', 'V']);
+    expect(targetTotal(both)).toBe(2);
   });
 });

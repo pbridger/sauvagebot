@@ -237,7 +237,9 @@ design actively gets in the way. `publish()` sends with `{ destination: 'REMOTE'
 Secret rolls are worse: never broadcast at all, so they would have no path to a tray whatsoever.
 
 So: a **separate `DICE_CHANNEL`**, sent so that the local client is included, carrying
-`{ id, dice, seat, colour }` — the roll id ties it to the log entry the panel already published.
+`{ id, dice, place, places, colour }` — the roll id ties it to the log entry the panel already
+published, and `place`/`places` say where the roller sits rather than where the dice should appear
+(§6).
 Secret rolls send on this channel too, but local-only, which is what makes "the Marshal's hidden roll
 throws dice on the Marshal's screen and nobody else's" true rather than aspirational.
 
@@ -264,20 +266,34 @@ beat rather than a wait on anything.
 
 ---
 
-## 6. Seats
+## 6. Places at the table
 
-**Seats are screen space, not map space.** "The Marshal rolls from the top" means the top of each
-viewer's own window; the tray has no relationship to the map's coordinates or anyone's viewport.
+> **Superseded, and worth keeping.** This section originally read "the GM takes the top, players are
+> spread over the remaining edges, and the Marshal reassigns them from a picker in the Table pane".
+> That shipped and then changed: a fixed screen edge per player is only coherent from one seat in the
+> room, and the picker existed to paper over the fact that nobody's arrangement matched anybody
+> else's. What follows is what the code does now.
 
-Assignment: the GM takes the top. Players are spread over the remaining edges — left, right, bottom,
-then the corners — in a stable order, so the same four people get the same four seats every week. A
-seat is a direction; the throw vector is that direction plus a few degrees of jitter, so two rolls
-from the same player are not identical.
+**A place is absolute; a direction is screen space.** Each player holds an integer chair at an
+imaginary round table. The direction dice come in at is *derived per viewer*: you are always at the
+bottom of your own screen, and everyone else appears where they sit relative to you. So there is
+nothing to configure — the seat picker is gone, and a direction is never put on the wire, because
+only the reader can work out what a place means on their own screen.
+
+Assignment: lowest free chair, stable across sessions, no reserved place for the Marshal. The ring is
+the **highest occupied index plus one**, not the head count: a departing player must not shuffle
+their neighbours round, and a table sized by "every index ever stored" would leave ghost chairs from
+whoever missed a session. Highest-plus-one is self-compacting — the gap a leaver makes is filled by
+the next person to join.
+
+The throw vector is that derived direction plus a few degrees of jitter, so two rolls from the same
+player are not identical.
 
 Persistence: room metadata, keyed by player id, next to the existing `com.savagebot/mine/<id>` key —
 that mechanism is already the precedent for "per-player, survives a tab close" and `panel.ts` records
-that player metadata does *not* survive one (measured, milestone 0). A seat letter and an on/off flag
-per player is tens of bytes; this is not a budget risk. **`!!` The stability of `OBR.player.id`
+that player metadata does *not* survive one (measured, milestone 0). The key is
+`com.savagebot/place/<id>`; the old `seat/<id>` keys hold compass strings and are left to rot rather
+than coerced. An integer and an on/off flag per player is tens of bytes; this is not a budget risk. **`!!` The stability of `OBR.player.id`
 across sessions is assumed, not measured** — the existing `mine/` key already depends on it, so if
 the assumption is wrong both features are, and the fix for both is to key on player name instead.
 
@@ -339,7 +355,8 @@ means you can tell whose dice those are without reading anything.
 4. **Reveal and staging** (§5): held reveal, the 400ms explosion beat, the hard cap and the
    error path.
 5. **Seats and the switch** (§6, §1): per-player seat and on/off in room metadata, a small block in
-   the Table pane for the Marshal to reassign seats, party-colour tinting.
+   the Table pane for the Marshal to reassign seats, party-colour tinting. *(Shipped as planned, then
+   replaced — places are derived per viewer now and the block is gone. See §6.)*
 6. **Polish:** Deadlands colorset, optional sounds, idle teardown.
 
 Nothing before milestone 3 changes anything a player sees, and milestone 2 is independently useful:

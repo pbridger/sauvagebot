@@ -43,6 +43,7 @@ import {
   flare,
   levelDice,
 } from './effects.js';
+import { assignPlaces, relativeVector, storedPlaces } from '../../src/obr/seats.js';
 import { aimThrow } from './throwing.js';
 
 /**
@@ -69,6 +70,41 @@ let shownColour: string | undefined;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * This viewer's own chair.
+ *
+ * A throw says where the *roller* sits; turning that into a direction on this screen
+ * needs to know where the reader sits, and this page is its own iframe with its own
+ * `OBR.onReady` — the panel's copy is not reachable from here.
+ *
+ * **Worked out, not read.** Reading `place/<me>` straight out of the room was the first
+ * version and it is wrong: the stored value is only written by the Marshal's client, and
+ * `refreshPlaces` deliberately skips that write when the room is nearly full. The tray
+ * would then fall back to chair 0 while the panel used the computed one, and the single
+ * thing this feature promises — *your own dice come from the bottom of your own screen* —
+ * would quietly stop being true for anyone not actually sitting at chair 0. Running the
+ * same deterministic `assignPlaces` over the same inputs cannot drift from the panel.
+ *
+ * Held as a promise rather than a number, and awaited inside `animate`, because the
+ * first throw can easily arrive before the first read comes back. Awaiting costs
+ * nothing: throws are already serialised through a promise chain.
+ */
+let myPlace: Promise<number> | undefined;
+
+function readMyPlace(): Promise<number> {
+  myPlace ??= Promise.all([OBR.party.getPlayers(), OBR.room.getMetadata()])
+    .then(([others, metadata]) => {
+      // `getPlayers` is everyone *else*, so this client is added by hand — exactly as
+      // the panel does it, or the two would be resolving different tables.
+      const party = [{ id: OBR.player.id }, ...others.map((player) => ({ id: player.id }))];
+      return assignPlaces(party, storedPlaces(metadata as Record<string, unknown>))[
+        OBR.player.id
+      ] ?? 0;
+    })
+    .catch(() => 0);
+  return myPlace;
 }
 
 /**
@@ -123,12 +159,12 @@ function diceBox(): Promise<DiceBox> {
 }
 
 /**
- * Throw one player's dice from their own seat.
+ * Throw one player's dice in from where they are sitting, as seen from here.
  *
  * The library builds its throw vector in `startClickThrow`, at random, and derives
  * the spawn point from that vector's sign — dice enter from the edge opposite the
  * direction of travel. Overriding it on the instance is therefore the whole of the
- * fixed-seat feature, and is why no fork of the package is needed.
+ * fixed-direction feature, and is why no fork of the package is needed.
  */
 async function animate(thrown: DiceThrow): Promise<void> {
   const staged = waves(thrown.dice);
@@ -144,7 +180,12 @@ async function animate(thrown: DiceThrow): Promise<void> {
   const active = await diceBox();
   applyPhysics(active);
 
-  const restoreThrow = aimThrow(active, thrown.seat);
+  // My own rolls come from the bottom of my screen, and everyone else's from where
+  // they sit relative to me.
+  const restoreThrow = aimThrow(
+    active,
+    relativeVector(await readMyPlace(), thrown.place, thrown.places),
+  );
 
   try {
     // Only when it actually changes. `updateConfig` rebuilds materials, and a table
@@ -221,6 +262,16 @@ function teardown(): void {
 }
 
 OBR.onReady(() => {
+  // Both inputs can change under us: the party when somebody joins, the room when the
+  // Marshal's client writes the places out.
+  const recompute = (): void => {
+    myPlace = undefined;
+    void readMyPlace();
+  };
+  recompute();
+  OBR.room.onMetadataChange(recompute);
+  OBR.party.onChange(recompute);
+
   OBR.broadcast.onMessage(DICE_CHANNEL, (event) => {
     if (!isDiceThrow(event.data)) return;
     const thrown = event.data;

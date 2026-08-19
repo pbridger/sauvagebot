@@ -73,10 +73,10 @@ export class BennyBank {
   }
 
   /**
-   * Start a session: every Wild Card back to three, Extras to none.
+   * Start a session: every player's Wild Card back to three, everyone else to none.
    *
-   * Replaces rather than adds — unused Bennies are lost at session end — and
-   * only Wild Cards get any, since Extras do not have them.
+   * Replaces rather than adds — unused Bennies are lost at session end — and only
+   * Wild Cards get any, since Extras do not have them.
    *
    * One character's write failing must not cost everyone after them theirs. The
    * loop used to throw on the first failure, which meant a full room stopped the
@@ -85,14 +85,36 @@ export class BennyBank {
    * collected and handed back so somebody can say so.
    */
   async newSession(sheets: readonly Sheet[]): Promise<BennyOutcome> {
-    return this.applyAll(sheets, (sheet) => (sheet.wildCard ? startOfSession() : 0), {
+    return this.applyAll(sheets, (sheet) => (sheet.wildCard && sheet.pc ? startOfSession() : 0), {
       includeExtras: true,
     });
   }
 
-  /** A Benny each to every Wild Card, for a Joker or for the Marshal's own reasons. */
+  /**
+   * Everyone to nothing — the Marshal's reset, for when the count has drifted or
+   * a session ended messily.
+   *
+   * Deliberately not "back to three": handing out the starting three is what the
+   * "+1 Benny to all" button does three times, and a button that both wipes and
+   * refills is two decisions on one press.
+   */
+  async clearAll(sheets: readonly Sheet[]): Promise<BennyOutcome> {
+    return this.applyAll(sheets, () => 0, { includeExtras: true });
+  }
+
+  /**
+   * A Benny each to every player's Wild Card, for a Joker or for the Marshal's
+   * own reasons.
+   *
+   * Players only. This used to reach every Wild Card in the room, which meant a
+   * Joker handed the Marshal's own villains a Benny apiece — reported from the
+   * table as "it's giving one to everyone".
+   */
   async awardAll(sheets: readonly Sheet[], count = 1): Promise<BennyOutcome> {
-    return this.applyAll(sheets, async (sheet) => award(await this.get(sheet.id), count));
+    return this.applyAll(
+      sheets.filter((sheet) => sheet.pc),
+      async (sheet) => award(await this.get(sheet.id), count),
+    );
   }
 
   /**
@@ -144,7 +166,8 @@ export class BennyBank {
 
   /**
    * Joker's Wild: one Benny to every player character, once, however many
-   * Jokers were dealt.
+   * Jokers were dealt. `awardAll` is what makes that "player" rather than
+   * "everyone".
    */
   async jokersWild(sheets: readonly Sheet[]): Promise<string[]> {
     return (await this.awardAll(sheets)).done;

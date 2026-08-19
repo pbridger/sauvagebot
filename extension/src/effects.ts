@@ -251,8 +251,9 @@ const DEFAULT_COLOURS = { background: '#e8e0cf', foreground: '#1a1a1a' };
  *
  * Their own colour is already how the room identifies them — it is on their cursor
  * and their tokens' rings — so borrowing it means whose dice these are needs no
- * label at all. It pairs with the seat (§6 of the plan): colour says who, the edge
- * they came in from says who as well, and both are readable at a glance mid-fight.
+ * label at all. It pairs with where they sit (§6 of the plan): colour says who, and so
+ * does the direction the dice came in from — where the roller is sitting relative to
+ * you. Both are readable at a glance mid-fight.
  */
 export function colourset(colour: string | undefined): {
   background: string;

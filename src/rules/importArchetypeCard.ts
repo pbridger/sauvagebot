@@ -181,6 +181,9 @@ function slug(name: string): string {
   );
 }
 
+/** The party's own cards, which are the one SWADE-era source in the app. */
+export const ARCHETYPE_CARDS = 'archetype-cards';
+
 export function parseArchetypeCard(cardHtml: string): Sheet {
   const name = stripTags(
     /<h2 class="character-name"[^>]*>([\s\S]*?)<\/h2>/.exec(cardHtml)?.[1] ??
@@ -253,6 +256,12 @@ export function parseArchetypeCard(cardHtml: string): Sheet {
   if (gear) sheet.gear = gear;
   const advances = stripTags(sectionBody(cardHtml, 'ADVANCES') ?? '');
   if (advances) sheet.advances = advances;
+
+  // These cards are SWADE — Athletics, Com. Knowledge, Tests, Soak — and that
+  // matters because the adventure being run is not. Recording it is what lets a
+  // Guts skill be read as correct on one sheet and a conversion error on
+  // another. See MECHANICS-INVENTORY.md §2.0.
+  sheet.source = ARCHETYPE_CARDS;
 
   return sheet;
 }

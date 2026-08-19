@@ -16,7 +16,16 @@ import {
   waves,
   type DiceThrow,
 } from '../src/obr/diceThrow.js';
-import { assignSeats, seatVector, jitter, GM_SEAT, type Seated } from '../src/obr/seats.js';
+import {
+  BOTTOM,
+  assignPlaces,
+  jitter,
+  relativeVector,
+  ringSize,
+  seatVector,
+  storedPlaces,
+  type Seated,
+} from '../src/obr/seats.js';
 import {
   DICE_COLOURS,
   defaultDiceColour,
@@ -29,7 +38,7 @@ function die(partial: Partial<DieEvent>): DieEvent {
 }
 
 function thrown(partial: Partial<DiceThrow> = {}): DiceThrow {
-  return { id: 'roll-1', dice: [die({})], seat: 'n', ...partial };
+  return { id: 'roll-1', dice: [die({})], place: 0, places: 3, ...partial };
 }
 
 describe('waves', () => {
@@ -121,8 +130,18 @@ describe('the guard', () => {
     }
   });
 
-  it('rejects an unknown seat', () => {
-    expect(isDiceThrow({ ...thrown(), seat: 'middle' })).toBe(false);
+  it('rejects a place that is not a chair on the table it names', () => {
+    // Not "is this a number" but "do the two agree": a place of 3 on a table of 3
+    // wraps onto index 0 and puts two players on the same edge.
+    expect(isDiceThrow({ ...thrown(), place: 3, places: 3 })).toBe(false);
+    expect(isDiceThrow({ ...thrown(), place: -1 })).toBe(false);
+    expect(isDiceThrow({ ...thrown(), place: 1.5 })).toBe(false);
+    expect(isDiceThrow({ ...thrown(), places: 0 })).toBe(false);
+    expect(isDiceThrow({ ...thrown(), place: 'n', places: undefined })).toBe(false);
+    expect(isDiceThrow({ ...thrown(), place: 2, places: 3 })).toBe(true);
+  });
+
+  it('still knows a compass edge, which the tuning page throws from', () => {
     expect(isSeat('n')).toBe(true);
     expect(isSeat('middle')).toBe(false);
   });
@@ -150,58 +169,155 @@ describe('the guard', () => {
   });
 });
 
-describe('seats', () => {
+describe('places at the table', () => {
   const gm: Seated = { id: 'gm', name: 'Damian', gm: true };
   const paul: Seated = { id: 'p2', name: 'Paul', gm: false };
   const other: Seated = { id: 'p1', name: 'Jen', gm: false };
 
-  it('gives the Marshal the top and players the other edges', () => {
-    const seats = assignSeats([gm, paul, other], {});
-    expect(seats['gm']).toBe(GM_SEAT);
-    expect(seats['p1']).not.toBe(GM_SEAT);
-    expect(seats['p2']).not.toBe(GM_SEAT);
-    expect(seats['p1']).not.toBe(seats['p2']);
+  it('gives everyone their own chair, the Marshal included', () => {
+    // No reserved place any more: with each viewer drawn at the bottom of their own
+    // screen there is no fixed edge for the Marshal to hold.
+    const seats = assignPlaces([gm, paul, other], {});
+    expect(new Set(Object.values(seats)).size).toBe(3);
+    expect(Object.values(seats).sort()).toEqual([0, 1, 2]);
   });
 
-  it('keeps a seat a player already had', () => {
-    const seats = assignSeats([gm, paul, other], { p2: 'e' });
-    expect(seats['p2']).toBe('e');
+  it('keeps a place a player already had', () => {
+    const seats = assignPlaces([gm, paul, other], { p2: 4 });
+    expect(seats['p2']).toBe(4);
   });
 
   it('is stable when someone new joins', () => {
-    const before = assignSeats([gm, paul, other], {});
-    const after = assignSeats([gm, paul, other, { id: 'p3', name: 'Sam', gm: false }], before);
+    const before = assignPlaces([gm, paul, other], {});
+    const after = assignPlaces([gm, paul, other, { id: 'p3', name: 'Sam', gm: false }], before);
     expect(after['p1']).toBe(before['p1']);
     expect(after['p2']).toBe(before['p2']);
     expect(after['p3']).toBeDefined();
   });
 
   it('is stable when someone leaves and comes back', () => {
-    const full = assignSeats([gm, paul, other], {});
-    const alone = assignSeats([gm, paul], full);
-    const back = assignSeats([gm, paul, other], alone);
+    const full = assignPlaces([gm, paul, other], {});
+    const alone = assignPlaces([gm, paul], full);
+    const back = assignPlaces([gm, paul, other], alone);
     expect(back['p2']).toBe(full['p2']);
     expect(back['p1']).toBe(full['p1']);
   });
 
-  it('takes a stored seat away from a player who is holding the Marshal’s', () => {
-    // Yesterday's GM is today's player: nobody else should be sharing the Marshal's
-    // edge, because two people throwing down it is the one arrangement that defeats
-    // the point of seats.
-    const seats = assignSeats([gm, paul], { p2: GM_SEAT });
-    expect(seats['p2']).not.toBe(GM_SEAT);
+  it('ignores a stored value from the old compass scheme', () => {
+    // The key is different now, but a hand-edited room or a future rename should not
+    // put `'nw'` where an index goes.
+    const seats = assignPlaces([paul], { p2: 'nw' });
+    expect(seats['p2']).toBe(0);
   });
 
-  it('breaks a double booking rather than seating two people on one edge', () => {
-    const seats = assignSeats([paul, other], { p1: 'w', p2: 'w' });
+  it('breaks a double booking rather than seating two people on one chair', () => {
+    const seats = assignPlaces([paul, other], { p1: 1, p2: 1 });
     expect(seats['p1']).not.toBe(seats['p2']);
   });
 
-  it('seats a table with more players than edges', () => {
+  it('gives a table of ten ten chairs', () => {
     const crowd = Array.from({ length: 9 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, gm: false }));
-    const seats = assignSeats([gm, ...crowd], {});
-    expect(Object.keys(seats)).toHaveLength(10);
-    expect(Object.values(seats).filter((s) => s === GM_SEAT)).toHaveLength(1);
+    const seats = assignPlaces([gm, ...crowd], {});
+    expect(new Set(Object.values(seats)).size).toBe(10);
+    expect(ringSize(seats)).toBe(10);
+  });
+
+  it('fills the gap a departed player left rather than widening the table', () => {
+    // Four players 0–3, #2 leaves. The other three must not shuffle round — that is
+    // the identity cue — so the ring stays 4 and the next joiner takes chair 2.
+    const present = { a: 0, b: 1, d: 3 };
+    expect(ringSize(present)).toBe(4);
+    const joined = assignPlaces(
+      [
+        { id: 'a', name: 'A', gm: false },
+        { id: 'b', name: 'B', gm: false },
+        { id: 'd', name: 'D', gm: false },
+        { id: 'e', name: 'E', gm: false },
+      ],
+      present,
+    );
+    expect(joined).toEqual({ a: 0, b: 1, d: 3, e: 2 });
+    expect(ringSize(joined)).toBe(4);
+  });
+
+  it('is a table of one when nobody has a place yet', () => {
+    expect(ringSize({})).toBe(1);
+  });
+
+  it('gives every client the same answer from the same room', () => {
+    // Load-bearing: the panel and the tray are separate iframes that each work the
+    // arrangement out for themselves, and the tray reads *nothing* the panel wrote. If
+    // this were not deterministic, your own dice would stop coming from the bottom of
+    // your own screen — which is the one thing the feature promises.
+    const room = {
+      'com.savagebot/place/p1': 2,
+      'com.savagebot/mine/p1': 'reggie',
+      'com.savagebot/place/gm': 'nw',
+    };
+    const party = [gm, other, paul];
+    const panel = assignPlaces(party, storedPlaces(room));
+    // The tray builds its list itself, starting with whoever is reading — a different
+    // order, and it must not matter.
+    const tray = assignPlaces([paul, gm, other], storedPlaces(room));
+    expect(tray).toEqual(panel);
+    expect(panel['p1']).toBe(2);
+  });
+});
+
+describe('which way a roll comes in', () => {
+  it('puts my own dice at the bottom of my own screen, exactly', () => {
+    // The headline of the whole arrangement, and it has to be exact rather than
+    // within a rounding error.
+    for (const ring of [1, 2, 3, 5, 8]) {
+      for (let k = 0; k < ring; k++) {
+        expect(relativeVector(k, k, ring)).toEqual(BOTTOM);
+      }
+    }
+  });
+
+  it('puts the only other person at the table opposite me', () => {
+    // Also the two-person regression check: under the old scheme the Marshal was at
+    // the top of a player's screen, and for a table of two they still are.
+    const v = relativeVector(0, 1, 2);
+    expect(v.x).toBeCloseTo(0, 6);
+    expect(v.y).toBeCloseTo(1, 6);
+  });
+
+  it('is mutually consistent: if you are on my left, I am on your right', () => {
+    for (const ring of [2, 3, 4, 5, 7]) {
+      for (let a = 0; a < ring; a++) {
+        for (let b = 0; b < ring; b++) {
+          const mine = relativeVector(a, b, ring);
+          const theirs = relativeVector(b, a, ring);
+          expect(theirs.x).toBeCloseTo(-mine.x, 6);
+          expect(theirs.y).toBeCloseTo(mine.y, 6);
+        }
+      }
+    }
+  });
+
+  it('advances clockwise round the screen', () => {
+    // From the bottom, clockwise reads bottom → left → top → right.
+    expect(relativeVector(0, 1, 4).x).toBeLessThan(0);
+    expect(relativeVector(0, 2, 4).y).toBeGreaterThan(0);
+    expect(relativeVector(0, 3, 4).x).toBeGreaterThan(0);
+  });
+
+  it('gives every direction the same length', () => {
+    for (const ring of [1, 2, 3, 6, 9]) {
+      for (let k = 0; k < ring; k++) {
+        const v = relativeVector(0, k, ring);
+        expect(Math.hypot(v.x, v.y)).toBeCloseTo(1, 6);
+      }
+    }
+  });
+
+  it('still throws somewhere when two clients disagree about the party', () => {
+    // A place off the end of the ring the thrower measured is a moment of skew, not
+    // a reason to launch a die at NaN.
+    const v = relativeVector(7, 1, 3);
+    expect(Number.isFinite(v.x) && Number.isFinite(v.y)).toBe(true);
+    expect(Math.hypot(v.x, v.y)).toBeCloseTo(1, 6);
   });
 });
 

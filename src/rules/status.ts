@@ -10,6 +10,7 @@
  * They are isolated in the constants below.
  */
 import type { TokenState } from '../obr/binding.js';
+import type { Sheet } from './sheet.js';
 import { situationalMods, type ModifierState, type RollMod } from './modifiers.js';
 
 /** UNVERIFIED — pending the book. */
@@ -23,6 +24,32 @@ export const FATIGUE_NAMES = ['', 'Fatigued', 'Exhausted'] as const;
 
 export function maxWounds(wildCard: boolean): number {
   return wildCard ? MAX_WOUNDS_WILD_CARD : MAX_WOUNDS_EXTRA;
+}
+
+/**
+ * Whoever the wound track belongs to — the character, not a flag.
+ *
+ * This deliberately does **not** accept a bare boolean, and that is the second
+ * version of it. The first did, on the reasoning that the call sites which only
+ * ever had `sheet.wildCard` to hand could stay as they were. What actually
+ * happened is that all ten of them stayed as they were, so the override reached
+ * none of the UI: Coffin Rock's Blood Men were `maxWounds: 0` in the data and
+ * took three wounds on screen, and nothing failed to compile.
+ *
+ * Requiring the sheet is what makes that a type error instead of a bug report.
+ */
+export type WoundBearer = Pick<Sheet, 'wildCard' | 'maxWounds'>;
+
+/**
+ * How many wounds this character takes before going down.
+ *
+ * `Sheet.maxWounds` wins when it is set, which is how a **Henchman** works:
+ * Coffin Rock's Blood Men roll a wild die "as though they were Wild Cards" but
+ * are not Wild Cards, so they are `wildCard: true, maxWounds: 0`. That is the
+ * whole of the fix — no third state, no split boolean.
+ */
+export function woundLimit(who: WoundBearer): number {
+  return who.maxWounds ?? maxWounds(who.wildCard);
 }
 
 /**
@@ -100,9 +127,9 @@ export function rollBreakdown(
 
 export function isIncapacitated(
   state: Pick<TokenState, 'wounds' | 'fatigue'>,
-  wildCard: boolean,
+  who: WoundBearer,
 ): boolean {
-  return state.wounds > maxWounds(wildCard) || state.fatigue > MAX_FATIGUE;
+  return state.wounds > woundLimit(who) || state.fatigue > MAX_FATIGUE;
 }
 
 function clamp(value: number, low: number, high: number): number {
@@ -110,8 +137,8 @@ function clamp(value: number, low: number, high: number): number {
 }
 
 /** Clamp a click on the wound track to something legal, allowing one past max. */
-export function setWounds(state: TokenState, wounds: number, wildCard: boolean): TokenState {
-  return { ...state, wounds: clamp(wounds, 0, maxWounds(wildCard) + 1) };
+export function setWounds(state: TokenState, wounds: number, who: WoundBearer): TokenState {
+  return { ...state, wounds: clamp(wounds, 0, woundLimit(who) + 1) };
 }
 
 export function setFatigue(state: TokenState, fatigue: number): TokenState {
@@ -132,9 +159,9 @@ export function setShaken(state: TokenState, shaken: boolean): TokenState {
  */
 export function damageBadge(
   state: Pick<TokenState, 'wounds' | 'fatigue'>,
-  wildCard: boolean,
+  who: WoundBearer,
 ): string {
-  if (isIncapacitated(state, wildCard)) return 'OUT';
+  if (isIncapacitated(state, who)) return 'OUT';
   const parts: string[] = [];
   if (state.wounds > 0) parts.push(`${state.wounds}W`);
   if (state.fatigue > 0) parts.push(`${state.fatigue}F`);
@@ -144,9 +171,9 @@ export function damageBadge(
 /** A sentence for the sheet, e.g. "2 wounds, Fatigued, Shaken". */
 export function describeStatus(
   state: Pick<TokenState, 'wounds' | 'fatigue' | 'shaken'>,
-  wildCard: boolean,
+  who: WoundBearer,
 ): string {
-  if (isIncapacitated(state, wildCard)) return 'Incapacitated';
+  if (isIncapacitated(state, who)) return 'Incapacitated';
   const parts: string[] = [];
   if (state.wounds > 0) parts.push(`${state.wounds} wound${state.wounds === 1 ? '' : 's'}`);
   const fatigue = FATIGUE_NAMES[clamp(state.fatigue, 0, MAX_FATIGUE)];

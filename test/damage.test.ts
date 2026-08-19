@@ -3,8 +3,15 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { newTokenState, type TokenState } from '../src/obr/binding.js';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
-import { applyDamage, effectiveToughness, soak, soakedWounds } from '../src/rules/damage.js';
-import type { Sheet } from '../src/rules/sheet.js';
+import {
+  adjustedDamage,
+  applyDamage,
+  describeAdjustment,
+  effectiveToughness,
+  soak,
+  soakedWounds,
+} from '../src/rules/damage.js';
+import { emptySheet, type Sheet } from '../src/rules/sheet.js';
 
 /** Reggie: Toughness 7, armour 2 — so 5 under a fully armour-piercing round. */
 const reggie = parseArchetypeCards(
@@ -122,5 +129,90 @@ describe('soaking', () => {
 
   it('leaves Shaken alone when only some wounds are soaked', () => {
     expect(soak(state({ wounds: 2, shaken: true }), 4, 2).shaken).toBe(true);
+  });
+});
+
+/**
+ * The Marshal's adjustment, which is how the app copes with rules it does not
+ * know. Coffin Rock alone needs Hardy, Undead and Construct halving, three
+ * Immunities, Invulnerable, Ethereal, Weakness (Head) and Swarm; the open
+ * bestiary adds 159 abilities that appear exactly once each. One control covers
+ * all of them — see MECHANICS-INVENTORY.md §8.3.
+ */
+describe('adjusting damage before it is applied', () => {
+  const sheet: Sheet = { ...emptySheet('blood-man', 'Blood Man'), toughness: 7, wildCard: false };
+  const fresh = newTokenState('blood-man');
+
+  it('changes nothing when there is no adjustment', () => {
+    expect(adjustedDamage(11, undefined)).toBe(11);
+    expect(describeAdjustment(11, undefined)).toBe('');
+  });
+
+  it('halves, rounding down', () => {
+    expect(adjustedDamage(11, { factor: 0.5 })).toBe(5);
+    expect(adjustedDamage(7, { factor: 0.5 })).toBe(3);
+  });
+
+  it('adds a flat change, as Weakness (Head) does', () => {
+    expect(adjustedDamage(6, { delta: 2 })).toBe(8);
+  });
+
+  it('never goes below zero', () => {
+    expect(adjustedDamage(1, { delta: -5 })).toBe(0);
+  });
+
+  /**
+   * The order is the whole point. "Piercing attacks do half damage" halves the
+   * *roll*, before it meets Toughness. Halving the wounds afterwards would give
+   * a different answer from the same words: 11 vs Toughness 7 is one wound, and
+   * half of one wound rounds to none — whereas halving first is 5 vs 7, which
+   * does not even Shake.
+   */
+  it('halves the roll, not the wounds', () => {
+    const halved = applyDamage(sheet, fresh, { damage: 11 }, { factor: 0.5 });
+    expect(halved.wounds).toBe(0);
+    expect(halved.becameShaken).toBe(false);
+
+    const unhalved = applyDamage(sheet, fresh, { damage: 11 });
+    expect(unhalved.wounds).toBe(1);
+  });
+
+  /** Armour-piercing still applies to Toughness, not to the adjusted roll. */
+  it('composes with AP', () => {
+    const armoured: Sheet = { ...sheet, toughness: 10, armor: 3 };
+    const outcome = applyDamage(armoured, fresh, { damage: 20, ap: 2 }, { factor: 0.5 });
+    // Toughness 10 − 2 armour-piercing = 8; damage 20 halved = 10; margin 2.
+    expect(outcome.toughness).toBe(8);
+    expect(outcome.becameShaken).toBe(true);
+  });
+
+  it('shows the working, with the reason', () => {
+    expect(describeAdjustment(11, { factor: 0.5, reason: 'Construct: piercing' })).toBe(
+      '11 halved = 5 (Construct: piercing)',
+    );
+    expect(describeAdjustment(6, { delta: 2, reason: 'Weakness (Head)' })).toBe(
+      '6 +2 = 8 (Weakness (Head))',
+    );
+    expect(describeAdjustment(9, { factor: 2 })).toBe('9 ×2 = 18');
+  });
+
+  /** And the working reaches the line that gets published. */
+  it('puts the working in the outcome description', () => {
+    const outcome = applyDamage(sheet, fresh, { damage: 11 }, { factor: 0.5, reason: 'Construct' });
+    expect(outcome.description).toContain('11 halved = 5 (Construct)');
+    expect(outcome.description).toContain('Toughness 7');
+  });
+
+  /**
+   * Hardy — "a second Shaken result does not cause a wound" — is not modelled
+   * and does not need to be: the Marshal declines the wound by adjusting the
+   * roll under Toughness, and the reason says so in the log.
+   */
+  it('is how Hardy is handled without encoding Hardy', () => {
+    const shaken = { ...fresh, shaken: true };
+    expect(applyDamage(sheet, shaken, { damage: 8 }).wounds).toBe(1);
+    const hardy = applyDamage(sheet, shaken, { damage: 8 }, { factor: 0.5, reason: 'Hardy' });
+    expect(hardy.wounds).toBe(0);
+    expect(hardy.description).toContain('Hardy');
   });
 });

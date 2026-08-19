@@ -16,7 +16,10 @@ import {
   setText,
   setWildCard,
   updateEntry,
+  setMaxWounds,
 } from '../src/rules/sheetEdit.js';
+import { woundLimit } from '../src/rules/status.js';
+import { emptySheet } from '../src/rules/sheet.js';
 
 const reggie = parseArchetypeCards(
   readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
@@ -158,5 +161,36 @@ describe('parsing input', () => {
     expect(parseMod('')).toBeUndefined();
     expect(parseMod('0')).toBeUndefined();
     expect(parseMod('banana')).toBeUndefined();
+  });
+});
+
+/**
+ * The wound-track override. Coffin Rock's Blood Men are Henchmen — a wild die on
+ * an Extra's track — and this is the control that expresses it.
+ */
+describe('overriding the wound track', () => {
+  const sheet = { ...emptySheet('blood-man', 'Blood Man'), wildCard: true };
+
+  it('sets a track that is not the one Wild Card implies', () => {
+    const henchman = setMaxWounds(sheet, 0);
+    expect(henchman.maxWounds).toBe(0);
+    expect(woundLimit(henchman)).toBe(0);
+    expect(henchman.wildCard).toBe(true);
+  });
+
+  /**
+   * Cleared rather than written as the default number, so a character whose Wild
+   * Card status is flipped later goes back to following it.
+   */
+  it('clears back to the default', () => {
+    const cleared = setMaxWounds(setMaxWounds(sheet, 0), undefined);
+    expect('maxWounds' in cleared).toBe(false);
+    expect(woundLimit(cleared)).toBe(3);
+    expect(woundLimit({ ...cleared, wildCard: false })).toBe(0);
+  });
+
+  it('refuses a negative or fractional track', () => {
+    expect(setMaxWounds(sheet, -2).maxWounds).toBe(0);
+    expect(setMaxWounds(sheet, 2.6).maxWounds).toBe(3);
   });
 });

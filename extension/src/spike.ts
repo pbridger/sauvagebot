@@ -13,7 +13,7 @@
  */
 import DiceBox from '@drdreo/dice-box-threejs';
 import { notation, waves } from '../../src/obr/diceThrow.js';
-import { seatLabel } from '../../src/obr/seats.js';
+import { seatLabel, seatVector } from '../../src/obr/seats.js';
 import type { Seat } from '../../src/obr/diceThrow.js';
 import {
   PHYSICS,
@@ -70,7 +70,10 @@ async function throwDice(notationString: string, add = false): Promise<{ value: 
   // believed to be in the path when it was not, so the page now reports what the first
   // die was actually launched at and how far it actually went.
   let launched: { speed: number; from: { x: number; y: number } } | undefined;
-  const restoreThrow = aimThrow(box, seat, (vectors) => {
+  // A named edge here, not a place at the table: this page exists to throw the *same*
+  // throw twice, so the direction has to be nailed down rather than derived from who
+  // happens to be in a room.
+  const restoreThrow = aimThrow(box, seatVector(seat), (vectors) => {
     const first = vectors[0];
     if (!first) return;
     launched = {

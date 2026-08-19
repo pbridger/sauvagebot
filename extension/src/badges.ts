@@ -139,7 +139,7 @@ export async function renderBadges(
     const halfWidth = Math.min(token.width / 2, cap);
     const halfHeight = Math.min(token.height / 2, cap);
 
-    const damage = damageBadge(state, sheet.wildCard);
+    const damage = damageBadge(state, sheet);
     if (damage) {
       const colour = state.wounds > 0 ? WOUND_RED : FATIGUE_AMBER;
       // A label grows upward from its position, so clearing the bottom edge

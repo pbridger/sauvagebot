@@ -199,6 +199,61 @@ export function situationalTotal(state: ModifierState | undefined): number {
   return situationalMods(state).reduce((sum, mod) => sum + mod.value, 0);
 }
 
+/**
+ * The conditions a *target* is in, which change whoever is rolling against them.
+ *
+ * The counterpart to `situationalMods`, and the "later target-aware feature" its
+ * docstring anticipated: those numbers were recorded from the start and until now
+ * had nothing to reach. The targeting table is that thing — it knows who the
+ * defender is, so Vulnerable can finally add its +2 to the attacker rather than
+ * only drawing a badge on the token.
+ *
+ * The bonus lands on the attacker's total rather than on the target number, which
+ * matters for raises: a raise is counted off the margin, so a Vulnerable target is
+ * both easier to hit *and* easier to hit well. That follows from the arithmetic
+ * rather than being a separate rule.
+ *
+ * !! Every value here except Vulnerable's is currently 0 — see `SITUATIONS`. Prone
+ * is genuinely direction-dependent (harder at range, easier in melee) and Stunned
+ * is noted as counting for Vulnerable without carrying the number. Both are
+ * pending the book. The pills are shown regardless, so the Marshal can apply what
+ * the app will not. !!
+ */
+export function targetMods(state: ModifierState | undefined): RollMod[] {
+  return situationsOf(state)
+    .filter((s) => s.affects === 'others')
+    .map((s) => ({
+      label: s.label,
+      value: s.value,
+      kind: 'situational' as const,
+      short: formatMod(s.value),
+    }));
+}
+
+export function targetTotal(state: ModifierState | undefined): number {
+  return targetMods(state).reduce((sum, mod) => sum + mod.value, 0);
+}
+
+/**
+ * One letter per target-side condition — V, P, S — for a table cell that has
+ * room for almost nothing.
+ *
+ * The first letter of the label rather than a hand-kept list, because the five
+ * of them do not collide and a second list would be a second thing to forget.
+ */
+export function targetPills(
+  state: ModifierState | undefined,
+): { letter: string; label: string; note: string; value: number }[] {
+  return situationsOf(state)
+    .filter((s) => s.affects === 'others')
+    .map((s) => ({
+      letter: s.label.charAt(0).toUpperCase(),
+      label: s.label,
+      note: s.note,
+      value: s.value,
+    }));
+}
+
 /** `+2`, `-2`, or empty for nothing. */
 export function formatMod(value: number): string {
   if (!value) return '';

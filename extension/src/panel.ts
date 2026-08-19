@@ -15,6 +15,12 @@ import {
   type Attribute,
   type Sheet,
 } from '../../src/rules/sheet.js';
+import {
+  abilityNotes,
+  describeNote,
+  notesForTrait,
+  type AbilityNote,
+} from '../../src/rules/abilities.js';
 import { parseArchetypeCards } from '../../src/rules/importArchetypeCard.js';
 import {
   damageDiceOptions,
@@ -39,12 +45,34 @@ import {
   totalOf,
   type RollEntry,
 } from '../../src/obr/rollLog.js';
-import { applyDamage } from '../../src/rules/damage.js';
+import {
+  applyDamage,
+  describeAdjustment,
+  effectiveToughness,
+  type DamageAdjustment,
+} from '../../src/rules/damage.js';
+import {
+  attackKind,
+  bandFor,
+  BAND_PENALTY,
+  DEFAULT_PARRY,
+  FLAT_TARGET,
+  isTargeted,
+  parseRangeBands,
+  resolveAimedAttack,
+  verdictIsMeaningless,
+  withoutFlatVerdict,
+  type Band,
+} from '../../src/rules/targeting.js';
 import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
 import { parseStatBlocks } from '../../src/rules/statBlock.js';
 import {
   BESTIARY_SOURCE,
+  COFFIN_ROCK,
+  COFFIN_ROCK_SOURCE,
+  SAVAGE_FREE_BESTIARY,
   creatureSheet,
+  findCreature,
   outdatedSkills,
   searchCreatures,
 } from '../../src/rules/bestiary.js';
@@ -60,7 +88,7 @@ import {
   MAX_FATIGUE,
   describeStatus,
   isIncapacitated,
-  maxWounds,
+  woundLimit,
   rollBreakdown,
   setFatigue,
   setShaken,
@@ -79,7 +107,10 @@ import {
   situationalMods,
   situationalTotal,
   situationsOf,
+  targetPills,
+  targetTotal,
   toggleCondition,
+  type ModifierState,
 } from '../../src/rules/modifiers.js';
 import { findEntry } from '../../src/rules/catalogue.js';
 import { renderBadges } from './badges.js';
@@ -119,14 +150,13 @@ import {
   isDiceThrow,
   revealDelay,
   type DiceThrow,
-  type Seat,
 } from '../../src/obr/diceThrow.js';
 import {
   DICE_PREFIX,
-  PLAYER_SEATS,
-  SEAT_PREFIX,
-  assignSeats,
-  seatLabel,
+  PLACE_PREFIX,
+  assignPlaces,
+  ringSize,
+  storedPlaces,
   type Seated,
 } from '../../src/obr/seats.js';
 import type { DieEvent } from '../../src/dice/roller.js';
@@ -146,7 +176,11 @@ const el = <T extends HTMLElement>(id: string): T => {
   if (!found) throw new Error(`panel is missing #${id}`);
   return found as T;
 };
-const bar = { who: el<HTMLSelectElement>('who'), file: el<HTMLInputElement>('file') };
+const bar = {
+  who: el<HTMLSelectElement>('who'),
+  file: el<HTMLInputElement>('file'),
+  bind: el<HTMLButtonElement>('bind'),
+};
 const sheetEl = el('sheet');
 const logEl = el('log');
 const noticeEl = el('notice');
@@ -157,11 +191,35 @@ let bank: BennyBank;
 let bennies = new Map<string, number>();
 /** The most recent damage per token, so a Soak knows how much it may undo. */
 const lastDamage = new Map<string, number>();
+/**
+ * The last trait roll each character made, so a Benny can buy it again.
+ *
+ * The request, not the result — see `publishTrait`. In memory and not in the
+ * store: rerolling a trait is something you do in the seconds after seeing the
+ * dice, and a stale one surviving a reload would offer to reroll something
+ * nobody remembers.
+ */
+interface LastTrait {
+  label: string;
+  expression: string;
+  mods: RollBreakdown;
+  aimed?: { skill: string; bands?: [number, number, number] };
+}
+const lastTraitRoll = new Map<string, LastTrait>();
 let store = roomStore();
 let sheets: Sheet[] = [];
 let selectedId: string | undefined;
 
 const log = new RollLog();
+/**
+ * Which log entries have their targeting table open, by entry id.
+ *
+ * Module state rather than DOM state because `renderLog` replaces the whole list,
+ * and it is called on every selection change and every incoming roll — which in a
+ * fight is constantly. An expansion kept in the DOM would vanish the moment
+ * anybody clicked a token.
+ */
+const expanded = new Set<string>();
 let me = 'someone';
 /** Set only for the duration of one roll, by the Secret button. */
 let secretRolls = false;
@@ -193,12 +251,15 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined;
  * whether to watch them.
  */
 let animate = false;
-/** Where my dice come in from. Everyone's seat is worked out from the party list. */
-let mySeat: Seat = 'n';
-/** Everyone in the room, for the Marshal's seat picker. */
+/**
+ * My chair at the table. Not a screen direction: every viewer draws me relative to
+ * themselves, so which edge my dice arrive at is different on every screen.
+ */
+let myPlace = 0;
+/** Everyone in the room. */
 let party: Seated[] = [];
-/** Their seats, as last worked out or reassigned by hand. */
-let seats: Record<string, Seat> = {};
+/** Their places, as last worked out. Nobody picks these. */
+let places: Record<string, number> = {};
 /**
  * Lines whose dice are still in the air, and the timer that will print them anyway.
  *
@@ -254,6 +315,9 @@ function publish(
   if (throwable) void sendDice(entry, dice, colour);
   // Our own dice are in hand, so the hold can be the length of the throw straight
   // away rather than the six-second backstop a remote line starts on.
+  // Ours, so it may take the log's attention. A remote roll goes through `show`
+  // without this and leaves whatever is open alone.
+  focusLatest(entry);
   show(entry, dice);
   if (!entry.secret) {
     // REMOTE: everyone but us, since we have already added it ourselves.
@@ -278,7 +342,10 @@ async function sendDice(entry: RollEntry, dice: DieEvent[], colour?: string): Pr
   const thrown: DiceThrow = {
     id: entry.id,
     dice,
-    seat: mySeat,
+    // Where I sit, not where my dice should appear: only the reader can work that
+    // out, because only the reader knows where *they* sit.
+    place: myPlace,
+    places: ringSize({ ...places, [OBR.player.id]: myPlace }),
     ...(paint ? { colour: paint } : {}),
   };
   try {
@@ -302,6 +369,32 @@ async function sendDice(entry: RollEntry, dice: DieEvent[], colour?: string): Pr
  * is then a re-enactment of something you have read. Anyone with animation off, and
  * any roll with no dice in it, prints immediately.
  */
+/**
+ * Open the targets on something *this* client just did, and close everything
+ * else.
+ *
+ * A roll that has a targeting table is a roll you made in order to read that
+ * table — the attack you just swung, the damage you just rolled — so making it
+ * arrive open saves the click that was always going to follow. And only one is
+ * ever wanted at a time: a log of five open tables is one you have to scroll
+ * past to find the roll you are working on.
+ *
+ * **Only ever called for our own rolls.** Somebody else's roll must not shut a
+ * table we are reading: the Marshal expands a damage roll, is halfway through
+ * deciding which of six mooks it lands on, and a player rolls Notice at the
+ * wrong moment — the table would close under them, and the roll that closed it
+ * was not even theirs. So this lives in `publish` rather than in `show`, which
+ * the broadcast handler also goes through.
+ *
+ * Safe to call before the dice have landed. A held entry is filtered out of the
+ * log entirely (see `renderLog`), so nothing is drawn — and by the time it is
+ * revealed its id is already in the set, so it appears open.
+ */
+function focusLatest(entry: RollEntry): void {
+  expanded.clear();
+  if (targetsWorthShowing(entry)) expanded.add(entry.id);
+}
+
 function show(entry: RollEntry, dice?: DieEvent[]): void {
   if (animate && entry.animated) {
     // A fallback, not the mechanism: the tray's own "settled" normally gets here
@@ -330,17 +423,17 @@ function reveal(id: string): void {
 /**
  * The name a roll goes out under.
  *
- * A private sheet does not broadcast its character's name: the roll would
- * otherwise announce exactly what the Marshal just marked hidden, and unlike the
- * picker nobody has to go looking for it — it arrives in everyone's log. The
- * token's name goes instead, which the players can already read off the map.
+ * An NPC does not broadcast its character's name: the roll would otherwise
+ * announce exactly what the Marshal is keeping back, and unlike the picker
+ * nobody has to go looking for it — it arrives in everyone's log. The token's
+ * name goes instead, which the players can already read off the map.
  */
 function rollerName(sheet: Sheet): string | undefined {
-  if (!sheet.private) return sheet.name;
+  if (sheet.pc) return sheet.name;
   return activeToken(sheet)?.token.name;
 }
 
-/** `{ character }` for a published line, absent for a private sheet with no token. */
+/** `{ character }` for a published line, absent for an NPC with no token. */
 function named(sheet: Sheet): { character?: string } {
   const who = rollerName(sheet);
   return who ? { character: who } : {};
@@ -358,15 +451,44 @@ function publishTrait(
   label: string,
   result: { expression: string; explained: string; dice?: DieEvent[] },
   mods: RollBreakdown,
+  // Only for an attack. Lets any client work the roll out against a named target
+  // instead of against the flat 4 the dice engine assumes — see `targeting.ts`.
+  aimed?: { skill: string; bands?: [number, number, number] },
+  /** Set when this *is* a reroll, so it does not overwrite what it is redoing. */
+  isReroll = false,
 ): void {
   const who = rollerName(sheet);
+  const from = activeToken(sheet)?.token.id;
+  // Every trait roll off a sheet comes through here, which is what makes this the
+  // one honest place to remember "the last one". A Benny reroll needs the whole
+  // request rather than the result: the same expression, the same modifier
+  // breakdown, and the same target framing, or the second roll would quietly be
+  // a different roll.
+  if (!isReroll) {
+    lastTraitRoll.set(sheet.id, {
+      label,
+      expression: result.expression,
+      mods,
+      ...(aimed ? { aimed } : {}),
+    });
+  }
   publish(
     {
       ...(who ? { character: who } : {}),
       label,
       expression: result.expression,
-      explained: result.explained,
+      // A Fighting roll's verdict belongs to the targeting table, which knows
+      // what it was aimed at — the engine's "(success; 1 raise)" is against a
+      // flat 4 and would contradict it. Everything else keeps its verdict,
+      // including Shooting: 4 is the right number there unless the shot is into
+      // melee. See `verdictIsMeaningless`.
+      explained: verdictIsMeaningless(aimed?.skill)
+        ? withoutFlatVerdict(result.explained)
+        : result.explained,
       ...(mods.parts.length ? { mods: mods.parts } : {}),
+      ...(aimed ? { skill: aimed.skill } : {}),
+      ...(aimed?.bands ? { bands: aimed.bands } : {}),
+      ...(aimed && from ? { from } : {}),
     },
     result.dice ?? [],
     diceColourOf(sheet),
@@ -443,13 +565,500 @@ function renderLog(): void {
         apply.title =
           `Apply ${entry.total} damage to ${target.token.name}` +
           (entry.ap ? `, ignoring ${entry.ap} armour` : '');
-        apply.addEventListener('click', () => void applyToTarget(entry));
+        apply.addEventListener('click', () => void applyToTarget(entry, target));
         body.append(apply);
       }
       line.append(body);
+
+      // Who could this have been aimed at? Only for the rolls where naming a
+      // target changes the answer: an attack, which is resolved against Parry
+      // rather than a flat 4, and a damage roll, which is resolved against
+      // Toughness. Everything else keeps the one line it always had.
+      // A raise is worth +1d6 damage, and you only learn you got one after the
+      // damage is rolled — so it is offered on the line rather than asked for up
+      // front. Damage rolls only: a raise on a Notice roll buys information, not
+      // dice.
+      if (isApplicable(entry)) {
+        const raise = document.createElement('button');
+        raise.className = 'targets-toggle';
+        raise.textContent = '+ raise';
+        raise.title = `Roll the raise's bonus ${RAISE_DIE} and log the new total`;
+        raise.addEventListener('click', () => rollRaiseDamage(entry));
+        body.append(raise);
+      }
+
+      if (targetsWorthShowing(entry)) {
+        const toggle = document.createElement('button');
+        toggle.className = 'targets-toggle';
+        const open = expanded.has(entry.id);
+        toggle.textContent = open ? 'Hide targets' : 'Targets';
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.addEventListener('click', () => {
+          if (expanded.has(entry.id)) expanded.delete(entry.id);
+          else expanded.add(entry.id);
+          renderLog();
+        });
+        body.append(toggle);
+
+        if (open) {
+          const holder = document.createElement('div');
+          holder.className = 'targets';
+          holder.textContent = 'measuring…';
+          line.append(holder);
+          // Ranges come from OBR and so arrive late. By the time they do the log
+          // may have been re-rendered out from under this node, which is why the
+          // fill checks it is still in the document rather than resuming blind.
+          void fillTargets(holder, entry);
+        }
+      }
       return line;
     }),
   );
+}
+
+/** An attack or a damage roll, made by a token we can measure from. */
+function targetsWorthShowing(entry: RollEntry): boolean {
+  return isTargeted(entry.skill) || (entry.applicable === true && entry.total !== undefined);
+}
+
+/** The bonus damage die a raise on the attack earns. Aces, as damage dice do. */
+const RAISE_DIE = 'd6!';
+
+/**
+ * Add a raise's bonus damage to a roll already made.
+ *
+ * A raise on the attack is worth an extra d6 of damage, and the attack is
+ * resolved *after* the damage is rolled here — you learn whether you got the
+ * raise from the targeting table, by which time the damage line is already in the
+ * log. So this rolls the extra die on demand rather than asking up front, and
+ * publishes a *new* entry rather than editing the old one: the original roll
+ * happened, everyone saw it, and a log that rewrites itself is a log nobody can
+ * follow.
+ *
+ * The new entry carries the same AP and origin token, so it targets and applies
+ * exactly as the roll it came from.
+ */
+function rollRaiseDamage(entry: RollEntry): void {
+  if (entry.total === undefined) return;
+  const dice: DieEvent[] = [];
+  const explained = new RollInterpreter(
+    new CommandContext(new JavaRandom(), (die) => dice.push(die)),
+  )
+    .run(parse([RAISE_DIE]))
+    .trim();
+
+  const bonus = totalOf(explained);
+  if (bonus === undefined) {
+    notify('could not read the raise die');
+    return;
+  }
+
+  publish(
+    {
+      ...(entry.character ? { character: entry.character } : {}),
+      label: `${entry.label ?? 'damage'} + raise`,
+      expression: `${entry.expression} + ${RAISE_DIE}`,
+      explained: `${entry.total} + ${RAISE_DIE} [${bonus}] = **${entry.total + bonus}**`,
+      total: entry.total + bonus,
+      applicable: true,
+      ...(entry.ap ? { ap: entry.ap } : {}),
+      ...(entry.from ? { from: entry.from } : {}),
+    },
+    dice,
+  );
+}
+
+interface TargetRow {
+  tokenId: string;
+  name: string;
+  /** Distance in grid cells, absent when either end is not on the map. */
+  cells?: number;
+  band?: Band;
+  /** The number the attack had to beat, for an attack roll. */
+  target?: number;
+  /** Shown alongside, so a shot into melee can be judged by eye. */
+  parry?: number;
+  /** What the target's own conditions gave the attacker, e.g. +2 for Vulnerable. */
+  bonus?: number;
+  /** The rolled total after range and those conditions — what actually beat the target. */
+  effective?: number;
+  outOfRange?: boolean;
+  pills: { letter: string; label: string; note: string; value: number }[];
+  hit?: boolean;
+  raises?: number;
+  /** For a damage roll. */
+  toughness?: number;
+  outcome?: string;
+  applicable?: boolean;
+}
+
+/**
+ * Everyone this roll could have been aimed at, with the arithmetic done.
+ *
+ * Built here rather than carried on the entry: the defenders' stats are looked up
+ * from the roster this client already has, so nothing about the Marshal's
+ * characters travels over the broadcast. Parry, Toughness and Pace are shown to
+ * everybody by decision — they are numbers the table does arithmetic against all
+ * evening — but the rest of an NPC's sheet is not, and must not be put on a
+ * `RollEntry` to get here.
+ */
+async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
+  const isAttack = isTargeted(entry.skill);
+  const melee = entry.skill !== undefined && attackKind(entry.skill) === 'parry';
+
+  // Everything bound and on the map except whoever rolled. Not "every NPC": when
+  // the Marshal rolls a bandit's attack the targets are the players.
+  const candidates = tokens.filter((token) => {
+    if (token.id === entry.from) return false;
+    if (!token.visible) return false;
+    const state = readBinding(token.metadata);
+    return state !== undefined && sheets.some((sheet) => sheet.id === state.sheetId);
+  });
+
+  const origin = entry.from ? tokens.find((token) => token.id === entry.from) : undefined;
+  const distances = await Promise.all(
+    candidates.map(async (token) => {
+      if (!origin) return undefined;
+      try {
+        return await OBR.scene.grid.getDistance(origin.centre, token.centre);
+      } catch {
+        // A scene that closed mid-measure. The row is still worth showing
+        // without its range.
+        return undefined;
+      }
+    }),
+  );
+
+  const rows: TargetRow[] = [];
+  for (const [i, token] of candidates.entries()) {
+    const state = readBinding(token.metadata)!;
+    const sheet = sheets.find((s) => s.id === state.sheetId)!;
+    const cells = distances[i];
+    const bands = entry.bands;
+    const band = cells !== undefined && bands ? bandFor(cells, bands) : undefined;
+
+    const row: TargetRow = {
+      tokenId: token.id,
+      name: sheet.pc || isGM ? sheet.name : token.name,
+      pills: targetPills(state),
+      ...(cells === undefined ? {} : { cells }),
+      ...(band ? { band } : {}),
+    };
+
+    if (isAttack && entry.total !== undefined) {
+      // Fighting is resolved against Parry. A shot is too, but only when it is
+      // into melee — which nothing here can know — so the result is worked out
+      // against the usual 4 and Parry is shown beside it, leaving that judgement
+      // where it already was: with the Marshal.
+      const parry = sheet.parry ?? DEFAULT_PARRY;
+      const target = melee ? parry : FLAT_TARGET;
+      // Range and the target's own conditions both belong to *this* pairing
+      // rather than to the roll, so they are applied here — one resolve per
+      // candidate off the one rolled total. See `resolveAimedAttack`.
+      const bonus = targetTotal(state);
+      const outcome = resolveAimedAttack({
+        total: entry.total,
+        target,
+        ...(band ? { band } : {}),
+        targetBonus: bonus,
+      });
+      row.parry = parry;
+      row.target = target;
+      row.bonus = bonus;
+      row.effective = outcome.effective;
+      row.hit = outcome.hit;
+      row.raises = outcome.raises;
+      row.outOfRange = outcome.outOfRange;
+    }
+
+    if (entry.applicable && entry.total !== undefined) {
+      // The preview is resolved through the same adjustment the Apply button
+      // will use, so the row never shows one answer and commit another.
+      const outcome = applyDamage(
+        sheet,
+        state,
+        {
+          damage: entry.total,
+          ...(entry.ap ? { ap: entry.ap } : {}),
+        },
+        adjustments.get(entry.id),
+      );
+      row.toughness = effectiveToughness(sheet, entry.ap ?? 0);
+      // The engine's own wording, so the preview and the applied line cannot
+      // disagree about what happened.
+      row.outcome = outcome.description.replace(/\*\*/g, '');
+      row.applicable = true;
+    }
+
+    rows.push(row);
+  }
+
+  // Nearest first: the thing you are most likely to have shot at is the thing
+  // you are standing next to.
+  return rows.sort((a, b) => (a.cells ?? Infinity) - (b.cells ?? Infinity));
+}
+
+/**
+ * The Marshal's damage adjustment, per expanded log entry.
+ *
+ * Keyed by entry so two damage rolls open at once do not share one — and held
+ * outside the render so it survives the table being rebuilt when the adjustment
+ * itself changes.
+ *
+ * Deliberately *not* stored on the roll or the token: it is a decision about one
+ * application of one roll to one creature, it has no life after the click, and
+ * anything longer-lived would be a stale −2 waiting to happen.
+ */
+const adjustments = new Map<string, DamageAdjustment>();
+
+/**
+ * One control that stands in for every damage rule the app does not know.
+ *
+ * Coffin Rock needs Hardy, Undead and Construct halving, three Immunities,
+ * Invulnerable, Ethereal, Weakness (Head) and Swarm; the open bestiary adds 159
+ * abilities that appear exactly once each. Rather than encode an unbounded list
+ * and still be wrong for the next book, the Marshal says what happened and the
+ * arithmetic travels into the log — `11 halved = 5 vs Toughness 7`, which is
+ * legible without anyone having to write down why.
+ *
+ * Four buttons and nothing else, deliberately. There is no "no damage" button:
+ * not applying damage is already spelled by not pressing Apply. There is no
+ * free-text reason either — it was tried and cut, because typing one mid-fight
+ * costs more session time than it saves.
+ */
+function adjustBar(entry: RollEntry, redraw: () => void): HTMLElement {
+  const key = entry.id;
+  const current = adjustments.get(key) ?? {};
+  const bar = document.createElement('div');
+  bar.className = 'adjust-bar';
+
+  const label = document.createElement('span');
+  label.className = 'adjust-label';
+  label.textContent = 'Adjust';
+  bar.append(label);
+
+  // `exactOptionalPropertyTypes` is on, so clearing a field means writing
+  // `undefined` explicitly rather than omitting it — hence the looser type here
+  // and the tidy-up below.
+  const set = (change: { factor?: number | undefined; delta?: number; reason?: string | undefined }): void => {
+    const merged = { ...adjustments.get(key), ...change };
+    // An empty adjustment is no adjustment: keeping `{factor: undefined}` around
+    // would put "= 11" in the log for a roll nobody touched.
+    if (merged.factor === undefined && !merged.delta && !merged.reason) {
+      adjustments.delete(key);
+    } else {
+      const next: DamageAdjustment = {};
+      if (merged.factor !== undefined) next.factor = merged.factor;
+      if (merged.delta) next.delta = merged.delta;
+      if (merged.reason) next.reason = merged.reason;
+      adjustments.set(key, next);
+    }
+    redraw();
+  };
+
+  for (const [text, factor, title] of [
+    ['½', 0.5, 'Half damage — piercing attacks against Undead, Construct or a Swarm'],
+    ['×2', 2, 'Double damage'],
+  ] as const) {
+    const button = document.createElement('button');
+    button.className = current.factor === factor ? 'adjust on' : 'adjust';
+    button.textContent = text;
+    button.title = title;
+    // Clicking the active one turns it off, so there is always a way back to
+    // the unmodified roll without reloading the entry.
+    button.addEventListener('click', () =>
+      set({ factor: current.factor === factor ? undefined : factor }),
+    );
+    bar.append(button);
+  }
+
+  for (const delta of [-2, 2] as const) {
+    const button = document.createElement('button');
+    button.className = current.delta === delta ? 'adjust on' : 'adjust';
+    button.textContent = formatMod(delta);
+    button.title = delta > 0 ? 'Weakness — extra damage' : 'Resistance — less damage';
+    button.addEventListener('click', () => set({ delta: current.delta === delta ? 0 : delta }));
+    bar.append(button);
+  }
+
+  // There was a free-text "why" box here. Removed on Paul's call: typing a
+  // reason mid-fight is more work than the session can spare, and the log
+  // already shows the arithmetic — "11 halved = 5" says what happened even
+  // without a word for it. `DamageAdjustment.reason` stays in the rules module,
+  // where it costs nothing and is there if a preset ever wants to fill it in.
+  return bar;
+}
+
+async function fillTargets(holder: HTMLElement, entry: RollEntry): Promise<void> {
+  const rows = await targetRows(entry);
+  // Re-rendered while we were measuring: this node is no longer the one on
+  // screen, and whatever replaced it has started its own fill.
+  if (!holder.isConnected) return;
+
+  if (!rows.length) {
+    holder.textContent = 'Nothing bound and visible to aim at.';
+    return;
+  }
+
+  const table = document.createElement('table');
+  const isAttack = isTargeted(entry.skill);
+
+  const head = document.createElement('tr');
+  // `num` on the heading as well as the cells, so the label sits over the digits
+  // it belongs to rather than at the far side of the column.
+  const columns: [string, boolean][] = isAttack
+    ? [['Target', false], ['State', false], ['Range', true], ['Parry', true], ['Result', true]]
+    : [
+        ['Target', false],
+        ['State', false],
+        ['Range', true],
+        ['Tough', true],
+        ['Result', true],
+        ['', true],
+      ];
+  for (const [label, numeric] of columns) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    if (numeric) th.className = 'num';
+    head.append(th);
+  }
+  table.append(head);
+
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    if (row.band === 'over') tr.className = 'out-of-range';
+
+    const name = document.createElement('td');
+    name.className = 'who';
+    name.textContent = row.name;
+    tr.append(name);
+
+    // One letter each: V, P, S. The full name and what it does are in the
+    // tooltip, because a table cell this narrow can hold a letter and nothing.
+    const state = document.createElement('td');
+    state.className = 'state';
+    for (const pill of row.pills) {
+      const chip = document.createElement('span');
+      chip.className = pill.value ? 'pill applied' : 'pill';
+      chip.textContent = pill.letter;
+      chip.title = pill.value
+        ? `${pill.label} (${formatMod(pill.value)} to the attacker) — ${pill.note}`
+        : `${pill.label} — ${pill.note}. Not applied: judge it yourself.`;
+      state.append(chip);
+    }
+    tr.append(state);
+
+    const range = document.createElement('td');
+    range.className = 'num';
+    if (row.cells === undefined) {
+      range.textContent = '—';
+      range.title = entry.from ? 'Not on this map' : 'The roller has no token on the map';
+    } else {
+      const penalty = row.band ? BAND_PENALTY[row.band] : undefined;
+      range.textContent =
+        row.band === 'over'
+          ? `${Math.round(row.cells)} — over`
+          : penalty
+            ? `${Math.round(row.cells)} (${penalty})`
+            : String(Math.round(row.cells));
+      // A distance with no band is the confusing case, and it is worth spelling
+      // out: the roll came from the skills list, which knows the skill but not
+      // which weapon — and without a weapon there are no bands to fall in. The
+      // cell then reads like a measured range that was silently ignored, which
+      // is exactly how it was reported.
+      if (!row.band) range.classList.add('no-band');
+      range.title = row.band
+        ? `${row.cells.toFixed(1)} cells — ${row.band} range`
+        : `${row.cells.toFixed(1)} cells. No range penalty: this roll carries no weapon, ` +
+          `so there are no range bands. Roll the attack from the weapon to get them.`;
+    }
+    tr.append(range);
+
+    const stat = document.createElement('td');
+    stat.className = 'num';
+    stat.textContent = String(isAttack ? (row.parry ?? '—') : (row.toughness ?? '—'));
+    if (isAttack && row.target !== row.parry) {
+      stat.title = `Parry ${row.parry} — the result beside it is against ${row.target}`;
+    }
+    tr.append(stat);
+
+    const result = document.createElement('td');
+    if (isAttack) {
+      result.textContent = row.outOfRange
+        ? 'out of range'
+        : row.hit
+          ? row.raises
+            ? `hit, ${row.raises} raise${row.raises === 1 ? '' : 's'}`
+            : 'hit'
+          : 'miss';
+      result.className = row.hit ? 'num hit' : 'num miss';
+      // The whole sum, not just the answer. A range penalty that was shown in one
+      // column and silently missing from another is exactly the bug this had.
+      const bandPenalty = row.band && row.band !== 'over' ? BAND_PENALTY[row.band] : 0;
+      const working = [
+        `${entry.total}`,
+        bandPenalty ? `${formatMod(bandPenalty)} range` : '',
+        row.bonus ? `${formatMod(row.bonus)} target` : '',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      // Say when a term is missing, not just when it is present. A sum that
+      // quietly omits range reads as a sum that has range in it and found it to
+      // be zero.
+      const noBands = !entry.bands && row.cells !== undefined;
+      result.title = row.outOfRange
+        ? `Beyond long range — the shot cannot be taken`
+        : `${working} = ${row.effective} vs ${row.target}` +
+          (noBands ? ' — no weapon on this roll, so no range penalty' : '');
+    } else {
+      result.textContent = row.outcome ?? '—';
+      result.className = 'num';
+    }
+    tr.append(result);
+
+    if (!isAttack) {
+      const action = document.createElement('td');
+      action.className = 'num';
+      if (row.applicable) {
+        const adjust = adjustments.get(entry.id);
+        const apply = document.createElement('button');
+        apply.className = 'apply';
+        apply.textContent = 'Apply';
+        // The tooltip carries the arithmetic, so what the button is about to
+        // commit is readable before it is committed rather than after.
+        apply.title = `Apply ${describeAdjustment(entry.total!, adjust) || entry.total} to ${row.name}`;
+        apply.addEventListener('click', () => {
+          const token = tokens.find((t) => t.id === row.tokenId);
+          const state = token && readBinding(token.metadata);
+          const sheet = state && sheets.find((s) => s.id === state.sheetId);
+          if (token && state && sheet) {
+            void applyToTarget(entry, { token, state, sheet }, adjustments.get(entry.id));
+          }
+        });
+        action.append(apply);
+      }
+      tr.append(action);
+    }
+
+    table.append(tr);
+  }
+
+  // The adjustment sits above the table, not on each row: you apply one row at
+  // a time, and a control per row would be five copies of the same decision.
+  if (!isAttack && rows.some((row) => row.applicable)) {
+    holder.replaceChildren(adjustBar(entry, () => void fillTargets(holder, entry)), table);
+  } else {
+    holder.replaceChildren(table);
+  }
+  if (isAttack) {
+    const note = document.createElement('p');
+    note.className = 'targets-note';
+    note.textContent =
+      attackKind(entry.skill!) === 'parry'
+        ? 'Resolved against Parry.'
+        : 'Against Parry if the shot is into melee; otherwise the usual 4.';
+    holder.append(note);
+  }
 }
 
 function showSaved(state: 'saving' | 'saved' | ''): void {
@@ -514,22 +1123,66 @@ function traitButton(
   die: HTMLElement,
   untrained: boolean,
   roll: () => void,
+  /**
+   * Edges and hindrances that change this trait but that the app deliberately
+   * does not apply — because their scope is a *purpose* it cannot see.
+   *
+   * "Notice rolls made to spot clues", "Stealth rolls made in the wild",
+   * "Spirit rolls made to resist Fear": only two of the party's 24 edges are
+   * scoped to a bare skill name. So the asterisk tells the player it is there
+   * and what it says, and they dial it in — which is both less code and more
+   * correct than the app guessing whether they are in a town.
+   */
+  notes: readonly AbilityNote[] = [],
 ): HTMLElement {
   const button = document.createElement('button');
   button.className = untrained ? 'trait untrained' : 'trait';
   const name = document.createElement('span');
   name.textContent = label;
-  button.append(name, die);
+  button.append(name);
+  if (notes.length) {
+    const star = document.createElement('span');
+    star.className = 'trait-note';
+    star.textContent = '*';
+    // Every note in one tooltip: a trait with two of them wants both, and there
+    // is nowhere on a button to put a second marker.
+    star.title = notes.map((note) => describeNote(note, label)).join('\n');
+    button.append(star);
+  }
+  button.append(die);
   button.addEventListener('click', roll);
   return button;
 }
 
-function entryList(entries: Sheet['edges']): HTMLElement {
+/**
+ * Edges, hindrances and special abilities, each saying whether it does anything.
+ *
+ * The marker is the point. Before it, a sheet showing Trademark Weapon and a
+ * sheet showing Level Headed looked identical and only one of them did anything
+ * — which is exactly the guessing Paul wanted stopped. Now:
+ *
+ *   `auto` — the app applies it (initiative only; that is the whole list)
+ *   `note` — has a number, and there is an asterisk on the trait it belongs to
+ *   (none) — text, and visibly so
+ */
+function entryList(entries: Sheet['edges'], notes: readonly AbilityNote[]): HTMLElement {
   const dl = document.createElement('dl');
   dl.className = 'entries';
   for (const entry of entries) {
+    const note = notes.find((n) => n.entry === entry);
     const dt = document.createElement('dt');
     dt.textContent = entry.name;
+    if (note && note.klass !== 'text') {
+      const tag = document.createElement('span');
+      tag.className = `entry-tag ${note.klass}`;
+      tag.textContent = note.klass === 'wired' ? 'auto' : 'note';
+      tag.title = note.note;
+      dt.append(' ', tag);
+    } else if (note) {
+      // Inert, and it has to *look* inert rather than merely not working.
+      dt.title = note.note;
+      dt.classList.add('inert');
+    }
     dl.append(dt);
     if (entry.text) {
       const dd = document.createElement('dd');
@@ -541,6 +1194,10 @@ function entryList(entries: Sheet['edges']): HTMLElement {
 }
 
 function renderSheetArea(): void {
+  // The bind button lives in the header, outside everything this function
+  // replaces, but it depends on the same three things — selection, tokens, and
+  // which sheet is up — so it is refreshed from the one hook they all reach.
+  updateBindButton();
   if (tab === 'table') {
     sheetEl.replaceChildren(pasting ? renderPaste() : renderTable());
     return;
@@ -548,11 +1205,12 @@ function renderSheetArea(): void {
   if (tab === 'initiative') {
     sheetEl.replaceChildren(
       renderInitiative(initiative, combatants(tokens, sheets), {
-        revealPrivate: isGM,
+        revealNpcs: isGM,
         onDeal: () => void deal(),
         onClear: () => void endFight(),
         onSelect: (tokenId) => void takeTurn(tokenId),
         onOpenSheet: (tokenId) => void openSheetFor(tokenId),
+        onReplace: (tokenId) => void replaceCard(tokenId),
         acted,
         ...(selectedTokenId ? { selectedTokenId } : {}),
       }, lastDraws),
@@ -593,7 +1251,7 @@ async function deal(): Promise<void> {
     table.map((c) => ({
       tokenId: c.tokenId,
       edges: initiativeEdges(c.sheet),
-      out: isIncapacitated(c.state, c.sheet.wildCard),
+      out: isIncapacitated(c.state, c.sheet),
     })),
     new JavaRandom(),
   );
@@ -711,9 +1369,8 @@ function renderTable(): HTMLElement {
 
   wrap.append(rosterBlock());
   wrap.append(sessionBlock());
-  // Nothing to seat in an empty room: a Marshal building a map on their own does
-  // not need a block that lists only themselves.
-  if (party.some((player) => !player.gm)) wrap.append(seatBlock());
+  // No dice-seat block: where a player's dice come in from is derived from where
+  // they sit relative to whoever is watching, so there is nothing left to choose.
   wrap.append(storageBlock());
   // Last, because it is the only block you go looking for rather than glance at:
   // adding a mook is a thing you do once a scene, not once a round.
@@ -727,62 +1384,6 @@ function renderTable(): HTMLElement {
   });
   wrap.append(storage);
 
-  return wrap;
-}
-
-/**
- * Where everyone's dice come in from.
- *
- * The Marshal's block, because seats are shared: two players cannot each decide
- * which edge is theirs. Whether the dice are *animated* is not here — that is each
- * player's own choice about their own machine, and it lives in the footer where
- * every player can reach it.
- *
- * Only worth showing when there is somebody to seat, so a solo Marshal preparing a
- * map does not get a block listing themselves.
- */
-function seatBlock(): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.className = 'pane-block';
-  wrap.append(
-    paneHeading(
-      'Dice seats',
-      'Animated dice come in from the same edge every session, so you can tell ' +
-        'whose roll it is before you read it. Players switch the animation on or ' +
-        'off for themselves, at the bottom of the panel.',
-    ),
-  );
-
-  const list = document.createElement('div');
-  list.className = 'creature-list';
-  for (const player of party) {
-    const row = document.createElement('div');
-    row.className = 'creature';
-
-    const name = document.createElement('span');
-    name.className = 'creature-meta';
-    name.textContent = player.gm ? `${player.name} (Marshal)` : player.name;
-    row.append(name);
-
-    const pick = document.createElement('select');
-    pick.className = 'seat-pick';
-    // The Marshal's own seat is fixed at the top: it is the one seat the layout
-    // assumes, and every other seat is defined by not being it.
-    pick.disabled = player.gm;
-    for (const seat of player.gm ? (['n'] as Seat[]) : PLAYER_SEATS) {
-      const option = document.createElement('option');
-      option.value = seat;
-      option.textContent = seatLabel(seat);
-      pick.append(option);
-    }
-    pick.value = seats[player.id] ?? (player.gm ? 'n' : PLAYER_SEATS[0]!);
-    pick.addEventListener('change', () => {
-      void moveSeat(player.id, pick.value as Seat);
-    });
-    row.append(pick);
-    list.append(row);
-  }
-  wrap.append(list);
   return wrap;
 }
 
@@ -813,20 +1414,16 @@ function sessionBlock(): HTMLElement {
   wrap.append(
     paneButtons([
       [
-        'New session',
-        'Every Wild Card back to 3 Bennies',
+        'Clear Bennies',
+        'Everyone to none — then hand out a starting three with the button beside it',
         () => {
-          if (!confirm('Start a new session? Every Wild Card goes back to 3 Bennies.')) return;
-          void handOut(
-            () => bank.newSession(sheets),
-            'New session',
-            'back to **3** Bennies each:',
-          );
+          if (!confirm('Clear every Benny in the room? Nobody keeps any.')) return;
+          void handOut(() => bank.clearAll(sheets), 'Bennies cleared', 'nothing left for');
         },
       ],
       [
-        '+1 Benny to all',
-        'One Benny to every Wild Card — for good play, or a scene that deserved it',
+        '+1 Benny to all PCs',
+        "One Benny to every player's Wild Card — for good play, or a scene that deserved it",
         () => void handOut(() => bank.awardAll(sheets), 'Bennies all round', 'a Benny each for'),
       ],
     ]),
@@ -1000,27 +1597,29 @@ async function handOut(
 }
 
 /**
- * Every character in the room, with what you do to a roster and what you do to
- * one character in the same place.
+ * Every character in the room, as a table rather than a list.
  *
- * The hidden ones used to have a block of their own, which read as a second
- * roster and answered "what have I hidden?" at the cost of asking "where is
- * everyone else?". One list marked with who is hidden answers both, and the
- * switch stays next to the name — a mook left private after the reveal is a
- * small, silent annoyance.
+ * The list gave a name and one switch. What the Marshal actually needs between
+ * scenes is the state of the whole roster at once — who is a player's, who is a
+ * Wild Card, and who is short of Bennies — and reading that off a list meant
+ * opening sheets one at a time. Columns answer it in a glance, and the two
+ * things worth doing per row, flipping PC/NPC and handing over a Benny, are in
+ * the row rather than behind the sheet.
+ *
+ * A star marks a Wild Card, which is how the stat blocks themselves write it.
  */
 function rosterBlock(): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'pane-block';
-  const hidden = sheets.filter((sheet) => sheet.private);
+  const npcs = sheets.filter((sheet) => !sheet.pc).length;
   wrap.append(
     paneHeading(
       'Roster',
       `${sheets.length} character${sheets.length === 1 ? '' : 's'}` +
-        (hidden.length
-          ? `, ${hidden.length} hidden from players' pickers, sheets and initiative ` +
-            'names. A screen, not a lock — room data is readable by every client.'
-          : '. Hide one with "Marshal\'s only" here or while editing it.'),
+        (npcs
+          ? `, ${npcs} of them yours — kept out of players' pickers, sheets and ` +
+            'initiative names. A screen, not a lock: room data is readable by every client.'
+          : '. Anything you add starts as an NPC; switch it in the PC column.'),
     ),
   );
   wrap.append(
@@ -1037,12 +1636,41 @@ function rosterBlock(): HTMLElement {
 
   if (!sheets.length) return wrap;
 
-  const list = document.createElement('div');
-  list.className = 'creature-list';
-  for (const sheet of sheets) {
-    const row = document.createElement('div');
-    row.className = sheet.private ? 'creature hidden-sheet' : 'creature';
+  const table = document.createElement('table');
+  table.className = 'roster';
 
+  const head = document.createElement('tr');
+  for (const [label, hint, numeric] of [
+    ['', 'Wild Card', false],
+    ['Character', '', false],
+    ['PC', "Whose character it is. An NPC stays out of the players' panels.", true],
+    ['Bennies', 'What they hold now', true],
+    ['', 'Hand one over', true],
+  ] as [string, string, boolean][]) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    if (hint) th.title = hint;
+    if (numeric) th.className = 'num';
+    head.append(th);
+  }
+  table.append(head);
+
+  // Players first, then the Marshal's: the party is the part you check every
+  // session, and a long bestiary underneath should not push it off screen.
+  const ordered = [...sheets].sort((a, b) => Number(b.pc) - Number(a.pc));
+  for (const sheet of ordered) {
+    const row = document.createElement('tr');
+    if (!sheet.pc) row.className = 'npc';
+
+    // The star is the stat blocks' own notation for a Wild Card, which is where
+    // the Marshal has already learned to read it.
+    const star = document.createElement('td');
+    star.className = 'wc';
+    star.textContent = sheet.wildCard ? '★' : '';
+    star.title = sheet.wildCard ? 'Wild Card' : 'Extra';
+    row.append(star);
+
+    const nameCell = document.createElement('td');
     const open = document.createElement('button');
     open.className = 'creature-name';
     open.textContent = sheet.name;
@@ -1052,32 +1680,51 @@ function rosterBlock(): HTMLElement {
       renderRoster();
       setTab('sheet');
     });
-    row.append(open);
+    nameCell.append(open);
+    row.append(nameCell);
 
-    const kind = document.createElement('span');
-    kind.className = 'creature-meta';
-    kind.textContent = [sheet.wildCard ? 'Wild Card' : 'Extra', sheet.private ? 'hidden' : '']
-      .filter(Boolean)
-      .join(' · ');
-    row.append(kind);
-
-    const toggle = document.createElement('button');
-    toggle.className = 'creature-add';
-    toggle.textContent = sheet.private ? 'Reveal' : 'Hide';
-    toggle.title = sheet.private
-      ? 'Let the players see this sheet'
-      : "Marshal's only: keep this out of players' pickers and initiative names";
-    toggle.addEventListener('click', () => {
+    // The column is the control: with Reveal gone this is the only place the
+    // whole roster's allegiance can be set without opening six sheets.
+    const kindCell = document.createElement('td');
+    kindCell.className = 'num';
+    const kind = document.createElement('button');
+    kind.className = 'kind';
+    kind.textContent = sheet.pc ? 'PC' : 'NPC';
+    kind.title = sheet.pc
+      ? `Make ${sheet.name} one of yours, out of the players' panels`
+      : `Hand ${sheet.name} to the players`;
+    kind.addEventListener('click', () => {
       void (async () => {
-        await roster.save({ ...sheet, private: !sheet.private });
+        await roster.save({ ...sheet, pc: !sheet.pc });
         await reload();
         renderSheetArea();
       })();
     });
-    row.append(toggle);
-    list.append(row);
+    kindCell.append(kind);
+    row.append(kindCell);
+
+    const count = document.createElement('td');
+    count.className = 'num';
+    // An Extra has no Bennies at all, which is not the same as holding none.
+    count.textContent = sheet.wildCard ? String(bennies.get(sheet.id) ?? 0) : '—';
+    row.append(count);
+
+    const give = document.createElement('td');
+    give.className = 'num';
+    const plus = document.createElement('button');
+    plus.className = 'creature-add';
+    plus.textContent = '+1';
+    plus.disabled = !sheet.wildCard;
+    plus.title = sheet.wildCard
+      ? `A Benny for ${sheet.name}`
+      : 'Extras do not have Bennies';
+    plus.addEventListener('click', () => void awardBenny(sheet));
+    give.append(plus);
+    row.append(give);
+
+    table.append(row);
   }
-  wrap.append(list);
+  wrap.append(table);
   return wrap;
 }
 
@@ -1089,15 +1736,45 @@ function rosterBlock(): HTMLElement {
  */
 const BESTIARY_RESULTS = 10;
 
+/** Which collection the picker is showing. Empty is everything. */
+let bestiarySource = '';
+
 function bestiaryBlock(): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'pane-block';
-  wrap.append(paneHeading('Bestiary', `${BESTIARY_SOURCE}. Written for an older edition — expect to adjust.`));
+  wrap.append(
+    paneHeading('Bestiary', 'Written for older editions than the party\u2019s cards \u2014 expect to adjust.'),
+  );
+
+  const controls = document.createElement('div');
+  controls.className = 'bestiary-controls';
 
   const search = document.createElement('input');
   search.type = 'search';
-  search.placeholder = 'Search creatures…';
-  wrap.append(search);
+  search.placeholder = 'Search creatures\u2026';
+  controls.append(search);
+
+  // Two books in one list, and the one you want is almost always the adventure
+  // you are running. Filtering by source is what Paul asked for when the second
+  // collection went in.
+  const picker = document.createElement('select');
+  picker.className = 'bestiary-source';
+  for (const [value, label] of [
+    ['', 'All books'],
+    [COFFIN_ROCK, COFFIN_ROCK_SOURCE],
+    [SAVAGE_FREE_BESTIARY, BESTIARY_SOURCE],
+  ] as const) {
+    const option = document.createElement('option');
+    option.value = value;
+    // The full credit line is long; the dropdown gets a short name and the
+    // tooltip keeps the attribution the data file asks for.
+    option.textContent = value === '' ? label : label.replace(/\s*\(.*\)$/, '');
+    option.title = label;
+    if (value === bestiarySource) option.selected = true;
+    picker.append(option);
+  }
+  controls.append(picker);
+  wrap.append(controls);
 
   const results = document.createElement('div');
   results.className = 'creature-list';
@@ -1105,7 +1782,11 @@ function bestiaryBlock(): HTMLElement {
 
   const show = (): void => {
     results.replaceChildren();
-    for (const creature of searchCreatures(search.value, BESTIARY_RESULTS)) {
+    for (const creature of searchCreatures(
+      search.value,
+      BESTIARY_RESULTS,
+      bestiarySource || undefined,
+    )) {
       const row = document.createElement('div');
       row.className = 'creature';
 
@@ -1117,7 +1798,7 @@ function bestiaryBlock(): HTMLElement {
       name.title =
         `Pace ${sheet.pace ?? '—'}, Parry ${sheet.parry}, Toughness ${sheet.toughness}` +
         (stale.length ? `\nOlder-edition skills: ${stale.join(', ')}` : '');
-      name.addEventListener('click', () => void addCreature(creature.name));
+      name.addEventListener('click', () => void addCreature(creature.name, creature.source));
       row.append(name);
 
       const meta = document.createElement('span');
@@ -1129,18 +1810,24 @@ function bestiaryBlock(): HTMLElement {
     }
   };
   search.addEventListener('input', show);
+  picker.addEventListener('change', () => {
+    bestiarySource = picker.value;
+    show();
+  });
   show();
   return wrap;
 }
 
-async function addCreature(name: string): Promise<void> {
-  const creature = searchCreatures(name, 1)[0];
+async function addCreature(name: string, source?: string): Promise<void> {
+  // The source travels with the click: the two books share names — both have
+  // Deputies and Cultists — so a search by name alone could add the wrong one.
+  const creature = findCreature(name, source) ?? searchCreatures(name, 1, source)[0];
   if (!creature) return;
   const sheet = creatureSheet(creature);
-  // NPCs the Marshal adds start private: a mook's stat block is the one thing at
-  // the table the players are meant to find out by being shot at. One tick in
-  // the editor makes it public.
-  await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id, private: true });
+  // A creature the Marshal adds is an NPC — a mook's stat block is the one thing
+  // at the table the players are meant to find out by being shot at. One click
+  // in the roster's PC column hands it over.
+  await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id, pc: false });
   const stale = outdatedSkills(sheet);
   publish({
     label: 'Added',
@@ -1243,7 +1930,7 @@ Gear: Melee attack (Str+d6).`;
       try {
         const parsed = parseStatBlocks(area.value);
         for (const sheet of parsed) {
-          await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id, private: true });
+          await roster.save({ ...sheet, id: newCharacter(sheet.name, sheets).id, pc: false });
         }
         notify(`Added ${parsed.map((s) => s.name).join(', ')}`);
         pasting = false;
@@ -1322,7 +2009,11 @@ function activeToken(sheet: Sheet): { token: TokenLike; state: TokenState } | un
  * sort of disagreement nobody notices until a roll is wrong.
  */
 function modsFor(sheet: Sheet): RollBreakdown {
-  return rollBreakdown(activeToken(sheet)?.state);
+  const active = activeToken(sheet);
+  if (active) return rollBreakdown(active.state);
+  // No token, so no wounds or Fatigue to carry — but the Marshal's dial still
+  // counts. See `looseMods`.
+  return rollBreakdown({ wounds: 0, fatigue: 0, ...(looseMods.get(sheet.id) ?? {}) });
 }
 
 /**
@@ -1374,14 +2065,19 @@ function statusStrip(sheet: Sheet): HTMLElement {
   // and so the order they get thought about at the table.
   const active = activeToken(sheet);
   if (!active) {
+    // Only the wounds need a token. The Marshal's modifiers follow, because a
+    // roll made over a piece of scene art with nothing placed still happens at
+    // whatever the Marshal called.
     const hint = document.createElement('span');
     hint.className = 'hint';
     hint.textContent = 'Bind a token to track wounds';
     strip.append(hint);
+    strip.append(modifierGroup(sheet));
     return block;
   }
 
   const { token, state } = active;
+  void token;
   const change = (next: TokenState): void => {
     void updateTokenState(token.id, () => next).then(refreshTokens);
   };
@@ -1399,7 +2095,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
     ),
   );
 
-  const woundMax = maxWounds(sheet.wildCard);
+  const woundMax = woundLimit(sheet);
   if (woundMax > 0) {
     half.append(
       labelled(
@@ -1408,7 +2104,7 @@ function statusStrip(sheet: Sheet): HTMLElement {
           woundMax,
           Math.min(state.wounds, woundMax),
           (n) => `${n} wound${n === 1 ? '' : 's'} — ${-n} to every trait roll`,
-          (n) => change(setWounds(state, n, sheet.wildCard)),
+          (n) => change(setWounds(state, n, sheet)),
           'wound',
         ),
       ),
@@ -1440,16 +2136,16 @@ function statusStrip(sheet: Sheet): HTMLElement {
   const chip = document.createElement('span');
   chip.className = penalty ? 'penalty' : 'penalty zero';
   chip.textContent = formatMod(penalty) || '+0';
-  chip.title = `${describeStatus(state, sheet.wildCard)} — ${formatMod(penalty) || 'no'} modifier from wounds and Fatigue`;
+  chip.title = `${describeStatus(state, sheet)} — ${formatMod(penalty) || 'no'} modifier from wounds and Fatigue`;
 
   // An Extra has no wound track, so Incapacitated needs its own control.
-  const out = isIncapacitated(state, sheet.wildCard);
+  const out = isIncapacitated(state, sheet);
   const down = document.createElement('button');
   down.className = out ? 'toggle on danger-toggle' : 'toggle';
   down.textContent = out ? 'Incapacitated' : 'Down';
   down.title = out ? 'Bring back up' : 'Mark Incapacitated';
   down.addEventListener('click', () =>
-    change(setWounds(state, out ? 0 : woundMax + 1, sheet.wildCard)),
+    change(setWounds(state, out ? 0 : woundMax + 1, sheet)),
   );
   half.append(down);
 
@@ -1471,12 +2167,53 @@ function statusStrip(sheet: Sheet): HTMLElement {
   // The Marshal's modifiers join the same row, behind a divider: they are read
   // together with the wounds — both answer "what is this roll at?" — and the
   // green tint is what says which half is which.
-  strip.append(modifierGroup(token, state));
+  strip.append(modifierGroup(sheet));
   return block;
 }
 
 /** Whether the modifier chips are unfolded. Sticky, since a fight tends to keep needing them. */
 let showConditions = false;
+
+/**
+ * Situational modifiers for a character with no token on the map.
+ *
+ * Wounds and Fatigue genuinely need a token — they are the state of a body in a
+ * scene, and there is nowhere to put them otherwise. The Marshal's own dial is
+ * not: "that's a tough climb, −2" applies to a Stealth roll made over a piece of
+ * scene art with no tokens placed at all, which is the case Damian raised. So
+ * the dial falls back to here rather than being hidden along with the wounds.
+ *
+ * In memory, not in the store. These are the most transient thing in the app —
+ * a call about one moment — and a −4 that survived a reload and silently taxed
+ * every later roll would be worse than losing it.
+ */
+const looseMods = new Map<string, ModifierState>();
+
+/** Where this sheet's modifiers live: on its token if it has one, otherwise loose. */
+function modifierStateOf(sheet: Sheet): ModifierState {
+  return activeToken(sheet)?.state ?? looseMods.get(sheet.id) ?? {};
+}
+
+function setModifierState(sheet: Sheet, next: ModifierState): void {
+  const active = activeToken(sheet);
+  if (active) {
+    // Merge the two modifier fields onto the live token state rather than
+    // writing `next` over it: `next` came from a `ModifierState`-shaped view, and
+    // assigning it wholesale would be trusting that the wounds happened to ride
+    // along. Absent rather than `undefined`, so a cleared dial leaves no key.
+    void updateTokenState(active.token.id, (current) => {
+      const merged: TokenState = { ...current };
+      if (next.mod) merged.mod = next.mod;
+      else delete merged.mod;
+      if (next.conditions?.length) merged.conditions = next.conditions;
+      else delete merged.conditions;
+      return merged;
+    }).then(refreshTokens);
+    return;
+  }
+  looseMods.set(sheet.id, next);
+  renderSheetArea();
+}
 
 /**
  * The green half of the row: everything the Marshal calls, as opposed to what
@@ -1492,12 +2229,11 @@ let showConditions = false;
  * standing here they would quietly follow the character into their next Notice
  * roll. Hence the Clear button sitting right next to them.
  */
-function modifierGroup(token: TokenLike, state: TokenState): HTMLElement {
+function modifierGroup(sheet: Sheet): HTMLElement {
   const group = document.createElement('div');
   group.className = 'modgroup';
-  const change = (next: TokenState): void => {
-    void updateTokenState(token.id, () => next).then(refreshTokens);
-  };
+  const state = modifierStateOf(sheet);
+  const change = (next: ModifierState): void => setModifierState(sheet, next);
 
   // Line one is the dial and its total, and must not wrap — the green number
   // belongs beside the pips that produce it. The buttons go on line two with the
@@ -1729,6 +2465,13 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
     return;
   }
 
+  // Refuse before charging. Spending a Benny to be told there was nothing to
+  // reroll is the worst outcome available here, and the Benny does not come back.
+  if (use === 'Reroll a Trait' && !lastTraitRoll.has(sheet.id)) {
+    notify(`${sheet.name} has not rolled anything to reroll`);
+    return;
+  }
+
   try {
     const left = await bank.spend(sheet.id, use);
     bennies.set(sheet.id, left);
@@ -1744,7 +2487,12 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
     }
 
     if (use === 'Draw a new Action Card' && active) {
-      effect = await redrawCard(active.token.id, sheet);
+      const card = await redrawCard(active.token.id, sheet);
+      effect = card ? ` — now on ${cardLabel(card)}` : ' — the deck is empty';
+    }
+
+    if (use === 'Reroll a Trait') {
+      effect = rerollLastTrait(sheet);
     }
 
     publish({
@@ -1760,10 +2508,47 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
 }
 
 /**
+ * Roll the character's last trait roll again, for the Benny that just went.
+ *
+ * The whole roll, not just the die: the same expression, so the wound penalty and
+ * whatever the Marshal had called are still in it, and the same target framing,
+ * so an attack reroll still expands to the targeting table. In SWADE a reroll
+ * replaces the first result outright — there is no keeping the better of the two
+ * — so the new line stands on its own and the old one stays in the log as
+ * history rather than being edited away.
+ *
+ * @returns a fragment for the Benny line, since the roll itself publishes separately.
+ */
+function rerollLastTrait(sheet: Sheet): string {
+  const last = lastTraitRoll.get(sheet.id);
+  // `spendBenny` checks this before charging; belt and braces for any other caller.
+  if (!last) return ' — nothing to reroll';
+
+  const dice: DieEvent[] = [];
+  const explained = new RollInterpreter(
+    new CommandContext(new JavaRandom(), (die) => dice.push(die)),
+  )
+    .run(parse([last.expression]))
+    .trim();
+
+  publishTrait(
+    sheet,
+    `${last.label} — reroll`,
+    { expression: last.expression, explained, dice },
+    last.mods,
+    last.aimed,
+    // Keeps this from replacing what it just redid, so a second Benny rerolls
+    // the same trait rather than the reroll.
+    true,
+  );
+  return ` — rerolled ${last.label}`;
+}
+
+/**
  * Deal this combatant a replacement Action Card from the same deck the round was
  * dealt from, so the card cannot come out twice.
  */
-async function redrawCard(tokenId: string, sheet: Sheet): Promise<string> {
+async function redrawCard(tokenId: string, sheet: Sheet): Promise<Card | undefined> {
   const state = initiative ?? (await freshInitiative());
   const result = dealRound(
     state,
@@ -1771,14 +2556,49 @@ async function redrawCard(tokenId: string, sheet: Sheet): Promise<string> {
     new JavaRandom(),
   );
   const draw = result.draws.get(tokenId);
-  if (!draw) return ' — the deck is empty';
+  if (!draw) return undefined;
 
   await setCards(new Map([[tokenId, draw.card]]));
-  await writeInitiative(result.state);
-  // Redrawing is not a new round; keep the round number where it was.
-  initiative = { ...result.state, round: state.round };
+  // Redrawing is not a new round; keep the round number where it was. The joker
+  // flag is sticky too — a joker somebody else drew this round still owes the
+  // deck a reshuffle, whatever this one card turned out to be.
+  initiative = {
+    ...result.state,
+    round: state.round,
+    jokerDealt: state.jokerDealt || result.state.jokerDealt,
+  };
   await writeInitiative(initiative);
-  return ` — now on ${cardLabel(draw.card)}`;
+  // So the row's "drew" hint describes the card they now hold rather than the
+  // one it replaced.
+  lastDraws.set(tokenId, draw);
+  return draw.card;
+}
+
+/**
+ * The initiative tab's per-combatant redraw.
+ *
+ * The rules reach a new card through a Benny, and that path is still there on
+ * the sheet. This one costs nothing, because the table needs a redraw for all
+ * the things the rules do not cover — someone joining mid-fight, a misdeal, a
+ * card that went to the wrong bandit — and asking the Marshal to spend a Benny
+ * they then have to award back is bookkeeping, not a rule.
+ */
+async function replaceCard(tokenId: string): Promise<void> {
+  const table = combatants(tokens, sheets);
+  const combatant = table.find((c) => c.tokenId === tokenId);
+  if (!combatant) return;
+
+  const card = await redrawCard(tokenId, combatant.sheet);
+  // Named per token, as the deal is: one of five bandits sharing a sheet has to
+  // be identifiable in the log. The published line is named for everyone, so a
+  // private character shows as its token whoever pressed the button.
+  const who = displayName(combatant, table, false);
+  publish({
+    label: 'draws a new Action Card',
+    expression: 'initiative',
+    explained: card ? `${who} now on ${cardLabel(card)}` : `${who} — the deck is empty`,
+  });
+  await refreshTokens();
 }
 
 async function awardBenny(sheet: Sheet): Promise<void> {
@@ -1802,49 +2622,66 @@ function labelled(label: string, control: HTMLElement): HTMLElement {
   return wrap;
 }
 
-/** Bind / unbind for whatever is selected on the map. */
-function bindBar(sheet: Sheet): HTMLElement | undefined {
+/**
+ * Bind / unbind, in the header beside Edit.
+ *
+ * It used to be a bar at the foot of the sheet that returned nothing at all when
+ * no token was selected — so a Marshal who had not already worked out that
+ * selection was the missing step saw no control, no hint, and no reason to think
+ * one existed. Damian lost about ten minutes to exactly that, and it gated
+ * everything downstream, because the modifier breakdown he was hunting for only
+ * appeared once a token was bound.
+ *
+ * So it is always here, and it is never blank: when there is nothing to do it is
+ * disabled and its tooltip names the next step. One button rather than two,
+ * because binding and unbinding are never both the obvious action — if something
+ * bindable is selected you mean to bind it, and otherwise you mean to let go.
+ */
+function updateBindButton(): void {
+  const button = bar.bind;
+  const sheet = sheets.find((s) => s.id === selectedId);
+  if (!sheet || !maySee(sheet) || tab !== 'sheet') {
+    button.hidden = true;
+    return;
+  }
+  button.hidden = false;
+  button.classList.remove('warn');
+
   const bound = tokensForSheet(tokens, sheet.id);
-  const bar = document.createElement('div');
-  bar.className = 'bindbar';
-
-  const label = document.createElement('span');
-  const clash = duplicateWildCard(tokens, sheet);
-  label.textContent = clash
-    ? `${bound.length} tokens — a Wild Card should have one, wounds are shared`
-    : bound.length === 0
-      ? 'Not on the map'
-      : bound.length === 1
-        ? `Bound to "${bound[0]!.name}"`
-        : `Shared by ${bound.length} tokens`;
-  if (clash) label.className = 'warn';
-  bar.append(label);
-
-  // Anything selected that is not already this character. Offered even when the
-  // sheet is already bound, because an Extra is a stat block a whole gang
-  // shares — five bandits on one Bandit sheet is the normal case, and the
-  // earlier UI only ever let you bind the first.
   const boundHere = new Set(bound.map((t) => t.id));
-  // Only character tokens we know about: a selection can include props, notes
-  // or drawings, and counting those made the button promise one more than it
-  // would actually bind.
+  // Only character tokens we know about: a selection can include props, notes or
+  // drawings, and counting those made the button promise more than it would bind.
   const known = new Set(tokens.map((t) => t.id));
   const toBind = selectedTokenIds.filter((id) => known.has(id) && !boundHere.has(id));
+
+  // What is true right now, on every state — the button is the only place this
+  // is said since the old bar went.
+  const clash = duplicateWildCard(tokens, sheet);
+  const status = clash
+    ? `${bound.length} tokens share this Wild Card — wounds are shared between them`
+    : bound.length === 0
+      ? `${sheet.name} is not on the map`
+      : bound.length === 1
+        ? `${sheet.name} is bound to "${bound[0]!.name}"`
+        : `${sheet.name} is shared by ${bound.length} tokens`;
+  if (clash) button.classList.add('warn');
+
   if (toBind.length) {
-    const bind = document.createElement('button');
     const first = tokens.find((t) => t.id === toBind[0]);
-    bind.textContent =
-      toBind.length === 1 ? `Bind "${first?.name ?? 'token'}"` : `Bind ${toBind.length} tokens`;
-    bind.title = sheet.wildCard
-      ? 'A Wild Card should be on one token'
-      : 'Each token keeps its own wounds';
-    bind.addEventListener('click', () => {
+    button.textContent = toBind.length === 1 ? 'Bind' : `Bind ${toBind.length}`;
+    button.disabled = false;
+    button.title =
+      `${status}.\nBind ${
+        toBind.length === 1 ? `"${first?.name ?? 'the selected token'}"` : `${toBind.length} tokens`
+      } to it — ` +
+      (sheet.wildCard ? 'a Wild Card should be on one token' : 'each token keeps its own wounds');
+    button.onclick = () => {
       void (async () => {
         for (const id of toBind) await bindToken(id, sheet.id);
         await refreshTokens();
       })();
-    });
-    bar.append(bind);
+    };
+    return;
   }
 
   if (bound.length) {
@@ -1852,21 +2689,27 @@ function bindBar(sheet: Sheet): HTMLElement | undefined {
     // so one bandit can be detached without dissolving the gang.
     const selectedBound = selectedTokenIds.filter((id) => boundHere.has(id));
     const targets = selectedBound.length ? selectedBound : bound.map((t) => t.id);
-    const unbind = document.createElement('button');
-    unbind.textContent =
-      selectedBound.length && bound.length > selectedBound.length
-        ? `Unbind ${selectedBound.length}`
-        : 'Unbind all';
-    unbind.addEventListener('click', () => {
+    const partial = selectedBound.length > 0 && bound.length > selectedBound.length;
+    button.textContent = partial ? `Unbind ${targets.length}` : 'Unbind';
+    button.disabled = false;
+    button.title = `${status}.\n${
+      partial ? `Unbind the ${targets.length} selected` : `Unbind all ${bound.length}`
+    }`;
+    button.onclick = () => {
       void (async () => {
         for (const id of targets) await unbindToken(id);
         await refreshTokens();
       })();
-    });
-    bar.append(unbind);
+    };
+    return;
   }
 
-  return bar.childElementCount > 1 ? bar : undefined;
+  // Nothing bound and nothing selected — the state Damian was stuck in. Say what
+  // to do rather than disappearing.
+  button.textContent = 'Bind';
+  button.disabled = true;
+  button.title = `${status}.\nSelect a token on the map to bind it to ${sheet.name}`;
+  button.onclick = null;
 }
 
 async function refreshTokens(): Promise<void> {
@@ -1890,8 +2733,19 @@ async function onSelectionChange(): Promise<void> {
   }
 
   tokens = await characterTokens();
+  // The one place players and the Marshal behave differently, and deliberately
+  // the only one.
+  //
+  // Clicking a token swaps the sheet on screen, which is how the Marshal works —
+  // six characters, whichever is up. For a player it is wrong twice over: they
+  // have one character and clicking the thing they are about to shoot takes them
+  // off it, halfway through a multi-action; and the thing they clicked is
+  // usually the Marshal's, which they should not be reading. Selection still
+  // does everything else it did — targeting for damage, the initiative
+  // highlight, the badges — because those are about what is on the map, not
+  // about whose sheet is open. Players change that with the picker.
   const binding = readBinding(tokens.find((t) => t.id === selectedTokenId)?.metadata);
-  if (binding && sheets.some((s) => s.id === binding.sheetId)) {
+  if (isGM && binding && sheets.some((s) => s.id === binding.sheetId)) {
     selectedId = binding.sheetId;
     renderRoster();
   }
@@ -1929,6 +2783,17 @@ function render(): void {
   }
   const h1 = document.createElement('h1');
   h1.textContent = sheet.name;
+  // A Wild Card is marked with a star, which is how the stat blocks themselves
+  // write it and so the notation a Marshal already reads. Appended rather than
+  // put in the name: the name is what goes in the log and on the token, and a
+  // glyph in it was exactly the mistake the bestiary data had made.
+  if (sheet.wildCard) {
+    const star = document.createElement('span');
+    star.className = 'wc-star';
+    star.textContent = '★';
+    star.title = 'Wild Card — three Bennies, a Wild Die, and takes three wounds';
+    h1.append(star);
+  }
   headText.append(h1);
 
   if (sheet.quote) {
@@ -1972,6 +2837,11 @@ function render(): void {
   const mods = modsFor(sheet);
   const penalty = mods.total;
 
+  // Classified once per render rather than per row: `abilityNotes` walks every
+  // edge, hindrance and ability on the sheet, and the trait buttons then ask it
+  // which of them belong to each row.
+  const notes = abilityNotes(sheet);
+
   /**
    * `d6-1+2` — the die, then the character's own modifier, then wounds in red
    * and the Marshal's call in green.
@@ -2011,9 +2881,15 @@ function render(): void {
     if (!trait) continue;
     const label = attribute[0]!.toUpperCase() + attribute.slice(1);
     attributes.append(
-      traitButton(label, dieLabel(`d${trait.die}`, trait.mod), false, () => {
-        publishTrait(sheet, label, rollAttribute(sheet, attribute as Attribute, penalty), mods);
-      }),
+      traitButton(
+        label,
+        dieLabel(`d${trait.die}`, trait.mod),
+        false,
+        () => {
+          publishTrait(sheet, label, rollAttribute(sheet, attribute as Attribute, penalty), mods);
+        },
+        notesForTrait(notes, label),
+      ),
     );
   }
   sheetEl.append(attributes);
@@ -2040,12 +2916,19 @@ function render(): void {
   skills.className = 'traits';
   for (const skill of shown) {
     const trait = sheet.skills[skill];
+    // Fighting rolled from here is the same roll as Fighting rolled from the
+    // weapons table, so it gets the same targeting table. What it cannot carry is
+    // range bands — those belong to a weapon, and this button does not know which
+    // one you swung. The table copes: it shows the distance in cells and simply
+    // no band, which is exactly right for a melee attack anyway.
+    const aimed = isTargeted(skill) ? { skill } : undefined;
     skills.append(
       traitButton(
         skill,
         trait ? dieLabel(`d${trait.die}`, trait.mod) : dieLabel('d4', -2),
         !trait,
-        () => publishTrait(sheet, skill, rollSkill(sheet, skill, penalty), mods),
+        () => publishTrait(sheet, skill, rollSkill(sheet, skill, penalty), mods, aimed),
+        notesForTrait(notes, skill),
       ),
     );
   }
@@ -2075,13 +2958,13 @@ function render(): void {
   sheetEl.append(skills);
 
   if (sheet.hindrances.length) {
-    sheetEl.append(section('Hindrances'), entryList(sheet.hindrances));
+    sheetEl.append(section('Hindrances'), entryList(sheet.hindrances, notes));
   }
   if (sheet.edges.length) {
-    sheetEl.append(section('Edges'), entryList(sheet.edges));
+    sheetEl.append(section('Edges'), entryList(sheet.edges, notes));
   }
   if (sheet.powers?.length) {
-    sheetEl.append(section('Powers'), entryList(sheet.powers));
+    sheetEl.append(section('Powers'), entryList(sheet.powers, notes));
   }
   renderGear(sheet, mods);
 
@@ -2092,10 +2975,8 @@ function render(): void {
     sheetEl.append(section('Advances'), p);
   }
 
-  // Which token this is: reference, consulted when something looks wrong, so it
-  // sits at the foot rather than taking a line at the top of every sheet.
-  const bind = bindBar(sheet);
-  if (bind) sheetEl.append(bind);
+  // Binding moved to the header, beside Edit — see `updateBindButton`. It used
+  // to be a bar here, which is where it was invisible.
 }
 
 /**
@@ -2114,9 +2995,17 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
     table.className = 'weapons';
 
     const head = document.createElement('tr');
-    for (const label of ['', 'Roll', 'Range', 'Damage', 'RoF', 'AP']) {
+    for (const [label, numeric] of [
+      ['', false],
+      ['Roll', false],
+      ['Range', true],
+      ['Damage', true],
+      ['RoF', true],
+      ['AP', true],
+    ] as [string, boolean][]) {
       const th = document.createElement('th');
       th.textContent = label;
+      if (numeric) th.className = 'num';
       head.append(th);
     }
     table.append(head);
@@ -2137,17 +3026,26 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
       attack.className = 'atk';
       attack.textContent = skill;
       attack.title = `Roll ${skill}${mods.parts.length ? ` (${describeMods(mods.parts)})` : ''}`;
+      const bands = parseRangeBands(weapon.range);
       attack.addEventListener('click', () =>
-        publishTrait(sheet, `${weapon.name} — ${skill}`, rollSkill(sheet, skill, penalty), mods),
+        publishTrait(
+          sheet,
+          `${weapon.name} — ${skill}`,
+          rollSkill(sheet, skill, penalty),
+          mods,
+          { skill, ...(bands ? { bands } : {}) },
+        ),
       );
       attackCell.append(attack);
       row.append(attackCell);
 
       const rangeCell = document.createElement('td');
+      rangeCell.className = 'num';
       rangeCell.textContent = weapon.range ?? '—';
       row.append(rangeCell);
 
       const damageCell = document.createElement('td');
+      damageCell.className = 'num';
       const options = weapon.damage ? damageDiceOptions(weapon.damage) : [];
       if (weapon.damage && options.length) {
         // A shotgun's "1–3d6" depends on the range to the target, which the sheet
@@ -2168,6 +3066,7 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
               rollerName(sheet),
               weapon.ap,
               diceColourOf(sheet),
+              activeToken(sheet)?.token.id,
             ),
           );
           spread.append(button);
@@ -2190,6 +3089,7 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
             rollerName(sheet),
             weapon.ap,
             diceColourOf(sheet),
+            activeToken(sheet)?.token.id,
           ),
         );
         damageCell.append(button);
@@ -2257,11 +3157,11 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
  * past the Landshark's Toughness, and it does not pretend to be more.
  */
 function visibleSheets(): Sheet[] {
-  return isGM ? sheets : sheets.filter((sheet) => !sheet.private);
+  return isGM ? sheets : sheets.filter((sheet) => sheet.pc);
 }
 
 function maySee(sheet: Sheet | undefined): boolean {
-  return sheet !== undefined && (isGM || !sheet.private);
+  return sheet !== undefined && (isGM || sheet.pc);
 }
 
 function renderRoster(): void {
@@ -2270,7 +3170,7 @@ function renderRoster(): void {
     ...shown.map((sheet) => {
       const option = document.createElement('option');
       option.value = sheet.id;
-      option.textContent = sheet.private ? `${sheet.name} (GM)` : sheet.name;
+      option.textContent = sheet.pc ? sheet.name : `${sheet.name} (NPC)`;
       option.selected = sheet.id === selectedId;
       return option;
     }),
@@ -2340,13 +3240,26 @@ function damageTarget(): { token: (typeof tokens)[number]; state: TokenState; sh
  * with it — the sheet already knew the Colt ignores a point of armour, and
  * making the GM remember that at the moment of applying would waste it.
  */
-async function applyToTarget(entry: RollEntry): Promise<void> {
-  const target = damageTarget();
+async function applyToTarget(
+  entry: RollEntry,
+  // Passed rather than read from the selection. The targeting table puts an
+  // Apply on every row, and a function that resolved its own target from
+  // whatever happened to be selected would quietly hit the wrong one.
+  target: ReturnType<typeof damageTarget>,
+  // What the Marshal said actually happened — halved for a Construct, doubled
+  // for a Weakness. Absent for the ordinary case.
+  adjust?: DamageAdjustment,
+): Promise<void> {
   if (!target || entry.total === undefined) return;
-  const outcome = applyDamage(target.sheet, target.state, {
-    damage: entry.total,
-    ...(entry.ap ? { ap: entry.ap } : {}),
-  });
+  const outcome = applyDamage(
+    target.sheet,
+    target.state,
+    {
+      damage: entry.total,
+      ...(entry.ap ? { ap: entry.ap } : {}),
+    },
+    adjust,
+  );
   await updateTokenState(target.token.id, () => outcome.state);
   if (outcome.wounds > 0) lastDamage.set(target.token.id, outcome.wounds);
   await refreshTokens();
@@ -2375,6 +3288,8 @@ function rollFreeform(
   character?: string,
   ap?: number,
   colour?: string,
+  /** The rolling token, when there is one, so the damage table can show ranges. */
+  from?: string,
 ): void {
   const trimmed = expression.trim();
   if (!trimmed) return;
@@ -2395,20 +3310,25 @@ function rollFreeform(
         ...(label ? { label } : {}),
         ...(character ? { character } : {}),
         ...(ap ? { ap } : {}),
+        ...(from ? { from } : {}),
       },
       dice,
       colour,
     );
   } catch (error) {
     // A typo is not worth broadcasting; show it to whoever typed it.
-    log.add({
+    const failed: RollEntry = {
       id: newRollId(),
       at: Date.now(),
       by: me,
       expression: trimmed,
       explained: `${trimmed}: ${describe(error)}`,
       secret: true,
-    });
+    };
+    log.add(failed);
+    // Collapses whatever was open, like any other new line. An error is never
+    // expandable itself, so this only ever closes.
+    focusLatest(failed);
     renderLog();
   }
 }
@@ -2450,25 +3370,22 @@ async function openTray(): Promise<void> {
 let myColour: string | undefined;
 
 /**
- * Work out everyone's seat and remember them.
+ * Work out everyone's place at the table and remember it.
  *
- * Run by the GM only. The seats are shared state — two players cannot each decide
- * independently which edge is theirs — and a room with several players all writing
- * the same keys is how a seat ends up flip-flopping between sessions. Players read
+ * Run by the GM only. Places are shared state — two players cannot each decide
+ * independently which chair is theirs — and a room with several players all writing
+ * the same keys is how a place ends up flip-flopping between sessions. Players read
  * what the Marshal's client wrote.
+ *
+ * Nobody chooses a place, so there is no picker to keep in step; the only thing that
+ * changes one is somebody joining a table where their old chair is taken.
  */
-async function refreshSeats(): Promise<void> {
+async function refreshPlaces(): Promise<void> {
   const others = await OBR.party.getPlayers();
-  const stored = await store.readAll();
-  const current: Record<string, Seat> = {};
-  for (const [key, value] of Object.entries(stored)) {
-    if (key.startsWith(SEAT_PREFIX) && typeof value === 'string') {
-      current[key.slice(SEAT_PREFIX.length)] = value as Seat;
-    }
-  }
+  const current = storedPlaces(await store.readAll());
 
   // `getPlayers` is everyone *else*, so we are added by hand or the roller's own
-  // seat would be missing from the room the roller is in.
+  // place would be missing from the room the roller is in.
   party = [
     { id: OBR.player.id, name: me, gm: isGM },
     ...others.map((player) => ({
@@ -2477,59 +3394,49 @@ async function refreshSeats(): Promise<void> {
       gm: player.role === 'GM',
     })),
   ];
-  seats = assignSeats(party, current);
-  mySeat = seats[OBR.player.id] ?? mySeat;
+  places = assignPlaces(party, current);
+  myPlace = places[OBR.player.id] ?? myPlace;
 
   if (!isGM) return;
   // Nothing cosmetic gets written into a room that is nearly full. The whole-document
   // limit is a band rather than a number and overflow is silent, so the cost of
-  // guessing wrong is somebody's roster — and a seat that has to be re-picked next
-  // session is not worth going anywhere near that. Seats still work for this
-  // session; they just are not remembered.
+  // guessing wrong is somebody's roster — and a chair that is handed out again next
+  // session is not worth going anywhere near that.
+  //
+  // Nothing this session breaks: every client works its own place out from the party
+  // list and whatever *is* stored, so an unwritten place is the same on every screen.
+  // What is lost is only the memory of it — next week the chairs may be dealt out in a
+  // different order, and dice come in from somewhere new.
   const { fraction } = await store.usage();
   if (fraction > 0.85) {
-    console.warn('room storage %d%% full — not saving dice seats', Math.round(fraction * 100));
+    console.warn('room storage %d%% full — not saving table places', Math.round(fraction * 100));
     return;
   }
-  for (const [id, seat] of Object.entries(seats)) {
-    if (current[id] === seat) continue;
-    await saveSeat(id, seat);
+  for (const [id, place] of Object.entries(places)) {
+    if (current[id] === place) continue;
+    await savePlace(id, place);
   }
 }
 
-async function saveSeat(id: string, seat: Seat): Promise<void> {
+async function savePlace(id: string, place: number): Promise<void> {
   try {
-    await store.write(`${SEAT_PREFIX}${id}`, seat);
+    await store.write(`${PLACE_PREFIX}${id}`, place);
   } catch (error) {
-    // A seat is a nicety; the room budget and the roster come first.
-    console.warn('could not save a dice seat', error);
+    // A place is a nicety; the room budget and the roster come first.
+    console.warn('could not save a table place', error);
   }
 }
 
 /**
- * Move a player to a seat, swapping with whoever was already there.
+ * Read my own animation preference back out of the room.
  *
- * Swapping rather than refusing: the Marshal moving Jen to the left has said what
- * they want, and leaving two people on one edge — or silently doing nothing — are
- * both worse answers than the other player taking the seat Jen just left.
+ * It does **not** read my place. It used to read my seat, back when the Marshal picked
+ * seats and the stored value was the decision; a place is derived now, so reading the
+ * raw number here would overwrite the resolved one `refreshPlaces` just computed —
+ * reinstating, for a player who arrives before the Marshal's client has written
+ * anything, exactly the double booking that assignment had broken.
  */
-async function moveSeat(id: string, seat: Seat): Promise<void> {
-  const displaced = Object.entries(seats).find(([other, held]) => held === seat && other !== id);
-  const vacated = seats[id];
-  seats[id] = seat;
-  await saveSeat(id, seat);
-  if (displaced && vacated) {
-    seats[displaced[0]] = vacated;
-    await saveSeat(displaced[0], vacated);
-  }
-  if (id === OBR.player.id) mySeat = seat;
-  renderSheetArea();
-}
-
-/** Read my own seat and my own animation preference back out of the room. */
 async function readMyDiceSettings(): Promise<void> {
-  const seat = await store.read<Seat>(`${SEAT_PREFIX}${OBR.player.id}`);
-  if (seat) mySeat = seat;
   // Absent means off. Animation is opt-in: it is the setting most likely to be
   // wrong for somebody's laptop, and an unasked-for physics simulation over the map
   // is a worse first impression than a plain log.
@@ -2682,11 +3589,11 @@ OBR.onReady(async () => {
     void onSelectionChange();
   });
 
-  // Somebody joining or leaving changes who needs a seat. The Marshal's client is
-  // the one that writes them, but everybody re-reads: a player who arrives second
-  // still has to learn which edge is theirs.
+  // Somebody joining changes the shape of the table. The Marshal's client is the one
+  // that writes the places, but everybody re-reads: a player who arrives second still
+  // has to learn where they are sitting.
   OBR.party.onChange(() => {
-    void refreshSeats().then(() => {
+    void refreshPlaces().then(() => {
       if (tab === 'table') renderSheetArea();
     });
   });
@@ -2763,9 +3670,9 @@ OBR.onReady(async () => {
   );
   await step('setting up dice', async () => {
     myColour = await OBR.player.getColor();
-    // Seats before settings: the GM's client is what writes them, and my own seat is
-    // read back out of what it wrote.
-    await refreshSeats();
+    // Places before settings: the GM's client is what writes them, and my own place
+    // is read back out of what it wrote.
+    await refreshPlaces();
     await readMyDiceSettings();
     if (animate) await openTray();
   });

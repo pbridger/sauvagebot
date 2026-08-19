@@ -519,7 +519,208 @@ async function tokenGeometry(): Promise<void> {
   log('  If the height is far off what you see on the map, that is the bug.');
 }
 
-// ---------------------------------------------------------------- wiring
+// ---------------------------------------------------------------- range
+
+/**
+ * What `OBR.scene.grid.getDistance` actually returns.
+ *
+ * Round 3. Range matters because a Shooting roll is resolved at short / medium /
+ * long, and the panel cannot offer that without knowing how far apart two tokens
+ * are. The SDK has `getDistance(from, to)`, but its implementation is host-side —
+ * the shipped file only posts a message — so the docstring is all there is, and it
+ * does not say what the number *means*. Three readings are plausible and they
+ * differ by a factor of the grid dpi and again by the scale multiplier:
+ *
+ *   1. scene pixels        — 300 for one 300dpi square
+ *   2. grid cells          — 1
+ *   3. scaled units        — 5, for a scale of "5ft"
+ *
+ * Guessing wrong makes every range in the app wrong by 60x, so this measures it
+ * rather than assuming. It computes all three candidates from the geometry the
+ * extension already derives, then says which one the host's answer matches.
+ *
+ * It also reports Euclidean against Chebyshev, since a square grid set to
+ * CHEBYSHEV counts a diagonal as one square and Deadlands ranges are in yards.
+ */
+interface Placed {
+  name: string;
+  position: { x: number; y: number };
+  centre: { x: number; y: number };
+}
+
+function centreOf(item: unknown, sceneDpi: number): { x: number; y: number } {
+  const raw = item as {
+    position: { x: number; y: number };
+    image?: { width?: number; height?: number };
+    grid?: { dpi?: number; offset?: { x: number; y: number } };
+    scale?: { x?: number; y?: number };
+  };
+  const imageDpi = raw.grid?.dpi ?? sceneDpi;
+  const unit = sceneDpi / imageDpi;
+  const pixelsW = raw.image?.width ?? imageDpi;
+  const pixelsH = raw.image?.height ?? imageDpi;
+  const offset = raw.grid?.offset ?? { x: pixelsW / 2, y: pixelsH / 2 };
+  const centre = {
+    x: raw.position.x + (pixelsW / 2 - offset.x) * unit * (raw.scale?.x ?? 1),
+    y: raw.position.y + (pixelsH / 2 - offset.y) * unit * (raw.scale?.y ?? 1),
+  };
+  return Number.isFinite(centre.x) && Number.isFinite(centre.y) ? centre : { ...raw.position };
+}
+
+async function showGrid(): Promise<void> {
+  const [dpi, scale, type, measurement] = await Promise.all([
+    OBR.scene.grid.getDpi(),
+    OBR.scene.grid.getScale(),
+    OBR.scene.grid.getType(),
+    OBR.scene.grid.getMeasurement(),
+  ]);
+  fill('grid', [
+    ['dpi', String(dpi)],
+    ['type', type],
+    ['measurement', measurement],
+    ['scale raw', scale.raw],
+    ['multiplier', String(scale.parsed.multiplier)],
+    ['unit', scale.parsed.unit],
+    ['digits', String(scale.parsed.digits)],
+  ]);
+}
+
+async function rangeProbe(): Promise<void> {
+  const selection = (await OBR.player.getSelection()) ?? [];
+  if (selection.length !== 2) {
+    log('select exactly two tokens', 'bad');
+    return;
+  }
+  const items = await OBR.scene.items.getItems(selection);
+  if (items.length !== 2) {
+    log('selection is not two scene items', 'bad');
+    return;
+  }
+
+  const [dpi, scale, type, measurement] = await Promise.all([
+    OBR.scene.grid.getDpi(),
+    OBR.scene.grid.getScale(),
+    OBR.scene.grid.getType(),
+    OBR.scene.grid.getMeasurement(),
+  ]);
+
+  const placed: Placed[] = items.map((item) => ({
+    name: item.name,
+    position: { ...item.position },
+    centre: centreOf(item, dpi),
+  }));
+  const [a, b] = placed as [Placed, Placed];
+
+  const dx = Math.abs(b.centre.x - a.centre.x);
+  const dy = Math.abs(b.centre.y - a.centre.y);
+  const euclideanPx = Math.hypot(dx, dy);
+  // Kept in the dump because a hex map that reports these as equal is telling you
+  // the two tokens are on a pure axis, which is worth seeing while placing them.
+  const chebyshevPx = Math.max(dx, dy);
+  const manhattanPx = dx + dy;
+
+  const [byPosition, byCentre] = await Promise.all([
+    OBR.scene.grid.getDistance(a.position, b.position),
+    OBR.scene.grid.getDistance(a.centre, b.centre),
+  ]);
+
+  log(`--- range: "${a.name}" to "${b.name}" ---`);
+  log(`  grid .............. ${type}, ${measurement}, ${dpi}dpi, scale "${scale.raw}"`);
+  log(`  centre delta ...... ${dx.toFixed(1)}, ${dy.toFixed(1)} px`);
+  log(`  euclidean ......... ${euclideanPx.toFixed(1)} px`);
+  log(`  chebyshev ......... ${chebyshevPx.toFixed(1)} px`);
+  log(`  manhattan ......... ${manhattanPx.toFixed(1)} px`);
+  log(`  getDistance(pos) .. ${byPosition}`);
+  log(`  getDistance(ctr) .. ${byCentre}`, 'ok');
+
+  // Not a square-grid model. The first run of this probe compared the host's
+  // answer against euclidean/chebyshev/manhattan on the raw pixel delta and
+  // reported NO MATCH on a hex map — those are square-grid rules, and on hex the
+  // pixel delta says nothing directly. The host is doing hex topology, which is
+  // the point of asking it rather than reimplementing it.
+  //
+  // What is still worth showing is the pixel separation next to the answer, so a
+  // wildly wrong dpi is visible.
+  log(`  cells if square ... ${(euclideanPx / dpi).toFixed(3)} (euclidean, for reference only)`);
+  log(`  scale multiplier .. ${scale.parsed.multiplier} ${scale.parsed.unit}`);
+  if (scale.parsed.multiplier === 1) {
+    log(
+      '  NOTE: a multiplier of 1 cannot distinguish "cells" from "scaled units" — ' +
+        'they are the same number. Run the scale test below.',
+      'bad',
+    );
+  }
+}
+
+/**
+ * Does `getDistance` apply the scale multiplier, or return bare cells?
+ *
+ * The two are indistinguishable on a scene whose scale multiplier is 1 — which
+ * is the common case, and was the case in the room where this was first run. The
+ * only way to tell them apart is to change the multiplier and look again, so this
+ * does exactly that: measures, sets a scale with a known multiplier, measures the
+ * same two points, and puts the original scale back.
+ *
+ * It writes to the scene, which no other probe does. The original is logged
+ * before anything changes, and restored in a `finally`, so a thrown error or a
+ * closed tab still leaves it recoverable by hand.
+ */
+const SCALE_PROBE = '7ft';
+
+async function scaleTest(): Promise<void> {
+  const selection = (await OBR.player.getSelection()) ?? [];
+  if (selection.length !== 2) {
+    log('select exactly two tokens', 'bad');
+    return;
+  }
+  const items = await OBR.scene.items.getItems(selection);
+  if (items.length !== 2) {
+    log('selection is not two scene items', 'bad');
+    return;
+  }
+  const dpi = await OBR.scene.grid.getDpi();
+  const [a, b] = items.map((item) => centreOf(item, dpi)) as [
+    { x: number; y: number },
+    { x: number; y: number },
+  ];
+
+  const original = await OBR.scene.grid.getScale();
+  log(`--- scale test --- original scale is "${original.raw}" (x${original.parsed.multiplier})`);
+  log('  if this probe dies part way through, set the scale back to that by hand');
+
+  try {
+    const before = await OBR.scene.grid.getDistance(a, b);
+    log(`  at "${original.raw}" ......... ${before}`);
+
+    await OBR.scene.grid.setScale(SCALE_PROBE);
+    const applied = await OBR.scene.grid.getScale();
+    if (applied.parsed.multiplier === original.parsed.multiplier) {
+      log(`  scale did not change (still x${applied.parsed.multiplier}) — test inconclusive`, 'bad');
+      return;
+    }
+    const after = await OBR.scene.grid.getDistance(a, b);
+    log(`  at "${applied.raw}" ......... ${after}`);
+
+    const ratio = before === 0 ? NaN : after / before;
+    const expected = applied.parsed.multiplier / (original.parsed.multiplier || 1);
+    log(`  ratio ............. ${ratio.toFixed(3)} (multiplier changed by ${expected.toFixed(3)})`);
+
+    if (Math.abs(ratio - 1) < 0.01) {
+      log('  CONCLUSION: getDistance returns BARE CELLS — apply the multiplier yourself', 'ok');
+    } else if (Math.abs(ratio - expected) < 0.01) {
+      log('  CONCLUSION: getDistance returns SCALED UNITS — do not multiply again', 'ok');
+    } else {
+      log('  the number moved, but not by the multiplier — look at the raw values above', 'bad');
+    }
+  } finally {
+    await OBR.scene.grid.setScale(original.raw);
+    const restored = await OBR.scene.grid.getScale();
+    log(
+      `  scale restored to "${restored.raw}"`,
+      restored.raw === original.raw ? 'ok' : 'bad',
+    );
+  }
+}
 
 OBR.onReady(async () => {
   button('stamp', stamp);
@@ -531,9 +732,12 @@ OBR.onReady(async () => {
   button('compression', compressionCheck);
   button('attach', attachmentTest);
   button('geometry', tokenGeometry);
+  button('range', rangeProbe);
+  button('scale-test', scaleTest);
 
   await showIdentity();
   await showStamps();
+  await showGrid().catch(() => log('no scene open, so no grid to read', 'bad'));
   log('ready — start with "Clear probe keys", your room still holds round 1 data');
 
   OBR.room.onMetadataChange(() => void showStamps());

@@ -52,6 +52,45 @@ export interface NamedEntry {
   text?: string;
 }
 
+/** Which edition's rules a sheet is written in. `unknown` for anything typed by hand. */
+export type Edition = 'swade' | 'reloaded' | 'unknown';
+
+export interface SheetSource {
+  /** Stable key, e.g. `coffin-rock`. This is the only part stored on a sheet. */
+  id: string;
+  /** What to show in a filter: "Coffin Rock". */
+  name: string;
+  edition?: Edition;
+}
+
+/**
+ * The books a sheet can have come from.
+ *
+ * A sheet stores only the **id**, and the name and edition are looked up here.
+ * That is not tidiness: room metadata has a ~15 kB budget for the whole roster,
+ * and repeating `{"name":"Savage Free Bestiary","edition":"reloaded"}` on every
+ * one of them cost 2.8% of it — which the size test in
+ * `importArchetypeCard.test.ts` caught the moment it was tried. The name and the
+ * edition are properties of the book, not of the character.
+ */
+export const SOURCES: readonly SheetSource[] = [
+  { id: 'archetype-cards', name: 'Deadlands Seasoned Archetypes', edition: 'swade' },
+  { id: 'savage-free-bestiary', name: 'Savage Free Bestiary', edition: 'reloaded' },
+  { id: 'coffin-rock', name: 'Coffin Rock', edition: 'reloaded' },
+];
+
+/**
+ * What a stored source id means.
+ *
+ * An id this build does not know still shows, spelled as itself, so a roster
+ * exported from a later version does not silently lose where its creatures came
+ * from.
+ */
+export function sourceOf(id: string | undefined): SheetSource | undefined {
+  if (!id) return undefined;
+  return SOURCES.find((s) => s.id === id) ?? { id, name: id, edition: 'unknown' };
+}
+
 export interface Sheet {
   id: string;
   name: string;
@@ -60,15 +99,27 @@ export interface Sheet {
   rank?: string;
   wildCard: boolean;
   /**
-   * Marshal's eyes only: hidden from players' panels, pickers and initiative
-   * names.
+   * A player's character, rather than one of the Marshal's.
    *
-   * A screen, not a vault. Room metadata is readable by every client in the room,
-   * so this keeps a mook's stats out of the way rather than out of reach — the
-   * same guard rail as the Table tab. It is the right level for a table where
-   * everyone is trusted; it is not a defence against someone who goes looking.
+   * This is the one fact the app cannot infer and the rules keep asking for.
+   * Bennies are the clearest case — Joker's Wild goes to the players, a new
+   * session sets *their* three, and the Marshal's own Wild Cards run off a
+   * different pool — but it is also what decides whose sheet a player may open
+   * and whose name shows in their initiative list.
+   *
+   * It replaced a `private` flag, which was the same distinction stated
+   * backwards and only ever set by hand. Everything the Marshal adds — a
+   * bestiary creature, a pasted stat block, a blank sheet — is an NPC until
+   * somebody says otherwise, because that default is the one whose mistake is
+   * recoverable: an unrevealed PC is a click away, a leaked mook cannot be
+   * un-read.
+   *
+   * Hiding an NPC is a screen, not a vault. Room metadata is readable by every
+   * client in the room, so this keeps a mook's stats out of the way rather than
+   * out of reach. It is the right level for a table where everyone is trusted;
+   * it is not a defence against someone who goes looking.
    */
-  private?: boolean;
+  pc: boolean;
   /**
    * What colour this character's animated dice are.
    *
@@ -90,6 +141,41 @@ export interface Sheet {
   armor?: number;
   /** The card writes Toughness as e.g. "7(5)". Kept verbatim so nothing is lost. */
   toughnessRaw?: string;
+  /**
+   * Deadlands Reloaded's Charisma, which SWADE does not have.
+   *
+   * Recorded and displayed, never used in arithmetic. Every human stat block in
+   * Coffin Rock carries one and it was being dropped on import; the party's own
+   * cards have none, because they are a different edition of the game. Showing
+   * it is how an imported NPC stops quietly losing a line it was written with.
+   */
+  charisma?: number;
+  /**
+   * How many wounds this character takes before going down, when it is not the
+   * one `wildCard` implies.
+   *
+   * The case is Coffin Rock's **Henchman**: *"Blood Men get a Wild Die as though
+   * they were Wild Cards"* — the wild die without the wound track. `wildCard`
+   * was one boolean deciding three things (the wild die, the wound track, and
+   * Benny eligibility), and rather than split it, this overrides the one that
+   * differs. Benny eligibility needs no help: `bennyBank` already filters on
+   * `wildCard && pc`, so an NPC Henchman draws none either way.
+   *
+   * Absent means the default for this character's Wild Card status.
+   */
+  maxWounds?: number;
+  /**
+   * Where the character came from, so a roster can be filtered by book.
+   *
+   * The `edition` is the load-bearing half. Coffin Rock is Deadlands Reloaded
+   * and the party's cards are SWADE — different skills, different Fear rules —
+   * so `Guts` on a Reloaded sheet is correct and the same skill on a SWADE sheet
+   * is a conversion error. Nothing else on a sheet records which game it is
+   * written in.
+   *
+   * An id, resolved through `sourceOf`. See `SOURCES` for why not the object.
+   */
+  source?: string;
 
   hindrances: NamedEntry[];
   edges: NamedEntry[];
@@ -98,8 +184,26 @@ export interface Sheet {
   /** Free text on the card, deliberately not parsed into items. */
   gear?: string;
   advances?: string;
-  /** The POWERS block: powers, Power Points, Backlash. Blessed and Hucksters have one. */
+  /**
+   * The POWERS block: powers, Power Points, Backlash. Blessed and Hucksters have one.
+   *
+   * !! This field means two different things depending on how the sheet was
+   * made: arcane powers when it came from a PC card, monster special abilities
+   * when it came from a stat block. Splitting it needs a migration with no total
+   * function — nothing records which path filled an existing sheet — and nothing
+   * is built on either meaning, so both are displayed as text and the split is
+   * deferred. See MECHANICS-INVENTORY.md §4.4. !!
+   */
   powers?: NamedEntry[];
+  /**
+   * A stat block's `Powers:` line, verbatim — "Armor, bolt, dispel …; 20 PP".
+   *
+   * Separate from `powers` precisely because that field is already overloaded.
+   * A stat block that has both — Reverend Cheval has arcane powers *and* special
+   * abilities — needs somewhere to put the second one, and this is the half that
+   * was being discarded entirely.
+   */
+  powerNotes?: string;
 }
 
 /**
@@ -117,7 +221,16 @@ export function skillNames(sheet: Sheet): string[] {
 // the token and the scene rather than to the character.
 
 export function emptySheet(id: string, name: string): Sheet {
-  return { id, name, wildCard: true, attributes: {}, skills: {}, hindrances: [], edges: [] };
+  return {
+    id,
+    name,
+    wildCard: true,
+    pc: false,
+    attributes: {},
+    skills: {},
+    hindrances: [],
+    edges: [],
+  };
 }
 
 /** The die a trait rolls, defaulting to d4-2 for an untrained skill as SWADE does. */
@@ -141,17 +254,23 @@ export function sheetToJson(sheet: Sheet): string {
 }
 
 export function sheetFromJson(text: string): Sheet {
-  const parsed = JSON.parse(text) as Partial<Sheet>;
+  const parsed = JSON.parse(text) as Partial<Sheet> & { private?: boolean };
   if (!parsed || typeof parsed.id !== 'string' || typeof parsed.name !== 'string') {
     throw new Error('not a character sheet: missing id or name');
   }
+  // `private` was what `pc` is now, stated backwards. Rooms and exported rosters
+  // from before the change still carry it, so it is read here and nowhere else:
+  // a sheet that never had either field was visible to players, which is what a
+  // PC is. Getting this the wrong way round would hide a whole party at once.
+  const { private: wasPrivate, ...rest } = parsed;
   return {
     wildCard: true,
     attributes: {},
     skills: {},
     hindrances: [],
     edges: [],
-    ...parsed,
+    ...rest,
+    pc: parsed.pc ?? !wasPrivate,
   } as Sheet;
 }
 

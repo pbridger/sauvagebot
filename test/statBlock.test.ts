@@ -151,3 +151,152 @@ describe('pasting several at once', () => {
     expect(parseStatBlocks(BODYGUARD)).toHaveLength(1);
   });
 });
+
+/**
+ * Real text from the books the table is actually using, pasted verbatim. Every
+ * case here is something that was being lost in silence — see
+ * MECHANICS-INVENTORY.md §4.
+ */
+describe('reading blocks as books actually print them', () => {
+  /**
+   * Coffin Rock writes the header bare on most of its blocks. Requiring a colon
+   * meant every special ability in the adventure was dropped, so Crawlin' Dead
+   * arrived as an ordinary corpse with no Undead and no Fear.
+   */
+  it('reads Special Abilities with no colon after it', () => {
+    const sheet = parseStatBlock(
+      [
+        "Crawlin' Dead",
+        'Attributes: Agility d6, Smarts d4 Spirit d4',
+        'Strength d6, Vigor d6',
+        'Skills: Fighting d6, Intimidation d6, Notice d4',
+        'Pace: 3; Parry: 5; Toughness: 7',
+        'Special Abilities',
+        '* Claws: d6+d4',
+        '* Fearless: Crawlin’ dead are immune to Fear and Intimidation.',
+      ].join('\n'),
+    );
+    expect(sheet.powers?.map((p) => p.name)).toEqual(['Claws', 'Fearless']);
+  });
+
+  /** The bullet is typography, not part of the ability's name. */
+  it('strips the bullet from an ability name', () => {
+    const sheet = parseStatBlock(
+      [
+        'Summoned Demon',
+        'Attributes: Agility d8, Vigor d10',
+        'Pace: 8; Parry: 7; Toughness: 10 (1)',
+        'Special Abilities:',
+        '* Armor +1: Demons have thick hide.',
+        '• Size +2: Demons are nearly ten feet tall.',
+      ].join('\n'),
+    );
+    expect(sheet.powers?.map((p) => p.name)).toEqual(['Armor +1', 'Size +2']);
+  });
+
+  /**
+   * A stat block in a book is set in a narrow column, so any field of length
+   * wraps. Belle Sygrove imported with an edge called "Snakeoil".
+   */
+  it('rejoins a wrapped Edges line', () => {
+    const sheet = parseStatBlock(
+      [
+        'Belle Sygrove',
+        'Attributes: Agility d6, Vigor d6',
+        'Edges: Charismatic, Command, Snakeoil',
+        'Salesman, Very Attractive',
+      ].join('\n'),
+    );
+    expect(sheet.edges.map((e) => e.name)).toEqual([
+      'Charismatic',
+      'Command',
+      'Snakeoil Salesman',
+      'Very Attractive',
+    ]);
+  });
+
+  /**
+   * The wrap *and* a missing comma, which is how Coffin Rock prints it. Reading
+   * only the last die left this creature with two of its five attributes.
+   */
+  it('reads several attributes run together without commas', () => {
+    const sheet = parseStatBlock(
+      ['Walkin’ Dead', 'Attributes: Agility d6, Smarts d4 Spirit d4 Strength', 'd6, Vigor d6'].join('\n'),
+    );
+    expect(Object.keys(sheet.attributes).sort()).toEqual([
+      'agility',
+      'smarts',
+      'spirit',
+      'strength',
+      'vigor',
+    ]);
+  });
+
+  /**
+   * Animal intelligence. This one cost the most: the pattern was end-anchored,
+   * so `Smarts d6 (A)` matched nothing and **110 of the 219 creatures we ship**
+   * imported with no Smarts at all.
+   */
+  it('reads the animal-intelligence marker', () => {
+    const sheet = parseStatBlock('Antelope\nAttributes: Agility d10, Smarts d6 (A), Vigor d6');
+    expect(sheet.attributes.smarts).toEqual({ die: 6 });
+    const tight = parseStatBlock('Insect Swarm\nAttributes: Agility d10, Smarts d4(A), Vigor d10');
+    expect(tight.attributes.smarts).toEqual({ die: 4 });
+  });
+
+  /** A mindless thing has no Smarts, and that is not the same as failing to read one. */
+  it('leaves a dashed attribute absent', () => {
+    const sheet = parseStatBlock('Invisible Devourer\nAttributes: Agility d4, Smarts -, Vigor d8');
+    expect(sheet.attributes.smarts).toBeUndefined();
+    expect(sheet.attributes.agility).toEqual({ die: 4 });
+  });
+
+  /** Semicolons separate a list as readily as commas, and the bestiary uses both. */
+  it('splits a skills list on semicolons too', () => {
+    const sheet = parseStatBlock('Rabbit\nSkills: Fighting d6, Notice d10; Stealth d6');
+    expect(Object.keys(sheet.skills).sort()).toEqual(['Fighting', 'Notice', 'Stealth']);
+  });
+
+  /**
+   * The `Powers:` line was never read at all, so the adventure's antagonist
+   * imported with none of his seven powers.
+   */
+  it('keeps the Powers line', () => {
+    const sheet = parseStatBlock(
+      [
+        'Reverend Cheval',
+        'Attributes: Agility d8, Vigor d8',
+        'Powers: Armor, bolt, dispel, fear, puppet, smite; 20 PP',
+        'Special Abilities',
+        '* Hardy: A second Shaken result does not cause a wound.',
+      ].join('\n'),
+    );
+    expect(sheet.powerNotes).toBe('Armor, bolt, dispel, fear, puppet, smite; 20 PP');
+    // The two must not collide: Cheval has arcane powers *and* special abilities.
+    expect(sheet.powers?.map((p) => p.name)).toEqual(['Hardy']);
+  });
+
+  /** Deadlands Reloaded gives every human a Charisma; SWADE has none. */
+  it('reads Charisma, positive and negative', () => {
+    expect(
+      parseStatBlock('Belle\nAttributes: Agility d6\nCharisma: +6; Pace: 6; Parry: 5').charisma,
+    ).toBe(6);
+    expect(
+      parseStatBlock('Deputies\nAttributes: Agility d6\nCharisma: –6; Pace: 6').charisma,
+    ).toBe(-6);
+  });
+
+  /** A creature's prose must not be glued onto the field above it. */
+  it('does not absorb following prose into the Gear line', () => {
+    const sheet = parseStatBlock(
+      [
+        'Ike Turnbull',
+        'Attributes: Agility d6, Vigor d6',
+        'Gear: Pickaxe (2d6)',
+        'Special Abilities',
+        '* Berserk: He gains +2 to all Fighting rolls.',
+      ].join('\n'),
+    );
+    expect(sheet.gear).toBe('Pickaxe (2d6)');
+  });
+});

@@ -13,7 +13,7 @@
  *   - **AP** cancels armour, but only as much armour as there is.
  */
 import type { TokenState } from '../obr/binding.js';
-import { maxWounds } from './status.js';
+import { woundLimit } from './status.js';
 import type { Sheet } from './sheet.js';
 
 /** UNVERIFIED — pending the book. Every this-many points over Toughness is a wound. */
@@ -24,6 +24,72 @@ export interface DamageInput {
   damage: number;
   /** Armour-piercing on the attack, if any. */
   ap?: number;
+}
+
+/**
+ * An adjustment the Marshal makes to a damage roll before it is applied.
+ *
+ * ## Why this exists instead of a table of monster abilities
+ *
+ * Coffin Rock alone needs Hardy, Undead and Construct halving, three kinds of
+ * Immunity, Invulnerable, Ethereal, Weakness (Head) and Swarm — and the open
+ * bestiary has 159 more abilities that each appear exactly *once* across 219
+ * creatures. Encoding them is not a large job, it is an unbounded one, and the
+ * result would still be wrong for the next book.
+ *
+ * So the app does not learn the rules. It asks. One control in front of the one
+ * place damage is committed covers every halving, doubling and nullification
+ * that has ever been written, including the ones nobody has written yet.
+ *
+ * It is also the more honest answer to "make the effect transparent and
+ * well-logged": what ends up in the log is what a person decided —
+ * *"11 halved (Construct: piercing) = 5 vs Toughness 7 — no effect"* — rather
+ * than what the app inferred and cannot explain.
+ *
+ * There is deliberately no "no damage" option. Not applying damage at all is
+ * already spelled "do not press Apply".
+ */
+export interface DamageAdjustment {
+  /** Multiplier — 0.5 for the near-universal "piercing attacks do half damage". */
+  factor?: number;
+  /** Flat change, e.g. Weakness (Head) at +2. */
+  delta?: number;
+  /** Shown in the log. Without it nobody can audit the number afterwards. */
+  reason?: string;
+}
+
+/**
+ * The damage actually applied, after the Marshal's adjustment.
+ *
+ * The order matters and is not arbitrary. Halving applies to the **damage
+ * roll**, before it meets Toughness — which is what "piercing attacks do half
+ * damage" says. Halving the *wounds* afterwards gives a different and wrong
+ * answer: 11 against Toughness 7 is one wound, and half of that rounds to none,
+ * where halving first gives 5 against 7 and no effect at all. Two different
+ * outcomes from the same words.
+ *
+ * Rounded down, which is the convention every "half damage" line in these books
+ * relies on.
+ */
+export function adjustedDamage(damage: number, adjust: DamageAdjustment | undefined): number {
+  if (!adjust) return damage;
+  const scaled = adjust.factor === undefined ? damage : Math.floor(damage * adjust.factor);
+  return Math.max(0, scaled + (adjust.delta ?? 0));
+}
+
+/** "11 halved +2 = 7", for the log. Empty when nothing was changed. */
+export function describeAdjustment(
+  damage: number,
+  adjust: DamageAdjustment | undefined,
+): string {
+  if (!adjust || (adjust.factor === undefined && !adjust.delta)) return '';
+  const parts: string[] = [String(damage)];
+  if (adjust.factor !== undefined) {
+    parts.push(adjust.factor === 0.5 ? 'halved' : `×${adjust.factor}`);
+  }
+  if (adjust.delta) parts.push(adjust.delta > 0 ? `+${adjust.delta}` : String(adjust.delta));
+  const sum = `${parts.join(' ')} = ${adjustedDamage(damage, adjust)}`;
+  return adjust.reason ? `${sum} (${adjust.reason})` : sum;
 }
 
 export interface DamageOutcome {
@@ -54,9 +120,16 @@ export function effectiveToughness(sheet: Sheet, ap = 0): number {
 export function applyDamage(
   sheet: Sheet,
   state: TokenState,
-  { damage, ap = 0 }: DamageInput,
+  { damage: rolled, ap = 0 }: DamageInput,
+  adjust?: DamageAdjustment,
 ): DamageOutcome {
   const toughness = effectiveToughness(sheet, ap);
+  // Before Toughness, deliberately — see `adjustedDamage`.
+  const damage = adjustedDamage(rolled, adjust);
+  // The working is kept whole so the log can show where the number came from:
+  // a committed wound with no visible arithmetic is the thing this whole area
+  // exists to stop.
+  const shown = describeAdjustment(rolled, adjust) || String(damage);
   const margin = damage - toughness;
 
   if (margin < 0) {
@@ -66,7 +139,7 @@ export function applyDamage(
       becameShaken: false,
       incapacitated: false,
       toughness,
-      description: `${damage} vs Toughness ${toughness} — no effect`,
+      description: `${shown} vs Toughness ${toughness} — no effect`,
     };
   }
 
@@ -86,10 +159,10 @@ export function applyDamage(
     wounds: state.wounds + wounds,
   };
 
-  const limit = maxWounds(sheet.wildCard);
+  const limit = woundLimit(sheet);
   const incapacitated = next.wounds > limit;
 
-  const parts = [`${damage} vs Toughness ${toughness}`];
+  const parts = [`${shown} vs Toughness ${toughness}`];
   if (wounds > 0) parts.push(`${wounds} wound${wounds === 1 ? '' : 's'}`);
   if (becameShaken) parts.push('Shaken');
   else if (wounds > 0 && !state.shaken) parts.push('Shaken');

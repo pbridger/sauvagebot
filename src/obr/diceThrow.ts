@@ -37,14 +37,28 @@ export const DICE_SETTLED_CHANNEL = 'com.savagebot/dice-settled';
  */
 export const TRAY_MODAL_ID = 'com.savagebot/dice-tray';
 
-/** Where a player's dice come in from. `n` is the Marshal's seat. */
+/**
+ * A compass edge of the screen. No longer part of a throw — see `DiceThrow.place` —
+ * and kept for the tuning page, which throws from a named edge on purpose.
+ */
 export type Seat = 'n' | 's' | 'w' | 'e' | 'nw' | 'ne' | 'sw' | 'se';
 
 export interface DiceThrow {
   /** The `RollEntry.id` this belongs to, so the log line can wait for the tray. */
   id: string;
   dice: DieEvent[];
-  seat: Seat;
+  /**
+   * The roller's chair at the table, and how many chairs there are.
+   *
+   * Absolute, not a screen direction, and that is the whole design: every viewer
+   * is at the bottom of their own screen, so a direction is only meaningful once
+   * you know who is reading it. The receiver looks up its own place and works out
+   * the angle with `relativeVector`. Putting an edge on the wire instead would
+   * mean the sender deciding where the dice appear on somebody else's screen,
+   * which it cannot know.
+   */
+  place: number;
+  places: number;
   /** The roller's OBR party colour, so you can tell whose dice those are. */
   colour?: string;
 }
@@ -54,6 +68,25 @@ const ROLES: readonly DieRole[] = ['trait', 'wild', 'plain'];
 
 export function isSeat(value: unknown): value is Seat {
   return typeof value === 'string' && (SEATS as readonly string[]).includes(value);
+}
+
+/**
+ * A chair on a table that has that chair.
+ *
+ * Checked as a pair rather than separately: a place of 4 on a table of 3 is not a
+ * bad number, it is an inconsistent message, and it would land a player on top of
+ * whoever holds index 1.
+ */
+function isPlace(place: unknown, places: unknown): boolean {
+  return (
+    typeof place === 'number' &&
+    typeof places === 'number' &&
+    Number.isInteger(place) &&
+    Number.isInteger(places) &&
+    places >= 1 &&
+    place >= 0 &&
+    place < places
+  );
 }
 
 function isDieEvent(value: unknown): value is DieEvent {
@@ -89,7 +122,7 @@ export function isDiceThrow(value: unknown): value is DiceThrow {
   const thrown = value as Partial<DiceThrow>;
   return (
     typeof thrown.id === 'string' &&
-    isSeat(thrown.seat) &&
+    isPlace(thrown.place, thrown.places) &&
     (thrown.colour === undefined || typeof thrown.colour === 'string') &&
     Array.isArray(thrown.dice) &&
     thrown.dice.length > 0 &&

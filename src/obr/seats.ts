@@ -1,50 +1,51 @@
 /**
- * Who throws from where.
+ * Who sits where at the table, and which way their dice come in.
  *
- * Dice arriving from the same edge every week is the cheapest identity cue there
- * is: you know whose roll it is before you read a word of it. The Marshal takes
- * the top of the screen and the players come in from the sides, which is also
- * roughly how everyone is sitting.
+ * Dice arriving from the same direction every week is the cheapest identity cue
+ * there is: you know whose roll it is before you read a word of it. The way that
+ * used to work was a fixed screen edge per player — the Marshal at the top, the
+ * players around the sides — chosen by the Marshal from a picker.
  *
- * **Seats are screen space, not map space.** "The Marshal rolls from the top" means
- * the top of each viewer's own window; a seat has nothing to do with the map's
- * coordinates, anybody's viewport, or where their token is.
+ * **That is no longer how it works, and the difference is worth stating.** A place
+ * at the table is now absolute and shared, and the *direction* is worked out per
+ * viewer: you are always at the bottom of your own screen, and everyone else
+ * appears where they sit relative to you. Two consequences:
+ *
+ *  - The Marshal's dice no longer come from the top of the Marshal's own screen.
+ *    They come from the bottom, like everybody else's, because on your own screen
+ *    you are at the bottom. Whether Damian appears at the top depends on where he
+ *    is sitting relative to you, which is the point.
+ *  - There is nothing left to configure. A direction is derived, not chosen, so
+ *    the seat picker is gone.
+ *
+ * **Places are absolute; directions are screen space.** A place has nothing to do
+ * with the map's coordinates, anybody's viewport, or where their token is — it is
+ * a chair at an imaginary round table, and the only thing it is used for is the
+ * angle dice come in at.
  *
  * ## Persistence
  *
  * Room metadata, keyed by player id, beside the existing `com.savagebot/mine/<id>`
  * key. That mechanism is the precedent for "per-player, survives a tab close" —
- * `panel.ts` records that player metadata does *not* survive one. A seat letter and
- * a flag per player is tens of bytes, so this is nothing against the room budget.
+ * `panel.ts` records that player metadata does *not* survive one. A place is an
+ * integer per player, so this is nothing against the room budget.
+ *
+ * The key is `com.savagebot/place/<id>` and **not** the old `seat/<id>`, whose
+ * values are compass strings. Reusing it would mean reading `'nw'` where a number
+ * is expected, which typechecks as `unknown` and fails silently — the same shape as
+ * a bug this codebase has already paid for once. The old keys are left to rot;
+ * everyone is simply re-seated once, invisibly, since nobody chooses a place now.
  *
  * !! It assumes `OBR.player.id` is stable across sessions, which the `mine/` key
  * already assumes. If that turns out to be false both features break together, and
  * the fix for both is to key on player name instead.
- *
- * A player who never comes back leaves their seat key behind. Deliberately not
- * cleaned up: a seat is ~40 characters, a guest who missed one session is not gone,
- * and pruning "players not currently connected" would reassign the seats of anyone
- * who happened to be late.
  */
 
 import type { Seat } from './diceThrow.js';
 
-export const SEAT_PREFIX = 'com.savagebot/seat/';
+/** Where a player's place is remembered. Not `seat/`, which held compass strings. */
+export const PLACE_PREFIX = 'com.savagebot/place/';
 export const DICE_PREFIX = 'com.savagebot/dice-anim/';
-
-/** The Marshal's seat. Dice come down the screen at the table. */
-export const GM_SEAT: Seat = 'n';
-
-/**
- * The order players are given seats in.
- *
- * Opposite the Marshal first, then the two sides, then the corners: with three
- * players the table reads as one Marshal facing three players rather than as an
- * arbitrary scatter. The Marshal's own seat is never handed out, even at a table
- * of nine — two people throwing down the same edge is the one arrangement that
- * defeats the purpose.
- */
-export const PLAYER_SEATS: readonly Seat[] = ['s', 'w', 'e', 'sw', 'se', 'nw', 'ne'];
 
 export interface Seated {
   id: string;
@@ -52,46 +53,94 @@ export interface Seated {
   gm: boolean;
 }
 
+function isPlace(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
 /**
- * Work out everyone's seat, keeping the ones already assigned.
+ * The stored places, pulled out of a metadata document and keyed by player id.
  *
- * Stability is the whole feature, so an existing assignment is only overridden
- * when it has to be: a player holding the Marshal's seat because they used to run
- * the game, or two players who somehow hold the same one. The tie is broken by
- * player id rather than by join order, which is arbitrary but at least the same
- * arbitrary thing every week.
+ * Shared because two pages need the same answer from the same input: the panel, which
+ * hands the places out, and the tray, which works out its own the same way rather than
+ * reading whatever happens to have been written. Values are left `unknown` — deciding
+ * what counts as a place is `assignPlaces`'s job, in one place.
  */
-export function assignSeats(
-  players: readonly Seated[],
-  stored: Readonly<Record<string, Seat>>,
-): Record<string, Seat> {
-  const seats: Record<string, Seat> = {};
-  const taken = new Set<Seat>();
-
-  for (const gm of players.filter((p) => p.gm)) {
-    // Every GM gets the top. Two GMs in a room is unusual but legal, and sharing
-    // the edge is better than exiling one of them to a corner.
-    seats[gm.id] = GM_SEAT;
+export function storedPlaces(metadata: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const found: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (key.startsWith(PLACE_PREFIX)) found[key.slice(PLACE_PREFIX.length)] = value;
   }
+  return found;
+}
 
-  const guests = players.filter((p) => !p.gm).sort((a, b) => (a.id < b.id ? -1 : 1));
-  for (const player of guests) {
+/**
+ * Work out everyone's place at the table, keeping the ones already assigned.
+ *
+ * Stability is the whole feature, so an existing assignment is only overridden when
+ * two players somehow hold the same one. The tie is broken by player id rather than
+ * by join order, which is arbitrary but at least the same arbitrary thing every
+ * week.
+ *
+ * The Marshal has no special place. Under the old fixed-edge scheme they held the
+ * top, because that was the one edge the layout was defined against; with the view
+ * rotated to put each viewer at the bottom there is no such edge to hold — which is
+ * why this takes bare ids rather than `Seated`: there is no longer anything about a
+ * player except their identity that this function is allowed to care about.
+ *
+ * A player who leaves keeps their index: their neighbours do not shuffle round
+ * mid-session, which would defeat the identity cue. The gap they leave is filled by
+ * the next person to join — see `ringSize` for why the gap costs nothing.
+ *
+ * **Deterministic in its inputs, deliberately.** Two clients given the same party and
+ * the same stored values get the same answer, which is what lets the tray work out its
+ * own place instead of waiting to be told one.
+ */
+export function assignPlaces(
+  players: readonly { id: string }[],
+  stored: Readonly<Record<string, unknown>>,
+): Record<string, number> {
+  const places: Record<string, number> = {};
+  const taken = new Set<number>();
+
+  const ordered = [...players].sort((a, b) => (a.id < b.id ? -1 : 1));
+  for (const player of ordered) {
     const existing = stored[player.id];
-    if (existing && existing !== GM_SEAT && !taken.has(existing)) {
-      seats[player.id] = existing;
+    if (isPlace(existing) && !taken.has(existing)) {
+      places[player.id] = existing;
       taken.add(existing);
     }
   }
-  for (const player of guests) {
-    if (seats[player.id]) continue;
-    const free = PLAYER_SEATS.find((seat) => !taken.has(seat));
-    // More players than seats: everyone still rolls, they just share an edge.
-    const seat = free ?? PLAYER_SEATS[0]!;
-    seats[player.id] = seat;
-    taken.add(seat);
+  for (const player of ordered) {
+    if (places[player.id] !== undefined) continue;
+    let free = 0;
+    while (taken.has(free)) free++;
+    places[player.id] = free;
+    taken.add(free);
   }
 
-  return seats;
+  return places;
+}
+
+/**
+ * How many chairs the table has.
+ *
+ * The highest occupied index plus one, rather than a count of who is present. Both
+ * of the obvious alternatives are wrong:
+ *
+ *  - **The live head count** puts a player at index 3 on a table of 3, where the
+ *    angle maths wraps them onto index 0 and two people share a direction.
+ *  - **Every index ever stored** leaves ghost chairs from a player who missed a
+ *    session, squeezing four people who *are* here into a corner of a table of
+ *    nine.
+ *
+ * Highest-plus-one is self-compacting: of four players 0–3, if #2 leaves, the ring
+ * is still 4 and the other three do not move — and the next person to join takes
+ * the empty chair rather than widening the table.
+ */
+export function ringSize(places: Readonly<Record<string, number>>): number {
+  const indices = Object.values(places);
+  if (!indices.length) return 1;
+  return Math.max(...indices) + 1;
 }
 
 export interface SeatVector {
@@ -99,17 +148,45 @@ export interface SeatVector {
   y: number;
 }
 
+/** Straight down the screen: where your own dice always come from. */
+export const BOTTOM: SeatVector = { x: 0, y: -1 };
+
 /**
- * Which edge of the screen a seat sits at, as a unit vector.
+ * Which edge of *my* screen a die thrown from `theirs` should come in at.
  *
- * Dice are released *at* this point and thrown towards the middle, which is the whole
- * of the mapping: `n` is the top of the screen, so the Marshal's dice appear at the top
- * and come down.
+ * Everyone is at the bottom of their own screen, so the table is drawn rotated to
+ * put the viewer there and everybody else follows round. Places advance clockwise
+ * as seen on screen — from the bottom, that is bottom → left → top → right — and
+ * because every viewer applies the same rotation sense, the arrangement is mutually
+ * consistent: if Jen is on your left then you are on Jen's right, as at a real
+ * table.
  *
- * `+y` is up. The camera looks down `-z` with three's default up vector, which settles
- * a sign convention that used to be marked unverified here — and the renderer's own
- * habit of deriving the spawn from the sign of a randomised throw vector, which made a
- * seat mean a slightly different place every time, is no longer used at all.
+ * Dice are released *at* this point and thrown towards the middle.
+ *
+ * `+y` is up. The camera looks down `-z` with three's default up vector, which is
+ * what settles the sign convention.
+ *
+ * The modulo is doing real work: two clients can briefly disagree about the party,
+ * so `mine` may be off the end of the ring the thrower measured. Wrapping puts them
+ * somewhere rather than off the table.
+ */
+export function relativeVector(mine: number, theirs: number, places: number): SeatVector {
+  const ring = Math.max(1, Math.floor(places));
+  const delta = (((theirs - mine) % ring) + ring) % ring;
+  // Exactly, not to within a rounding error: your own dice come from the bottom,
+  // and `Math.sin(0)` being 0 is not something to leave to a library.
+  if (delta === 0) return { ...BOTTOM };
+  const angle = (2 * Math.PI * delta) / ring;
+  // Rotating (0, −1) clockwise on screen by `angle`.
+  return { x: -Math.sin(angle), y: -Math.cos(angle) };
+}
+
+/**
+ * The eight compass edges, as unit vectors.
+ *
+ * Nothing on the dice channel uses these any more — a direction is derived from a
+ * pair of places. It survives for the tuning page, which throws from a named edge
+ * on purpose so a physics change can be judged from a fixed throw.
  */
 export function seatVector(seat: Seat): SeatVector {
   const d = Math.SQRT1_2;
@@ -118,9 +195,6 @@ export function seatVector(seat: Seat): SeatVector {
       return { x: 0, y: 1 };
     case 's':
       return { x: 0, y: -1 };
-    // Mirrored from what stood here, and worth saying why: these used to be *throw
-    // directions*, where "west" meant "throw eastwards, spawn on the left". Now they are
-    // the edge the player sits at, so west is simply the left of the screen.
     case 'w':
       return { x: -1, y: 0 };
     case 'e':
@@ -136,7 +210,7 @@ export function seatVector(seat: Seat): SeatVector {
   }
 }
 
-/** Human wording for the seat picker. */
+/** Human wording for the tuning page's edge buttons. */
 export function seatLabel(seat: Seat): string {
   switch (seat) {
     case 'n':
@@ -159,9 +233,9 @@ export function seatLabel(seat: Seat): string {
 }
 
 /**
- * Rotate a throw vector by a few degrees so two rolls from one seat are not the
+ * Rotate a throw vector by a few degrees so two rolls from one place are not the
  * same throw twice. Small on purpose: a wide spread would blur the one thing the
- * seat is for.
+ * arrangement is for.
  */
 export function jitter(vector: SeatVector, random: () => number = Math.random): SeatVector {
   const angle = (random() - 0.5) * (Math.PI / 9); // ±10°

@@ -88,6 +88,22 @@ export function setWildCard(sheet: Sheet, wildCard: boolean): Sheet {
   return { ...sheet, wildCard };
 }
 
+/**
+ * Override the wound track, or clear the override with `undefined`.
+ *
+ * Cleared rather than set to the default number, so a character whose Wild Card
+ * status is later flipped follows it. The case this exists for is the Henchman —
+ * a wild die on an Extra's wound track — but a Marshal wanting a boss who soaks
+ * five gets it from the same control.
+ */
+export function setMaxWounds(sheet: Sheet, maxWounds: number | undefined): Sheet {
+  if (maxWounds === undefined) {
+    const { maxWounds: _dropped, ...rest } = sheet;
+    return rest as Sheet;
+  }
+  return { ...sheet, maxWounds: Math.max(0, Math.round(maxWounds)) };
+}
+
 export function addEntry(sheet: Sheet, list: EntryList, entry: NamedEntry): Sheet {
   return { ...sheet, [list]: [...sheet[list], entry] };
 }

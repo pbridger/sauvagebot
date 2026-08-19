@@ -114,6 +114,12 @@ export async function characterTokens(): Promise<
     width: number;
     height: number;
     /**
+     * Whether the token is on the map to be seen. A target list built from
+     * everything would offer the Marshal's not-yet-revealed ambush as something
+     * to shoot at.
+     */
+    visible: boolean;
+    /**
      * The artwork's centre in scene units. Not the same as `position`: an image
      * is anchored at its `grid.offset`, which is often not the middle.
      */
@@ -162,6 +168,7 @@ export async function characterTokens(): Promise<
         // Needed to place a badge: an attached item keeps its own position and
         // moves with the parent by delta, so it must start in the right spot.
         position: { ...item.position },
+        visible: item.visible,
         width: Number.isFinite(width) && width > 0 ? width : sceneDpi,
         height: Number.isFinite(height) && height > 0 ? height : sceneDpi,
         centre: Number.isFinite(centre.x) && Number.isFinite(centre.y)

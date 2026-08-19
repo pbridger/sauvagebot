@@ -18,12 +18,14 @@ import {
   setDerived,
   setSkill,
   setText,
+  setMaxWounds,
   setWildCard,
   updateEntry,
   type DerivedField,
   type EntryList,
 } from '../../src/rules/sheetEdit.js';
 import { DICE_COLOURS, diceColourOf, skillNames, type Sheet } from '../../src/rules/sheet.js';
+import { maxWounds } from '../../src/rules/status.js';
 import { EDGES, HINDRANCES, findEdge, findHindrance } from '../../src/rules/catalogue.js';
 import { GEAR, findGear, gearLine } from '../../src/rules/gearCatalogue.js';
 
@@ -306,18 +308,45 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
   wildCard.addEventListener('change', () => change(setWildCard(sheet, wildCard.checked)));
   identity.append(field('Wild Card', wildCard));
 
+  // Wild Card decides three things at once — the wild die, the wound track, and
+  // Benny eligibility — and Coffin Rock has creatures that want the first
+  // without the second. The Blood Men's **Henchman** ability is exactly that:
+  // "a Wild Die as though they were Wild Cards", on an Extra's one-wound track.
+  // Rather than split the flag, the track it implies can be overridden here.
+  const wounds = document.createElement('select');
+  const fallback = maxWounds(sheet.wildCard);
+  for (const value of ['', '0', '1', '2', '3', '4', '5'] as const) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value === '' ? `Default (${fallback})` : value;
+    if (value === (sheet.maxWounds === undefined ? '' : String(sheet.maxWounds))) {
+      option.selected = true;
+    }
+    wounds.append(option);
+  }
+  wounds.title =
+    'How many wounds before Incapacitated. Default follows Wild Card — 3 for one, 0 for an ' +
+    'Extra. Set it to 0 on a Wild Card for a Henchman: the wild die, without the wound track.';
+  wounds.addEventListener('change', () =>
+    change(setMaxWounds(sheet, wounds.value === '' ? undefined : Number(wounds.value))),
+  );
+  identity.append(field('Wounds', wounds));
+
   // Only the Marshal gets the switch: a player unticking it on their own sheet
-  // would do nothing useful, and a player ticking it would hide their own
-  // character from themselves.
+  // would hide their character from themselves, and ticking it on one of the
+  // Marshal's would hand themselves the stat block. The same field is a column in
+  // the Table tab's roster, which is where you set a batch of them at once; this
+  // is for the one you already have open.
   if (hooks.isGM) {
-    const hidden = document.createElement('input');
-    hidden.type = 'checkbox';
-    hidden.checked = sheet.private === true;
-    hidden.title =
-      "Hide from players' character picker, sheet view and initiative names. " +
-      'A screen, not a lock: room data is readable by every client in the room.';
-    hidden.addEventListener('change', () => change({ ...sheet, private: hidden.checked }));
-    identity.append(field("Marshal's only", hidden));
+    const pc = document.createElement('input');
+    pc.type = 'checkbox';
+    pc.checked = sheet.pc;
+    pc.title =
+      "A player's character: in their picker, their sheet view and their initiative " +
+      'by name. Unticked it is one of yours. A screen, not a lock: room data is ' +
+      'readable by every client in the room.';
+    pc.addEventListener('change', () => change({ ...sheet, pc: pc.checked }));
+    identity.append(field('Player character', pc));
   }
   out.append(identity);
 

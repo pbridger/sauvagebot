@@ -277,9 +277,10 @@ they always did. The dice do not decide anything — every value comes from the 
 conformance-verified engine as before, and the renderer is told what to show (see
 `OBR-DICE-PLAN.md` §1–2 for why that is honest rather than a fudge). An ace throws
 the extra die a beat after the one that earned it. Everyone rolls from their own
-edge of the screen — the Marshal from the top, players from the sides, set under
-**Table → Dice seats** and remembered between sessions — and dice are tinted with
-the roller's own Owlbear colour.
+direction: you are always at the bottom of your own screen and everybody else comes
+in from where they are sitting relative to you, worked out from a place at a round
+table that is handed out automatically and remembered between sessions. There is
+nothing to set. Dice are tinted with the roller's own Owlbear colour.
 
 **Untested, and the one that matters:** whether Owlbear lets clicks through a
 full-screen `disablePointerEvents` modal to the panel and the map underneath. If it

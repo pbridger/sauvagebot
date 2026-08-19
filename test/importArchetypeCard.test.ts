@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  ARCHETYPE_CARDS,
   ArchetypeCardError,
   parseArchetypeCards,
 } from '../src/rules/importArchetypeCard.js';
-import { sheetFromJson, sheetToJson, traitDie } from '../src/rules/sheet.js';
+import { BESTIARY, SAVAGE_FREE_BESTIARY, creatureSheet } from '../src/rules/bestiary.js';
+import { emptySheet, sheetFromJson, sheetToJson, sourceOf, traitDie, type Sheet } from '../src/rules/sheet.js';
 
 const html = readFileSync(
   fileURLToPath(new URL('./fixtures/archetype-card.html', import.meta.url)),
@@ -290,5 +292,54 @@ describe('the rest of the party', () => {
         }).length,
     );
     expect(lean.reduce((a, b) => a + b, 0)).toBeLessThan(15_000 * 0.5);
+  });
+});
+
+/**
+ * The fields added in the 2026-08-18 mechanics pass. All optional, so an
+ * existing room's sheets — which have none of them — keep working untouched.
+ * That is the same absent-field-defaults rule the `pc` migration was held to.
+ */
+describe('the new optional fields', () => {
+  const base = emptySheet('blood-man', 'Blood Man');
+
+  it('survives a round trip', () => {
+    const sheet: Sheet = {
+      ...base,
+      charisma: -6,
+      maxWounds: 0,
+      powerNotes: 'Armor, bolt, dispel; 20 PP',
+      source: 'coffin-rock',
+    };
+    expect(sheetFromJson(sheetToJson(sheet))).toEqual(sheet);
+  });
+
+  /** A sheet written before any of this still reads, and gains nothing it did not have. */
+  it('leaves an older sheet alone', () => {
+    const old = sheetFromJson('{"id":"reggie","name":"Reggie","pc":true,"wildCard":true}');
+    expect(old.charisma).toBeUndefined();
+    expect(old.maxWounds).toBeUndefined();
+    expect(old.source).toBeUndefined();
+    expect(old.pc).toBe(true);
+  });
+
+  it('stamps the party cards as SWADE', () => {
+    expect(lucky!.source).toBe(ARCHETYPE_CARDS);
+    expect(sourceOf(lucky!.source)?.edition).toBe('swade');
+  });
+
+  /** The bestiary is a different edition, and now says so on every creature. */
+  it('stamps a bestiary creature as Reloaded', () => {
+    expect(creatureSheet(BESTIARY[0]!).source).toBe(SAVAGE_FREE_BESTIARY);
+    expect(sourceOf(SAVAGE_FREE_BESTIARY)?.edition).toBe('reloaded');
+  });
+
+  /** A source this build has never heard of still shows, rather than vanishing. */
+  it('does not lose an unknown source', () => {
+    expect(sourceOf('some-later-book')).toEqual({
+      id: 'some-later-book',
+      name: 'some-later-book',
+      edition: 'unknown',
+    });
   });
 });

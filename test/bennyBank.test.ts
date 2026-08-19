@@ -52,8 +52,17 @@ const newBank = () => {
   };
 };
 
-const wildCard = (id: string): Sheet => emptySheet(id, id.toUpperCase());
-const extra = (id: string): Sheet => ({ ...emptySheet(id, id.toUpperCase()), wildCard: false });
+// Bennies belong to the players, so the party fixtures are PCs. `emptySheet`
+// defaults to an NPC — everything the Marshal adds is one until they say
+// otherwise — which is why this is stated rather than inherited.
+const wildCard = (id: string): Sheet => ({ ...emptySheet(id, id.toUpperCase()), pc: true });
+const extra = (id: string): Sheet => ({
+  ...emptySheet(id, id.toUpperCase()),
+  wildCard: false,
+  pc: true,
+});
+/** One of the Marshal's own Wild Cards: a Benny holder, but not the party's. */
+const gmWildCard = (id: string): Sheet => emptySheet(id, id.toUpperCase());
 
 describe('storage layout', () => {
   it('uses one key per character, so two players never share a write', async () => {
@@ -213,5 +222,44 @@ describe("Joker's Wild", () => {
     expect(lucky).toEqual(['REGGIE', 'PAIGE']);
     expect(await bank.get('reggie')).toBe(4);
     expect(await bank.get('bandit')).toBe(0);
+  });
+
+  /**
+   * Reported from the table as "it's incorrectly giving one to everyone": a
+   * Joker used to reach every Wild Card in the room, so the Marshal's villains
+   * drew a Benny from the players' good luck.
+   */
+  it("leaves the Marshal's own Wild Cards out of it", async () => {
+    const { bank } = newBank();
+    const room = [wildCard('reggie'), gmWildCard('serial-killer')];
+    await bank.newSession(room);
+
+    const lucky = await bank.jokersWild(room);
+    expect(lucky).toEqual(['REGGIE']);
+    expect(await bank.get('serial-killer')).toBe(0);
+  });
+});
+
+describe('a new session', () => {
+  it("starts the players at three and leaves the Marshal's at nothing", async () => {
+    const { bank } = newBank();
+    const room = [wildCard('reggie'), gmWildCard('serial-killer')];
+
+    await bank.newSession(room);
+    expect(await bank.get('reggie')).toBe(3);
+    expect(await bank.get('serial-killer')).toBe(0);
+  });
+});
+
+describe('clearing every Benny', () => {
+  it('takes them off players and NPCs alike', async () => {
+    const { bank } = newBank();
+    const room = [wildCard('reggie'), gmWildCard('serial-killer')];
+    await bank.newSession(room);
+    await bank.award('serial-killer', 2);
+
+    await bank.clearAll(room);
+    expect(await bank.get('reggie')).toBe(0);
+    expect(await bank.get('serial-killer')).toBe(0);
   });
 });

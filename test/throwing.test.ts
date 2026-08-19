@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { PHYSICS, scaled } from '../extension/src/effects.js';
 import { aimThrow, seedRandom, type ThrowVector } from '../extension/src/throwing.js';
 import type { Seat } from '../src/obr/diceThrow.js';
+import { seatVector } from '../src/obr/seats.js';
 
 const HALF_WIDTH = 700;
 const HALF_HEIGHT = 450;
@@ -36,7 +37,9 @@ function stub(dice = 1): Record<string, unknown> {
 
 function throwDice(seat: Seat, dice = 1): ThrowVector[] {
   const box = stub(dice);
-  const restore = aimThrow(box as never, seat);
+  // `aimThrow` takes a vector now, because a real throw's direction is derived from
+  // where two people sit. The named edges still make the clearest test.
+  const restore = aimThrow(box as never, seatVector(seat));
   const thrown = (
     box as unknown as { startClickThrow: (n: string) => { vectors: ThrowVector[] } }
   ).startClickThrow('1d6@6');

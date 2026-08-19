@@ -81,6 +81,33 @@
     </p>
     <button id="geometry">Dump geometry</button>
 
+    <h2>Grid</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      What this scene says about itself. A scale of "5ft" with a sane dpi means ranges can be
+      computed; a blank or default scale on an imported map means they cannot, and the Table pane
+      will need its own multiplier.
+    </p>
+    <dl id="grid"></dl>
+
+    <h2>Range</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      Select exactly two tokens. Computes the separation three ways and asks OBR for its own
+      answer, then says which unit that answer is in — pixels, grid cells or scaled units. Ranges
+      in the app are 60x wrong if this is guessed. Rerun at several separations, including a pure
+      diagonal, which is what distinguishes Chebyshev from Euclidean.
+    </p>
+    <button id="range">Measure selected pair</button>
+
+    <h2>Scale multiplier (writes to the scene, then puts it back)</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      On a scene whose scale multiplier is 1 — "1m", "1 square" — cells and scaled units are the
+      same number, so measuring alone cannot tell which one OBR returns. This changes the scale to
+      a known multiplier, re-measures the same two tokens, and restores the original. It is the
+      only probe that writes to the scene: the original scale is logged first, and restored even
+      if the test fails.
+    </p>
+    <button id="scale-test">Run scale test on selected pair</button>
+
     <h2>Item metadata write (run this as a PLAYER too)</h2>
     <p style="margin:0 0 8px;opacity:.7">
       Select a character token first. Tests whether a non-GM can write item metadata, which decides

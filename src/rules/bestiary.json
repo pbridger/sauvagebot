@@ -360,10 +360,11 @@
    "block": "Acolyte\nAttributes: Agility d6, Smarts d6, Spirit d8,Strength d6, Vigor d6\nSkills: Fighting d6, Guts d6, Knowledge: Religion d8, Notice d4, Shooting d4\nPace: 6; Parry: 5; Toughness: 7 (2)\nGear:"
   },
   {
-   "name": "Damned Children ★",
+   "name": "Damned Children",
    "category": "Bestiary",
    "description": "These are human children who have been genetically manipulated by the Grays either pre-conception or in utero. From birth there’s no question that they’re somehow... different. The Damned often serve as advance scouts for the alien invaders. They’re all born with blonde hair and blue eyes.",
-   "block": "Damned Children ★\nAttributes: Agility d6, Smarts d10, Spirit d10, Strength d4, Vigor d6\nSkills: Fighting d4, Intimidation d10, Knowledge (Alien science) d12, Notice d8, Persuasion d8, Repair d8, Stealth d10\nPace: 6; Parry: 4; Toughness: 4"
+   "block": "Damned Children ★\nAttributes: Agility d6, Smarts d10, Spirit d10, Strength d4, Vigor d6\nSkills: Fighting d4, Intimidation d10, Knowledge (Alien science) d12, Notice d8, Persuasion d8, Repair d8, Stealth d10\nPace: 6; Parry: 4; Toughness: 4",
+   "wildCard": true
   },
   {
    "name": "Darkstalkers",
@@ -372,10 +373,11 @@
    "block": "Darkstalkers\nAttributes: Agility d10, Smarts d4 (A), Spirit d6, Strength d10, Vigor d8\nSkills: Climb d12+2, Fighting d10, Guts d6, Intimidation d10, Notice d8, Stealth d12\nPace: 8; Parry: 7; Toughness: 5\nSpecial Abilities:\nArmor +2: Darkstalkers have thick spiny hides.\nBite: Str+d8.\nAmbush: Darkstalkers love to ambush their preys. If they beat an opposed Perception roll with their Stealth, they gain the Drop on their nearby preys, gaining +4 to hit and damage as they scramble down from their hidings.\nSize -1\nWall Walking: Darkstalkers can climb walls with great skill at their normal Pace, though they cannot hang upside down."
   },
   {
-   "name": "Grays ★",
+   "name": "Grays",
    "category": "Bestiary",
    "description": "These beings generally appear to be your archetypal aliens: gray skinned, tall and spindly, with huge black eyes and small slits for mouths, though they can take on other forms. These particular aliens do not come in peace. They utilize a bizarre mixture of super-science and mysticism which to a large degree has baffled Earth scientists. More recently, they have completed development of the technology to distill pain and fear from Earth creatures as a source of techno-occult power. (Hence the rise in horrifying abductions and cattle mutilations.) At some point their supply of such power will reach critical mass; what happens then is up to you, but it certainly won’t be anything good... The Grays find combat distasteful, and allow their servants to handle it for them.",
-   "block": "Grays ★\nAttributes: Agility d8, Smarts d12, Spirit d10, Strength d8, Vigor d6\nSkills: Fighting d6, Guts d10, Intimidation d10, Knowledge (Occult Science) d12, Knowledge (Torture) d12, Notice d10, Shooting d6\nPace: 6; Parry: 4; Toughness: 5\nEdges: Arcane Resistance, Level Headed\nGear:"
+   "block": "Grays ★\nAttributes: Agility d8, Smarts d12, Spirit d10, Strength d8, Vigor d6\nSkills: Fighting d6, Guts d10, Intimidation d10, Knowledge (Occult Science) d12, Knowledge (Torture) d12, Notice d10, Shooting d6\nPace: 6; Parry: 4; Toughness: 5\nEdges: Arcane Resistance, Level Headed\nGear:",
+   "wildCard": true
   },
   {
    "name": "Men in Black",
@@ -384,16 +386,18 @@
    "block": "Men in Black\nAttributes: Agility d8, Smarts d10, Spirit d10, Strength d10, Vigor d8\nSkills: Fighting d10, Guts d10, Intimidation d8, Knowledge (Alien technology) d8, Notice d8, Persuasion d8\nPace: 6; Parry: 7; Toughness: 7\nEdges: Arcane Resistance, Brawny, Level Headed\nGear:"
   },
   {
-   "name": "Nordic ★",
+   "name": "Nordic",
    "category": "Bestiary",
    "description": "Contrary to conspiracy theory, the Nordics are not a separate alien race (they’re alternately described as being in league with, or opposed to, the Grays). Rather, they are Damned Children who have grown to full size... and full power. Despite this power, they remain the thralls of the Grays. Nordics are all statuesque (averaging 6’6”), with perfectly chiseled features, platinum blonde hair and pale blue eyes. With all their power, they’re still more comfortable with others of their kind around, and are almost never encountered alone.",
-   "block": "Nordic ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d8, Vigor d8\nSkills: Fighting d6, Guts d10, Intimidation d10, Knowledge (alien science) d12, Notice d12, Piloting d8, Repair d10, Shooting d8, Stealth d8\nPace: 6; Parry: 5; Toughness: 6\nEdges: Level Headed, Combat Reflexes, Hard to Kill\nSpecial Abilities:\nKnow it All: Having grown up constantly reading the minds of those around them, the Nordics have a vast array of knowledge to draw upon, allowing them to make a Common Knowledge roll for all but the most bizarre or trivial information.\nMind Control: Nordics can use the Puppet power at will, getting a +2 to their Spirit roll. They can use this power on up to three people at a time, though they can only activate it once a round. Unless all the targets are performing similar actions, the Nordic must make a Smarts roll each round to maintain control. If it fails, all the targets are freed.\nMind Reading: Nordics can scan the surface thoughts of anyone within their line of sight with a Spirit roll, getting a +2 to the roll. With a raise, they can read the targets recent memories, and with two raises they can read all their memories.\nTelekinesis: Nordics can use the Telekinesis power at will, lifting 120 pounds normally, or 600 on a raise of their Spirit roll."
+   "block": "Nordic ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d8, Vigor d8\nSkills: Fighting d6, Guts d10, Intimidation d10, Knowledge (alien science) d12, Notice d12, Piloting d8, Repair d10, Shooting d8, Stealth d8\nPace: 6; Parry: 5; Toughness: 6\nEdges: Level Headed, Combat Reflexes, Hard to Kill\nSpecial Abilities:\nKnow it All: Having grown up constantly reading the minds of those around them, the Nordics have a vast array of knowledge to draw upon, allowing them to make a Common Knowledge roll for all but the most bizarre or trivial information.\nMind Control: Nordics can use the Puppet power at will, getting a +2 to their Spirit roll. They can use this power on up to three people at a time, though they can only activate it once a round. Unless all the targets are performing similar actions, the Nordic must make a Smarts roll each round to maintain control. If it fails, all the targets are freed.\nMind Reading: Nordics can scan the surface thoughts of anyone within their line of sight with a Spirit roll, getting a +2 to the roll. With a raise, they can read the targets recent memories, and with two raises they can read all their memories.\nTelekinesis: Nordics can use the Telekinesis power at will, lifting 120 pounds normally, or 600 on a raise of their Spirit roll.",
+   "wildCard": true
   },
   {
-   "name": "Ape, Mutant ★",
+   "name": "Ape, Mutant",
    "category": "Bestiary",
    "description": "Whether it's Nazi scientists in a pulp setting or a deranged wizard in a fantasy world, someone always makes a super-intelligent ape! They typically serve as laboratory assistants for their creators, and are capable of speech.",
-   "block": "Ape, Mutant ★\nAttributes: Agility d8, Smarts d8, Spirit d8, Strength d12+1, Vigor d8\nSkills: Climbing d8, Fighting d10, Guts d10, Knowledge (Science or Magic) d8, Notice d6, Shooting d6\nPace: 6; Parry: 7; Toughness: 8\nGear:"
+   "block": "Ape, Mutant ★\nAttributes: Agility d8, Smarts d8, Spirit d8, Strength d12+1, Vigor d8\nSkills: Climbing d8, Fighting d10, Guts d10, Knowledge (Science or Magic) d8, Notice d6, Shooting d6\nPace: 6; Parry: 7; Toughness: 8\nGear:",
+   "wildCard": true
   },
   {
    "name": "Bandit",
@@ -420,10 +424,11 @@
    "block": "Berserker\nAttributes: Agility d6, Smarts d4, Spirit d8, Strength d6, Vigor d8\nSkills: Fighting d6, Guts d8, Intimidation d8, Notice d4, Survival d6, Throwing d4\nPace: 6; Parry: 5; Toughness: 7 (1)\nEdges: Berserk, Combat Reflexes\nGear:"
   },
   {
-   "name": "Basin of Creation ★",
+   "name": "Basin of Creation",
    "category": "Bestiary",
    "description": "These are huge blobs that inhabit small swamp lakes, growing with the abundant nutrients they naturally find in those environments. Initially they use insects, algae and small creatures. Then, when they grow enough to cover almost the whole basin surface, they start to prey on bigger games. Occasionally, they split a little part of them, creating a small ooze ready to roam, getting bigger, and infesting another lake or dungeon, turning maybe into another kind of blob. The basin has a very weak acidic body, probably because it’s so spreaded among a watery surface, or maybe because it needs to conserve most of the flora and fauna intact around it, selecting its preys only when they are needed.",
-   "block": "Basin of Creation ★\nAttributes: Agility d4, Smarts d4 (A), Spirit d6, Strength d12+4, Vigor d12\nSkills: Fighting d8, Notice d10, Stealth d8\nPace: 4; Parry: 6; Toughness: 16\nSpecial Abilities:\nCamouflage: If the basin of creation isn’t involved in feeding, ie. it isn’t attacking a prey, its own ooze nature and the natural coloration allows it to hide; it gets a +2 to its Stealth roll to remain unnoticed. The basin of creation will try to get the Drop on the nearest creature in its surroundings, with an opposed Stealth roll against the target’s Notice.\nFearless: The blobs have no true intellect to speak of; they are thus immune to Fear, and cannot be Intimidated or Taunted.\nGrabbing Pseudopods: In contrast to other blobs, the basin of creation has a weak acidic touch. Every time it rolls his Str damage, it adds a d4 for their acid. So, the pseudopods inflict Str+d4 damage; 4” reach."
+   "block": "Basin of Creation ★\nAttributes: Agility d4, Smarts d4 (A), Spirit d6, Strength d12+4, Vigor d12\nSkills: Fighting d8, Notice d10, Stealth d8\nPace: 4; Parry: 6; Toughness: 16\nSpecial Abilities:\nCamouflage: If the basin of creation isn’t involved in feeding, ie. it isn’t attacking a prey, its own ooze nature and the natural coloration allows it to hide; it gets a +2 to its Stealth roll to remain unnoticed. The basin of creation will try to get the Drop on the nearest creature in its surroundings, with an opposed Stealth roll against the target’s Notice.\nFearless: The blobs have no true intellect to speak of; they are thus immune to Fear, and cannot be Intimidated or Taunted.\nGrabbing Pseudopods: In contrast to other blobs, the basin of creation has a weak acidic touch. Every time it rolls his Str damage, it adds a d4 for their acid. So, the pseudopods inflict Str+d4 damage; 4” reach.",
+   "wildCard": true
   },
   {
    "name": "Black Blob",
@@ -438,10 +443,11 @@
    "block": "Cavern Crawler\nAttributes: Agility d4, Smarts d4 (A), Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d6, Notice d12\nPace: 2; Parry: 5; Toughness: 6\nSpecial Abilities:\nAcidic Touch: Oozes attack by secreting a powerful acid: making a Touch attack (+2 to Fighting), they inflict 2d6 damage. Any non-magical weapon or armor that come in contact with will suffer the same damage, and it will be ruined if suffers enough damage to reach their Object Toughness (see SWDEE pag.80-81, but you can use TN8/10/12 for light/medium/heavy equip). The item corrodes away to a smoking heap of goo.\nFearless: Cavern crawlers have no true intellect to speak of; they are thus immune to Fear, and cannot be Intimidated or Taunted.\nImmunity: Crawlers take no damage from cold or fire based attacks.\nOoze: Cavern crawlers are amorphous blobs. As such, they get the following bonuses: +2 to recover from Shaken; no damage from called shots; immune to poison and disease. They have no facing to speak of, and those fighting them in groups are denied any Ganging Up bonuses. Oozes can squeeze themselves through openings as small as an inch across. They can’t be blinded or deafened, either; they ‘see’ by feeling vibrations and changes in air density, across their entire surface (making it exceptionally difficult to sneak up on them), and thus ignore all lighting penalties.\nSize +1\nSlow: Crawlers have a Pace of 2, and can’t run.\nWall Walker: They can move up walls and across ceilings without difficulty."
   },
   {
-   "name": "Giant Blob ★",
+   "name": "Giant Blob",
    "category": "Bestiary",
    "description": "These are the giant, town-eating movie blobs you’d expect a young Steve McQueen to be running from in a movie theatre.",
-   "block": "Giant Blob ★\nAttributes: Agility d4, Smarts d4 (A), Spirit d6, Strength d12+10, Vigor d12\nSkills: Fighting d6, Notice d12, Stealth d6\nPace: 4; Parry: 5; Toughness: 17\nSpecial Abilities:\nAcidic Touch: The giant blobs acid eats through organic materials: making a Touch attack (+2 to Fighting), they inflict 2d10 damage. The giant blob touch usually ignore standard armor protection, as the acid seeps through almost instantly. HAZMAT-style uniforms will work, at least for a short time. Any non-magical weapon or armor that come in contact with will suffer the same damage, and it will be ruined if suffers enough damage to reach their Object Toughness (see SWDEE pag.80-81, but you can use TN8/10/12 for light/medium/heavy equip). The item corrodes away to a smoking heap of goo.\nCrush: Str damage, plus Size bonus and acid. This is treated as a Heavy Weapon."
+   "block": "Giant Blob ★\nAttributes: Agility d4, Smarts d4 (A), Spirit d6, Strength d12+10, Vigor d12\nSkills: Fighting d6, Notice d12, Stealth d6\nPace: 4; Parry: 5; Toughness: 17\nSpecial Abilities:\nAcidic Touch: The giant blobs acid eats through organic materials: making a Touch attack (+2 to Fighting), they inflict 2d10 damage. The giant blob touch usually ignore standard armor protection, as the acid seeps through almost instantly. HAZMAT-style uniforms will work, at least for a short time. Any non-magical weapon or armor that come in contact with will suffer the same damage, and it will be ruined if suffers enough damage to reach their Object Toughness (see SWDEE pag.80-81, but you can use TN8/10/12 for light/medium/heavy equip). The item corrodes away to a smoking heap of goo.\nCrush: Str damage, plus Size bonus and acid. This is treated as a Heavy Weapon.",
+   "wildCard": true
   },
   {
    "name": "Invisible Devourer",
@@ -456,10 +462,11 @@
    "block": "Centaur\nAttributes: Agility d8, Smarts d6, Spirit d6, Strength d10, Vigor d8\nSkills: Fighting d8, Guts d6, Notice d6, Shooting d6, Throwing d6, Tracking d6\nPace: 8; Parry: 6; Toughness: 8\nGear:"
   },
   {
-   "name": "Chimera ★",
+   "name": "Chimera",
    "category": "Bestiary",
    "description": "A terrible creature with the forebody of a lion, hindquarters of a goat, and the wings of a dragon, with a head from each creature.",
-   "block": "Chimera ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d8, Strength d12+2, Vigor d8\nSkills: Fighting d8, Guts d8, Notice d10\nPace: 6; Parry: 6; Toughness: 10 (1)\nSpecial Abilities:\nArmor +1: Thick, tough hide.\nBite/Horns/Claws: Str+d4 damage.\nFear: Chimera’s are fearsome creatures to behold, and force a Guts check when initiating combat.\nFire Breathing: A chimera’s dragon head can belch forth fire, using the Cone Template. Anyone in the area must make an Agility roll at –2 or take 2d8 damage, and must check to see if they catch fire (see SWDEE page 101). A chimera can’t use the Sweep ability and breathe fire in the same round, however she can do another melee attack without penalty, using horns or claws.\nImproved Sweep: Chimeras can attack any adjacent opponents, with a combination of biting, ramming with its goat head, and claws, at no penalty.\nFlight: Chimeras are capable of winged flight, at a pace of 10” (only 5” in the first round, because their massive bodies make it difficult for them to become initially airborne).\nSize +3\nThree Headed: The chimera's three heads afford it the following bonuses; it gets a +2 to all Notice rolls, a +2 to recover from Shaken, and called shots to the head do no additional damage. However, a called shot to the head which results in at least 1 wound will kill that head, though the creature suffers no particular ill effects from this. Destroying all three heads kills the creature."
+   "block": "Chimera ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d8, Strength d12+2, Vigor d8\nSkills: Fighting d8, Guts d8, Notice d10\nPace: 6; Parry: 6; Toughness: 10 (1)\nSpecial Abilities:\nArmor +1: Thick, tough hide.\nBite/Horns/Claws: Str+d4 damage.\nFear: Chimera’s are fearsome creatures to behold, and force a Guts check when initiating combat.\nFire Breathing: A chimera’s dragon head can belch forth fire, using the Cone Template. Anyone in the area must make an Agility roll at –2 or take 2d8 damage, and must check to see if they catch fire (see SWDEE page 101). A chimera can’t use the Sweep ability and breathe fire in the same round, however she can do another melee attack without penalty, using horns or claws.\nImproved Sweep: Chimeras can attack any adjacent opponents, with a combination of biting, ramming with its goat head, and claws, at no penalty.\nFlight: Chimeras are capable of winged flight, at a pace of 10” (only 5” in the first round, because their massive bodies make it difficult for them to become initially airborne).\nSize +3\nThree Headed: The chimera's three heads afford it the following bonuses; it gets a +2 to all Notice rolls, a +2 to recover from Shaken, and called shots to the head do no additional damage. However, a called shot to the head which results in at least 1 wound will kill that head, though the creature suffers no particular ill effects from this. Destroying all three heads kills the creature.",
+   "wildCard": true
   },
   {
    "name": "Cockatrice",
@@ -468,10 +475,11 @@
    "block": "Cockatrice\nAttributes: Agility d8, Smarts d6 (A), Spirit d6, Strength d4, Vigor d6\nSkills: Fighting d6, Guts d6, Notice d6\nPace: 5; Parry: 5; Toughness: 4\nSpecial Abilities:\nBeak: Str+d4\nFlight: Cockatrices have a Flying Pace of 10” (only 5” in the first round, because their ungraceful bodies make it difficult for them to become initially airborne). They have a Climb of -2.\nPetrification: Any living creature hit by a cockatrice in combat (either by beak with a normal Fighting roll) must immediately make a Vigor roll or be turned to stone. They'll remain stone until the cockatrice is killed or a Greater Healing spell is cast upon them (though this spell will not simultaneously heal any damage they might have taken prior to being turned to stone).\nSize -1: They're long, but not massive creatures, roughly equivalent to a large dog."
   },
   {
-   "name": "Crawling Eye ★",
+   "name": "Crawling Eye",
    "category": "Bestiary",
    "description": "The Crawling Eye is a massive eyeball which crawls around on a bed of maggot-white tentacles. These horrifying creatures typically live underground, making their home in caverns or sewers.",
-   "block": "Crawling Eye ★\nAttributes: Agility d4, Smarts d6 (A), Spirit d10, Strength d12, Vigor d8\nSkills: Climbing d8, Fighting d8, Intimidation d10, Notice d12\nPace: 6; Parry: 6; Toughness: 11\nSpecial Abilities:\nFear -2: The Eye incurs a Guts check in anyone who sees it. The first time it’s struck for at least a Shaken result in melee combat, the attacker is splashed with a gout of yellowish, bitter vitreous humor, and must immediately make another Guts check.\nMultiattack: The Eye can attack any number of adjacent opponents with no penalty.\nSize +5 & Large: The Eyes are massive creatures; normal sized foes get a +2 to attack rolls against them.\nVision: The Eye ignores all lighting penalties, including those from the Obscure spell, and can see in complete darkness. It suffers a -2 to any rolls to attempt to blind it with bright light, however.\nWall Walker, poor: The Eye can crawl up walls at Pace 2, and hang from ceilings with a Climbing roll."
+   "block": "Crawling Eye ★\nAttributes: Agility d4, Smarts d6 (A), Spirit d10, Strength d12, Vigor d8\nSkills: Climbing d8, Fighting d8, Intimidation d10, Notice d12\nPace: 6; Parry: 6; Toughness: 11\nSpecial Abilities:\nFear -2: The Eye incurs a Guts check in anyone who sees it. The first time it’s struck for at least a Shaken result in melee combat, the attacker is splashed with a gout of yellowish, bitter vitreous humor, and must immediately make another Guts check.\nMultiattack: The Eye can attack any number of adjacent opponents with no penalty.\nSize +5 & Large: The Eyes are massive creatures; normal sized foes get a +2 to attack rolls against them.\nVision: The Eye ignores all lighting penalties, including those from the Obscure spell, and can see in complete darkness. It suffers a -2 to any rolls to attempt to blind it with bright light, however.\nWall Walker, poor: The Eye can crawl up walls at Pace 2, and hang from ceilings with a Climbing roll.",
+   "wildCard": true
   },
   {
    "name": "Crawling Hand",
@@ -498,10 +506,11 @@
    "block": "Corhydron\nAttributes: Agility d6, Smarts d6, Spirit d8, Strength d8, Vigor d8\nSkills: Fighting d8, Guts d8, Notice d6, Tracking d6\nPace: 6; Parry: 6; Toughness: 8 (2)\nSpecial Abilities:\nArmor +2: Living armor\nBite: Str+d4\nDouble Bite: The Corhydron can attack with both mouths in one round with no multi-action penalty.\nOily: Corhydrons get +2 to their parry (or opposed rolls if they need to free themselves) against grapple attempts.\nFear: Corhydrons are terrifying to look at. Anyone seeing one must make a Guts roll.\nSize +1: Corhydrons are six feet tall and weigh three hundred pounds."
   },
   {
-   "name": "Triciqe ★",
+   "name": "Triciqe",
    "category": "Bestiary",
    "description": "The creature at the head of the formation turns one of its eyestalks to stare at you. It stands a cylindrical body on six thick, powerful legs, set in three groups of two. Three arms near the top hold a single long, curved blade. Its body is covered in the same raw-meat armor you’ve seen on the other monsters. There is an eye beneath each arm, giving it a full view of its surroundings. One of these eyes is looking at you with alien malice. At the “waist” of the creature is a hole covered by a membrane. Something churns within, and the membrane tears open, disgorging several of the skittering creatures you saw before. The membrane seals back up. Triciqes are the lords of the creatures from the Beyond, commanding lesser ones in raids against the world we know. They are capable of bringing other entities from Beyond into this world through the portal held deep inside their own flesh.",
-   "block": "Triciqe ★\nAttributes: Agility d6, Smarts d8, Spirit d8, Strength d12+2, Vigor d10\nSkills: Fighting d10, Guts d10, Notice d8\nPace: 6; Parry: 7; Toughness: 10 (1)\nSpecial Abilities:\nArmor +1: Living armor\nSummoning: A triciqe can summon one karkuz or 1d4 skitrachai to fight at its side. This takes up its entire turn, and the allies appear on the next round. If it's shaken or wounded before they arrive, it must succeed on a spirit check or the ability is disrupted.\nAbsorption: A triciqe can absorb an ally, killing it instantly, to recover a wound.\nTelepathy: A triciqe knows what any of its allies knows, within 10”.\nMouth From Afar: When a triciqe is killed, all creatures within 2” must make an immediate Spirit roll. If they fail, they are inflicted with a strange malady. An orifice, much like the one on the triciqe, begins to form on their body. At the start of each day, draw a card. If a face card is drawn, the condition worsens. When three face cards have been drawn, the orifice has formed completely. They are pulled through it to the Beyond, and a triciqe appears in their place. The orifice is now placed on the triciqe. This condition can be removed by a healing check made at -2 (plus an additional -2 for each face card that has already been drawn). This can be attempted more than once, but no more than once per day.\nSize +2: Triciqes stand nine feet tall and weigh over eight hundred pounds.\nGear: Great Blade (Damage Str+d10, requires three hands to wield)"
+   "block": "Triciqe ★\nAttributes: Agility d6, Smarts d8, Spirit d8, Strength d12+2, Vigor d10\nSkills: Fighting d10, Guts d10, Notice d8\nPace: 6; Parry: 7; Toughness: 10 (1)\nSpecial Abilities:\nArmor +1: Living armor\nSummoning: A triciqe can summon one karkuz or 1d4 skitrachai to fight at its side. This takes up its entire turn, and the allies appear on the next round. If it's shaken or wounded before they arrive, it must succeed on a spirit check or the ability is disrupted.\nAbsorption: A triciqe can absorb an ally, killing it instantly, to recover a wound.\nTelepathy: A triciqe knows what any of its allies knows, within 10”.\nMouth From Afar: When a triciqe is killed, all creatures within 2” must make an immediate Spirit roll. If they fail, they are inflicted with a strange malady. An orifice, much like the one on the triciqe, begins to form on their body. At the start of each day, draw a card. If a face card is drawn, the condition worsens. When three face cards have been drawn, the orifice has formed completely. They are pulled through it to the Beyond, and a triciqe appears in their place. The orifice is now placed on the triciqe. This condition can be removed by a healing check made at -2 (plus an additional -2 for each face card that has already been drawn). This can be attempted more than once, but no more than once per day.\nSize +2: Triciqes stand nine feet tall and weigh over eight hundred pounds.\nGear: Great Blade (Damage Str+d10, requires three hands to wield)",
+   "wildCard": true
   },
   {
    "name": "Talza",
@@ -522,10 +531,11 @@
    "block": "The Damned\nAttributes: Agility d6, Smarts d6, Spirit d4, Strength d6, Vigor d6\nSkills: Fighting d6, Notice d6, Throwing d6\nPace: 6; Parry: 5; Toughness: 5\nSpecial Abilities:\nBite/Claw: Str damage.\nDemon: choose his abilities as described above.\nNigh-Unkillable: The Damned are already dead. They take damage normally, but when ‘killed’ anywhere but Hell they simply collapse and decompose almost instantly, reforming in Hell. The only way to dispose of them permanently is within the boundaries of Hell itself, and then only with a blessed weapon or faith-based magics.\nUnholy: Damneds cannot enter onto sanctified ground."
   },
   {
-   "name": "Ekatomatia Demon ★",
+   "name": "Ekatomatia Demon",
    "category": "Bestiary",
    "description": "Beware this powerful orb covered in black leather flesh floating down from the infinite tunnels of Hell. Dozens of fluctuating tendrils protrude from its surface like an hypnotizing crown, each of which adorned with an alien eye. It possess an huge mouth full of sharp teeth, and a single bigger central eye.",
-   "block": "Ekatomatia Demon ★\nAttributes: Agility d8, Smarts d10, Spirit d8, Strength d10, Vigor d10\nSkills: Fighting d6, Guts d10, Knowledge (arcana) d12, Intimidate d10, Notice d12, Spellcasting d12, Stealth d8, Survival d10\nPace: 6 (always flying); Parry: 5; Toughness: 12 (2)\nEdges: Alertness (see Scores of Eyes), Level Headed, Strong Willed, Improved Rapid Recharge\nSpecial Abilities:\nAntimagic Aura: Ekatomatia Demons central eye project a close range aura where magical effects are suppressed. This works as a Dispel power, casted as a free action at the start of the demon’s Turn. Additionally, if a power is activated or launched in the area, even outside the demon’s Turn, the caster must beat the demon Spellcasting roll, or the power is negated. The demon is constantly moving and turning around, so the area of effect is a Large Burst Template centered on it."
+   "block": "Ekatomatia Demon ★\nAttributes: Agility d8, Smarts d10, Spirit d8, Strength d10, Vigor d10\nSkills: Fighting d6, Guts d10, Knowledge (arcana) d12, Intimidate d10, Notice d12, Spellcasting d12, Stealth d8, Survival d10\nPace: 6 (always flying); Parry: 5; Toughness: 12 (2)\nEdges: Alertness (see Scores of Eyes), Level Headed, Strong Willed, Improved Rapid Recharge\nSpecial Abilities:\nAntimagic Aura: Ekatomatia Demons central eye project a close range aura where magical effects are suppressed. This works as a Dispel power, casted as a free action at the start of the demon’s Turn. Additionally, if a power is activated or launched in the area, even outside the demon’s Turn, the caster must beat the demon Spellcasting roll, or the power is negated. The demon is constantly moving and turning around, so the area of effect is a Large Burst Template centered on it.",
+   "wildCard": true
   },
   {
    "name": "Hellhound",
@@ -540,34 +550,39 @@
    "block": "Pishacha\nAttributes: Agility d10, Smarts d6, Spirit d8, Strength d8, Vigor d8\nSkills: Fighting d6, Guts d8, Intimidation d8, Notice d8, Stealth d10, Tracking d8\nPace: 6; Parry: 5; Toughness: 6\nSpecial Abilities:\nClaw/Bite: Str+d4\nDemon: choose his abilities as described above.\nEthereal: As an action, Pishachas may become immaterial. In this form, they can only be harmed by magical attacks and may choose to be completely invisible. Ethereal Pishachas may not make physical attacks but may attempt to possess individual targets. They remain susceptible to their weaknesses in this form.\nImproved Frenzy: Pishachas may make two fighting actions each round with no penalty.\nFear –2: Pishachas are horrid creatures to behold. Anyone seeing one must make a Guts or Spirit roll at –2.\nInfravision: Pishachas halve penalties (round down) for bad lighting when attacking living targets.\nPossession: While in their ethereal state, a Pishacha may attempt to possess a target. An opposed Spirit roll is made. With a success, the demon has possessed the target for a round. It retains its own traits, with the exceptions of Strength and Vigor, and may act through its possessed form. Each round, the possessed may repeat the opposed Spirit roll to force the demon from his or her psyche.\nShapechange: As an action, a pishacha may shapechange into one of the following forms: a bat, a dog, a snake, or a panther.\nWeakness (Daylight): Exposed to full daylight, Pishacha suffer –1 to all Trait rolls. They may not shapechange or attempt possession (though they are not automatically driven from possessed targets).\nWeakness (Mantra): In the presence of a holy mantra, a pishacha must make a Spirit roll –2 or flee."
   },
   {
-   "name": "Master of the Pit ★",
+   "name": "Master of the Pit",
    "category": "Bestiary",
    "description": "These creatures are the torture masters of Hell, and are feared by the Damned even above the Princes.",
-   "block": "Master of the Pit ★\nAttributes: Agility d8, Smarts d8, Spirit d12, Strength d12+4, Vigor d12\nSkills: Fighting d12, Guts d12, Intimidation d12+2, Notice d8"
+   "block": "Master of the Pit ★\nAttributes: Agility d8, Smarts d8, Spirit d12, Strength d12+4, Vigor d12\nSkills: Fighting d12, Guts d12, Intimidation d12+2, Notice d8",
+   "wildCard": true
   },
   {
-   "name": "Nuckelavee ★",
+   "name": "Nuckelavee",
    "category": "Bestiary",
    "description": "The nuckelavee, the Devil of the Sea, is a unique and solitary evil creature, a horse-like demon that combines equine and human elements. The nuckelavee is responsible for droughts and epidemics on land despite being predominantly a sea-dweller. Its breath releases a deadly disease known as mortasheen, wilting crops and sickening livestock. The nuckelavee has a man's torso attached to a horse's back as if it were a rider. The male torso has no legs, but it can elongate the arms, easily reaching the ground or nearby enemies. The torso has a demon’s horned head, with bone plates resembling a battle helm, capable of inhuman, unsettling movements and twists. The equine gaunt head has an enormous gaping mouth that exudes a smelly toxic vapour, and four demon’s eyes burning of an evil glow, under heavy bony plates. The four horse legs have claw like appendages. Pale sinews and powerful muscles are visible under its thin skin, and golden blood courses through its veins. It hates fresh flowing water, therefore it can be escaped by crossing a stream, or be distracted with a splash of water from a pool. It’s often found in the vicinity of a beach, but would never come ashore if it was raining.",
-   "block": "Nuckelavee ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+2, Vigor d12+1\nSkills: Fighting d8, Guts d10, Intimidation d10, Knowledge (sea history, flora and legends) d6, Notice d6, Stealth d8, Tracking d6\nPace: 8; Parry: 6; Toughness: 12, 15 (3) only for heads\nEdges:"
+   "block": "Nuckelavee ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+2, Vigor d12+1\nSkills: Fighting d8, Guts d10, Intimidation d10, Knowledge (sea history, flora and legends) d6, Notice d6, Stealth d8, Tracking d6\nPace: 8; Parry: 6; Toughness: 12, 15 (3) only for heads\nEdges:",
+   "wildCard": true
   },
   {
-   "name": "Succubus / Incubus ★",
+   "name": "Succubus / Incubus",
    "category": "Bestiary",
    "description": "These are devils who attack human souls through raw sexuality. Contrary to popular belief, succubi and incubi are not separate creatures. They are in and of themselves sexless, but are capable of changing their physiology to suit the desires of those they are attempting to seduce.",
-   "block": "Succubus / Incubus ★\nAttributes: Agility d8, Smarts d10, Spirit d8, Strength d6, Vigor d6\nSkills: Fighting d4, Guts d6, Notice d8, Persuasion d12, Shooting d6, Stealth d8\nCharisma: +2/+4 (special); Pace: 6; Parry: 4; Toughness: 5\nEdges: Attractive\nSpecial Abilities:\nDemon: choose his abilities as described above.\nHorrible Beauty: The natural form of succubi is equally beautiful and horrific, so they have the Attractive edge, but also have a Fear effect: anyone who sees a succubi in its natural form must make a Fear check. Should they fail and roll a 19+ on the Fear Effects Table (see SWEE page 101), they become equally overwhelmed with fear and desire, and must make a Spirit roll at -2 or become completely subservient to the succubus, though they will hate themselves for it.\nMind Reading: Succubi can scan the thoughts of others with a successful opposed Smarts roll. They can only use this power to gain insight into the targets wishes and desires.\nShapeshifting: Given the opportunity to Mind Read his target, a succubus can alter its appearance to make itself into someone’s ‘perfect specimen’. To that person they will be Very Attractive, getting another +2 to their Charisma.\nUnholy: Succubi cannot enter onto sanctified ground. If they touch or are touched by a holy symbol, they revert to their natural form, and cannot change their appearance again for 24 hours."
+   "block": "Succubus / Incubus ★\nAttributes: Agility d8, Smarts d10, Spirit d8, Strength d6, Vigor d6\nSkills: Fighting d4, Guts d6, Notice d8, Persuasion d12, Shooting d6, Stealth d8\nCharisma: +2/+4 (special); Pace: 6; Parry: 4; Toughness: 5\nEdges: Attractive\nSpecial Abilities:\nDemon: choose his abilities as described above.\nHorrible Beauty: The natural form of succubi is equally beautiful and horrific, so they have the Attractive edge, but also have a Fear effect: anyone who sees a succubi in its natural form must make a Fear check. Should they fail and roll a 19+ on the Fear Effects Table (see SWEE page 101), they become equally overwhelmed with fear and desire, and must make a Spirit roll at -2 or become completely subservient to the succubus, though they will hate themselves for it.\nMind Reading: Succubi can scan the thoughts of others with a successful opposed Smarts roll. They can only use this power to gain insight into the targets wishes and desires.\nShapeshifting: Given the opportunity to Mind Read his target, a succubus can alter its appearance to make itself into someone’s ‘perfect specimen’. To that person they will be Very Attractive, getting another +2 to their Charisma.\nUnholy: Succubi cannot enter onto sanctified ground. If they touch or are touched by a holy symbol, they revert to their natural form, and cannot change their appearance again for 24 hours.",
+   "wildCard": true
   },
   {
-   "name": "Torture Lord ★",
+   "name": "Torture Lord",
    "category": "Bestiary",
    "description": "The Lords are the special agents of the Dark Prince himself, and appear to anyone who wants or needs their special services.",
-   "block": "Torture Lord ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d8, Vigor d10\nSkills: Fighting d8, Intimidation d12, Knowledge (torture) d12, Notice d8, Persuasion d8\nPace: 6; Parry: 6; Toughness: 9 (2)\nEdges: Level Headed\nGear:"
+   "block": "Torture Lord ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d8, Vigor d10\nSkills: Fighting d8, Intimidation d12, Knowledge (torture) d12, Notice d8, Persuasion d8\nPace: 6; Parry: 6; Toughness: 9 (2)\nEdges: Level Headed\nGear:",
+   "wildCard": true
   },
   {
-   "name": "The Dukes of Hell ★",
+   "name": "The Dukes of Hell",
    "category": "Bestiary",
    "description": "While the Prince of Darkness broods in the ebon towers of Dis, it’s the Dukes of Hell who oversee to the successful operation of the pits.",
-   "block": "The Dukes of Hell ★\nAttributes: Agility d10, Smarts d12+2, Spirit d12+2, Strength d12+4, Vigor d12+2\nSkills: All of them at d12\nPace: 6; Parry: 10; Toughness: 17 (5)\nEdges: Imp. Arcane Resistance, Imp. Block, Imp. Frenzy, Harder to Kill, Imp. Level Headed, Imp. Nerves of Steel, Imp. Sweep, Command, Fervor, Hold the Line!\nGear:"
+   "block": "The Dukes of Hell ★\nAttributes: Agility d10, Smarts d12+2, Spirit d12+2, Strength d12+4, Vigor d12+2\nSkills: All of them at d12\nPace: 6; Parry: 10; Toughness: 17 (5)\nEdges: Imp. Arcane Resistance, Imp. Block, Imp. Frenzy, Harder to Kill, Imp. Level Headed, Imp. Nerves of Steel, Imp. Sweep, Command, Fervor, Hold the Line!\nGear:",
+   "wildCard": true
   },
   {
    "name": "Deinonychus (Velociraptor)",
@@ -588,16 +603,18 @@
    "block": "Triceratops\nAttributes: Agility d4, Smarts d6 (A), Spirit d8, Strength d12+5, Vigor d12\nSkills: Fighting d6, Guts d10, Intimidation d6, Notice d8\nPace: 6; Parry: 5; Toughness: 16 (3)\nSpecial Abilities:\nArmor +3: Tough hide. Attacks to the trike’s head and neck double this armor value - a total Toughness of 19 (6) - due to its bony ridge.\nCharge: If the trike moves 6” in a straight line before attacking, it gets a +2 to hit and damage.\nGore: Str+d8\nSize +5 & Large: Trikes are big creatures; normal sized foes get a +2 to attack rolls against them."
   },
   {
-   "name": "Tyrannosaurus Rex ★",
+   "name": "Tyrannosaurus Rex",
    "category": "Bestiary",
    "description": "Modern science believes that T-Rex was little more than a massive, lumbering jackal, but that’s no fun at all. Here’s Rex as we know and love him; hail to the King, baby!",
-   "block": "Tyrannosaurus Rex ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d12, Strength d12+7, Vigor d10\nSkills: Fighting d8, Intimidation d12, Notice d6, Tracking d6\nPace: 8; Parry: 6; Toughness: 17 (3)\nEdges: Improved Nerves of Steel\nSpecial Abilities:\nArmor +3: Tough, scaly hide.\nBite: Str+d8."
+   "block": "Tyrannosaurus Rex ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d12, Strength d12+7, Vigor d10\nSkills: Fighting d8, Intimidation d12, Notice d6, Tracking d6\nPace: 8; Parry: 6; Toughness: 17 (3)\nEdges: Improved Nerves of Steel\nSpecial Abilities:\nArmor +3: Tough, scaly hide.\nBite: Str+d8.",
+   "wildCard": true
   },
   {
-   "name": "Djinni ★",
+   "name": "Djinni",
    "category": "Bestiary",
    "description": "Ancient, powerful spirits from a desert dimension, djinn are sometimes captured and forced into servitude by particularly powerful sorcerers. Lesser djinn are used as guardians and assassins by those who summon them, as they lack the power of wish fulfillment their more powerful cousins, the True Djinn, posses.",
-   "block": "Djinni ★\nAttributes: Agility d10, Smarts d10, Spirit d12+2, Strength d12+1, Vigor d10\nSkills: Fighting d10, Guts d12, Notice d8\nPace: 6; Parry: 7; Toughness: 9\nSpecial Abilities:\nFlight: Djinn’s are creatures of the air; they fly at a speed of 12” with a Climb of +3. They may not run.\nGaseous Form: The Djinn may convert its body into mist by making a Vigor roll. While in this form, they can squeeze themselves through openings as small as an inch across, and they generally follow the Ethereal rules (see SWDEE page 152)\nInvisibility: As the spell. The Djinn becomes invisible by making a Spirit roll; it remains invisible for three rounds. If it takes any action other than movement (including Flight) while invisible, it must make another Spirit roll at -2 to maintain the effect. The djinn can’t use its Whirlwind or Gaseous Form powers while invisible, nor can it turn invisible while either of these powers is already in effect.\nInvulnerability: Djinn are immune to all attacks save those from magic or magical/blessed weapons.\nPartially incorporeal: Djinni is partially incorporeal at all times. This conferes to them +2 Toughness bonus.\nPunch: Str damage.\nSize +2: Djinn are 7’ to 8’ tall.\nWhirlwind: The Djinn may transform himself into a raging whirlwind. It takes a full round for the djinn to get up to speed; next round he can start the attack. If he’s Wounded or Shaken during this time, he must start the process over again. Place a Large Burst Template centered on the djinn’s location. Everything inside takes 2d6 damage, and Size +1 or less creatures are picked up and hurled about for the duration of the effect, taking an additional 1d6 damage for each round inside. The whirlwind moves at Pace 10, and the djinn can remain in this form for 3 rounds. At that time, the djinn reappears, and must make a Vigor roll or be Shaken."
+   "block": "Djinni ★\nAttributes: Agility d10, Smarts d10, Spirit d12+2, Strength d12+1, Vigor d10\nSkills: Fighting d10, Guts d12, Notice d8\nPace: 6; Parry: 7; Toughness: 9\nSpecial Abilities:\nFlight: Djinn’s are creatures of the air; they fly at a speed of 12” with a Climb of +3. They may not run.\nGaseous Form: The Djinn may convert its body into mist by making a Vigor roll. While in this form, they can squeeze themselves through openings as small as an inch across, and they generally follow the Ethereal rules (see SWDEE page 152)\nInvisibility: As the spell. The Djinn becomes invisible by making a Spirit roll; it remains invisible for three rounds. If it takes any action other than movement (including Flight) while invisible, it must make another Spirit roll at -2 to maintain the effect. The djinn can’t use its Whirlwind or Gaseous Form powers while invisible, nor can it turn invisible while either of these powers is already in effect.\nInvulnerability: Djinn are immune to all attacks save those from magic or magical/blessed weapons.\nPartially incorporeal: Djinni is partially incorporeal at all times. This conferes to them +2 Toughness bonus.\nPunch: Str damage.\nSize +2: Djinn are 7’ to 8’ tall.\nWhirlwind: The Djinn may transform himself into a raging whirlwind. It takes a full round for the djinn to get up to speed; next round he can start the attack. If he’s Wounded or Shaken during this time, he must start the process over again. Place a Large Burst Template centered on the djinn’s location. Everything inside takes 2d6 damage, and Size +1 or less creatures are picked up and hurled about for the duration of the effect, taking an additional 1d6 damage for each round inside. The whirlwind moves at Pace 10, and the djinn can remain in this form for 3 rounds. At that time, the djinn reappears, and must make a Vigor roll or be Shaken.",
+   "wildCard": true
   },
   {
    "name": "Doppelganger",
@@ -606,52 +623,60 @@
    "block": "Doppelganger\nAttributes: Agility d8, Smarts d10, Spirit d8, Strength d6, Vigor d6\nSkills: Fighting d6, Guts d4, Investigation d8, Notice d8, Persuasion d10, Shooting d6, Stealth d10, Throwing d6\nPace: 6; Parry: 5; Toughness: 5\nGear:"
   },
   {
-   "name": "Elder Dragon ★",
+   "name": "Elder Dragon",
    "category": "Bestiary",
    "description": "Elder dragons are the most powerful and rare of their kind, and unlike other dragons they are peaceful and work to aid in the war against evil. They rarely appear in their natural form, using their magic to pass as commoners, but when they do, they appear as great, sinuous Oriental dragons covered in scintillating gold and silver scales, with a mane of silver fire surrounding their heads.",
-   "block": "Elder Dragon ★\nAttributes: Agility d8, Smarts d12, Spirit d10, Strength d12+10, Vigor d12\nSkills: Fighting d10, Guts d12, Intimidation d12, Notice d12, Spellcasting d12\nPace: 8; Parry: 7; Toughness: 21 (4)\nEdges: Improved Frenzy, Improved Level Headed\nSpecial Abilities:\nArmor +4: Tough, scaly hide.\nClaws/Bite: Str+d8\nAura of Majesty: Elder dragons are incredibly fearsome to creatures of evil intent (Absolute Terror ability), and inspirational to those who are true of heart (they get a +4 to all Spirit rolls).\nFiery Breath: Use the Cone Template. All those within the template must make an Agility check at –2 or take 3d8 damage. Those who fail must also must check to see if they catch fire (see SWDEE page 101). The dragon can’t use its claw or bite attacks in the same round that it breathes fire.\nFlight: Elder dragons have a Flying Pace of 24” (only 12” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of 0.\nHuge: Elder Dragons are really massive creatures; normal sized foes get a +4 to attack rolls against them.\nSize +9\nTail Lash: The dragon can sweep all opponents in its rear facing in a 3” long by 6” wide area. This is a standard Fighting attack and does Str-2 damage.\nShapeshifting: Elder dragons can change their appearance to look like a humanoid, from Size -1 to +1, or any normal (non-magical, average sized) animal with a Smarts roll. They’re not skilled as mimics, so if they attempt to duplicate an existing person, you get a +2 to Notice. Regardless of the form it takes, the dragon retains its Attributes, Pace, and Toughness.\nSpellcasting: Elder dragons have 30 power points and the following spells, though feel free to change them as you see fit: Barrier, Blast, Bolt, Detect/Conceal Arcana, Dispel, Invisibility, and Stun. (They’ll never take Armor, relying on their natural toughness to protect them, and will rarely take Fear.)"
+   "block": "Elder Dragon ★\nAttributes: Agility d8, Smarts d12, Spirit d10, Strength d12+10, Vigor d12\nSkills: Fighting d10, Guts d12, Intimidation d12, Notice d12, Spellcasting d12\nPace: 8; Parry: 7; Toughness: 21 (4)\nEdges: Improved Frenzy, Improved Level Headed\nSpecial Abilities:\nArmor +4: Tough, scaly hide.\nClaws/Bite: Str+d8\nAura of Majesty: Elder dragons are incredibly fearsome to creatures of evil intent (Absolute Terror ability), and inspirational to those who are true of heart (they get a +4 to all Spirit rolls).\nFiery Breath: Use the Cone Template. All those within the template must make an Agility check at –2 or take 3d8 damage. Those who fail must also must check to see if they catch fire (see SWDEE page 101). The dragon can’t use its claw or bite attacks in the same round that it breathes fire.\nFlight: Elder dragons have a Flying Pace of 24” (only 12” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of 0.\nHuge: Elder Dragons are really massive creatures; normal sized foes get a +4 to attack rolls against them.\nSize +9\nTail Lash: The dragon can sweep all opponents in its rear facing in a 3” long by 6” wide area. This is a standard Fighting attack and does Str-2 damage.\nShapeshifting: Elder dragons can change their appearance to look like a humanoid, from Size -1 to +1, or any normal (non-magical, average sized) animal with a Smarts roll. They’re not skilled as mimics, so if they attempt to duplicate an existing person, you get a +2 to Notice. Regardless of the form it takes, the dragon retains its Attributes, Pace, and Toughness.\nSpellcasting: Elder dragons have 30 power points and the following spells, though feel free to change them as you see fit: Barrier, Blast, Bolt, Detect/Conceal Arcana, Dispel, Invisibility, and Stun. (They’ll never take Armor, relying on their natural toughness to protect them, and will rarely take Fear.)",
+   "wildCard": true
   },
   {
-   "name": "Forest Dragon ★",
+   "name": "Forest Dragon",
    "category": "Bestiary",
    "description": "These dragons live in jungles and forests. They’re consummate hunters and skilled trackers, and never use their gas attack on any target they intend to eat, as it spoils the taste. They usually make their lairs near salt licks; they eat copious amounts of salt (a process in their stomach breaks the salt down into sodium, which they digest, and chlorine gas, which they expel as their breath weapon). Their coloration varies throughout the year: bright green in spring, darkening through summer, gold and red in fall, and brown/grey in winter. Some even have a mane of leaves which grows and changes with the seasons as well.",
-   "block": "Forest Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+4, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10, Tracking d8\nPace: 8; Parry: 6; Toughness: 16 (3)\nEdges: Improved Frenzy, Level Headed\nSpecial Abilities:\nArmor +3: Thick, scaly hide.\nClaws/Bite: Str+d6"
+   "block": "Forest Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+4, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10, Tracking d8\nPace: 8; Parry: 6; Toughness: 16 (3)\nEdges: Improved Frenzy, Level Headed\nSpecial Abilities:\nArmor +3: Thick, scaly hide.\nClaws/Bite: Str+d6",
+   "wildCard": true
   },
   {
-   "name": "Ice Dragon ★",
+   "name": "Ice Dragon",
    "category": "Bestiary",
    "description": "The smallest of dragons, these live in cold regions such as frozen mountaintops, glaciers, and arctic areas. They’re the most primal of the dragon breeds, as befitting the harsh environment they call home. They’re equally covered with shaggy white fur and icy blue scales.",
-   "block": "Ice Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+2, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10\nPace: 8; Parry: 6; Toughness: 14 (5)\nEdges: Improved Frenzy\nSpecial Abilities:\nArmor +2: Thick, scaly hide and heavy fur.\nBreath of Ice: Ice dragons breathe a cone of icy vapor. Use the Cone Template; those within the area of effect must make an Agility roll or take 2d6 damage. It cannot use its breath attack and its claw/bite attacks in the same round.\nClaws/Bite: Str+d4"
+   "block": "Ice Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+2, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10\nPace: 8; Parry: 6; Toughness: 14 (5)\nEdges: Improved Frenzy\nSpecial Abilities:\nArmor +2: Thick, scaly hide and heavy fur.\nBreath of Ice: Ice dragons breathe a cone of icy vapor. Use the Cone Template; those within the area of effect must make an Agility roll or take 2d6 damage. It cannot use its breath attack and its claw/bite attacks in the same round.\nClaws/Bite: Str+d4",
+   "wildCard": true
   },
   {
-   "name": "Sky Dragon ★",
+   "name": "Sky Dragon",
    "category": "Bestiary",
    "description": "Sky dragons live in deserts and plains, though they spend more time in the air than in their lairs (hence their mottled blue and white coloration; it makes them harder to see while flying). They’re the fastest flyers amongst dragonkind.",
-   "block": "Sky Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+6, Vigor d12\nSkills: Fighting d8, Guts d12, Intimidation d10, Notice d10\nPace: 8; Parry: 6; Toughness: 18 (3)\nEdges: Improved Frenzy, Level Headed, Quick\nSpecial Abilities:\nArmor +3: Thick, scaly hide.\nClaws/Bite: Str+d8"
+   "block": "Sky Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+6, Vigor d12\nSkills: Fighting d8, Guts d12, Intimidation d10, Notice d10\nPace: 8; Parry: 6; Toughness: 18 (3)\nEdges: Improved Frenzy, Level Headed, Quick\nSpecial Abilities:\nArmor +3: Thick, scaly hide.\nClaws/Bite: Str+d8",
+   "wildCard": true
   },
   {
-   "name": "Swamp Dragon ★",
+   "name": "Swamp Dragon",
    "category": "Bestiary",
    "description": "These dragons live in swamps and marshlands. They typically submerge themselves in the swamp, with only their eyes and nostrils exposed (appearing much like an alligator) and wait for prey to pass by, attacking by surprise. Their coloration is typically a mixture of black, brown, and mossy green.",
-   "block": "Swamp Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+3, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10, Stealth d10, Swim d12\nPace: 8; Parry: 6; Toughness: 15 (3)\nEdges: Improved Frenzy, Quick\nSpecial Abilities:\nAcid Spittle: Swamp dragons can spit a blast of acid with horrific results. The globe can be fired up to 12” away; place a Small Burst Template where it strikes. Anyone in the template must make an Agility roll at –2 or take 2d6 damage (and 2d6 damage again, at the start of their next round). Also, randomly choose an armor, clothing or other useful item the target is using: the object suffers 2d6 damage, and it will be ruined if suffers enough damage to reach their Object Toughness (see SWDEE pag.80-81, but you can use TN8/10/12 for light/medium/heavy equip). The item corrodes away to a smoking heap of goo."
+   "block": "Swamp Dragon ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d12+3, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10, Stealth d10, Swim d12\nPace: 8; Parry: 6; Toughness: 15 (3)\nEdges: Improved Frenzy, Quick\nSpecial Abilities:\nAcid Spittle: Swamp dragons can spit a blast of acid with horrific results. The globe can be fired up to 12” away; place a Small Burst Template where it strikes. Anyone in the template must make an Agility roll at –2 or take 2d6 damage (and 2d6 damage again, at the start of their next round). Also, randomly choose an armor, clothing or other useful item the target is using: the object suffers 2d6 damage, and it will be ruined if suffers enough damage to reach their Object Toughness (see SWDEE pag.80-81, but you can use TN8/10/12 for light/medium/heavy equip). The item corrodes away to a smoking heap of goo.",
+   "wildCard": true
   },
   {
-   "name": "Wurm of the Deep ★",
+   "name": "Wurm of the Deep",
    "category": "Bestiary",
    "description": "These non-flying dragon’s distant relatives live in compex subterranean structures, sculpted caves, forgotten temples in the deeps. They can move thru the earth like they were swimming, sensing the creatures moving on the surface hundreds meters in the distance. Their body are over 20 meters long, quick and slender, ready to attacking by surprise. Their coloration is typically a mixture of brown, black and dark ruby.",
-   "block": "Wurm of the Deep ★\nAttributes: Agility d8, Smarts d6, Spirit d12, Strength d12+5, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10, Stealth d10, Tracking d8\nPace: 6; Parry: 6; Toughness: 18 (4)\nEdges: Quick, Frenzy\nSpecial Abilities:\nArmor +4: Rocky, scaly hide.\nBurrowing 12”: Wurms tunnel through the ground as they were swimming, blocked only by solid bedrocks. While underground, they can rise up and make an explosive ramming attack: it’s an opposed Fighting vs. Agility roll against all the targets in a Small Burst Template (ignore the Size difference for this special attack). Who fails, suffers Str damage. The wurms must stay surfaced for the rest of the Turn.\nClaws/Bite: Str+d6, AP2  vs. rigid armors."
+   "block": "Wurm of the Deep ★\nAttributes: Agility d8, Smarts d6, Spirit d12, Strength d12+5, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d10, Stealth d10, Tracking d8\nPace: 6; Parry: 6; Toughness: 18 (4)\nEdges: Quick, Frenzy\nSpecial Abilities:\nArmor +4: Rocky, scaly hide.\nBurrowing 12”: Wurms tunnel through the ground as they were swimming, blocked only by solid bedrocks. While underground, they can rise up and make an explosive ramming attack: it’s an opposed Fighting vs. Agility roll against all the targets in a Small Burst Template (ignore the Size difference for this special attack). Who fails, suffers Str damage. The wurms must stay surfaced for the rest of the Turn.\nClaws/Bite: Str+d6, AP2  vs. rigid armors.",
+   "wildCard": true
   },
   {
-   "name": "Nicore ★",
+   "name": "Nicore",
    "category": "Bestiary",
    "description": "Nicore are non-flying, savage drakes. While stealthy and patient, they are very territorial and aggressive, fearsome in close combat.",
-   "block": "Nicore ★\nAttributes: Agility d8, Smarts d6 (A), Spirit d12, Strength d12+5, Vigor d10\nSkills: Fighting d10, Intimidation d10, Notice d8, Stealth d10, Swimming d10\nPace: 6; Parry: 7; Toughness: 16 (3)\nEdges: Improved Frenzy: Nicores may make two Claws/Bite attacks in the same round at no penalty.\nSpecial Abilities:\nArmor +3: Scaly hide.\nClaws/Bite: Str+d8, Reach 1\".\nFear: Nicore are frightening creatures to behold.\nFreak Wave: If the nicore is at least partially submerged in a body of water, it can create a dangerous wave using the Cone Template. Every target within the area may make a Strength roll at –2 to avoid the attack (if flying, they suffer an additional -2). Those who fail are pushed back 2d6\" by the wave and become Prone (if they roll \"1\" on the Strength die, they also drop the objects they are wielding). If they hit an inanimate object, they also suffer 2d4 damage (or more, if the object is dangerous, spiked etc.). Targets behind Cover subtract the value from the distance moved. The area become Difficult Terrain until the end of the combat, covered in slippery mud, seaweeds etc. A nicore may not attack with its claws or bite in the round it creates the wave.\nLarge: Attackers add +2 to their attack rolls when attacking a nicore due to its large size.\nSize +5: Nicore are over 30’ long from snout to tail, and weigh in at over 3000 pounds.\nSemi-Aquatic: Nicore can hold their breath underwater for 15 minutes and swim at Pace 10.\nTail Lash: A nicore can do a sweeping attack with the tail, in its rear facing. Place a Large Burst Template centered on the beast, and choose one of the two semicircles. All the creatures in the semicircle compare their Parry with a standard nicore Fighting roll, suffering Str damage if hit. A nicore may not bite or attack with its claws in the round it lashes with the tail."
+   "block": "Nicore ★\nAttributes: Agility d8, Smarts d6 (A), Spirit d12, Strength d12+5, Vigor d10\nSkills: Fighting d10, Intimidation d10, Notice d8, Stealth d10, Swimming d10\nPace: 6; Parry: 7; Toughness: 16 (3)\nEdges: Improved Frenzy: Nicores may make two Claws/Bite attacks in the same round at no penalty.\nSpecial Abilities:\nArmor +3: Scaly hide.\nClaws/Bite: Str+d8, Reach 1\".\nFear: Nicore are frightening creatures to behold.\nFreak Wave: If the nicore is at least partially submerged in a body of water, it can create a dangerous wave using the Cone Template. Every target within the area may make a Strength roll at –2 to avoid the attack (if flying, they suffer an additional -2). Those who fail are pushed back 2d6\" by the wave and become Prone (if they roll \"1\" on the Strength die, they also drop the objects they are wielding). If they hit an inanimate object, they also suffer 2d4 damage (or more, if the object is dangerous, spiked etc.). Targets behind Cover subtract the value from the distance moved. The area become Difficult Terrain until the end of the combat, covered in slippery mud, seaweeds etc. A nicore may not attack with its claws or bite in the round it creates the wave.\nLarge: Attackers add +2 to their attack rolls when attacking a nicore due to its large size.\nSize +5: Nicore are over 30’ long from snout to tail, and weigh in at over 3000 pounds.\nSemi-Aquatic: Nicore can hold their breath underwater for 15 minutes and swim at Pace 10.\nTail Lash: A nicore can do a sweeping attack with the tail, in its rear facing. Place a Large Burst Template centered on the beast, and choose one of the two semicircles. All the creatures in the semicircle compare their Parry with a standard nicore Fighting roll, suffering Str damage if hit. A nicore may not bite or attack with its claws in the round it lashes with the tail.",
+   "wildCard": true
   },
   {
-   "name": "Efreeti ★",
+   "name": "Efreeti",
    "category": "Bestiary",
    "description": "Eternal foes of the djinn, the efreeti are elemental spirits of fire. They can be summoned to serve as powerful bodyguards and assassins, though they will make every attempt to twist and subvert the commands of their master.",
-   "block": "Efreeti ★\nAttributes: Agility d10, Smarts d8, Spirit d12+3, Strength d12+3, Vigor d12\nSkills: Fighting d10, Guts d12, Intimidation d10, Notice d8\nPace: 6; Parry: 7; Toughness: 15 (4)\nSpecial Abilities:\nInvulnerability: Efreeti are immune to all attacks save those from magic or magical/blessed weapons.\nArmor +4: Body of semisolid flame and smoke.\nSize +3\nPunch: Strength damage.\nFlight: Efreeti have a Flying Pace of 8” with a Climb of +3.\nPillar of Fire: As a normal action, an efreeti can transform itself into a pillar of flame. Place a Small Burst Template in place of the Efreeti; anything touching the template takes 2d10 damage and must check to see if it catches fire. The efreeti can maintain this form for 3 rounds; after it changes back, it cannot assume this form again for ten minutes.\nWall of Fire: Three times a day, as a normal action, an efreeti can summon up a wall of fire as per the Barrier spell. The wall is 10” in length and lasts for 3 rounds."
+   "block": "Efreeti ★\nAttributes: Agility d10, Smarts d8, Spirit d12+3, Strength d12+3, Vigor d12\nSkills: Fighting d10, Guts d12, Intimidation d10, Notice d8\nPace: 6; Parry: 7; Toughness: 15 (4)\nSpecial Abilities:\nInvulnerability: Efreeti are immune to all attacks save those from magic or magical/blessed weapons.\nArmor +4: Body of semisolid flame and smoke.\nSize +3\nPunch: Strength damage.\nFlight: Efreeti have a Flying Pace of 8” with a Climb of +3.\nPillar of Fire: As a normal action, an efreeti can transform itself into a pillar of flame. Place a Small Burst Template in place of the Efreeti; anything touching the template takes 2d10 damage and must check to see if it catches fire. The efreeti can maintain this form for 3 rounds; after it changes back, it cannot assume this form again for ten minutes.\nWall of Fire: Three times a day, as a normal action, an efreeti can summon up a wall of fire as per the Barrier spell. The wall is 10” in length and lasts for 3 rounds.",
+   "wildCard": true
   },
   {
    "name": "Air Elemental",
@@ -690,10 +715,11 @@
    "block": "Elven Horse\nAttributes: Agility d12, Smarts d8 (A), Spirit d8, Strength d12, Vigor d8\nSkills: Fighting d4, Guts d6, Notice d6\nPace: 10; Parry: 4; Toughness: 8\nSpecial Abilities:\nFleet-Footed: Elven Horses roll a d10 when running instead of a d6.\nKick: Str.\nSize +2: Elven horses weigh between 800 and 1000 pounds.\nWild steps: Elven horses silently moves through woods and forests, without a trace. Their steps are muffled, granting +2 to Stealth rolls. They also hide their passage, making it impossible to follow without the use of magic. It cannot be used indoors or in urban environments."
   },
   {
-   "name": "Ent ★",
+   "name": "Ent",
    "category": "Bestiary",
    "description": "Ents are living trees, protectors of the woodlands they call home.",
-   "block": "Ent ★\nAttributes: Agility d4, Smarts d8, Spirit d10, Strength d12+6, Vigor d12\nSkills: Fighting d6, Guts d12, Notice d6, Stealth d6, Tracking d10\nPace: 6; Parry: 5; Toughness: 16 (2)\nEdges: Improved Sweep\nSpecial Abilities:\nArmor +2: Thick bark.\nConstruct: +2 to recover from being Shaken; no additional damage from called shots; constructs do not suffer from poison or disease.\nLarge: normal sized foes get a +2 to attack rolls against them.\nSize +6\nOne With the Forest: Ents are powerful beings. By making a Spirit roll, they can communicate with animals (Animal Friend), hinder movements of their enemies (Entangle) and they can communicate with the spirits of wood, earth, and air (use the rules of Detect Arcana to find and communicate).\nVulnerability: Ents are quite vulnerable to fire or flame based attacks. Such attacks cause +2 Damage, and they are treated like flammable objects (see SWDEE page 101)."
+   "block": "Ent ★\nAttributes: Agility d4, Smarts d8, Spirit d10, Strength d12+6, Vigor d12\nSkills: Fighting d6, Guts d12, Notice d6, Stealth d6, Tracking d10\nPace: 6; Parry: 5; Toughness: 16 (2)\nEdges: Improved Sweep\nSpecial Abilities:\nArmor +2: Thick bark.\nConstruct: +2 to recover from being Shaken; no additional damage from called shots; constructs do not suffer from poison or disease.\nLarge: normal sized foes get a +2 to attack rolls against them.\nSize +6\nOne With the Forest: Ents are powerful beings. By making a Spirit roll, they can communicate with animals (Animal Friend), hinder movements of their enemies (Entangle) and they can communicate with the spirits of wood, earth, and air (use the rules of Detect Arcana to find and communicate).\nVulnerability: Ents are quite vulnerable to fire or flame based attacks. Such attacks cause +2 Damage, and they are treated like flammable objects (see SWDEE page 101).",
+   "wildCard": true
   },
   {
    "name": "Dryads",
@@ -744,46 +770,53 @@
    "block": "Ghoul\nAttributes: Agility d8, Smarts d8 (A), Spirit d6, Strength d6, Vigor d8\nSkills: Fighting d6, Guts d6, Intimidation d6, Notice d8, Stealth d8, Tracking d8\nPace: 6; Parry: 5; Toughness: 8\nEdges: Improved Frenzy\nSpecial Abilities:\nClaw/Bite: Str+d4\nInfravision: Ghouls are nocturnal creatures; halve penalties for bad lighting against living targets (round down).\nParalysis: The touch of a ghoul – typically delivered through its claw or bite attack – can cause paralysis. Those hit by the ghoul for a Shaken result or better should immediately make a Vigor check at -2 or be paralyzed for 1d6 rounds.\nUndead: +2 Toughness; +2 to recover from Shaken; no extra damage from called shots; immune to disease and poison."
   },
   {
-   "name": "Ghroll ★",
+   "name": "Ghroll",
    "category": "Bestiary",
    "description": "These horrific creatures are trolls brought back to unlife as ghouls. The look like trolls that have spent a week in the grave, and smell even worse.",
-   "block": "Ghroll ★\nAttributes: Agility d6, Smarts d4, Spirit d8, Strength d12+2, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Swimming d4, Tracking d4, Throwing d6\nPace: 6; Parry: 6; Toughness: 12 (1)\nEdges: Quick, Improved Sweep\nSpecial Abilities:\nArmor +1: Rubbery hide.\nClaws: Str+d4\nFast Regeneration: Ghroll may attempt a natural healing roll every round unless their wounds were caused by fire or flame.\nInfravision: Ghrolls halve penalties for bad lighting when attacking living targets (round down).\nSize +2: Ghrolls are tall, lanky creatures over 9’ tall.\nUndead Wild Card: +2 Toughness; +2 to recover from Shaken; no extra damage from called shots; immune to disease and poison; ignores Wound penalties."
+   "block": "Ghroll ★\nAttributes: Agility d6, Smarts d4, Spirit d8, Strength d12+2, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Swimming d4, Tracking d4, Throwing d6\nPace: 6; Parry: 6; Toughness: 12 (1)\nEdges: Quick, Improved Sweep\nSpecial Abilities:\nArmor +1: Rubbery hide.\nClaws: Str+d4\nFast Regeneration: Ghroll may attempt a natural healing roll every round unless their wounds were caused by fire or flame.\nInfravision: Ghrolls halve penalties for bad lighting when attacking living targets (round down).\nSize +2: Ghrolls are tall, lanky creatures over 9’ tall.\nUndead Wild Card: +2 Toughness; +2 to recover from Shaken; no extra damage from called shots; immune to disease and poison; ignores Wound penalties.",
+   "wildCard": true
   },
   {
-   "name": "Hill Giant ★",
+   "name": "Hill Giant",
    "category": "Bestiary",
    "description": "The smallest – and least intelligent - of the giants, they still tower over Ogres at 12' tall.",
-   "block": "Hill Giant ★\nAttributes: Agility d6, Smarts d4, Spirit d6, Strength d12+5, Vigor d10\nSkills: Fighting d6, Guts d8, Intimidation d8, Notice d4, Throwing d6\nPace: 8 ; Parry: 5 (6 with Spear); Toughness: 11\nHindrances: All Thumbs\nEdges: Sweep\nGear:"
+   "block": "Hill Giant ★\nAttributes: Agility d6, Smarts d4, Spirit d6, Strength d12+5, Vigor d10\nSkills: Fighting d6, Guts d8, Intimidation d8, Notice d4, Throwing d6\nPace: 8 ; Parry: 5 (6 with Spear); Toughness: 11\nHindrances: All Thumbs\nEdges: Sweep\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Stone Giant ★",
+   "name": "Stone Giant",
    "category": "Bestiary",
    "description": "These 14' tall gray-skinned giants use stalactites as clubs and typically keep bears as pets (typically 1d4 black or brown bears). They're incredibly adept at throwing rocks.",
-   "block": "Stone Giant ★\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d12+6, Vigor d10\nSkills: Fighting d6, Guts d8, Intimidation d8, Notice d6, Throwing d10\nPace: 8 ; Parry: 5; Toughness: 13 (2)\nEdges: Sweep\nGear:"
+   "block": "Stone Giant ★\nAttributes: Agility d6, Smarts d6, Spirit d6, Strength d12+6, Vigor d10\nSkills: Fighting d6, Guts d8, Intimidation d8, Notice d6, Throwing d10\nPace: 8 ; Parry: 5; Toughness: 13 (2)\nEdges: Sweep\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Frost Giant ★",
+   "name": "Frost Giant",
    "category": "Bestiary",
    "description": "Frost giants are massive 18' tall creatures native to the icy reaches. They typically keep polar bears or dire wolves as pets; their homes will typically have 1d4 of them somewhere in the vicinity.",
-   "block": "Frost Giant ★\nAttributes: Agility d6, Smarts d6, Spirit d8, Strength d12+6, Vigor d12\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d4, Throwing d8\nPace: 8 ; Parry: 6 (5 when using Greataxe); Toughness: 15 (2)\nEdges: Sweep\nGear:"
+   "block": "Frost Giant ★\nAttributes: Agility d6, Smarts d6, Spirit d8, Strength d12+6, Vigor d12\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d4, Throwing d8\nPace: 8 ; Parry: 6 (5 when using Greataxe); Toughness: 15 (2)\nEdges: Sweep\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Fire Giant ★",
+   "name": "Fire Giant",
    "category": "Bestiary",
    "description": "Fire giants make their home in volcanic regions, forging weapons and armor in temperatures that would make even the most hardened dwarven blacksmith faint. They’re strong for their size (16' tall), more so than their larger cousins the Frost Giants. They often keep hydras or hell hounds as guards; you’ll find 1d6 of them in their settlements.",
-   "block": "Fire Giant ★\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d12+7, Vigor d12+1\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d6, Repair d10, Throwing d6\nPace: 8 ; Parry: 7 (6 without shield); Toughness: 14 (2)\nEdges: Level Headed, Improved Sweep\nGear:"
+   "block": "Fire Giant ★\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d12+7, Vigor d12+1\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d6, Repair d10, Throwing d6\nPace: 8 ; Parry: 7 (6 without shield); Toughness: 14 (2)\nEdges: Level Headed, Improved Sweep\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Cloud Giant ★",
+   "name": "Cloud Giant",
    "category": "Bestiary",
    "description": "Cloud giants live on great mountains and, sometimes, in great castles within the clouds themselves. They breed giant hawks, and take great sport in using them for hunting. They’re among the largest of giants at 20' tall.",
-   "block": "Cloud Giant ★\nAttributes: Agility d6, Smarts d8, Spirit d10, Strength d12+7, Vigor d12\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Throwing d6\nPace: 8 ; Parry: 6; Toughness: 15 (2)\nEdges: Level Headed, Improved Sweep\nGear:"
+   "block": "Cloud Giant ★\nAttributes: Agility d6, Smarts d8, Spirit d10, Strength d12+7, Vigor d12\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Throwing d6\nPace: 8 ; Parry: 6; Toughness: 15 (2)\nEdges: Level Headed, Improved Sweep\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Storm Giant ★",
+   "name": "Storm Giant",
    "category": "Bestiary",
    "description": "These massive (22' tall) giants are opponents feared by most; only the very powerful or the very foolish would consider taking one on. Like their cousins the cloud giants, they live on mountain tops or cloud castles, though some also make their homes in the ocean depths.",
-   "block": "Storm Giant ★\nAttributes: Agility d6, Smarts d10, Spirit d12, Strength d12+8, Vigor d12\nSkills: Fighting d10, Guts d12, Intimidation d12, Notice d6, Swim d8\nPace: 8 ; Parry: 7; Toughness: 15 (2)\nEdges: Improved Level Headed, Improved Sweep\nGear:"
+   "block": "Storm Giant ★\nAttributes: Agility d6, Smarts d10, Spirit d12, Strength d12+8, Vigor d12\nSkills: Fighting d10, Guts d12, Intimidation d12, Notice d6, Swim d8\nPace: 8 ; Parry: 7; Toughness: 15 (2)\nEdges: Improved Level Headed, Improved Sweep\nGear:",
+   "wildCard": true
   },
   {
    "name": "Gnoll",
@@ -815,10 +848,11 @@
    "block": "Hobgoblin\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d8, Vigor d8\nSkills: Fighting d8, Guts d10, Intimidation d8, Notice d6, Shooting d8, Stealth d6, Throwing d8\nPace: 6 ; Parry: 7 (6 without shield); Toughness: 8 (2)\nEdges: Two-fisted\nGear:"
   },
   {
-   "name": "Hobgoblin Leader ★",
+   "name": "Hobgoblin Leader",
    "category": "Bestiary",
    "description": "The elite of hobgoblin society – if you can call it that – they lead through fear and iron discipline.",
-   "block": "Hobgoblin Leader ★\nAttributes: Agility d6, Smarts d8, Spirit d10, Strength d10, Vigor d10\nSkills: Fighting d10, Guts d10, Intimidation d10, Knowledge: Tactics & Warfare d8, Notice d6, Shooting d10, Stealth d6, Throwing d8\nPace: 6 ; Parry: 8 (7 without shield); Toughness: 9 (2)\nEdges: Command, Improved Frenzy, Level Headed\nGear:"
+   "block": "Hobgoblin Leader ★\nAttributes: Agility d6, Smarts d8, Spirit d10, Strength d10, Vigor d10\nSkills: Fighting d10, Guts d10, Intimidation d10, Knowledge: Tactics & Warfare d8, Notice d6, Shooting d10, Stealth d6, Throwing d8\nPace: 6 ; Parry: 8 (7 without shield); Toughness: 9 (2)\nEdges: Command, Improved Frenzy, Level Headed\nGear:",
+   "wildCard": true
   },
   {
    "name": "Worg",
@@ -839,22 +873,25 @@
    "block": "Bone Golem\nAttributes: Agility d8, Smarts d4, Spirit d8, Strength d8, Vigor d8\nSkills: Fighting d10, Intimidation d6, Notice d8\nPace: 8 ; Parry: 7; Toughness: 8 (2)\nEdges: Arcane Resistance, Level Headed, Improved Frenzy\nSpecial Abilities:\nArmor +2: Body of bone.\nConstruct: +2 to recover from being Shaken; no additional damage from called shots; constructs do not suffer from poison or disease.\nFast: Bone golems have a Pace of 8 and roll a d8 for running.\nFearless: Bone golems have no fear; they'll charge into any danger at the command of their creator without a second thought.\nImmunity: They are immune to attacks based on fire, cold, and electricity.\nWeapons: Str+d6 damage; these weapons can't be disarmed."
   },
   {
-   "name": "Bronze Golem ★",
+   "name": "Bronze Golem",
    "category": "Bestiary",
    "description": "These are often mistaken for fire giants, sharing their stature and many of their features. They are fueled by a viscous fluid that ignites upon exposure to air.",
-   "block": "Bronze Golem ★\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d12+6, Vigor d12\nSkills: Fighting d8, Intimidation d6, Notice d6\nPace: 8 ; Parry: 6; Toughness: 15 (3)\nEdges: Arcane Resistance, Improved Sweep\nGear:"
+   "block": "Bronze Golem ★\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d12+6, Vigor d12\nSkills: Fighting d8, Intimidation d6, Notice d6\nPace: 8 ; Parry: 6; Toughness: 15 (3)\nEdges: Arcane Resistance, Improved Sweep\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Clay Golem ★",
+   "name": "Clay Golem",
    "category": "Bestiary",
    "description": "The first golems were behemoths formed from clay and given life by a mark carved into their forehead. The creation of such creatures is thought to be a lost art, but occasionally an enterprising wizard will rediscover the secret.",
-   "block": "Clay Golem ★\nAttributes: Agility d4, Smarts d4 (A), Spirit d12, Strength d12+4, Vigor d10\nSkills: Fighting d8, Intimidation d10, Notice d4\nPace: 6 ; Parry: 6; Toughness: 11 (2)\nEdges: Berserk, Improved Arcane Resistance\nSpecial Abilities:\nArmor +2: Formed from solid clay.\nConstruct: +2 to recover from being Shaken; no additional damage from called shots; constructs do not suffer from poison or disease.\nFearless: Clay golems feel no fear.\nPunch: Str damage. Clay golems are incapable of using weapons, relying solely on their massive clublike fists and smothering attack.\nSize +2\nSluggish: Clay golems move at Pace 6, but cannot run. When drawing for initiative, they take two cards and act on the worst of the two.\nSmother: If the clay golem gets a raise on its Fighting roll, the target must make an immediate opposed Strength roll against the golem. If the golem wins, it has grabbed the victim by the back of the head and shoved their head into its body. The victim will have to make an opposed Strength roll to escape in their round, as action; they’ll also have to begin making Vigor rolls each round or suffer the effects of Drowning (see SWDEE page 100). If the golem hasn’t been directly commanded to kill the victim, it will release them as soon as they become Incapacitated.\nWeakness (Mark of Creation): Clay golems are given life by the magical rune carved into their foreheads. If this mark is removed or altered, the golem collapses, lifeless. Removing the head isn’t sufficient; the body will continue to function normally even if the golem is decapitated. An attack directed specifically at the mark (-6 to Fighting or Shooting rolls) which gets at least a Shaken result is damaging enough to sully the mark and stop the golem (don't take in account Armor and Size of golem, so Toughness is 7)."
+   "block": "Clay Golem ★\nAttributes: Agility d4, Smarts d4 (A), Spirit d12, Strength d12+4, Vigor d10\nSkills: Fighting d8, Intimidation d10, Notice d4\nPace: 6 ; Parry: 6; Toughness: 11 (2)\nEdges: Berserk, Improved Arcane Resistance\nSpecial Abilities:\nArmor +2: Formed from solid clay.\nConstruct: +2 to recover from being Shaken; no additional damage from called shots; constructs do not suffer from poison or disease.\nFearless: Clay golems feel no fear.\nPunch: Str damage. Clay golems are incapable of using weapons, relying solely on their massive clublike fists and smothering attack.\nSize +2\nSluggish: Clay golems move at Pace 6, but cannot run. When drawing for initiative, they take two cards and act on the worst of the two.\nSmother: If the clay golem gets a raise on its Fighting roll, the target must make an immediate opposed Strength roll against the golem. If the golem wins, it has grabbed the victim by the back of the head and shoved their head into its body. The victim will have to make an opposed Strength roll to escape in their round, as action; they’ll also have to begin making Vigor rolls each round or suffer the effects of Drowning (see SWDEE page 100). If the golem hasn’t been directly commanded to kill the victim, it will release them as soon as they become Incapacitated.\nWeakness (Mark of Creation): Clay golems are given life by the magical rune carved into their foreheads. If this mark is removed or altered, the golem collapses, lifeless. Removing the head isn’t sufficient; the body will continue to function normally even if the golem is decapitated. An attack directed specifically at the mark (-6 to Fighting or Shooting rolls) which gets at least a Shaken result is damaging enough to sully the mark and stop the golem (don't take in account Armor and Size of golem, so Toughness is 7).",
+   "wildCard": true
   },
   {
-   "name": "Flesh Golem ★",
+   "name": "Flesh Golem",
    "category": "Bestiary",
    "description": "These unfortunate creatures are usually created by Weird Scientists. They’re stitched together from the corpses of murderers executed for their crimes, and unlike other golems it is believed that the flesh carries with it an equally piecemeal soul. Some flesh golems have been able to break the bonds of servitude that go with their creation, though these rogues rarely live long when left to their own devices.",
-   "block": "Flesh Golem ★\nAttributes: Agility d8, Smarts d6, Spirit d8, Strength d12+1, Vigor d10\nSkills: Climbing d6, Fighting d8, Guts d10, Intimidation d10, Notice d6, Stealth d6, Survival d6\nPace: 8 ; Parry: 6; Toughness: 9\nEdges: Arcane Resistance, Sweep\nSpecial Abilities:\nConstruct: +2 to recover from being Shaken; no additional damage from called shots; constructs do not suffer from poison or disease.\nFleet Footed: Flesh golems have a Pace of 8 and roll d8 for running.\nLeaping: Flesh golems can jump 4”, +2” with a Strength roll.\nPunch: Str damage. They can wield weapons.\nSize +2"
+   "block": "Flesh Golem ★\nAttributes: Agility d8, Smarts d6, Spirit d8, Strength d12+1, Vigor d10\nSkills: Climbing d6, Fighting d8, Guts d10, Intimidation d10, Notice d6, Stealth d6, Survival d6\nPace: 8 ; Parry: 6; Toughness: 9\nEdges: Arcane Resistance, Sweep\nSpecial Abilities:\nConstruct: +2 to recover from being Shaken; no additional damage from called shots; constructs do not suffer from poison or disease.\nFleet Footed: Flesh golems have a Pace of 8 and roll d8 for running.\nLeaping: Flesh golems can jump 4”, +2” with a Strength roll.\nPunch: Str damage. They can wield weapons.\nSize +2",
+   "wildCard": true
   },
   {
    "name": "Wood Golem",
@@ -875,10 +912,11 @@
    "block": "Griffon\nAttributes: Agility d8, Smarts d8 (A), Spirit d8, Strength d12+1, Vigor d8\nSkills: Fighting d8, Guts d10, Intimidation d8, Notice d8\nPace: 8; Parry: 6; Toughness: 10 (1)\nSpecial Abilities:\nArmor +1: Thick hide.\nClaws/Beak: Str+d6\nFavored Prey: Griffons love to feast on horse flesh. Wild griffons will attack horses on sight. Those using a griffon as a mount must make an opposed Spirit check against the griffon to prevent it from attacking a horse.\nFlight: Griffons have a Flying Pace of 16” (only 8” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of 0.\nSize +3"
   },
   {
-   "name": "Hag ★",
+   "name": "Hag",
    "category": "Bestiary",
    "description": "Horrible witches, hags are infamous in folklore for eating children. (A reputation they richly deserve!) They’re usually encountered singly, but are sometimes found in covens of three or five.",
-   "block": "Hag ★\nAttributes: Agility d6, Smarts d10, Spirit d10, Strength d8, Vigor d8\nSkills: Fighting d6, Guts d10, Intimidation d10, Notice d4, Riding d8, Spellcasting d10"
+   "block": "Hag ★\nAttributes: Agility d6, Smarts d10, Spirit d10, Strength d8, Vigor d8\nSkills: Fighting d6, Guts d10, Intimidation d10, Notice d4, Riding d8, Spellcasting d10",
+   "wildCard": true
   },
   {
    "name": "Hag, swamp",
@@ -887,10 +925,11 @@
    "block": "Hag, swamp\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d12+1, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d4, Spellcasting d8, Swimming d8, Stealth d6"
   },
   {
-   "name": "Hag, legendary (Morrigan, Baba Yaga) ★",
+   "name": "Hag, legendary (Morrigan, Baba Yaga)",
    "category": "Bestiary",
    "description": "Powerful witches, trickster or war goddess. Implacable and mercurial, harbinger of doom, may help or hinder those that encounter or seek her out. May play a maternal role and has associations with their sacred place (forests, battlefields, swamps...).",
-   "block": "Hag, legendary (Morrigan, Baba Yaga) ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d8, Vigor d10\nSkills: Fighting d10, Guts d12, Healing d10, Intimidation d12, Notice d6, Persuasion d8, Riding d8, Spellcasting d12"
+   "block": "Hag, legendary (Morrigan, Baba Yaga) ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d8, Vigor d10\nSkills: Fighting d10, Guts d12, Healing d10, Intimidation d12, Notice d6, Persuasion d8, Riding d8, Spellcasting d12",
+   "wildCard": true
   },
   {
    "name": "Harpy",
@@ -905,34 +944,39 @@
    "block": "Hippogriff\nAttributes: Agility d8, Smarts d6 (A), Spirit d6, Strength d12, Vigor d8\nSkills: Fighting d6, Guts d6, Intimidation d8, Notice d6\nPace: 8 ; Parry: 5; Toughness: 8\nSpecial Abilities:\nClaws/Beak: Str+d6\nFlight: Hippogriffs have a Flying Pace of 20” with a Climb of +1.\nSize +2\nSwoop: If the hawk can fly at least 10” in a straight line before attacking, it does +2 damage with its claws."
   },
   {
-   "name": "Hydra ★",
+   "name": "Hydra",
    "category": "Bestiary",
    "description": "These creatures are similar to dragons, though smaller and lacking wings, and with multiple heads.",
-   "block": "Hydra ★\nAttributes: Agility d6, Smarts d8 (A), Spirit d8, Strength d12+2, Vigor d10\nSkills: Fighting d6, Guts d8, Intimidation d10, Notice d10\nPace: 6 ; Parry: 5; Toughness: 13 (2)\nSpecial Abilities:\nArmor +2: Thick scales.\nBite: Str+d4 damage, Reach 1”.\nSize +4 & Large: Normal sized foes get a +2 to attack rolls against them.\nMany-Headed: Hydras have 3d4 heads. They can be killed by either attacking the body or by killing all the heads individually. The body uses all the stats listed above; it’s easy to hit due to its size, but harder to damage. An individual head can be Shaken, but this doesn’t affect the others, and as long as at least one head remains un-Shaken, the body can act as well. Heads can be killed with a single Wound (area effect attacks like Blast always hit the body rather than the heads!), and have the following stats:\nHead: Parry 7, Toughness 7, -2 to all attack rolls against them (-4 called shot to the head & +2 large creature)\nHailstorm of Fangs: Hydras can attack as many opponents in reach as it has living heads, though it can’t send more than one head after the same target (they tend to get in the way of each other)."
+   "block": "Hydra ★\nAttributes: Agility d6, Smarts d8 (A), Spirit d8, Strength d12+2, Vigor d10\nSkills: Fighting d6, Guts d8, Intimidation d10, Notice d10\nPace: 6 ; Parry: 5; Toughness: 13 (2)\nSpecial Abilities:\nArmor +2: Thick scales.\nBite: Str+d4 damage, Reach 1”.\nSize +4 & Large: Normal sized foes get a +2 to attack rolls against them.\nMany-Headed: Hydras have 3d4 heads. They can be killed by either attacking the body or by killing all the heads individually. The body uses all the stats listed above; it’s easy to hit due to its size, but harder to damage. An individual head can be Shaken, but this doesn’t affect the others, and as long as at least one head remains un-Shaken, the body can act as well. Heads can be killed with a single Wound (area effect attacks like Blast always hit the body rather than the heads!), and have the following stats:\nHead: Parry 7, Toughness 7, -2 to all attack rolls against them (-4 called shot to the head & +2 large creature)\nHailstorm of Fangs: Hydras can attack as many opponents in reach as it has living heads, though it can’t send more than one head after the same target (they tend to get in the way of each other).",
+   "wildCard": true
   },
   {
-   "name": "Hydra, Ancient ★",
+   "name": "Hydra, Ancient",
    "category": "Bestiary",
    "description": "This mighty hydra is a true force of nature, capable to slay whole parties of heroes. Similar to a wingless dragons, theas cunning beast has multiple heads and developed a human-like awareness. NOTE: It was created adding the Ancient Template you’ll find at the end of this document.",
-   "block": "Hydra, Ancient ★\nAttributes: Agility d4, Smarts d8, Spirit d12, Strength d12+5, Vigor d12+1\nSkills: Fighting d8, Guts d12, Intimidation d12+1, Notice d12+1\nPace: 8 ; Parry: 6; Toughness: 18 (3)\nEdges: Fear\nSpecial Abilities:\nArmor +3: Thick scales.\nBite: Str+d6 damage, Reach 1”.\nSize +7 & Large: Normal sized foes get a +2 to attack rolls against them.\nMany-Headed: Hydras have 2d4+4 heads. They can be killed by either attacking the body or by killing all the heads individually. The body uses all the stats listed above; it’s easy to hit due to its size, but harder to damage. An individual head can be Shaken, but this doesn’t affect the others, and as long as at least one head remains un-Shaken, the body can act as well. Heads can be killed with a single Wound (area effect attacks like Blast always hit the body rather than the heads!), and have the following stats:\nHead: Parry 7, Toughness 7, -2 to all attack rolls against them (-4 called shot to the head & +2 large creature)\nHailstorm of Fangs: Hydras can attack as many opponents in reach as it has living heads, though it can’t send more than one head after the same target (they tend to get in the way of each other)."
+   "block": "Hydra, Ancient ★\nAttributes: Agility d4, Smarts d8, Spirit d12, Strength d12+5, Vigor d12+1\nSkills: Fighting d8, Guts d12, Intimidation d12+1, Notice d12+1\nPace: 8 ; Parry: 6; Toughness: 18 (3)\nEdges: Fear\nSpecial Abilities:\nArmor +3: Thick scales.\nBite: Str+d6 damage, Reach 1”.\nSize +7 & Large: Normal sized foes get a +2 to attack rolls against them.\nMany-Headed: Hydras have 2d4+4 heads. They can be killed by either attacking the body or by killing all the heads individually. The body uses all the stats listed above; it’s easy to hit due to its size, but harder to damage. An individual head can be Shaken, but this doesn’t affect the others, and as long as at least one head remains un-Shaken, the body can act as well. Heads can be killed with a single Wound (area effect attacks like Blast always hit the body rather than the heads!), and have the following stats:\nHead: Parry 7, Toughness 7, -2 to all attack rolls against them (-4 called shot to the head & +2 large creature)\nHailstorm of Fangs: Hydras can attack as many opponents in reach as it has living heads, though it can’t send more than one head after the same target (they tend to get in the way of each other).",
+   "wildCard": true
   },
   {
-   "name": "Serial Killer ★",
+   "name": "Serial Killer",
    "category": "Bestiary",
    "description": "Modern books and movies have attributed all sorts of motivations to the serial killer, but in truth there’s only one reason they commit the crimes that they do: to fulfill their sick sexual fantasies. This version is based on highly organized killers like Ted Bundy: intelligent, educated, and persuasive. The Psychotic Hindrance is common to all of them, but you can add on Cannibal, Necrophilia, etc., as required.",
-   "block": "Serial Killer ★\nAttributes: Agility d8, Smarts d8, Spirit d6, Strength d8, Vigor d8\nSkills: Driving d6, Fighting d8, Guts d6, Intimidation d10, Lockpicking d6, Notice d8, Persuasion d8, Stealth d10\nPace: 6; Parry: 6; Toughness: 6"
+   "block": "Serial Killer ★\nAttributes: Agility d8, Smarts d8, Spirit d6, Strength d8, Vigor d8\nSkills: Driving d6, Fighting d8, Guts d6, Intimidation d10, Lockpicking d6, Notice d8, Persuasion d8, Stealth d10\nPace: 6; Parry: 6; Toughness: 6",
+   "wildCard": true
   },
   {
-   "name": "Slasher ★",
+   "name": "Slasher",
    "category": "Bestiary",
    "description": "Michael Myers and Jason Voorhees are the prototypical slashers: powerful, brutal, and all but unstoppable.",
-   "block": "Slasher ★\nAttributes: Agility d6, Smarts d4, Spirit d12, Strength d12+2, Vigor d12\nSkills: Fighting d10, Intimidation d10, Notice d6, Stealth d10, Throwing d8, Tracking d8\nPace: 6 ; Parry: 7; Toughness: 10"
+   "block": "Slasher ★\nAttributes: Agility d6, Smarts d4, Spirit d12, Strength d12+2, Vigor d12\nSkills: Fighting d10, Intimidation d10, Notice d6, Stealth d10, Throwing d8, Tracking d8\nPace: 6 ; Parry: 7; Toughness: 10",
+   "wildCard": true
   },
   {
-   "name": "The Bogeyman ★",
+   "name": "The Bogeyman",
    "category": "Bestiary",
    "description": "The Bogeyman lives under beds and in dark closets. He feeds only under cover of darkness; any manflesh will do, though children are his preferred meal.",
-   "block": "The Bogeyman ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d10, Vigor d10\nSkills: Climbing d10, Fighting d8, Guts d8, Intimidation d12, Notice d8, Persuasion d10, Stealth d12\nPace: 6; Parry: 6; Toughness: 7\nEdges: Level Headed, Improved Nerves of Steel\nGear:"
+   "block": "The Bogeyman ★\nAttributes: Agility d8, Smarts d8, Spirit d10, Strength d10, Vigor d10\nSkills: Climbing d10, Fighting d8, Guts d8, Intimidation d12, Notice d8, Persuasion d10, Stealth d12\nPace: 6; Parry: 6; Toughness: 7\nEdges: Level Headed, Improved Nerves of Steel\nGear:",
+   "wildCard": true
   },
   {
    "name": "One, two, Freddy’s coming for you...”",
@@ -940,10 +984,11 @@
    "block": "“One, two, Freddy’s coming for you...”\nAttributes: Agility d10, Smarts d8, Spirit d12, Strength d12+1, Vigor d10\nSkills: Fighting d10, Guts d10, Intimidation d12, Notice d10, Stealth d8, Taunt d12\nPace: 6; Parry: 7; Toughness: 9"
   },
   {
-   "name": "The Ripper ★",
+   "name": "The Ripper",
    "category": "Bestiary",
    "description": "This malevolent spirit has been called the Murder Elemental, and with good reason. It was around long before the Whitechapel murders, though it was there that it finally earned its name. The Ripper travels ethereally, seeking out men who have fantasized about murder but haven’t acted on these fantasies. Taking control, it forces them to act on these tendencies until its hunger is sated (five murders usually does the trick). Once gone, those who have been possessed either continue on their path of death or commit one final murder by killing themselves.",
-   "block": "The Ripper ★\nAttributes: Agility n/a, Smarts d10, Spirit d12, Strength n/a, Vigor n/a\nSkills: Fighting d10, Guts d10, Intimidation d12, Knowledge (Anatomy) d10, Notice d10, Persuasion d10, Stealth d10, Streetwise d10\nPace: n/a; Parry: 7; Toughness: n/a"
+   "block": "The Ripper ★\nAttributes: Agility n/a, Smarts d10, Spirit d12, Strength n/a, Vigor n/a\nSkills: Fighting d10, Guts d10, Intimidation d12, Knowledge (Anatomy) d10, Notice d10, Persuasion d10, Stealth d10, Streetwise d10\nPace: n/a; Parry: 7; Toughness: n/a",
+   "wildCard": true
   },
   {
    "name": "Kobold, Skirmisher",
@@ -994,22 +1039,25 @@
    "block": "Lamia\nAttributes: Agility d8, Smarts d8, Spirit d6, Strength d10, Vigor d8\nSkills: Climbing d4, Fighting d6, Guts d8, Intimidation d8, Knowledge (Occult) d6, Notice d6, Persuasion d8, Stealth d6, Spellcasting d8\nPace: 8; Parry: 5; Toughness: 8\nEdges: Frenzy\nSpecial Abilities:\n• Claws: Str+d4\n• Obfuscating Touch: By making a Touch attack (+2 to Fighting) aimed to exposed skin, they force the target to succeed a Spirit roll, or suffer -2 on further Spirit rolls (and related skills) for the next hour.\n• Size +2\n• Spellcasting: Lamia have 15 power points and the following spells: Confusion, Deflection (mirror images), Disguise (can’t copy a specific being), Puppet."
   },
   {
-   "name": "Manticore ★",
+   "name": "Manticore",
    "category": "Bestiary",
    "description": "These freakish creatures combine a lion’s body with the face of a man, armed with a wicked spiked tail. They will hunt and kill almost anything smaller than itself, but their favorite food is man!",
-   "block": "Manticore ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d8, Strength d12+3, Vigor d10\nSkills: Climbing d6, Fighting d10, Guts d10, Intimidation d10, Notice d8, Shooting d8, Tracking d6\nPace: 8; Parry: 7; Toughness: 10 (1)\nEdges: Improved Frenzy\nSpecial Abilities:\nArmor +1: Thick fur.\nBite/Claw: Str+d6\nSize +2\nTail Spikes: A manticore can use its tail as a striking weapon against targets in its rear facing, doing Str+d8 damage. If it makes no other attacks in a round, it can launch a barrage of spikes; these have a 3/6/12 range and do 2d6+2 damage."
+   "block": "Manticore ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d8, Strength d12+3, Vigor d10\nSkills: Climbing d6, Fighting d10, Guts d10, Intimidation d10, Notice d8, Shooting d8, Tracking d6\nPace: 8; Parry: 7; Toughness: 10 (1)\nEdges: Improved Frenzy\nSpecial Abilities:\nArmor +1: Thick fur.\nBite/Claw: Str+d6\nSize +2\nTail Spikes: A manticore can use its tail as a striking weapon against targets in its rear facing, doing Str+d8 damage. If it makes no other attacks in a round, it can launch a barrage of spikes; these have a 3/6/12 range and do 2d6+2 damage.",
+   "wildCard": true
   },
   {
-   "name": "Manticore, Flying ★",
+   "name": "Manticore, Flying",
    "category": "Bestiary",
    "description": "This Manticore version combine a lion’s body with the face of a man, topped with massive bat-like wings and armed with a venomous stinger on the tail. They will hunt and kill almost anything smaller than itself, but its favorite food is man!",
-   "block": "Manticore, Flying ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d8, Strength d12+2, Vigor d10\nSkills: Climbing d6, Fighting d10, Guts d10, Intimidation d10, Notice d8, Shooting d8, Tracking d6\nPace: 8; Parry: 7; Toughness: 11 (1)\nEdges: Improved Frenzy\nSpecial Abilities:\nArmor +1: Thick fur.\nBite/Claw: Str+d6\nFlight: Manticores have a Flying Pace of 8” (only 4” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of -1.\nSize +3\nTail Stinger, Poison (-2): A manticore can use its sting as a striking weapon against targets in its rear facing, doing Str+d8 damage. Those hit with the sting for at least a Shaken result must immediately make a Vigor roll. Failure means they become Exhausted, and they have to make a second Vigor roll after 2d6 minutes or die. This poison can be treated normally (see SWD page 103)."
+   "block": "Manticore, Flying ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d8, Strength d12+2, Vigor d10\nSkills: Climbing d6, Fighting d10, Guts d10, Intimidation d10, Notice d8, Shooting d8, Tracking d6\nPace: 8; Parry: 7; Toughness: 11 (1)\nEdges: Improved Frenzy\nSpecial Abilities:\nArmor +1: Thick fur.\nBite/Claw: Str+d6\nFlight: Manticores have a Flying Pace of 8” (only 4” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of -1.\nSize +3\nTail Stinger, Poison (-2): A manticore can use its sting as a striking weapon against targets in its rear facing, doing Str+d8 damage. Those hit with the sting for at least a Shaken result must immediately make a Vigor roll. Failure means they become Exhausted, and they have to make a second Vigor roll after 2d6 minutes or die. This poison can be treated normally (see SWD page 103).",
+   "wildCard": true
   },
   {
-   "name": "Medusa ★",
+   "name": "Medusa",
    "category": "Bestiary",
    "description": "The fabled creature of Greek legend, a medusa appears as a woman with a perfect body, but a hideous face topped with snakes in place of hair.",
-   "block": "Medusa ★\nAttributes: Agility d8, Smarts d10, Spirit d8, Strength d8, Vigor d8\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Persuasion d8, Stealth d8\nPace: 6 ; Parry: 7; Toughness: 7 (1)"
+   "block": "Medusa ★\nAttributes: Agility d8, Smarts d10, Spirit d8, Strength d8, Vigor d8\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Persuasion d8, Stealth d8\nPace: 6 ; Parry: 7; Toughness: 7 (1)",
+   "wildCard": true
   },
   {
    "name": "Mermen",
@@ -1018,16 +1066,18 @@
    "block": "Mermen\nAttributes: Agility d8, Smarts d6, Spirit d6, Strength d6, Vigor d8\nSkills: Fighting d6, Guts d6, Notice d6, Swimming d8, Throwing d8\nPace: 8; Parry: 6 (5 without shield); Toughness: 7 (1)\nGear:"
   },
   {
-   "name": "Mummy, Greater ★",
+   "name": "Mummy, Greater",
    "category": "Bestiary",
    "description": "The classic Hammer mummy: slow, powerful, and as inevitable as death.",
-   "block": "Mummy, Greater ★\nAttributes: Agility d4, Smarts d6, Spirit d12, Strength d12+2, Vigor d12\nSkills: Intimidate d10, Fighting d10, Notice d4, Throwing d6, Tracking d8\nPace: 4; Parry: 7; Toughness: 12\nSpecial Abilities:\nDamage Resistance: Mummies are supernaturally tough; they get +2 to Toughness.\nFear: Greater mummies incur a Guts roll in those who see them.\nFearless: Greater mummies are immune to Fear and Intimidation effects.\nSingle Minded: Greater mummies have intense focus and sense of purpose. They get a +2 to resist Smarts-based Tricks.\nSlam: Str+d4 attack.\nSlow: Greater mummies move at Pace 4 and they roll only a d4 for running rolls.\nTireless: They are never Fatigued.\nTracking Sense: Greater mummies always have a mission, typically to kill those who defiled their grave. They can always find the individuals they’re tracking, no matter where on Earth they may run or hide. They ignore all lighting penalties (including those for complete darkness and other blinding effects; their eyes rotted out long ago!) and can ‘see’ through Invisibility and illusions.\nUndead: Greater mummies gain the following benefits: +2 Toughness; +2 to recover from being Shaken; No wound penalties; Immune to disease and poison; No additional damage from called shots."
+   "block": "Mummy, Greater ★\nAttributes: Agility d4, Smarts d6, Spirit d12, Strength d12+2, Vigor d12\nSkills: Intimidate d10, Fighting d10, Notice d4, Throwing d6, Tracking d8\nPace: 4; Parry: 7; Toughness: 12\nSpecial Abilities:\nDamage Resistance: Mummies are supernaturally tough; they get +2 to Toughness.\nFear: Greater mummies incur a Guts roll in those who see them.\nFearless: Greater mummies are immune to Fear and Intimidation effects.\nSingle Minded: Greater mummies have intense focus and sense of purpose. They get a +2 to resist Smarts-based Tricks.\nSlam: Str+d4 attack.\nSlow: Greater mummies move at Pace 4 and they roll only a d4 for running rolls.\nTireless: They are never Fatigued.\nTracking Sense: Greater mummies always have a mission, typically to kill those who defiled their grave. They can always find the individuals they’re tracking, no matter where on Earth they may run or hide. They ignore all lighting penalties (including those for complete darkness and other blinding effects; their eyes rotted out long ago!) and can ‘see’ through Invisibility and illusions.\nUndead: Greater mummies gain the following benefits: +2 Toughness; +2 to recover from being Shaken; No wound penalties; Immune to disease and poison; No additional damage from called shots.",
+   "wildCard": true
   },
   {
-   "name": "Mummy Lord ★",
+   "name": "Mummy Lord",
    "category": "Bestiary",
    "description": "Mummy Lords are as rare as they are powerful. They have been damned to eternal life as a mummy as punishment for an offense against their Pharaoh; they’re usually set to guard over the greatest secrets - or treasures! - of the desert.",
-   "block": "Mummy Lord ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d12+4, Vigor d12\nSkills: Fighting d12, Notice d6\nPace: 6; Parry: 8; Toughness: 10"
+   "block": "Mummy Lord ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d12+4, Vigor d12\nSkills: Fighting d12, Notice d6\nPace: 6; Parry: 8; Toughness: 10",
+   "wildCard": true
   },
   {
    "name": "Murlocs",
@@ -1054,16 +1104,18 @@
    "block": "Nightmare\nAttributes: Agility d6, Smarts d6 (A), Spirit d8, Strength d12+4, Vigor d10\nSkills: Fighting d10, Guts d12, Notice d8\nPace: 8; Parry: 7; Toughness: 10\nSpecial Abilities:"
   },
   {
-   "name": "Nue ★",
+   "name": "Nue",
    "category": "Bestiary",
    "description": "A frightening creature with the head of a monkey, the body of a lion, eagle talons, and a tainting foxy tail.",
-   "block": "Nue ★\nAttributes: Agility d8, Smarts d6 (A), Spirit d8, Strength d12+1, Vigor d8\nSkills: Fighting d10, Guts d10, Notice d8, Stealth d8\nPace: 8; Parry: 7; Toughness: 9 (1)"
+   "block": "Nue ★\nAttributes: Agility d8, Smarts d6 (A), Spirit d8, Strength d12+1, Vigor d8\nSkills: Fighting d10, Guts d10, Notice d8, Stealth d8\nPace: 8; Parry: 7; Toughness: 9 (1)",
+   "wildCard": true
   },
   {
-   "name": "Pegasus ★",
+   "name": "Pegasus",
    "category": "Bestiary",
    "description": "Balancing the scales of the Nightmare, these winged horses are often used as mounts by great heroes and champions.",
-   "block": "Pegasus ★\nAttributes: Agility d10, Smarts d8 (A), Spirit d8, Strength d12+1, Vigor d8\nSkills: Fighting d8, Guts d8, Notice d8\nPace: 8; Parry: 6; Toughness: 8\nSpecial Abilities:\nFleet Footed: They move at Pace 8 and roll a d8 for running.\nFlying: Pegasus have a Flying Pace of 12” with a Climb of +1.\nInspirational: Allies within 5” of a pegasus get a +1 to recover from Shaken.\nKick: Str+d4.\nSize +2"
+   "block": "Pegasus ★\nAttributes: Agility d10, Smarts d8 (A), Spirit d8, Strength d12+1, Vigor d8\nSkills: Fighting d8, Guts d8, Notice d8\nPace: 8; Parry: 6; Toughness: 8\nSpecial Abilities:\nFleet Footed: They move at Pace 8 and roll a d8 for running.\nFlying: Pegasus have a Flying Pace of 12” with a Climb of +1.\nInspirational: Allies within 5” of a pegasus get a +1 to recover from Shaken.\nKick: Str+d4.\nSize +2",
+   "wildCard": true
   },
   {
    "name": "Roc, Young",
@@ -1076,10 +1128,11 @@
    "block": "Roc, Adult\nAttributes: Agility d6, Smarts d8 (A), Spirit d10, Strength d12+4, Vigor d8\nSkills: Fighting d8, Guts d10, Notice d8\nPace: 4 ; Parry: 6; Toughness: 9\nSpecial Abilities:\nClaws/Beak: Str+d6\nFearless: When defending their nest, adults are immune to Fear and Intimidation, and need never make morale checks.\nFlight: Adult rocs have a Flying Pace of 16” (only 8” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of +0.\nSize +3\nSlow: On the ground, they hop about at Pace 4”, and can’t run.\nSnatch: If the roc gets a Raise on its Fighting roll when Swooping against a target Size +0 or smaller, it snatches up the victim and flies off with it.\nSwoop: If the roc can fly at least 10” in a straight line before attacking, it gains +2 to its attack and damage for this action, but its Parry is reduced by –2 until its next action when performing the swoop."
   },
   {
-   "name": "Roc, Giant ★",
+   "name": "Roc, Giant",
    "category": "Bestiary",
    "description": "When most people think of a roc, this is what they think of: massive birds nearly 50 feet long with a wingspan over twice that size.",
-   "block": "Roc, Giant ★\nAttributes: Agility d6, Smarts d8 (A), Spirit d12, Strength d12+7, Vigor d10\nSkills: Fighting d8, Guts d12, Notice d6\nPace: 6; Parry: 6; Toughness: 14\nSpecial Abilities:\nClaws/Beak: Str+d8\nFearless: When defending their nest, they are immune to Fear and Intimidation, and need never make morale checks.\nFlight: Giant rocs have a Flying Pace of 20” (only 10” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of 0.\nLarge: Normal sized foes get a +2 to attack rolls against them.\nSize +7: While giant rocs are longer and have a wider wingspan than dragons, they’re not as massive.\nSlow: On the ground, giant rocs move at a normal Pace 6”, but can’t run.\nSnatch: If the roc gets a raise on its Fighting roll when Swooping against a target Size +3 or smaller, it snatches up the victim and flies off with it.\nSwoop: If the roc can fly at least 12” in a straight line before attacking, it gains +2 to its attack and damage for this action, but its Parry is reduced by –2 until its next action when performing the swoop."
+   "block": "Roc, Giant ★\nAttributes: Agility d6, Smarts d8 (A), Spirit d12, Strength d12+7, Vigor d10\nSkills: Fighting d8, Guts d12, Notice d6\nPace: 6; Parry: 6; Toughness: 14\nSpecial Abilities:\nClaws/Beak: Str+d8\nFearless: When defending their nest, they are immune to Fear and Intimidation, and need never make morale checks.\nFlight: Giant rocs have a Flying Pace of 20” (only 10” in the first round, because their massive bodies make it difficult for them to become initially airborne). They have a Climb of 0.\nLarge: Normal sized foes get a +2 to attack rolls against them.\nSize +7: While giant rocs are longer and have a wider wingspan than dragons, they’re not as massive.\nSlow: On the ground, giant rocs move at a normal Pace 6”, but can’t run.\nSnatch: If the roc gets a raise on its Fighting roll when Swooping against a target Size +3 or smaller, it snatches up the victim and flies off with it.\nSwoop: If the roc can fly at least 12” in a straight line before attacking, it gains +2 to its attack and damage for this action, but its Parry is reduced by –2 until its next action when performing the swoop.",
+   "wildCard": true
   },
   {
    "name": "Rust Eater",
@@ -1109,20 +1162,23 @@
    "block": "Young Sea Serpent\nAttributes: Agility d8, Smarts d4 (A), Spirit d8, Strength d12+4, Vigor d8\nSkills: Fighting d6, Guts d8, Intimidation d8, Notice d6, Swimming d8\nPace: 8; Parry: 5; Toughness: 11 (1)\nEdges: Quick\nSpecial Abilities:\nAquatic: Sea serpents breathe water normally, and can breathe air for short periods, though they can’t move on dry land. They swim at Pace 8.\nArmor +1: Thick scales.\nBite: Str+d6.\nLarge: Normal sized foes get a +2 to attack rolls against them.\nSize +4"
   },
   {
-   "name": "Adult Sea Serpent ★",
+   "name": "Adult Sea Serpent",
    "category": "Bestiary",
-   "block": "Adult Sea Serpent ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d10, Strength d12+7, Vigor d10\nSkills: Fighting d6, Guts d10, Intimidation d10, Notice d6, Swimming d8\nPace: 10; Parry: 5; Toughness: 16 (2)\nEdges: Quick\nSpecial Abilities:\nAquatic: Sea serpents breathe water normally, and can breathe air for short periods, though they can’t move on dry land. They swim at Pace 10.\nArmor +2: Thick scales.\nBite: Str+d6."
+   "block": "Adult Sea Serpent ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d10, Strength d12+7, Vigor d10\nSkills: Fighting d6, Guts d10, Intimidation d10, Notice d6, Swimming d8\nPace: 10; Parry: 5; Toughness: 16 (2)\nEdges: Quick\nSpecial Abilities:\nAquatic: Sea serpents breathe water normally, and can breathe air for short periods, though they can’t move on dry land. They swim at Pace 10.\nArmor +2: Thick scales.\nBite: Str+d6.",
+   "wildCard": true
   },
   {
-   "name": "Giant Sea Serpent ★",
+   "name": "Giant Sea Serpent",
    "category": "Bestiary",
-   "block": "Giant Sea Serpent ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d10, Strength d12+9, Vigor d10\nSkills: Fighting d8, Guts d12, Intimidation d12, Notice d6, Swimming d8\nPace: 10; Parry: 6; Toughness: 19 (3)\nEdges: Hard to Kill, Quick\nSpecial Abilities:\nAquatic: Sea serpents breathe water normally, and can breathe air for short periods, though they can’t move on dry land. They swim at Pace 10.\nArmor +3: Very thick scales. This is Heavy Armor, and can only be pierced by Heavy Weapons.\nBite: Str+d6. This is treated as a Heavy Weapon.\nCrush the Hull: With an Agility roll, a giant sea serpent can hurl itself up out of the water and onto a vessel, doing d12+18 damage, minus the targets Size rating (just for creatures). This attack ignores the vehicle’s armor."
+   "block": "Giant Sea Serpent ★\nAttributes: Agility d6, Smarts d6 (A), Spirit d10, Strength d12+9, Vigor d10\nSkills: Fighting d8, Guts d12, Intimidation d12, Notice d6, Swimming d8\nPace: 10; Parry: 6; Toughness: 19 (3)\nEdges: Hard to Kill, Quick\nSpecial Abilities:\nAquatic: Sea serpents breathe water normally, and can breathe air for short periods, though they can’t move on dry land. They swim at Pace 10.\nArmor +3: Very thick scales. This is Heavy Armor, and can only be pierced by Heavy Weapons.\nBite: Str+d6. This is treated as a Heavy Weapon.\nCrush the Hull: With an Agility roll, a giant sea serpent can hurl itself up out of the water and onto a vessel, doing d12+18 damage, minus the targets Size rating (just for creatures). This attack ignores the vehicle’s armor.",
+   "wildCard": true
   },
   {
-   "name": "Shadow ★",
+   "name": "Shadow",
    "category": "Bestiary",
    "description": "These incorporeal creatures appear to be living shadows. They despise normal humans, envying them their solid bodies; the only pleasure shadows gain is from killing them.",
-   "block": "Shadow ★\nAttributes: Agility d10, Smarts d6, Spirit d10, Strength n/a, Vigor d8\nSkills: Fighting d6, Guts d8, Intimidation d6, Notice d6, Stealth d12\nPace: 8; Parry: 5; Toughness: 6\nSpecial Abilities:\nBlend With Shadow: A shadow can alter its shape and blend in with someone’s real shadow. In normal, dim, and dark lighting, treat this as a +2 to their Stealth rolls, and the targets are always treated as inactive, unless they’re using torches, flashlights, etc., to examine their shadows.\nDrain Life: With a successful touch attack, a shadow drains vitality from the victim. Make a Vigor roll at -2; failure means you lose a die type of Strength and take a Fatigue level. Victims reduced to Incapacitated can be killed with a normal Finishing Move by the shadow. Lost Strength and Fatigue levels return at 1 per hour; a Greater Healing spell will return them immediately, though it will not simultaneously heal any injuries.\nFleet Footed: Shadows move at Pace 8 and roll d10 for running.\nIncorporeal: Shadows can pass through walls and barriers with ease, and can’t be harmed by normal attacks. Arcane powers (magic, psionics, weird science, etc.) can injure them normally, as can magical weapons."
+   "block": "Shadow ★\nAttributes: Agility d10, Smarts d6, Spirit d10, Strength n/a, Vigor d8\nSkills: Fighting d6, Guts d8, Intimidation d6, Notice d6, Stealth d12\nPace: 8; Parry: 5; Toughness: 6\nSpecial Abilities:\nBlend With Shadow: A shadow can alter its shape and blend in with someone’s real shadow. In normal, dim, and dark lighting, treat this as a +2 to their Stealth rolls, and the targets are always treated as inactive, unless they’re using torches, flashlights, etc., to examine their shadows.\nDrain Life: With a successful touch attack, a shadow drains vitality from the victim. Make a Vigor roll at -2; failure means you lose a die type of Strength and take a Fatigue level. Victims reduced to Incapacitated can be killed with a normal Finishing Move by the shadow. Lost Strength and Fatigue levels return at 1 per hour; a Greater Healing spell will return them immediately, though it will not simultaneously heal any injuries.\nFleet Footed: Shadows move at Pace 8 and roll d10 for running.\nIncorporeal: Shadows can pass through walls and barriers with ease, and can’t be harmed by normal attacks. Arcane powers (magic, psionics, weird science, etc.) can injure them normally, as can magical weapons.",
+   "wildCard": true
   },
   {
    "name": "Shadow Hound",
@@ -1137,16 +1193,18 @@
    "block": "Shadow Panther\nAttributes: Agility d10, Smarts d8 (A), Spirit d8, Strength d10, Vigor d6\nSkills: Fighting d8, Guts d6, Notice d8, Stealth d8, Tracking d8\nPace: 8; Parry: 6; Toughness: 5\nEdges: Improved Frenzy\nSpecial Abilities:\nDisplacement: Shadow panthers aren’t really where you see them; their coexistence in multiple dimensions make them difficult to focus on. They’re always treated as being under the effect of the Deflection power. One time for scene, using an action, they can push this ability to the limit, gaining the effects as they rolled a Raise, for 3 turns duration.\nFleet Footed: Shadow panthers are fast normally, and even faster when sprinting: they have a Pace of 8, and roll a d10 for running.\nTentacles: Str+d6."
   },
   {
-   "name": "Spectre ★",
+   "name": "Spectre",
    "category": "Bestiary",
    "description": "Malevolent spirits from beyond the grave, spectres feed on fear and are among the most feared of the undead.",
-   "block": "Spectre ★\nAttributes: Agility d8, Smarts d6, Spirit d12, Strength n/a, Vigor d10\nSkills: Fighting d8, Guts d8, Intimidation d10, Notice d8, Stealth d12+2\nPace: 6; Parry: 6; Toughness: 9\nSpecial Abilities:\nChilling Touch: By making a touch attack, a spectre can drain vitality. Make a Vigor roll at -2; if you fail, you lose 1 die type of both Strength and Vigor. If either of these is reduced under d4, the victim is Incapacitated and will die in 1d6 rounds. A Healing spell will return one level of each Attribute, while Greater Healing will return all lost levels. Another spell or mundane Healing is required to remove Incapacitation status.\nFear -2: A spectre must be visible to use this power.\nIncorporeal: Normally, a spectre is invisible and incorporeal. When it decides to use its touch attack, it becomes visible and partially corporeal and must remain so for 3 rounds. In this state, it can still only be harmed by Arcane effects, or magic or blessed weapons. It can become visible at any time, for as long as it wishes, while still remaining incorporeal.\nUndead: +2 Toughness; +2 to recover from being Shaken; No wound penalties; Immune to disease and poison; No additional damage from called shots.\nUnholy Spirit: Spectres cannot enter onto sanctified ground, and must make a Guts check in the face of holy symbols."
+   "block": "Spectre ★\nAttributes: Agility d8, Smarts d6, Spirit d12, Strength n/a, Vigor d10\nSkills: Fighting d8, Guts d8, Intimidation d10, Notice d8, Stealth d12+2\nPace: 6; Parry: 6; Toughness: 9\nSpecial Abilities:\nChilling Touch: By making a touch attack, a spectre can drain vitality. Make a Vigor roll at -2; if you fail, you lose 1 die type of both Strength and Vigor. If either of these is reduced under d4, the victim is Incapacitated and will die in 1d6 rounds. A Healing spell will return one level of each Attribute, while Greater Healing will return all lost levels. Another spell or mundane Healing is required to remove Incapacitation status.\nFear -2: A spectre must be visible to use this power.\nIncorporeal: Normally, a spectre is invisible and incorporeal. When it decides to use its touch attack, it becomes visible and partially corporeal and must remain so for 3 rounds. In this state, it can still only be harmed by Arcane effects, or magic or blessed weapons. It can become visible at any time, for as long as it wishes, while still remaining incorporeal.\nUndead: +2 Toughness; +2 to recover from being Shaken; No wound penalties; Immune to disease and poison; No additional damage from called shots.\nUnholy Spirit: Spectres cannot enter onto sanctified ground, and must make a Guts check in the face of holy symbols.",
+   "wildCard": true
   },
   {
-   "name": "Stalker ★",
+   "name": "Stalker",
    "category": "Bestiary",
    "description": "These creatures from the elemental plane of air are often summoned by wizards to act as trackers or hunters. They’ll follow their instructions to the letter, but hate their enforced servitude, so they’ll attempt to twist any command given to them which isn’t stated as simply and clearly as possible.",
-   "block": "Stalker ★\nAttributes: Agility d10, Smarts d8, Spirit d8, Strength d8, Vigor d10\nSkills: Fighting d8, Guts d6, Notice d8, Stealth d10, Taunt d8, Tracking d10\nPace: 6 ; Parry: 6; Toughness: 7\nSpecial Abilities:\nClaws: Str+d6\nFlight: Stalkers have a Flying Pace of 12” with a Climb of +3.\nInvisible: As their name implies, stalkers are permanently invisible. This is their natural state, so Dispel or similar effects won’t make them visible. See the Invisibility power (see SWD page 133) for details."
+   "block": "Stalker ★\nAttributes: Agility d10, Smarts d8, Spirit d8, Strength d8, Vigor d10\nSkills: Fighting d8, Guts d6, Notice d8, Stealth d10, Taunt d8, Tracking d10\nPace: 6 ; Parry: 6; Toughness: 7\nSpecial Abilities:\nClaws: Str+d6\nFlight: Stalkers have a Flying Pace of 12” with a Climb of +3.\nInvisible: As their name implies, stalkers are permanently invisible. This is their natural state, so Dispel or similar effects won’t make them visible. See the Invisibility power (see SWD page 133) for details.",
+   "wildCard": true
   },
   {
    "name": "Svetocher",
@@ -1155,10 +1213,11 @@
    "block": "Svetocher\nAttributes: Agility d10, Smarts d4, Spirit d4, Strength d10, Vigor d10\nSkills: Fighting d10, Intimidation d8, Notice d6\nPace: 4; Parry: 7; Toughness: 10 (2)\nEdges: Arcane Resistance, Brawny, Berserk, Combat Reflexes, Improved Dodge\nSpecial Abilities:\nFangs/Claws: Str+d6\nArmor +2: rough leather hide."
   },
   {
-   "name": "Swamp Monster ★",
+   "name": "Swamp Monster",
    "category": "Bestiary",
    "description": "These creatures live in the blackest lagoons, usually in South and Central America. They are reclusive so long as their territory isn’t invaded. If anyone enters their hunting ground, they’re fair game. Swamp monsters prefer to steal up underwater and attack from below whenever possible.",
-   "block": "Swamp Monster ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d10, Strength d12+1, Vigor d10\nSkills: Fighting d10, Guts d10, Notice d8, Stealth d10, Swimming d10\nPace: 4 ; Parry: 7; Toughness: 9 (2)\nEdges: Combat Reflexes, Frenzy\nSpecial Abilities:\nAmphibious: The swamp monster can breathe both air and water equally well, and swims at Pace 10.\nArmor +2: Thick scales.\nBite/Claws: Str+d4.\nSlow: Out of the water, the swamp monsters move at Pace 4” and roll a d4 for running."
+   "block": "Swamp Monster ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d10, Strength d12+1, Vigor d10\nSkills: Fighting d10, Guts d10, Notice d8, Stealth d10, Swimming d10\nPace: 4 ; Parry: 7; Toughness: 9 (2)\nEdges: Combat Reflexes, Frenzy\nSpecial Abilities:\nAmphibious: The swamp monster can breathe both air and water equally well, and swims at Pace 10.\nArmor +2: Thick scales.\nBite/Claws: Str+d4.\nSlow: Out of the water, the swamp monsters move at Pace 4” and roll a d4 for running.",
+   "wildCard": true
   },
   {
    "name": "Treant, young",
@@ -1178,16 +1237,18 @@
    "block": "Troglodyte\nAttributes: Agility d8, Smarts d6, Spirit d6, Strength d6, Vigor d8\nSkills: Fighting d8, Guts d6, Intimidation d6, Notice d8, Shooting d6, Swimming d8, Throwing d8\nPace: 6; Parry: 6; Toughness: 7 (1)\nGear:"
   },
   {
-   "name": "Troll, Hunter ★",
+   "name": "Troll, Hunter",
    "category": "Bestiary",
    "description": "Troll hunters are horrid, flesh-eating creatures. They are more cunning than usual trolls: not satisfied with merely eating civilized beings, Troll hunters train to prey them relentlessly. They are most often found in cold, mountainous regions, but can be encountered nearly anywhere. Trolls are infamous for their regenerative abilities, able to recover from the most grievous of wounds. Troll hunters stand nine feet high and weight roughly 500 pounds. Despite an apparent awkwardness, they are quite agile.",
-   "block": "Troll, Hunter ★\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d12+2, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Stealth d8, Survival d6, Swimming d6, Throwing d8, Tracking d10\nPace: 6; Parry: 6; Toughness: 10 (1)\nEdges: Quick, Improved Frenzy, Sweep\nGear:"
+   "block": "Troll, Hunter ★\nAttributes: Agility d6, Smarts d6, Spirit d10, Strength d12+2, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d10, Notice d8, Stealth d8, Survival d6, Swimming d6, Throwing d8, Tracking d10\nPace: 6; Parry: 6; Toughness: 10 (1)\nEdges: Quick, Improved Frenzy, Sweep\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Unicorn ★",
+   "name": "Unicorn",
    "category": "Bestiary",
    "description": "These magical horses are prized as mounts amongst the forces of good.",
-   "block": "Unicorn ★\nAttributes: Agility d10, Smarts d6, Spirit d10, Strength d12+1, Vigor d12\nSkills: Fighting d8, Guts d10, Notice d8, Stealth d6\nPace: 10; Parry: 6; Toughness: 10\nEdges: Champion, Improved Frenzy, Quick\nSpecial Abilities:\nFast: Unicorns move at Pace 10 and roll a d12 for running.\nHealing: A unicorn can use the magic of its horn to heal as well as harm; once a day it can use the Greater Healing power by touching a target with its horn. This also cures any poisons, diseases, or other illnesses.\nHorn/Kick: Str+d6.\nSize +2: Unicorns weigh between 800 and 1000 pounds."
+   "block": "Unicorn ★\nAttributes: Agility d10, Smarts d6, Spirit d10, Strength d12+1, Vigor d12\nSkills: Fighting d8, Guts d10, Notice d8, Stealth d6\nPace: 10; Parry: 6; Toughness: 10\nEdges: Champion, Improved Frenzy, Quick\nSpecial Abilities:\nFast: Unicorns move at Pace 10 and roll a d12 for running.\nHealing: A unicorn can use the magic of its horn to heal as well as harm; once a day it can use the Greater Healing power by touching a target with its horn. This also cures any poisons, diseases, or other illnesses.\nHorn/Kick: Str+d6.\nSize +2: Unicorns weigh between 800 and 1000 pounds.",
+   "wildCard": true
   },
   {
    "name": "Wandering Vine",
@@ -1196,16 +1257,18 @@
    "block": "Wandering Vine\nAttributes: Agility d8, Smarts d4 (A), Spirit d6, Strength d12+2, Vigor d6\nSkills: Fighting d10, Notice d8, Stealth d8\nPace: 6; Parry: 7; Toughness: 9 (1)\nEdges: Extraction\nSpecial Abilities:\nArmor +1: Tough bark.\nCarrier: The creature can move its full Pace even when Grappling an enemy.\nConstrict: Wandering Vines are skilled at getting a hold on the opponent. They gain a +1 bonus to Fighting when making a Grappling attack and to the Strength or Agility roll to maintain the hold. Finally, they inflict Str+d6 damage with Grapples.\nHardy: The creature does not suffer a Wound from being Shaken twice.\nFearless: Wandering vines are essentially mindless creatures; as such, they’re immune to Fear, Intimidation, and Taunts\nSize +3\nSwinging: Wandering Vines can move on walls and ceilings at their normal Pace. Also, they ignore difficult terrain or small pits, almost flying over them if they can make use of belays and branches nearby."
   },
   {
-   "name": "Wendigo ★",
+   "name": "Wendigo",
    "category": "Bestiary",
    "description": "The Wendigo is a mythical creature appearing in the mythology of the Algonquian people. It is a malevolent cannibalistic spirit into which humans could transform, or which could possess humans. Those who indulged in cannibalism were at particular risk, and the legend appears to have reinforced this practice as a taboo. Wendigo psychosis is a culture-bound disorder which involves an intense craving for human flesh and the fear that one will turn into a cannibal.",
-   "block": "Wendigo ★\nAttributes: Agility d10, Smarts d8, Spirit d8, Strength d12+3, Vigor d12\nSkills: Climb d12, Fighting d12, Intimidation d12, Notice d10, Swimming d10, Stealth d10, Throwing d10, Tracking d10\nPace: 8; Parry: 8; Toughness: 8\nSpecial Abilities:\nClaws: Str+d8.\nFear -2: Wendigos are terrifying to behold.\nFearless: Wendigos are immune to Fear and Intimidation.\nLow Light Vision: Wendigos ignore penalties for Dim and Dark lighting.\nWeakness: A wendigo is instantly killed by pouring hot tallow down his throat."
+   "block": "Wendigo ★\nAttributes: Agility d10, Smarts d8, Spirit d8, Strength d12+3, Vigor d12\nSkills: Climb d12, Fighting d12, Intimidation d12, Notice d10, Swimming d10, Stealth d10, Throwing d10, Tracking d10\nPace: 8; Parry: 8; Toughness: 8\nSpecial Abilities:\nClaws: Str+d8.\nFear -2: Wendigos are terrifying to behold.\nFearless: Wendigos are immune to Fear and Intimidation.\nLow Light Vision: Wendigos ignore penalties for Dim and Dark lighting.\nWeakness: A wendigo is instantly killed by pouring hot tallow down his throat.",
+   "wildCard": true
   },
   {
-   "name": "Werebear ★",
+   "name": "Werebear",
    "category": "Bestiary",
    "description": "These lycanthropes are solitary, wise, and generally friendlier with outsiders than other shapeshifters, though their patience with outsiders is easily tested.",
-   "block": "Werebear ★\nAttributes: Agility d6, Smarts d8, Spirit d8, Strength d12+4, Vigor d12\nSkills: Climb d6, Fighting d10, Guts d12, Intimidation d10, Notice d8, Stealth d4, Swimming d10, Tracking d6\nPace: 6; Parry: 7; Toughness: 9\nEdges: Berserker, Improved Frenzy, Improved Sweep\nSpecial Abilities:\nBite/Claw: Str+d6.\nInfection: Anyone slain by a werebear has a 50% chance of becoming one themselves at the next full moon. He gains control of his mutation only after 1d6 years as a Werebear.\nInvulnerability: Werebears can only be Shaken by weapons that are not silver - not wounded.\nSize +1\nWeakness: Werebears suffer normal damage from silver weapons."
+   "block": "Werebear ★\nAttributes: Agility d6, Smarts d8, Spirit d8, Strength d12+4, Vigor d12\nSkills: Climb d6, Fighting d10, Guts d12, Intimidation d10, Notice d8, Stealth d4, Swimming d10, Tracking d6\nPace: 6; Parry: 7; Toughness: 9\nEdges: Berserker, Improved Frenzy, Improved Sweep\nSpecial Abilities:\nBite/Claw: Str+d6.\nInfection: Anyone slain by a werebear has a 50% chance of becoming one themselves at the next full moon. He gains control of his mutation only after 1d6 years as a Werebear.\nInvulnerability: Werebears can only be Shaken by weapons that are not silver - not wounded.\nSize +1\nWeakness: Werebears suffer normal damage from silver weapons.",
+   "wildCard": true
   },
   {
    "name": "Werefox",
@@ -1235,16 +1298,18 @@
    "block": "Wererat\nAttributes: Agility d10, Smarts d8, Spirit d6, Strength d6, Vigor d8\nSkills: Climbing d10, Fighting d8, Guts d6, Notice d8\nPace: 6; Parry: 6; Vigor: 6\nEdges: Quick\nGear:"
   },
   {
-   "name": "Weretiger ★",
+   "name": "Weretiger",
    "category": "Bestiary",
    "description": "Weretigers are native to India primarily, though they're sometimes spotted in other parts of Asia.",
-   "block": "Weretiger ★\nAttributes: Agility d10, Smarts d6, Spirit d8, Strength d12+2, Vigor d12\nSkills: Climb d10, Fighting d12, Guts d12, Intimidation d12, Notice d10, Swimming d8, Stealth d10, Tracking d10\nPace: 8; Parry: 8; Toughness: 8\nEdges: Quick, Improved Frenzy\nSpecial Abilities:\nBite/Claw: Str+d6.\nFast: Weretigers move at Pace 8 and roll d8 for running.\nInfection: Anyone slain by a weretiger has a 50% chance of returning to life as one.\nLow-light Vision: Weretigers ignore Dim and Dark lighting penalties.\nLeaping Pounce: Weretigers can leap once per round for 1d4”, vertical or horizontal, pouncing on their prey to best bring their mass and claws to bear. If it attacks with a Wild Attack at the end of a leap, it receives an additional +2 to its damage.\nSize +1: Weretigers are scaring big!"
+   "block": "Weretiger ★\nAttributes: Agility d10, Smarts d6, Spirit d8, Strength d12+2, Vigor d12\nSkills: Climb d10, Fighting d12, Guts d12, Intimidation d12, Notice d10, Swimming d8, Stealth d10, Tracking d10\nPace: 8; Parry: 8; Toughness: 8\nEdges: Quick, Improved Frenzy\nSpecial Abilities:\nBite/Claw: Str+d6.\nFast: Weretigers move at Pace 8 and roll d8 for running.\nInfection: Anyone slain by a weretiger has a 50% chance of returning to life as one.\nLow-light Vision: Weretigers ignore Dim and Dark lighting penalties.\nLeaping Pounce: Weretigers can leap once per round for 1d4”, vertical or horizontal, pouncing on their prey to best bring their mass and claws to bear. If it attacks with a Wild Attack at the end of a leap, it receives an additional +2 to its damage.\nSize +1: Weretigers are scaring big!",
+   "wildCard": true
   },
   {
-   "name": "Wolf-Man ★",
+   "name": "Wolf-Man",
    "category": "Bestiary",
    "description": "Wolf-men are a form of werewolf, more in keeping with old, B-horror movies like I Was a Teenage Werewolf than Ginger Snaps or Dog Soldiers. For a twist, you could make werewolves the “pureblood” lycanthropes, born of two werewolf parents, while wolfmen are normal humans who have been infected by lycanthropy.",
-   "block": "Wolf-Man ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d8, Strength d12, Vigor d10\nSkills: Climbing d8, Fighting d10, Guts d10, Intimidation d10, Notice d8, Stealth d10\nPace: 6; Parry: 7; Toughness: 7\nEdges: Level Headed, Improved Frenzy\nSpecial Abilities:\nBite/Claws: Str+d6.\nInfection: Anyone slain by a wolf-man has a 50% chance of returning to life as one.\nInvulnerability: Werebears can only be Shaken by weapons that are not silver - not wounded.\nLow-light Vision: Wolf-men ignore Dim and Dark lighting penalties.\nWeakness: Werebears suffer normal damage from silver weapons.\nWeakness (Wolfsbane): Wolf-men can't stand the smell of wolfsbane. They must make a Spirit check at -4 whenever they’re within 6” of it, if they want to stay within range."
+   "block": "Wolf-Man ★\nAttributes: Agility d8, Smarts d8 (A), Spirit d8, Strength d12, Vigor d10\nSkills: Climbing d8, Fighting d10, Guts d10, Intimidation d10, Notice d8, Stealth d10\nPace: 6; Parry: 7; Toughness: 7\nEdges: Level Headed, Improved Frenzy\nSpecial Abilities:\nBite/Claws: Str+d6.\nInfection: Anyone slain by a wolf-man has a 50% chance of returning to life as one.\nInvulnerability: Werebears can only be Shaken by weapons that are not silver - not wounded.\nLow-light Vision: Wolf-men ignore Dim and Dark lighting penalties.\nWeakness: Werebears suffer normal damage from silver weapons.\nWeakness (Wolfsbane): Wolf-men can't stand the smell of wolfsbane. They must make a Spirit check at -4 whenever they’re within 6” of it, if they want to stay within range.",
+   "wildCard": true
   },
   {
    "name": "Wight",
@@ -1271,28 +1336,32 @@
    "block": "Shambling Dead (Romero Zombie)\nAttributes: Agility d4, Smarts d6 (A), Spirit d6, Strength d6, Vigor d6\nSkills: Fighting d6, Guts d6, Notice d4\nPace: 4 ; Parry: 3; Toughness: 7\nSpecial Abilities:\nBite/Claws: Str damage."
   },
   {
-   "name": "Raimi Zombie ★",
+   "name": "Raimi Zombie",
    "category": "Bestiary",
    "description": "These are dead bodies given life by an evil spirit entity. They are fast, strong, and worst of all, intelligent.",
-   "block": "Raimi Zombie ★\nAttributes: Agility d8, Smarts d6, Spirit d8, Strength d10, Vigor d10\nSkills: Fighting d8, Guts d8, Intimidation d10, Notice d6, Shooting d4, Throwing d6\nPace: 8 ; Parry: 6; Toughness: 9\nEdges: Level Headed, Frenzy\nSpecial Abilities:\nBite/Punch/Kick: Str damage. Raimis will also use whatever weapons are available.\nDisturbing: Raimis get a +2 to their first Intimidation roll against a target.\nFleet Footed: Raimis have a Pace of 8 and roll d8 for running.\nInfection: Raimis can infect others with their bite: Anyone Shaken or wounded by Raimis’ bite must immediately make a Vigor roll. Failure indicates that they are infected, through the sickness moves fairly slowly. If an infected limb is amputated within 30 minutes, the victim can avoid infection. However, the limb will take on a life of its own!\nLeaping: Raimi zombies can leap 6”, +2” with a Strength roll.\nUndead: +2 Toughness; +2 to recover from being Shaken; Called shots do no extra damage (except to the head). No Wound penalties."
+   "block": "Raimi Zombie ★\nAttributes: Agility d8, Smarts d6, Spirit d8, Strength d10, Vigor d10\nSkills: Fighting d8, Guts d8, Intimidation d10, Notice d6, Shooting d4, Throwing d6\nPace: 8 ; Parry: 6; Toughness: 9\nEdges: Level Headed, Frenzy\nSpecial Abilities:\nBite/Punch/Kick: Str damage. Raimis will also use whatever weapons are available.\nDisturbing: Raimis get a +2 to their first Intimidation roll against a target.\nFleet Footed: Raimis have a Pace of 8 and roll d8 for running.\nInfection: Raimis can infect others with their bite: Anyone Shaken or wounded by Raimis’ bite must immediately make a Vigor roll. Failure indicates that they are infected, through the sickness moves fairly slowly. If an infected limb is amputated within 30 minutes, the victim can avoid infection. However, the limb will take on a life of its own!\nLeaping: Raimi zombies can leap 6”, +2” with a Strength roll.\nUndead: +2 Toughness; +2 to recover from being Shaken; Called shots do no extra damage (except to the head). No Wound penalties.",
+   "wildCard": true
   },
   {
-   "name": "Zombie Lord ★",
+   "name": "Zombie Lord",
    "category": "Bestiary",
    "description": "When there was no more room in Hell, and the dead began to walk the earth, humankind (the living ones, that is) was all but wiped out. It was discovered soon after that a select few children born after the Zombie Apocalypse had been mutated by whatever force had brought the dead back to life.",
-   "block": "Zombie Lord ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d6, Vigor d10\nSkills: Fighting d6, Guts d12, Intimidation d10, Notice d8, Shooting d6, Spellcasting d12\nPace: 6; Parry: 5; Toughness: 9 (7 without necklace)\nEdges: Arcane Resistance, Harder to Kill, Improved Level Headed, Command, Fervor, Hold the Line!, Soul Drain\nGear:"
+   "block": "Zombie Lord ★\nAttributes: Agility d8, Smarts d10, Spirit d12, Strength d6, Vigor d10\nSkills: Fighting d6, Guts d12, Intimidation d10, Notice d8, Shooting d6, Spellcasting d12\nPace: 6; Parry: 5; Toughness: 9 (7 without necklace)\nEdges: Arcane Resistance, Harder to Kill, Improved Level Headed, Command, Fervor, Hold the Line!, Soul Drain\nGear:",
+   "wildCard": true
   },
   {
-   "name": "Chikakas the Ancient (Bat, Giant) ★ (Wild Card)",
+   "name": "Chikakas the Ancient (Bat, Giant) (Wild Card)",
    "category": "Templates",
    "description": "The sacred white giant bat, defender of the caves.",
-   "block": "Chikakas the Ancient (Bat, Giant) ★ (Wild Card)\nAttributes: Agility d4, Smarts d6, Spirit d10, Strength d12+1, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d12, Notice d12, Stealth d10\nPace: 4; Parry: 6; Toughness: 11 (1)\nEdges:"
+   "block": "Chikakas the Ancient (Bat, Giant) ★ (Wild Card)\nAttributes: Agility d4, Smarts d6, Spirit d10, Strength d12+1, Vigor d10\nSkills: Fighting d8, Guts d10, Intimidation d12, Notice d12, Stealth d10\nPace: 4; Parry: 6; Toughness: 11 (1)\nEdges:",
+   "wildCard": true
   },
   {
-   "name": "Cockatrice, Boss ★ (Wild Card)",
+   "name": "Cockatrice, Boss (Wild Card)",
    "category": "Templates",
    "description": "Bizarre magical rooster/serpents, capable of petrifying those they touch.",
-   "block": "Cockatrice, Boss ★ (Wild Card)\nAttributes: Agility d10, Smarts d8 (A), Spirit d8, Strength d6, Vigor d8\nSkills: Fighting d8, Guts d8, Notice d8, (all the other skills eventually rolled at d4)\nPace: 6; Parry: 6; Toughness: 7 (1)\nHindrances: Overconfident"
+   "block": "Cockatrice, Boss ★ (Wild Card)\nAttributes: Agility d10, Smarts d8 (A), Spirit d8, Strength d6, Vigor d8\nSkills: Fighting d8, Guts d8, Notice d8, (all the other skills eventually rolled at d4)\nPace: 6; Parry: 6; Toughness: 7 (1)\nHindrances: Overconfident",
+   "wildCard": true
   },
   {
    "name": "Description",

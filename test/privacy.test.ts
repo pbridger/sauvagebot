@@ -10,15 +10,16 @@ const combatant = (tokenName: string, sheet: Sheet): Combatant => ({
   state: newTokenState(sheet.id),
 });
 
-const landshark: Sheet = { ...emptySheet('landshark', 'Landshark'), private: true };
-const reggie = emptySheet('reggie', 'Reggie Kane');
+/** `emptySheet` is an NPC: everything the Marshal adds is one until they say so. */
+const landshark: Sheet = emptySheet('landshark', 'Landshark');
+const reggie: Sheet = { ...emptySheet('reggie', 'Reggie Kane'), pc: true };
 
 /**
- * "Private" is a screen, not a lock — room metadata is readable by every client.
- * What it must do is stop a name the Marshal hid turning up in a player's UI by
- * itself, which is the part nobody would think to check.
+ * An NPC is a screen, not a lock — room metadata is readable by every client.
+ * What it must do is stop a name the Marshal is holding back turning up in a
+ * player's UI by itself, which is the part nobody would think to check.
  */
-describe('a character the Marshal has hidden', () => {
+describe("one of the Marshal's characters", () => {
   it('shows players the token name rather than the sheet name', () => {
     const all = [combatant('Big Rock', landshark), combatant('Reggie Kane', reggie)];
     expect(displayName(all[0]!, all, false)).toBe('Big Rock');
@@ -29,7 +30,7 @@ describe('a character the Marshal has hidden', () => {
     expect(displayName(all[0]!, all, true)).toBe('Landshark');
   });
 
-  it('leaves an ordinary character alone either way', () => {
+  it('leaves a player character alone either way', () => {
     const all = [combatant('Reggie Kane', reggie)];
     expect(displayName(all[0]!, all, false)).toBe('Reggie Kane');
     expect(displayName(all[0]!, all, true)).toBe('Reggie Kane');
@@ -42,7 +43,37 @@ describe('a character the Marshal has hidden', () => {
   });
 
   it('survives export and re-import, so it moves rooms with the roster', () => {
-    expect(sheetFromJson(sheetToJson(landshark)).private).toBe(true);
-    expect(sheetFromJson(sheetToJson(reggie)).private).toBeUndefined();
+    expect(sheetFromJson(sheetToJson(landshark)).pc).toBe(false);
+    expect(sheetFromJson(sheetToJson(reggie)).pc).toBe(true);
+  });
+});
+
+/**
+ * `pc` replaced a `private` flag, which was the same distinction stated
+ * backwards. Rooms and exported rosters written before the change still carry
+ * `private`, and reading it the wrong way round would hide a whole party at once
+ * — every existing sheet has no `pc` at all.
+ */
+describe('a sheet written before the PC flag existed', () => {
+  const asJson = (sheet: Record<string, unknown>) => JSON.stringify(sheet);
+
+  it('treats a private sheet as one of the Marshal\'s', () => {
+    const old = asJson({ id: 'landshark', name: 'Landshark', wildCard: true, private: true });
+    expect(sheetFromJson(old).pc).toBe(false);
+  });
+
+  it('treats a sheet with neither flag as a player character', () => {
+    const old = asJson({ id: 'reggie', name: 'Reggie Kane', wildCard: true });
+    expect(sheetFromJson(old).pc).toBe(true);
+  });
+
+  it('drops the old flag rather than carrying both', () => {
+    const old = asJson({ id: 'landshark', name: 'Landshark', wildCard: true, private: true });
+    expect(sheetFromJson(old)).not.toHaveProperty('private');
+  });
+
+  it('prefers an explicit pc when a sheet somehow carries both', () => {
+    const both = asJson({ id: 'x', name: 'X', wildCard: true, private: true, pc: true });
+    expect(sheetFromJson(both).pc).toBe(true);
   });
 });

@@ -121,9 +121,43 @@ h2 {
 .trait .die { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 700; }
 .trait.untrained .die { color: var(--muted); font-weight: 400; }
 
+/* An edge or hindrance that changes this trait but that the app deliberately
+   does not apply — its scope is a purpose only the player can see. The asterisk
+   says "there is something here"; the tooltip says what, in the card's own
+   words; the player dials it in. See src/rules/abilities.ts. */
+.trait-note {
+  margin-left: auto;
+  padding: 0 3px;
+  color: var(--accent);
+  font-weight: 700;
+  cursor: help;
+}
+/* `margin-left: auto` on the asterisk would otherwise push the die off the end
+   of the row, so the die keeps its own auto margin and the two share the gap. */
+.trait .trait-note + .die { margin-left: 0; }
+
 dl.entries { margin: 0; }
 dl.entries dt { font-weight: 700; font-size: 12px; margin-top: 6px; }
 dl.entries dd { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
+
+/* Whether an entry does anything. Before this, Trademark Weapon and Level
+   Headed looked identical and only one of them worked. */
+.entry-tag {
+  padding: 0 4px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  vertical-align: 1px;
+  cursor: help;
+}
+/* Solid for what the app does itself, outline for what it is only reminding you
+   about — the same grammar as the target-state pills. */
+.entry-tag.wired { background: var(--accent); color: #fff; }
+.entry-tag.note { border: 1px solid var(--muted); color: var(--muted); }
+/* Inert entries stay legible but stop looking load-bearing. */
+dl.entries dt.inert { font-weight: 600; color: var(--muted); cursor: help; }
 p.prose { margin: 4px 0 0; font-size: 12px; }
 
 #log {
@@ -191,7 +225,10 @@ table.weapons th {
 }
 table.weapons td { padding: 2px 6px 2px 0; vertical-align: top; }
 table.weapons td:first-child { font-weight: 700; }
-table.weapons .num { font-variant-numeric: tabular-nums; }
+/* Right-aligned, heading and value together — a label at the far side of its own
+   column reads as belonging to the neighbour. */
+table.weapons .num { font-variant-numeric: tabular-nums; text-align: right; }
+table.weapons th.num { text-align: right; }
 /* Damage is rollable, so it looks it. */
 table.weapons button.dmg {
   padding: 0 5px;
@@ -331,6 +368,15 @@ button.danger {
 
 .cardhead { display: flex; gap: 10px; align-items: flex-start; }
 .cardhead > div { min-width: 0; flex: 1; }
+/* Wild Card, in the stat blocks' own notation. Beside the name rather than in
+   it, so the name stays the thing that goes in the log and on the token. */
+.wc-star {
+  margin-left: 6px;
+  color: var(--accent);
+  font-size: .8em;
+  vertical-align: .15em;
+  cursor: help;
+}
 img.portrait {
   width: 58px;
   height: 58px;
@@ -340,16 +386,14 @@ img.portrait {
   flex: none;
 }
 
-.bindbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 2px;
-  font-size: 11.5px;
-  color: var(--muted);
-}
-.bindbar button { font-size: 11.5px; padding: 2px 7px; }
-.bindbar .warn { color: var(--accent); font-weight: 700; }
+/* Binding lives in the header beside Edit; the bar that used to sit at the foot
+   of the sheet is gone, because when nothing was selected it rendered nothing
+   and left no sign that a control existed at all. */
+#bar #bind { white-space: nowrap; }
+#bar #bind[hidden] { display: none; }
+/* More than one token on a Wild Card: legal, occasionally deliberate, and the
+   sort of thing you want to notice before the wounds start being shared. */
+#bar #bind.warn { color: var(--accent); border-color: var(--accent); }
 
 /* ---- status strip ---------------------------------------------------- */
 
@@ -658,6 +702,7 @@ button.sheet-link {
   padding: 0 6px;
   font-size: 10.5px;
   color: var(--muted);
+  white-space: nowrap;
 }
 button.sheet-link:hover { color: var(--accent); border-color: var(--accent); }
 
@@ -780,12 +825,14 @@ p.description {
   line-height: 1.45;
 }
 
+/* The bestiary's search box and its book filter, side by side: two collections
+   now share the list, and the one you want is almost always the adventure being
+   run. */
+.bestiary-controls { display: flex; gap: 4px; align-items: center; }
+.bestiary-controls input[type=search] { flex: 1; min-width: 0; }
+.bestiary-source { flex: 0 0 auto; max-width: 45%; font-size: 11px; }
+
 .creature-list { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
-/* The seat picker reuses the creature row: a name on the left, one control on the
-   right. `flex: none` on the select keeps a long player name from squeezing the
-   thing you came here to click — the same overflow that put the Conditions counter
-   off-panel. */
-.seat-pick { flex: none; font: inherit; font-size: 10.5px; padding: 0 2px; }
 .creature { display: flex; align-items: baseline; gap: 8px; }
 button.creature-name {
   flex: 1;
@@ -797,12 +844,130 @@ button.creature-name {
 }
 button.creature-name:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
 .creature-meta { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
-/* Hide/Reveal at the end of a roster row: a small action that must not grow and
-   must not push the name off. */
+/* A small action at the end of a row: must not grow, must not push the name off. */
 button.creature-add { flex: none; padding: 1px 7px; font-size: 10.5px; }
-/* A hidden sheet reads as one of the roster, dimmed — not as a separate list.
-   The players cannot see it, which is a state, not a category. */
-.creature.hidden-sheet button.creature-name { font-style: italic; color: var(--muted); }
+
+/* ---- targeting table --------------------------------------------------
+   Hangs under a roll in the log: who this could have been aimed at and what it
+   does to each. Denser and quieter than the roll line itself — it is a reference
+   you scan, not the answer you were waiting for. */
+button.targets-toggle {
+  padding: 0 6px;
+  margin-left: 6px;
+  font-size: 10px;
+  color: var(--muted);
+}
+button.targets-toggle:hover { color: var(--accent); border-color: var(--accent); }
+.targets { margin: 4px 0 2px; font-size: 11px; }
+.targets table { width: 100%; border-collapse: collapse; }
+.targets th {
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  text-align: left;
+  padding: 0 4px 1px;
+}
+.targets th.num { text-align: right; }
+.targets td { padding: 1px 4px; }
+.targets td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.targets td.who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 10em; }
+/* A target's own conditions, one letter each — the cell has room for nothing
+   more, and the full name and effect are in the tooltip. */
+.targets td.state { white-space: nowrap; }
+.targets .pill {
+  display: inline-block;
+  min-width: 12px;
+  margin-right: 2px;
+  border-radius: 3px;
+  border: 1px solid var(--muted);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+  cursor: help;
+}
+/* Solid when the number actually reached the roll, outline when it is a state
+   the app draws but leaves the Marshal to judge. */
+.targets .pill.applied { background: #8c2f22; border-color: #8c2f22; color: #fff; }
+.targets td.hit { color: #2f7a3f; font-weight: 700; }
+.targets td.miss { color: var(--muted); }
+@media (prefers-color-scheme: dark) { .targets td.hit { color: #67c27c; } }
+/* A measured distance that no range band applies to, because the roll carries no
+   weapon. Muted so it does not read as a penalty that was calculated and came
+   out at zero — the tooltip says which it is. */
+.targets td.no-band { color: var(--muted); }
+/* Beyond long range: still listed, so "why is he not here?" never comes up. */
+.targets tr.out-of-range { opacity: .45; }
+.targets-note { margin: 3px 0 0; font-size: 10px; color: var(--muted); }
+
+/* The Marshal's damage adjustment.
+
+   One row above the table rather than a control on every row: damage is applied
+   one target at a time, so five copies of the same decision would be five things
+   to keep in sync. It stands in for every halving, doubling and nullification in
+   the books — see MECHANICS-INVENTORY.md §8.3. */
+.adjust-bar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+.adjust-label {
+  font-size: 10px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+button.adjust {
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 16px;
+  border-radius: 8px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* Solid once it is doing something, so an adjustment left on from the last
+   creature is visible rather than quietly halving the next one. */
+button.adjust.on {
+  background: #8c2f22;
+  border-color: #8c2f22;
+  color: #fff;
+}
+
+
+/* ---- roster table ----------------------------------------------------
+   Dense on purpose: this answers "what is the state of everyone" in one look,
+   so the rows are tight and only the name column is allowed to stretch. */
+table.roster { width: 100%; border-collapse: collapse; margin-top: 6px; }
+table.roster th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted);
+  text-align: left;
+  padding: 0 4px 2px;
+}
+table.roster th.num { text-align: right; }
+table.roster td { padding: 1px 4px; vertical-align: middle; }
+table.roster td:first-child, table.roster th:first-child { padding-left: 0; }
+table.roster tr + tr td { border-top: 1px solid color-mix(in srgb, currentColor 8%, transparent); }
+table.roster td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.roster td.wc { width: 1em; color: var(--accent); cursor: help; }
+table.roster button.creature-name { width: 100%; padding: 2px 6px; }
+/* One of the Marshal's reads as a dimmed member of the roster, not a separate
+   list: the players cannot see it, which is a state rather than a category. */
+table.roster tr.npc button.creature-name { font-style: italic; color: var(--muted); }
+button.kind {
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+button.kind:hover { color: var(--accent); border-color: var(--accent); }
 .pane-block input[type='search'] {
   width: 100%;
   font: inherit;

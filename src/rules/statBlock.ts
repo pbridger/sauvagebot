@@ -34,8 +34,21 @@ const ATTRIBUTE_NAMES: Record<string, keyof Sheet['attributes']> = {
   vigour: 'vigor',
 };
 
-/** `d8`, `d12+2`, `d6-1`. */
-const TRAIT = /^(.*?)\s+d(\d+)\s*([+-]\s*\d+)?$/;
+/**
+ * `d8`, `d12+2`, `d6-1` — and `d6 (A)`, which is how every bestiary in Savage
+ * Worlds marks animal intelligence.
+ *
+ * The `(A)` was the expensive one. This pattern is end-anchored, so `Smarts d6
+ * (A)` matched nothing at all and the attribute was dropped — **110 of the 219
+ * creatures we ship**, half the bestiary, imported with no Smarts. It is not a
+ * cosmetic loss either: a missing attribute is a missing trait roll, and Vigor's
+ * absence would silently change `derivedToughness`.
+ *
+ * The marker is consumed rather than stored. Animal intelligence changes what a
+ * creature can be *asked* to do, not what its Smarts die rolls, and there is
+ * nowhere on `Sheet` that would make it mean anything yet.
+ */
+const TRAIT = /^(.*?)\s+d(\d+)\s*([+-]\s*\d+)?\s*(?:\(\s*A\s*\))?$/i;
 
 function parseTrait(text: string): { name: string; trait: Trait } | undefined {
   const match = TRAIT.exec(text.trim());
@@ -45,10 +58,59 @@ function parseTrait(text: string): { name: string; trait: Trait } | undefined {
   const mod = match[3] ? Number(match[3].replace(/\s+/g, '')) : 0;
   const name = match[1]!.trim();
   if (!name) return undefined;
+  // A name cannot contain a die. Without this guard the pattern is happy to read
+  // `Smarts d4 Spirit d4 Strength d6` as one trait called "Smarts d4 Spirit d4
+  // Strength" — which is how three of Crawlin' Dead's attributes disappeared even
+  // after the wrapped line was rejoined. Failing here is what hands the part to
+  // `parseTraits` to be split properly.
+  if (/\bd\d+/i.test(name)) return undefined;
   return { name, trait: mod ? { die, mod } : { die } };
 }
 
-/** Split on commas that are not inside brackets. */
+/**
+ * The traits in one comma-separated part.
+ *
+ * Normally one — `Fighting d8` — but real books drop commas, and a stat block
+ * transcribed from a PDF drops more of them: Coffin Rock prints
+ * `Attributes: Agility d6, Smarts d4 Spirit d4 Strength d6, Vigor d6`, where
+ * three attributes share a part. Reading only the last one lost Smarts and
+ * Spirit without a word.
+ *
+ * So a part is cut before each `Name dN` that follows a completed one. The names
+ * themselves may hold spaces and brackets — `Knowledge (Occult) d8`, `Com.
+ * Knowledge d6` — which is why this splits on the *die* and keeps whatever came
+ * before it, rather than trying to recognise a name.
+ */
+function parseTraits(part: string): { name: string; trait: Trait }[] {
+  const single = parseTrait(part);
+  if (single) return [single];
+  // Strip the animal marker before splitting, or `Smarts d4(A) Spirit d4` would
+  // cut after the die and leave "(A) Spirit" as the next trait's name.
+  const pieces: string[] = [];
+  let current = '';
+  for (const word of part.replace(/\(\s*A\s*\)/gi, ' ').trim().split(/\s+/)) {
+    current = current ? `${current} ${word}` : word;
+    // A die ends a trait unless a modifier or an `(A)` is still to come.
+    if (/d\d+(?:\s*[+-]\s*\d+)?$/i.test(current)) {
+      pieces.push(current);
+      current = '';
+    }
+  }
+  if (current.trim()) pieces.push(current);
+  const traits = pieces.map(parseTrait).filter((t): t is { name: string; trait: Trait } => !!t);
+  // All or nothing: a part that only half-parses is more likely to be prose than
+  // a run-on trait list, and half a stat line is worse than none.
+  return traits.length === pieces.length ? traits : [];
+}
+
+/**
+ * Split on commas — and semicolons — that are not inside brackets.
+ *
+ * The semicolon is not pedantry: the bestiary's Rabbit is written
+ * `Skills: Fighting d6, Notice d10; Stealth d6`, and on commas alone that read
+ * as one trait named "Notice d10; Stealth". Both skills were wrong, and only one
+ * of them was visibly so.
+ */
 function splitList(text: string): string[] {
   const out: string[] = [];
   let depth = 0;
@@ -56,7 +118,7 @@ function splitList(text: string): string[] {
   for (const char of text) {
     if (char === '(') depth++;
     else if (char === ')') depth = Math.max(0, depth - 1);
-    if (char === ',' && depth === 0) {
+    if ((char === ',' || char === ';') && depth === 0) {
       out.push(current);
       current = '';
     } else current += char;
@@ -81,6 +143,63 @@ export function derivedToughness(sheet: Sheet, size = 0): number {
   return 2 + (vigor ? halfDie(vigor.die) : 0) + (sheet.armor ?? 0) + size;
 }
 
+/**
+ * The labelled fields a stat block uses, for deciding where a wrapped line ends.
+ *
+ * `Special Abilities` is here as a terminator even though it is not read by
+ * `labelled()`: a block that ends `Gear: Club (d6+d4)` followed by
+ * `Special Abilities` must not swallow the header into the gear line.
+ */
+const LABELS =
+  /^(attributes|skills|edges|hindrances|gear|powers|charisma|pace|parry|toughness|quote|quotes|special abilities|description)\b/i;
+
+/**
+ * Put wrapped continuation lines back on the line they belong to.
+ *
+ * A stat block in a book is typeset in a narrow column, so every field of any
+ * length wraps — and `labelled()` reads one line, so it was silently truncating
+ * them. Coffin Rock prints
+ *
+ *     Edges: Charismatic, Command, Snakeoil
+ *     Salesman, Very Attractive
+ *
+ * and Belle imported with three edges, the third of them called "Snakeoil".
+ *
+ * A line continues the one before it when it does not start a new labelled
+ * field, does not start a bulleted ability, and there is a labelled field open
+ * to continue. That last condition is what keeps a creature's prose description
+ * from being glued onto its Gear line.
+ */
+export function joinWrapped(lines: readonly string[]): string[] {
+  const out: string[] = [];
+  let open = false;
+  let inAbilities = false;
+  for (const line of lines) {
+    const starts = LABELS.test(line);
+    const bullet = /^[*•·]\s/.test(line);
+    if (!starts && !bullet && open && out.length) {
+      out[out.length - 1] = `${out[out.length - 1]} ${line}`;
+      continue;
+    }
+    out.push(line);
+    if (/^special abilities/i.test(line)) {
+      // The header itself takes no continuation — the next line is the first
+      // ability, not more header.
+      inAbilities = true;
+      open = false;
+    } else if (bullet) {
+      // Inside the list, a bullet opens an ability and the unbulleted lines
+      // after it are that ability's wrapped text.
+      open = true;
+    } else {
+      // Outside it, only a labelled field wraps. Anything else — a creature's
+      // prose description, a page number — must not glue onto the Gear line.
+      open = starts && !inAbilities;
+    }
+  }
+  return out;
+}
+
 export class StatBlockError extends Error {
   constructor(message: string) {
     super(message);
@@ -97,10 +216,12 @@ export class StatBlockError extends Error {
  * opinion.
  */
 export function parseStatBlock(text: string, fallbackName = 'New Extra'): Sheet {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const lines = joinWrapped(
+    text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean),
+  );
   if (!lines.length) throw new StatBlockError('nothing to read');
 
   const labelled = (label: string): string | undefined => {
@@ -124,14 +245,14 @@ export function parseStatBlock(text: string, fallbackName = 'New Extra'): Sheet 
   sheet.wildCard = /wild card/i.test(text);
 
   for (const part of splitList(labelled('Attributes') ?? '')) {
-    const parsed = parseTrait(part);
-    const key = parsed && ATTRIBUTE_NAMES[parsed.name.toLowerCase()];
-    if (parsed && key) sheet.attributes[key] = parsed.trait;
+    for (const parsed of parseTraits(part)) {
+      const key = ATTRIBUTE_NAMES[parsed.name.toLowerCase()];
+      if (key) sheet.attributes[key] = parsed.trait;
+    }
   }
 
   for (const part of splitList(labelled('Skills') ?? '')) {
-    const parsed = parseTrait(part);
-    if (parsed) sheet.skills[parsed.name] = parsed.trait;
+    for (const parsed of parseTraits(part)) sheet.skills[parsed.name] = parsed.trait;
   }
 
   for (const [label, list] of [
@@ -147,20 +268,49 @@ export function parseStatBlock(text: string, fallbackName = 'New Extra'): Sheet 
   if (gear) sheet.gear = gear;
 
   // Special Abilities run to the end of the block, one per line.
-  const abilitiesAt = lines.findIndex((line) => /^special abilities\s*:/i.test(line));
+  //
+  // The colon is optional, and that is not a nicety: Coffin Rock writes the
+  // header bare on most of its blocks, so requiring one meant every special
+  // ability in the adventure was dropped in silence. Crawlin' Dead arrived with
+  // no Claws, no Fear, no Fearless and no Undead.
+  const abilitiesAt = lines.findIndex((line) => /^special abilities\s*:?\s*$|^special abilities\s*:/i.test(line));
   if (abilitiesAt >= 0) {
     const powers = lines
       .slice(abilitiesAt + 1)
       .filter((line) => !/^[a-z ]+:/i.test(line) || line.includes(':'))
       .map((line) => {
-        const colon = line.indexOf(':');
+        // Books bullet these, and the bullet is not part of the name: without
+        // this an ability was called "* Armor +1", which reads wrong on the
+        // sheet and would defeat any later attempt to recognise it by name.
+        const entry = line.replace(/^[*•·]\s*/, '');
+        const colon = entry.indexOf(':');
         return colon > 0
-          ? { name: line.slice(0, colon).trim(), text: line.slice(colon + 1).trim() }
-          : { name: line.replace(/\.$/, '') };
+          ? { name: entry.slice(0, colon).trim(), text: entry.slice(colon + 1).trim() }
+          : { name: entry.replace(/\.$/, '') };
       })
       .filter((entry) => entry.name);
     if (powers.length) sheet.powers = powers;
   }
+
+  // A `Powers:` line is a different thing from Special Abilities — arcane
+  // powers, with a Power Point figure after them:
+  //
+  //   Powers: Armor, bolt, dispel, fear, puppet, smite; 20 PP
+  //
+  // It was not read at all, so Reverend Cheval — the adventure's antagonist —
+  // imported with none of his seven powers. Kept as the line it was written on
+  // rather than parsed into entries: nothing downstream is built on the
+  // individual powers yet, and the wording is what the Marshal reads.
+  const powerLine = labelled('Powers');
+  if (powerLine) sheet.powerNotes = powerLine;
+
+  // Deadlands Reloaded gives every human block a Charisma. SWADE has no such
+  // stat, so this is recorded and shown rather than used — see the edition note
+  // in MECHANICS-INVENTORY.md §2.0.
+  // A book prints a minus as an en dash — `Charisma: –6` — so all four of the
+  // dashes it might use are normalised before the number is read.
+  const charisma = /charisma\s*:\s*([+\-−–—]?\s*\d+)/i.exec(text);
+  if (charisma) sheet.charisma = Number(charisma[1]!.replace(/[−–—]/g, '-').replace(/\s+/g, ''));
 
   // "Pace: 6; Parry: 5; Toughness: 7 (2)" — one line, semicolon separated.
   const derived = lines.find((line) => /pace\s*:/i.test(line)) ?? '';
