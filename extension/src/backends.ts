@@ -14,6 +14,7 @@ import {
   type Backend,
 } from '../../src/obr/store.js';
 import { Roster } from '../../src/obr/roster.js';
+import { findEntry } from '../../src/rules/catalogue.js';
 import { electLeader, type Peer } from '../../src/obr/leader.js';
 import {
   TOKEN_KEY,
@@ -69,8 +70,16 @@ export function itemStore(itemId: string): VerifiedStore {
   return new VerifiedStore(itemBackend(itemId), { capacity: ITEM_CAPACITY });
 }
 
+/**
+ * The roster, told where the rulebook is.
+ *
+ * The lookup is supplied here rather than imported inside `roster.ts` so that
+ * module stays free of the catalogue and can be tested against any book. With it,
+ * an edge the book knows is stored as a name alone and its text is fetched from
+ * the bundle on the way out.
+ */
 export function roster(onWarning?: (message: string) => void): Roster {
-  return new Roster(roomStore(onWarning));
+  return new Roster(roomStore(onWarning), onWarning ?? (() => {}), (name) => findEntry(name)?.text);
 }
 
 /**

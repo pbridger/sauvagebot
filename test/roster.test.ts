@@ -258,3 +258,141 @@ describe('dropping and restoring the rules text', () => {
     expect(Object.keys(backend.data).some((k) => k.includes('rules-text'))).toBe(false);
   });
 });
+
+/**
+ * The dictionary mostly stops existing once the roster knows where the book is.
+ *
+ * Measured motivation, not tidiness: in the party's real room the dictionary was
+ * 4,447 chars — 38% of everything in use — and every one of its 27 entries was
+ * text the shipped catalogue already had, in a worse version. See MECHANICS-
+ * INVENTORY.md §12.
+ */
+describe('preferring the book to the stored copy', () => {
+  /** Stands in for `catalogue.findEntry`. Knows QUICK, has never heard of HEXBLOOD. */
+  const book = (name: string): string | undefined =>
+    name === 'QUICK' ? 'The full printed wording, which is longer and says more.' : undefined;
+
+  const sheet = (): Sheet => ({
+    ...emptySheet('reggie', 'Reggie'),
+    edges: [{ name: 'QUICK', text: 'A short summary off the card.' }],
+    hindrances: [{ name: 'HEXBLOOD', text: 'Homebrew: the family curse.' }],
+  });
+
+  const booked = (capacity = ROOM_CAPACITY) => {
+    const backend = new FakeBackend(capacity);
+    return {
+      backend,
+      roster: new Roster(
+        new VerifiedStore(backend, { capacity, onWarning: () => {} }),
+        () => {},
+        book,
+      ),
+    };
+  };
+
+  it('stores nothing the book can supply, and everything it cannot', () => {
+    const { text } = splitSheet(sheet(), book);
+    expect(Object.keys(text)).toEqual(['HEXBLOOD']);
+  });
+
+  it('fills the gap from the book on the way out', () => {
+    const { lean, text } = splitSheet(sheet(), book);
+    const out = joinSheet(lean, text, book);
+    expect(out.edges[0]?.text).toBe('The full printed wording, which is longer and says more.');
+    expect(out.hindrances[0]?.text).toBe('Homebrew: the family curse.');
+  });
+
+  /** A room written by an earlier version must not change under the table. */
+  it('prefers a stored entry over the book, so an old room renders as it did', () => {
+    const stale = { QUICK: 'The old summary, still in the dictionary.' };
+    const { lean } = splitSheet(sheet(), book);
+    expect(joinSheet(lean, stale, book).edges[0]?.text).toBe(
+      'The old summary, still in the dictionary.',
+    );
+  });
+
+  it('leaves an entry bare when neither has it', () => {
+    const lean = { ...emptySheet('x', 'X'), edges: [{ name: 'UNKNOWN' }] };
+    expect(joinSheet(lean, {}, book).edges[0]?.text).toBeUndefined();
+  });
+
+  it('saves a whole sheet with only the homebrew stored', async () => {
+    const { roster, backend } = booked();
+    await roster.save(sheet());
+    expect(backend.data[TEXT_KEY]).toEqual({ HEXBLOOD: 'Homebrew: the family curse.' });
+    const back = await roster.get('reggie');
+    expect(back?.edges[0]?.text).toContain('full printed wording');
+  });
+
+  describe('pruning a room saved by an earlier version', () => {
+    /** Save without a book, as the old code did, then prune with one. */
+    const legacy = async () => {
+      const backend = new FakeBackend(ROOM_CAPACITY);
+      const store = new VerifiedStore(backend, {
+        capacity: ROOM_CAPACITY,
+        onWarning: () => {},
+      });
+      await new Roster(store).save(sheet());
+      return { backend, roster: new Roster(store, () => {}, book) };
+    };
+
+    it('removes what the book covers and keeps what it does not', async () => {
+      const { roster, backend } = await legacy();
+      expect(Object.keys(backend.data[TEXT_KEY] as object).sort()).toEqual(['HEXBLOOD', 'QUICK']);
+
+      expect(await roster.pruneRulesText()).toBe(1);
+      expect(backend.data[TEXT_KEY]).toEqual({ HEXBLOOD: 'Homebrew: the family curse.' });
+    });
+
+    it('still shows every entry its text afterwards', async () => {
+      const { roster } = await legacy();
+      await roster.pruneRulesText();
+      const back = await roster.get('reggie');
+      expect(back?.edges[0]?.text).toContain('full printed wording');
+      expect(back?.hindrances[0]?.text).toBe('Homebrew: the family curse.');
+    });
+
+    it('removes the key entirely when nothing is left to keep', async () => {
+      const backend = new FakeBackend(ROOM_CAPACITY);
+      const store = new VerifiedStore(backend, { capacity: ROOM_CAPACITY, onWarning: () => {} });
+      await new Roster(store).save({
+        ...emptySheet('a', 'A'),
+        edges: [{ name: 'QUICK', text: 'A short summary off the card.' }],
+      });
+      expect(await new Roster(store, () => {}, book).pruneRulesText()).toBe(1);
+      expect(backend.data[TEXT_KEY]).toBeUndefined();
+    });
+
+    it('does nothing without a book, rather than emptying the dictionary', async () => {
+      const backend = new FakeBackend(ROOM_CAPACITY);
+      const store = new VerifiedStore(backend, { capacity: ROOM_CAPACITY, onWarning: () => {} });
+      const plain = new Roster(store);
+      await plain.save(sheet());
+      expect(await plain.pruneRulesText()).toBe(0);
+      expect(Object.keys(backend.data[TEXT_KEY] as object)).toHaveLength(2);
+    });
+  });
+
+  /**
+   * `RosterExport` promises full sheets — "an export must stand alone". Now that
+   * most text is fetched rather than stored, that promise runs through the book.
+   */
+  it('exports full text even though almost none of it is stored', async () => {
+    const { roster } = booked();
+    await roster.save(sheet());
+    const [only] = (await roster.export()).sheets;
+    expect(only?.edges[0]?.text).toBe('The full printed wording, which is longer and says more.');
+    expect(only?.hindrances[0]?.text).toBe('Homebrew: the family curse.');
+  });
+
+  it('reimports that export into a room with no book at all', async () => {
+    const { roster } = booked();
+    await roster.save(sheet());
+    const file = await roster.export();
+
+    const { roster: bookless } = newRoster();
+    await bookless.import(file);
+    // Nothing to fetch from, so the text must have travelled in the file.
+    expect((await bookless.get('reggie'))?.edges[0]?.text).toContain('full printed wording');
+  });
+});

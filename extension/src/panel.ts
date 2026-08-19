@@ -1543,33 +1543,34 @@ function sessionBlock(): HTMLElement {
 }
 
 /**
- * Storage relief: the rules-text dictionary, and a switch to drop it.
+ * Storage relief: clear the stored rules text the rulebook already covers.
  *
- * The dictionary is every edge and hindrance's prose, stored once and shared by
- * the party. It is the largest thing in the room and the least load-bearing —
- * without it a sheet still rolls, it just lists its edges without their wording.
+ * This used to be a drop/restore switch, and both halves rested on something that
+ * is no longer true — that dropping the dictionary meant losing the wording. It
+ * does not: `joinSheet` now falls back to the catalogue in the bundle, so an edge
+ * the book knows shows its text whether or not anything is stored.
  *
- * Dropping it is reversible because the book ships inside the extension: turning
- * it back on rebuilds from the catalogue. What does not come back is text that
- * was never in the book, which is what the warning is about.
+ * That makes "restore" actively wrong — it would write back prose the book
+ * already supplies, spending the space this exists to reclaim — so the button is
+ * one-way now. What it removes is the text of entries the book knows; homebrew,
+ * and anything the book has never heard of, stays. Nothing that cannot be
+ * reconstructed is thrown away, which is why there is no longer a confirm.
  *
- * This is a stopgap and worth naming as one. The real fix is not storing prose in
- * a 15 kB room document at all.
+ * In the party's room this was 4,447 chars, 38% of everything in use.
  */
 function storageBlock(): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'pane-block';
   const heading = paneHeading(
     'Rules text',
-    'The prose behind every edge and hindrance, shared by the whole party. ' +
-      'The biggest thing in the room, and the only one a sheet can do without.',
+    'Older rooms stored the prose of every edge and hindrance. The rulebook ships ' +
+      'inside this extension now, so most of it no longer needs keeping.',
   );
   wrap.append(heading);
 
   const row = document.createElement('div');
   row.className = 'pane-buttons';
   const button = document.createElement('button');
-  button.textContent = 'Rules text';
   row.append(button);
   const note = document.createElement('span');
   note.className = 'pane-note';
@@ -1578,34 +1579,26 @@ function storageBlock(): HTMLElement {
 
   const show = (): void => {
     void roster.rulesTextSize().then((size) => {
-      const on = size > 0;
-      button.textContent = on ? `Drop rules text (${size} chars)` : 'Restore rules text';
-      button.title = on
-        ? 'Free the space. Edges and hindrances keep their names and lose their wording.'
-        : 'Rebuild the wording from the rulebook shipped with this extension';
-      note.textContent = on ? '' : 'not stored';
+      button.textContent = size > 0 ? `Clear stored rules text (${size} chars)` : 'Rules text';
+      button.disabled = size === 0;
+      button.title =
+        size > 0
+          ? 'Remove the stored copy of anything the rulebook covers. The wording stays ' +
+            'on screen — it comes from the book instead.'
+          : '';
+      note.textContent = size > 0 ? '' : 'nothing stored — the book supplies it';
     });
   };
 
   button.addEventListener('click', () => {
     void (async () => {
       try {
-        const size = await roster.rulesTextSize();
-        if (size > 0) {
-          if (
-            !confirm(
-              'Drop the rules text? Edges and hindrances keep their names and lose their ' +
-                'descriptions. Restoring rebuilds them from the rulebook — anything homebrew, ' +
-                'or worded differently on an imported card, will not come back.',
-            )
-          ) {
-            return;
-          }
-          await roster.dropRulesText();
-        } else {
-          const count = await roster.rebuildRulesText((name) => findEntry(name)?.text);
-          notify(count ? `Restored wording for ${count} entries` : 'Nothing in the book to restore');
-        }
+        const removed = await roster.pruneRulesText();
+        notify(
+          removed
+            ? `Cleared ${removed} stored entries — the wording now comes from the rulebook`
+            : 'Nothing stored that the rulebook covers',
+        );
         sheets = await roster.listFull();
         show();
         await showBudget();
@@ -3595,7 +3588,10 @@ OBR.onReady(async () => {
   store = roomStore();
   // The roster's own warnings do keep the notice bar — "saved without their
   // descriptions" is a thing that happened to a character, not a running total.
-  roster = new Roster(store, notify);
+  // The book is passed in so an edge the catalogue knows is stored as a name and
+  // its text comes out of the bundle — see `roster.ts`. Keeps `roster.ts` free of
+  // the catalogue, the same way `rebuildRulesText` takes its lookup.
+  roster = new Roster(store, notify, (name) => findEntry(name)?.text);
   bank = new BennyBank(store);
 
   // Who I am, which the roster needs: a player sees their own sheets, the Marshal
