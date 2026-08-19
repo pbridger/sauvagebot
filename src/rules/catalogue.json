@@ -4,12 +4,14 @@
   {
    "name": "ACE",
    "text": "Some folks are just born to fly—be it dirigibles, experimental ornithopters, or one of those newfangled gliders from the Collegium. They ignore two points of penalties to any Boating, Driving, or Piloting roll, and may spend Bennies to Soak damage for any vehicle they control or command, using the appropriate Boating, Driving, or Piloting skill instead of Vigor. Each success and raise negates a Wound.",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "Character may spend Bennies to Soak damage for their vehicle and ignores up to 2 points of penalties."
   },
   {
    "name": "ACROBAT",
    "text": "The Acrobat gets one free reroll on Athletics totals that involve balance, tumbling, or grappling. It doesn’t affect rolls to interrupt actions, climb, swim, or throw.",
-   "requirements": "Novice, Agility d8+, Athletics d8+"
+   "requirements": "Novice, Agility d8+, Athletics d8+",
+   "summary": "Free reroll on acrobatic Athletics attempts."
   },
   {
    "name": "AGENCY PROMOTION",
@@ -19,7 +21,8 @@
   {
    "name": "AGENT",
    "text": "The shadowy Agency is responsible for rooting out sedition, treason, espionage, corruption, and illegal acts that might plunge the country into another Civil War. Agents are a secretive lot who don’t share information outside their ranks if they can avoid it—not even with the local law. They’re expected to conceal their credentials except under extreme and desperate circumstances. Read the top secret details on page 65.",
-   "requirements": "Novice, Smarts d8+, Fighting d6+, Occult d6+, Shooting d6+"
+   "requirements": "Novice, Smarts d8+, Fighting d6+, Occult d6+, Shooting d6+",
+   "summary": "The character is a United States Agent, gaining access to promotions, favors, and new Edges (see page 65)."
   },
   {
    "name": "ALCHEMY",
@@ -29,57 +32,68 @@
   {
    "name": "ALERTNESS",
    "text": "Not much gets by this hero. They’re very observant and perceptive, and add +2 to their Notice rolls to hear, see, or otherwise sense the world around them.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "+2 to Notice rolls."
   },
   {
    "name": "AMBIDEXTROUS",
    "text": "Your warrior is as deft with their left hand as the right. They ignore the Off-Hand penalty (see page 160). If holding a weapon in each hand, Ambi dextrous characters may stack Parry bonuses (if any) from both weapons.",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "Ignore –2 penalty when making Trait rolls with off-hand."
   },
   {
    "name": "ARCANE BACKGROUND",
    "text": "Certain characters can call upon supernatural power. In the Weird West, there are eight types, detailed on the listed pages.  BLESSED: Page 68.  CHI MASTER: Page 70.  HARROWED: Page 72.  HUCKSTER: Page 83.  MAD SCIENTIST: Page 87.  SHAMANS: Page 92.  VOODOOISTS: Page 97.  WITCHES: Page 99.  NOTE: Arcane Background (Black Magic /Magic /Miracles) is the generic Edge used by some nonplayer characters who fall outside those paths available to player characters. Those with Black Magic or Magic use Spellcasting as their arcane skill, while those with Miracles use Faith. Both have however many Power Points and abilities the Marshal feels is appropriate to their background (nonplayer characters don’t advance like player characters). Critical Failure on an arcane skill roll causes a level of Fatigue and all currently active powers terminate instantly. Marshals have more rules on page 247 for Black Magic in Deadlands.",
-   "requirements": "By Type"
+   "requirements": "By Type",
+   "summary": "Allows the character access to supernatural powers. See page 38."
   },
   {
    "name": "ARCANE RESISTANCE",
    "text": "Magic and the supernatural hold little sway with this maverick. Whether by nature, heritage, or training they’re particularly resistant to magic, weird science, and other supernatural energies. Enemy arcane abilities targeting the hero suffer a −2 penalty and magical damage is reduced by 2 as well. If a hostile power fails to affect the hero due to this penalty, it still activates and consumes Power Points (and may still affect other targets). This includes magical bonuses granted to weapons, such as the smite power or the damage bonus of magical weapons.",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "Enemy arcane skills targeting the hero suffer a −2 penalty; magical damage is reduced by 2."
   },
   {
    "name": "ARCANE RESISTANCE (IMP)",
    "text": "As above, but the penalty to the arcane skill roll and damage are increased to 4.",
-   "requirements": "Novice, Arcane Resistance"
+   "requirements": "Novice, Arcane Resistance",
+   "summary": "As Arcane Resistance except penalty is increased to −4 and magical damage is reduced by 4."
   },
   {
    "name": "ARISTOCRAT",
    "text": "Some folks ride into town with dust on their boots and nary a penny to their name. Others show up in a fine coat with bank notes to some Eastern fortune or foreign title. Your cowpoke may or may not be flush with cash, but they walk the walk and talk the talk of the upper crust—be it railroad barons, foreign dignitaries, or highfalutin’ Society types with their pinky fingers raised. The character was born into privilege or came into it later in life. They may or may not have money (the Rich or Filthy Rich Edge), but still walk in the elite social circles of their locale. Aristocrats add +2 to Persuasion when Networking (see page 228) with the local elite, captains of industry, nobles, or other aristocrats. They also add +2 to Common Knowledge rolls made to know the etiquette of the upper class, recognize family trees or heraldry, or recall gossip concerning others of their station.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "+2 to Common Knowledge and networking with upper class."
   },
   {
    "name": "ARTIFICER",
    "text": "(Any) Some folks don’t just cast spells—they etch them into iron, lace them into charms, or whisper ‘em into moonshine. Heroes with this Edge can craft Arcane Devices and hand ‘em off to allies like chips at a high-stakes poker game. Artificers can create Arcane Devices and give them to their allies. See page 170.",
-   "requirements": "Seasoned, Arcane Background"
+   "requirements": "Seasoned, Arcane Background",
+   "summary": "Allows user to create Arcane Devices."
   },
   {
    "name": "ASSASSIN",
    "text": "In the Weird West, quiet killers ain’t just myths whispered about in saloons. Whether working for the Agency, the Reckoners, or a personal vendetta, assassins know how to kill without a trace. They add +2 to damage rolls when their foe is Vulnerable or they have The Drop.",
-   "requirements": "Novice, Agility d8+, Fighting d6+, Stealth d8+"
+   "requirements": "Novice, Agility d8+, Fighting d6+, Stealth d8+",
+   "summary": "+2 to damage foes when Vulnerable or assassin has The Drop."
   },
   {
    "name": "ATTRACTIVE",
    "text": "In a world full of grimaces and grit, a friendly smile and a pretty face can go a long way. Whether it’s batting lashes or flashing a charming grin, this Dapper Dan knows how to turn heads and smooth talk their way through trouble—especially if the target’s partial to their look. The character adds +1 to Performance and Persuasion rolls if the target is attracted to their general type (gender, sex, species, etc.).",
-   "requirements": "Novice, Vigor d6+"
+   "requirements": "Novice, Vigor d6+",
+   "summary": "+1 to Performance and Persuasion rolls."
   },
   {
    "name": "BEAST BOND",
    "text": "Some folks in the Weird West have a way with critters. Whether it’s a faithful hound, prairie falcon, or mighty stallion, these bonds run deeper than blood. These characters may spend their own Bennies for any animals under their control, including mounts, pets, familiars, and so on.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "The hero may spend Bennies for animals under their control."
   },
   {
    "name": "BEAST MASTER",
    "text": "Not all men and women get along with the beasts of the land, but some have a spark that makes animals sticks to them through thick and thin with tooth, claw, or wing. Animals take to your hero quickly and easily. Critters won’t attack them unless threatened or attacked first. The Beast Master’s “animal magnetism” is so great she’s also attracted a loyal animal companion of Size 0 or smaller, subject to the GM’s approval. The beast is an Extra and doesn’t Advance in Rank or abilities. If a pet is dismissed or killed, the hero gains a replacement in 1d4 days. More Powerful Companions: Beast Master may be taken more than once. Choose one of the effects below each time it’s chosen: • Gain an additional pet. • Increase one of the pet’s Traits one die type (only one Trait per pet). • Increase the maximum Size pet you may have by +1, to a maximum of 3. • Make one pet a Wild Card. (The hero must be of Heroic Rank).",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "Animals like your hero and they start with a pet. See text."
   },
   {
    "name": "BEEN TO THE CROSSROADS",
@@ -89,57 +103,68 @@
   {
    "name": "BEHOLD A PALE HORSE...",
    "text": "The Lone Ranger had Silver, Zorro had Toronado, and your caballero’s steed is no less impressive. Whether it’s a new stallion or the same faithful pony your hero’s had since they were young, there’s something special about this horse. It has character. The faithful beast uses the statistics for a war horse (see page 319) but gains the Fearless special ability and the Danger Sense Edge. What’s more, the horse is a Wild Card, and starts each session with its own two Bennies. If the trusty steed dies, your hombre can start training another, a process that usually takes a few weeks of game time (GM’s call).",
-   "requirements": "Legendary"
+   "requirements": "Legendary",
+   "summary": "The hero gets a special and faithful horse."
   },
   {
    "name": "BERSERK",
    "text": "When this fighter takes a lick, something snaps. They go wild-eyed and roaring, hitting like a freight train and damn near impossible to stop. But with rage like that comes recklessness, and more than one ally’s taken a swing meant for the enemy. Immediately after suffering a Wound or a Shaken result (from physical damage only), your hero must make a Smarts roll or go Berserk. They can voluntarily fail this check if desired. Going Berserk has the following effects:  FURY: The character’s Strength increases a die type and every melee attack must be a Wild Attack (see page 165). They cannot use any skills that require wit or concentration (GM’s call). They may scream out threats and use Intimidation, for example.  ENRAGED: Adrenaline and rage fuel the berserker’s muscles, adding +2 to Toughness. They ignore one level of Wound penalties (this stacks with any other abilities that reduce Wound penalties).  RECKLESS ABANDON: Anytime a berserker rolls a Critical Failure on a Fighting check, they hit a random target within range of their attack (not the intended target), friend or foe. If there are no applicable targets, the blow simply misses, smashes nearby objects, etc. After five consecutive rounds of berserk fury, the hero takes a level of Fatigue. At ten rounds, they take another level of Fatigue and the rage ends. They may also choose to end their rage at any time by making a Smarts −2 roll (as a free action; possibly avoiding Fatigue if this ends the rage before it’s incurred!). Start the count anew if they go berserk again, even in the same battle.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "After being Shaken or Wounded, melee attacks must be Wild Attacks, +1 die type to Strength, +2 to Toughness, ignore one level of Wound penalties, Critical Failure on Fighting roll hits random target. Take Fatigue after every five consecutive rounds, may choose to end rage with Smarts roll –2."
   },
   {
    "name": "BLOCK",
    "text": "Close scrapes has taught your scrappy hero how to turn blades, ducks fists, and come out grinnin’. Their Parry increases by +1 and any Gang Up bonus against them is reduced by one.",
-   "requirements": "Seasoned, Fighting d8+"
+   "requirements": "Seasoned, Fighting d8+",
+   "summary": "+1 Parry, ignore 1 point of Gang Up bonus."
   },
   {
    "name": "BLOCK (IMP)",
    "text": "The hero’s Parry bonus is now +2 and the Gang Up bonus against them is reduced by 2.",
-   "requirements": "Veteran, Block"
+   "requirements": "Veteran, Block",
+   "summary": "+2 Parry, ignore 2 points of Gang Up bonus."
   },
   {
    "name": "BOLSTER",
    "text": "Nothing lifts a cowpoke’s spirit like watchin’ a loudmouth get taken down a peg. When this character successfully Tests a foe—maybe with a well-placed insult or some quick shootin’ sass—they can also snap an ally out of being Distracted or Vulnerable (page 155).",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "May remove Distracted or Vulnerable state after a Test."
   },
   {
    "name": "BORN IN THE SADDLE",
    "text": "Some folks spend so much time on horseback, it’s as if they were born in the saddle and live entirely in it. There’s no place they’d rather be than on the back of a trusty steed. Heroes with the Born in the Saddle Edge get a free reroll on Riding rolls. They also know how to get the most out of their trusty steeds in an emergency. This increases their horse’s Pace by 2 and their running die one step.",
-   "requirements": "Novice, Agility d8+, Riding d6+"
+   "requirements": "Novice, Agility d8+, Riding d6+",
+   "summary": "Free reroll on Riding rolls; increase horse’s Pace by 2 and their running die one step."
   },
   {
    "name": "BRAVE",
    "text": "Terrors walk the West—shadows that shriek, ghosts that whisper, and beasts best left undescribed. This hero’s seen things that would drive most to prayer or panic, but they steel themselves against it. They’ve stared into the maw of madness and didn’t blink. These valiant explorers add +2 to Fear checks and subtract 2 from Fear Table results (see 217).",
-   "requirements": "Novice, Spirit d6+"
+   "requirements": "Novice, Spirit d6+",
+   "summary": "+2 to Fear checks and –2 to rolls on the Fear Table."
   },
   {
    "name": "BRAWLER",
    "text": "Your cowpoke hits like a freight train and soaks up hurt like a cast-iron bathtub. Brawlers increase their Toughness by 1 and roll Strength +d4 when hitting with their fists or feet. If they already have a damage die from Claws (page 310), the Martial Artist Edge, etc., increase the damage die type by one instead. The Brawler Edge doesn’t make the character’s fists Natural Weapons (page 159).",
-   "requirements": "Novice, Strength d8+, Vigor d8+"
+   "requirements": "Novice, Strength d8+, Vigor d8+",
+   "summary": "Toughness +1, add d4 to damage from fists; or increase it a die type if combined with Martial Artist, Claws, or similar abilities."
   },
   {
    "name": "BRAWNY",
    "text": "Big as a barn and twice as solid, this gal could lift a steer and throw it at ya! They’re the kind of bruiser who can carry more gear than a pack mule and still have room for a Gatling pistol. Your bruiser is very large or very fit. Their Size increases by +1 (and therefore Toughness by 1) and they treat Strength as one die type higher when determining Encumbrance (page 116) and Minimum Strength to use armor, weapons, and equipment without a penalty (page 114). Brawny can’t increase a character’s Size above +3.",
-   "requirements": "Novice, Strength d6+, Vigor d6+"
+   "requirements": "Novice, Strength d6+, Vigor d6+",
+   "summary": "Size (and therefore Toughness) +1. Treat Strength as one die type higher for Encumbrance and Minimum Strength to use weapons, armor, or equipment."
   },
   {
    "name": "BRUISER",
    "text": "Now the brute is a real bone-breaker. The fighter increases their Toughness an additional +1, and the damage caused with their fists or claws another die type.",
-   "requirements": "Seasoned, Brawler"
+   "requirements": "Seasoned, Brawler",
+   "summary": "Increase unarmed Strength damage a die type and Toughness another +1."
   },
   {
    "name": "BRUTE",
    "text": "Not everyone is built for finesse. Some bruisers train their bodies to punch through brick walls instead of jump over ‘em. This one’s all power, no polish. They can hurl a stick of dynamite further than most folks can spit and hold their ground when the ground starts shakin’. Brutes focus on core strength and fitness over coordination and flexibility. They treat Athletics as linked to Strength instead of Agility for purposes of Advancement. The character may also resist Athletics Tests with Strength if they choose. Finally, Brutes increase the Short Range of any thrown item by +1. Double that for the adjusted Medium Range, and double again for Long Range. If a thrown item’s Range is 3/6/12, for example, a Brute’s Range is 4/8/16.",
-   "requirements": "Novice, Strength d6+, Vigor d6+"
+   "requirements": "Novice, Strength d6+, Vigor d6+",
+   "summary": "Link Athletics to Strength instead of Agility (including resistance). Short Range of any thrown item increased by +1. Double that for the adjusted Medium Range, and double again for Long Range."
   },
   {
    "name": "BURROW",
@@ -149,12 +174,14 @@
   {
    "name": "CALCULATING",
    "text": "This big brain can often calculate their moves. When their Action Card is a Five or less, they ignore up to 2 points of penalties on one action that turn, which can include Multi-Action, cover, Range, and even Wound penalties.",
-   "requirements": "Novice, Smarts d8+"
+   "requirements": "Novice, Smarts d8+",
+   "summary": "Ignore up to 2 points of penalties on one action with an Action Card of Five or less."
   },
   {
    "name": "CARD SHARP",
    "text": "Your hero has a knack for odds, wagers, and when to call a bluff. They never feel more at home than when they’re shuffling cards, tossing dice, or calculating the chances of some wager. Your character gets one free reroll when making a Gambling roll. That includes hucksters who Deal with the Devil (see page 84)!",
-   "requirements": "Novice, Gambling d6+"
+   "requirements": "Novice, Gambling d6+",
+   "summary": "Free reroll when making Gambling rolls."
   },
   {
    "name": "CAT EYES",
@@ -174,17 +201,20 @@
   {
    "name": "CHAMPION",
    "text": "There are those who walk the dusty trails of the West not just with iron on their hips, but with holy fire in their hearts. Whether it’s the work of the Almighty or some darker force, Champions are chosen to stand against unnatural evils—or deliver fiery destruction if they’ve thrown in with the Devil. Champions fight the forces of darkness (or good), adding +2 damage when attacking supernaturally evil (or good if they’re evil) creatures. The bonus applies to area effect damage, ranged attacks, powers, etc. The GM must decide which foes this bonus applies to, but generally it’s any evil (or good!) creature born of magic or with any supernatural abilities.",
-   "requirements": "Novice, Spirit d8+, Fighting d6+"
+   "requirements": "Novice, Spirit d8+, Fighting d6+",
+   "summary": "+2 damage vs. supernaturally evil creatures."
   },
   {
    "name": "CHANNELING",
    "text": "(Any) Some spell-slingers or weird scientists learn to let the energy flow clean and easy, like a stream fed by mountain snow. When they get a raise on an arcane skill roll—or when using a contraption—they ease the burden, reducin’ the Power Point cost by 1 (even down to 0).",
-   "requirements": "Seasoned, Arcane Background"
+   "requirements": "Seasoned, Arcane Background",
+   "summary": "Reduce Power Point cost by 1 with a raise on the activation roll."
   },
   {
    "name": "CHARISMATIC",
    "text": "Your hero is likable for some reason. They may be trustworthy or kind, or might just exude confidence and goodwill. You get one free reroll on Persuasion rolls.",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "Free reroll when using Persuasion."
   },
   {
    "name": "CHARNEL BREATH",
@@ -194,7 +224,8 @@
   {
    "name": "CHI",
    "text": "Your hero’s martial arts training goes beyond the norm and into the realm of the mystical. At the start of each combat encounter, they gain a “Chi Point” that can be spent to: • Reroll one of their failed attacks (even a Critical Failure). • Make an enemy discard an attack against them, then reroll it from scratch. • Add +d6 damage to a successful Fighting attack made with their hands, feet, claws, or other Natural Weapons (this may Ace). Unspent Chi is lost at the end of the combat encounter.",
-   "requirements": "Veteran, Martial Warrior"
+   "requirements": "Veteran, Martial Warrior",
+   "summary": "Once per combat, reroll failed attack, make enemy reroll successful attack, or add +d6 to unarmed Fighting attack."
   },
   {
    "name": "CHILL O' THE GRAVE",
@@ -209,52 +240,62 @@
   {
    "name": "COMBAT ACROBAT",
    "text": "The tumbler leaps quickly about so that attacks against them are made at −1 as long as they’re aware of the attack, can reasonably move about, and aren’t suffering any Encumbrance or Minimum Strength penalties.",
-   "requirements": "Seasoned, Acrobat"
+   "requirements": "Seasoned, Acrobat",
+   "summary": "−1 to hit with ranged and melee attacks."
   },
   {
    "name": "COMBAT REFLEXES",
    "text": "Your warrior bounces back faster than a jackrabbit on a hot skillet. They add +2 to their rolls when attempting to recover from being Shaken or Stunned.",
-   "requirements": "Seasoned"
+   "requirements": "Seasoned",
+   "summary": "+2 Spirit to recover from being Shaken or Stunned."
   },
   {
    "name": "COMMAND",
    "text": "A real leader can keep a posse calm even when they’re facing down a chupacabra or a horde of walkin’ dead. Extras in Command Range add +1 to their Spirit rolls when attempting to recover from being Shaken and Vigor when attempting to recover from being Stunned.",
-   "requirements": "Novice, Smarts d6+"
+   "requirements": "Novice, Smarts d6+",
+   "summary": "+1 to Extras’ Shaken or Stunned recovery rolls."
   },
   {
    "name": "COMMAND PRESENCE",
    "text": "This honcho’s presence hits like a thunderclap on the plains. A booming voice, effective commands, natural charisma, or simple training results in a much more effective combat element. A hero with this Edge has a Command Range of 10″ (20 yards).",
-   "requirements": "Seasoned, Command"
+   "requirements": "Seasoned, Command",
+   "summary": "Increase Command Range to 10″ (20 yards)"
   },
   {
    "name": "COMMON BOND",
    "text": "In the Weird West, folks who stand alone don’t stand long. This hero shares their luck with the posse, passing good fortune along with a word of hope, a steady hand, or maybe just a sharp bark to snap someone out of their fear. A character with this Edge may freely give their Bennies to any other character they can communicate with. The player should explain what form this takes, from a quick shout of encouragement to a welcome pat on the back.",
-   "requirements": "Wild Card, Novice, Spirit d8+"
+   "requirements": "Wild Card, Novice, Spirit d8+",
+   "summary": "The hero may freely give their Bennies to others."
   },
   {
    "name": "CONCENTRATION",
    "text": "(Any) Some of those with hoodoo can quiet the world like still water. Through grit, prayer, or sheer focus, these arcane types hold their magic longer than most. The base Duration of any non-Instant power is doubled. This includes maintaining powers as well.",
-   "requirements": "Seasoned, Arcane Background"
+   "requirements": "Seasoned, Arcane Background",
+   "summary": "Double Duration of non-Instant powers."
   },
   {
    "name": "CONNECTIONS",
    "text": "Whether they know a ghost rock tycoon, a high-up in the Explorer’s Society, or someone deep in the Black River payroll, this hero’s got ties. Once per session, they can call in a favor—from shady deals to timely reinforcements—as long as they can get word to their people. Connections may be taken more than once, selecting a new faction or contact each time. Once per session, and assuming they can get in touch with them, the heroine can call on their friends for a favor. The favor depends on the nature of the contact (GM’s call), but might include a loan, gear, a few allied fighters, transportation, information, or even a professional with critical skills the party doesn’t have, like a hacker or scholar.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "Contacts provide aid or other favors once per session."
   },
   {
    "name": "COUNTERATTACK",
    "text": "You miss this brawler, you might just lose teeth. Once per round (if not Shaken or Stunned), the character receives a Free Attack (page 156) against one failed Fighting attack against them. The counterattack takes place immediately (before other hits against the hero on the same Action Card, if any).",
-   "requirements": "Seasoned, Fighting d8+"
+   "requirements": "Seasoned, Fighting d8+",
+   "summary": "Free attack against one foe per turn who failed a Fighting roll."
   },
   {
    "name": "DAMNED",
    "text": "Old gunslingers don’t die, they just… Okay, they do die. Usually in messy and embarrassing ways. But if your grizzled veteran of the Weird West goes down, they’re definitely coming back. Taking this Edge is an insurance policy against having your plans for this old hand ended prematurely. If your hero is killed, they automatically return from the grave as a Harrowed (see page 72 for details). Just how long that takes relies on the Marshal’s whim and the story. It could be near-instant, or it could be after your partners put you in a pine box and read the 23rd Psalm. Once you return as Harrowed, you may trade this Edge for an additional Harrowed Edge.",
-   "requirements": "Wild Card, Legendary, Spirit d6+, Reputation"
+   "requirements": "Wild Card, Legendary, Spirit d6+, Reputation",
+   "summary": "The character automatically returns as Harrowed if slain."
   },
   {
    "name": "DANGER SENSE",
    "text": "It’s not always the eyes or ears that save a soul in the Weird West—sometimes it’s just a gut feeling, a twitch in the spine, a cold shiver right before all hell breaks loose. This hombre’s got the kind of sixth sense that kicks in right before the lead starts flyin’ or the floor gives way. Your hero can sense when something bad is about to happen. When rolling for Surprise (page 164), they add +2 to their Notice roll to act in the first round. With a raise, they start the encounter on Hold. In other situations not covered by the Surprise rules (a sniper shot, pit trap, poisoned drink, etc.), Danger Sense gives them a Notice roll at −2 (or +2 if a Notice roll is usually allowed) to detect the hazard and take appropriate action. If this was an attack and the hero makes their Notice roll, the foe doesn’t get The Drop against them.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "Notice roll at +2 to sense ambushes or similar events."
   },
   {
    "name": "DEAD MAN’S HAND",
@@ -269,7 +310,8 @@
   {
    "name": "DEAD SHOT",
    "text": "Shooting d8+ This shootist has a deadly sense of timing. When your Action Card is a Joker, double the total damage of your first successful Athletics (throwing) or Shooting roll this round.",
-   "requirements": "Wild Card, Novice, Athletics or"
+   "requirements": "Wild Card, Novice, Athletics or",
+   "summary": "On first successful Athletics (throwing) or Shooting roll, double damage when dealt a Joker."
   },
   {
    "name": "DEATH MASK",
@@ -284,47 +326,56 @@
   {
    "name": "DODGE",
    "text": "The hero can anticipate attacks or move erratically under fire. Unless the victim of a surprise attack and taken completely unaware, Dodge subtracts 2 from all ranged attacks made against the character. Dodge does not stack with actual cover, however.",
-   "requirements": "Seasoned, Agility d8+"
+   "requirements": "Seasoned, Agility d8+",
+   "summary": "−2 to be hit by ranged attacks."
   },
   {
    "name": "DODGE (IMP)",
    "text": "The hero adds +2 when Evading area effect attacks. See Evasion on page 156.",
-   "requirements": "Seasoned, Dodge"
+   "requirements": "Seasoned, Dodge",
+   "summary": "+2 to Evasion totals."
   },
   {
    "name": "DOUBLE TAP",
    "text": "Quick as a blink, and twice as deadly, this shooter can fire two shots in rapid succession without spoiling their aim. Double Tap can only be used with weapons that have a Rate of Fire of 1 and can fire two shots without needing to manually reload. It adds +1 to hit and damage at the cost of one extra bullet. This is per action, so a shooter can Double Tap more than once if they perform a Multi-Action. Double Tap cannot be combined with Rapid Fire, and doesn’t work with Single-Action revolvers. If used with a weapon capable of Three- Round Burst (rare in the Weird West, but possible; see page 115), it adds +2 to Shooting and damage instead of +1 and expends six bullets. DON'T GET 'IM RILED! REQUIREMENTS: Novice The hero with this Edge can be a real curly wolf when they get roughed up. When causing melee damage, they add their Wound levels to the roll. A hero with three Wounds, for instance, adds +3 to their melee damage rolls!",
-   "requirements": "Seasoned, Shooting d6+"
+   "requirements": "Seasoned, Shooting d6+",
+   "summary": "+1 to hit and damage when firing no more than RoF 1 per action."
   },
   {
    "name": "DUELIST",
    "text": "Your hombre is a deadly gunfighter, and anyone foolish enough to face them at High Noon is likely to end up in the boneyard by sunset. In a duel, this hero receives two extra Hole Cards at the start of the throwdown. Rules for Dueling can be found on page 215.",
-   "requirements": "Novice, Shooting d6+"
+   "requirements": "Novice, Shooting d6+",
+   "summary": "Grants two extra Hole Cards during a duel (page 215)."
   },
   {
    "name": "ELAN",
    "text": "When things get dicey, some folks flinch. Not this one. They rise up, burning with fire and determination, driven by some deep well of spirit that pushes them to shine brightest when the chips are down. When you spend a Benny to reroll a Trait, add +2 to the total. The bonus applies only when rerolling. It doesn’t apply to damage rolls (since they’re not Trait rolls), nor does it apply to Soak rolls unless you’re using another Benny to reroll the Vigor check.",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "+2 when spending a Benny to reroll a Trait roll."
   },
   {
    "name": "EXPERT",
    "text": "affected Trait As the Professional Edge, increasing the Trait and its limit one additional step.",
-   "requirements": "Legendary, Professional in"
+   "requirements": "Legendary, Professional in",
+   "summary": "The character’s Trait and its limit increases one step."
   },
   {
    "name": "EXTRA EFFORT",
    "text": "(Gifted), Focus d6+ Some of the Gifted dig deep—real deep— when times are tough and boost their powers. Extra Effort increases a Focus total after it’s rolled by +1 for 1 Power Point, or +2 for 3 Power Points. It may not be used to improve a Critical Failure.",
-   "requirements": "Seasoned, Arcane Background"
+   "requirements": "Seasoned, Arcane Background",
+   "summary": "Increase Focus by +1 for 1 Power Point or +2 for 3 Power Points."
   },
   {
    "name": "EXTRACTION",
    "text": "When this dude backs out of a scuffle, they’re slicker than a greased pig. Adjacent attackers usually get a free Fighting attack when a character Withdraws from Melee (see page 165). This can be a very dangerous proposition for most, but not your wily rogue. They ignore the attack of one such foe (player’s choice).",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "One adjacent foe doesn’t get a free attack when you withdraw from close combat."
   },
   {
    "name": "FAME",
    "text": "This traveler is a known face—maybe from posters, dime novels, or leaving a trail of busted-up bad guys behind in their wake. Whether they’re a singer, shootist, or stage star, folks recognize ‘em and are usually willin’ to help... or challenge ‘em, if they’re feelin’ lucky. They make double the normal fee when performing for pay (see Performance, page 34). They can also use their celebrity to add +1 to Persuasion rolls if a target is friendly and knows who they are (Common Knowledge modified by how likely the individual is to know the celebrity). The downside of Fame is that the individual is often recognized, others frequently want something from them, they may be followed by fans or admirers, or they might be hunted by someone out to prove they’re better!",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "+1 Persuasion rolls when recognized (Common Knowledge), double usual fee for Performance."
   },
   {
    "name": "FAMILIAR",
@@ -334,12 +385,14 @@
   {
    "name": "FAMOUS",
    "text": "Now your cowgirl is truly famous. They’re widely known and generally admired throughout the West and likely Back East as well. They make 5× the normal fee when performing and add +2 to Persuasion rolls when influencing friendly individuals who know who they are. The price is higher for the truly Famous, too, with more demands on their time, obligations, rivals, scandals, and an inability to operate in crowds without being recognized.",
-   "requirements": "Seasoned, Fame"
+   "requirements": "Seasoned, Fame",
+   "summary": "+2 Persuasion when recognized, 5 × or more usual fee for Performance."
   },
   {
    "name": "FAN THE HAMMER",
    "text": "Most folks have trouble enough drawing a bead and hitting a target with a single shot. The supremely skilled shootist with this Edge can play the “six-gun symphony,” firing their pistol faster than chain lightning. A gunslinger who wants to “fan the hammer” holds the trigger of a single-action pistol down while repeatedly slapping the hammer with their other hand. Assuming their six-gun is fully loaded, they may fire up to six shots in a single action. Each shot is a Shooting die at a −4 Shooting penalty, along with the Wild Die if the shooter is a Wild Card. A player character firing all six shots, for example, rolls six Shooting dice and one Wild Die. What you lose in accuracy you (hopefully) make up for by getting lead in the air! Just watch who’s about when you’re fanning the hammer, partner. If your Shooting die comes up 1 or 2, there’s a chance you hit an Innocent Bystander (see page 158).",
-   "requirements": "Seasoned, Agility d8+, Shooting d8+"
+   "requirements": "Seasoned, Agility d8+, Shooting d8+",
+   "summary": "The hombre can fire multiple shots in one action by “fanning the hammer” on a single-action revolver. See page 45."
   },
   {
    "name": "FAST AS DEATH",
@@ -354,7 +407,8 @@
   {
    "name": "FAST HEALER",
    "text": "Some folks just bounce back. Could be clean living, a strong constitution, or maybe some deal made under a blood moon. Either way, this one stitches up faster than most and shrugs off hurts that’d lay another soul low. Those with this blessing add +2 to Vigor rolls for natural healing, and check every three days instead of five (see Healing, page 186).",
-   "requirements": "Novice, Vigor d8+"
+   "requirements": "Novice, Vigor d8+",
+   "summary": "+2 Vigor when rolling for natural healing; check every 3 days."
   },
   {
    "name": "FAVORED",
@@ -364,12 +418,14 @@
   {
    "name": "FEINT",
    "text": "When performing a Test (page 164) with the Fighting skill, you can choose to make the foe resist with Smarts instead of Agility.",
-   "requirements": "Novice, Fighting d8+"
+   "requirements": "Novice, Fighting d8+",
+   "summary": "You may choose to make foe resist with Smarts instead of Agility during a Fighting Test."
   },
   {
    "name": "FERVOR",
    "text": "Fiery words, a battle cry, a hymn from an old gospel, or something older still can inspire others to bloody fervor. Extras in range add +1 to their Fighting damage rolls. HOLD THE LINE! REQUIREMENTS: Seasoned, Smarts d8+, Command The line holds—not because it’s safe, but because this leader wills it so. Maybe it’s a marshal with nerves of steel or a tough old sergeant with fire in their gut. Hold the Line strengthens the will of any Extras under the hero’s command, adding +1 to their Toughness.",
-   "requirements": "Veteran, Spirit d8+, Command"
+   "requirements": "Veteran, Spirit d8+, Command",
+   "summary": "Extras in range add +1 to their Fighting damage rolls."
   },
   {
    "name": "FETISH",
@@ -379,22 +435,26 @@
   {
    "name": "FILTHY RICH",
    "text": "This fortunate individual is very wealthy. They have five times the starting funds for the setting during character creation ($1,250) and, if appropriate, a yearly income after responsibilities of around $10,000. Even wealthier characters may exist, but unless there’s a game effect it probably shouldn’t matter. This should be worked out with the GM and come with many more assets as well as onerous responsibilities.",
-   "requirements": "Novice, Rich"
+   "requirements": "Novice, Rich",
+   "summary": "Five times starting funds and $500K average salary."
   },
   {
    "name": "FIRST STRIKE",
    "text": "Move into reach of this wrangler and you’ll eat a fist full of knuckles. Once per round, as long as they’re not Shaken or Stunned, the hero gets a free Fighting attack immediately after a foe moves into Reach. (See Free Attacks on page 156).",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "Free Fighting attack once per round when foe moves within Reach."
   },
   {
    "name": "FIRST STRIKE (IMP)",
    "text": "As above but the hero may attack up to three foes each turn.",
-   "requirements": "Heroic, First Strike"
+   "requirements": "Heroic, First Strike",
+   "summary": "Free Fighting attack against up to three foes when they move within Reach."
   },
   {
    "name": "FLEET-FOOTED",
    "text": "Whether they’re runnin’ from a lynch mob or racing the 4:15 to Yuma, this cowpoke moves like greased lightning. Folks swear they saw ‘em in two places at once—and they’re usually gone before the dust settles. The hero’s Pace is increased by +2 and their running die increases one step (from d6 to d8, for example).",
-   "requirements": "Novice, Agility d6+"
+   "requirements": "Novice, Agility d6+",
+   "summary": "Pace +2, increase running die one step."
   },
   {
    "name": "FLOCK",
@@ -404,32 +464,38 @@
   {
    "name": "FOLLOWERS",
    "text": "Each time this Edge is chosen, five followers come to fight by the hero’s side. If any are lost, others eventually take their place (how long is up to the GM and the circumstances). Followers must be cared for and generally want a share of whatever loot, treasure, or other rewards the hero acquires. Otherwise, they are completely dedicated to their task. They won’t throw their lives away but are willing to risk them repeatedly in their service. Use the Soldier profile found on page 317 for the followers. A hero may outfit their allies as they see fit. Followers Advance just like player characters (see page 111). Use the Allies rules on page 203 to give them distinctive personalities if desired.",
-   "requirements": "Wild Card, Legendary"
+   "requirements": "Wild Card, Legendary",
+   "summary": "The hombre gets a fourth action, increasing the maximum Multi-Action penalty to –6."
   },
   {
    "name": "FREE RUNNER",
    "text": "Your nimble character is very skilled at running, jumping, swinging, scampering up walls, and over obstacles. As long as there are obstacles they can bound on, bounce off, or swing on, they move at full Pace on Difficult Ground when on foot. They also add +2 to Athletics rolls when climbing and in foot Chases on page 205).",
-   "requirements": "Novice, Agility d8+, Athletics d6+"
+   "requirements": "Novice, Agility d8+, Athletics d6+",
+   "summary": "Ignore Difficult Ground and add +2 to Athletics in foot chases and Athletics (climbing)."
   },
   {
    "name": "FRENZY",
    "text": "This scrapper swings like a Texas twister. As a limited action, a character with Frenzy may roll a second Fighting die with any one of their Fighting attacks for the turn. The extra die may be allocated to the same or different targets as the player sees fit. Resolve each separately.",
-   "requirements": "Seasoned, Fighting d8+"
+   "requirements": "Seasoned, Fighting d8+",
+   "summary": "Roll a second Fighting die in one melee attack. Limited action."
   },
   {
    "name": "FRENZY (IMP)",
    "text": "As Frenzy but the fighter adds a third Fighting die to their Fighting attack made with Frenzy this turn. Example: Red uses her Colts to pistol whip a walking dead. She has Frenzy (Imp) and decides to attack three times (a Multi-Action at the usual penalty). She rolls her Fighting skill with two extra dice for her first attack, but doesn’t get the extra dice on her second or third Fighting rolls.",
-   "requirements": "Veteran, Frenzy"
+   "requirements": "Veteran, Frenzy",
+   "summary": "Roll a third Fighting die in one melee attack. Limited action."
   },
   {
    "name": "GADGETEER",
    "text": "(Weird Science), Weird Science d6+ Some mad scientists can slap together miracles outta baling wire, ghost rock, and gumption! A Gadgeteer can spend up to three Power Points to “jury rig” a device from any reasonable collection of spare parts. This allows them to activate any power normally available to Mad Scientists of their Rank or lower, with a Power Point cost of 3 or lower. The total cost of an individual power (plus any modifiers) cannot exceed the points spent to create it, nor can the inventor apply Limitations to the gadget. They may attempt to create multiple devices as long as they have the points to do so. Each gadget is created and activated with a Weird Science roll at −2. This takes one entire turn, during which they can do nothing else (they cannot take Multi-Actions that turn). In all other ways, it works as the normal activation of a power. The inventor uses Power Points directly from their pool for the device, but once its initial Duration is finished (it cannot be maintained) it falls apart into its component pieces. Example: Gabe has Arcane Background (Mad Science). He wants to use boost Trait to help Red fight a giant rattlesnake, but only has the burst and blast powers. Fortunately, he’s a Gadgeteer, so Gabe can put boost Trait into an “electrical bio-inducer.” The device can take up to three points worth of powers, so he adds the Hurry modifier and gives Red +2 Pace as well.",
-   "requirements": "Seasoned, Arcane Background"
+   "requirements": "Seasoned, Arcane Background",
+   "summary": "Spend 3 Power Points to create a device that replicates another power."
   },
   {
    "name": "GALLOWS HUMOR",
    "text": "Some people make jokes about the direst situations. They can stare the Grim Reaper himself in the face, just so long as something about him strikes them as funny. It’s a skill that serves anyone well. A character with this Edge may use their Taunt skill instead of Spirit when making a Fear check (and all the usual modifiers apply as normal). If they get a raise, they mock the threat so effectively it acts as +1 Support for all allies making the same Fear check. Just make sure you roll and resolve your Fear check first, partner!",
-   "requirements": "Novice, Taunt d6+"
+   "requirements": "Novice, Taunt d6+",
+   "summary": "The hero may use Taunt instead of Spirit when making Fear checks. A raise adds +1 to Support to allies’ checks."
   },
   {
    "name": "GHOST",
@@ -439,42 +505,50 @@
   {
    "name": "GIANT KILLER",
    "text": "The bigger they are, the harder they are to kill. At least for most. Your hero knows how to find the weak points in the most massive of foes. They add +1d6 damage when attacking creatures who are three or more Sizes larger than themselvew (see Size, page 161). A human (Size 0) gets the bonus against a creature of Size 3 or greater.",
-   "requirements": "Veteran"
+   "requirements": "Veteran",
+   "summary": "+1d6 damage vs. creatures three Sizes larger or more."
   },
   {
    "name": "GREAT LUCK",
    "text": "The player draws two extra Bennies instead of one at the start of each session.",
-   "requirements": "Novice, Luck"
+   "requirements": "Novice, Luck",
+   "summary": "+2 Bennies at the start of each session."
   },
   {
    "name": "GRIT",
    "text": "The Weird West ain’t for the faint of heart, partner. Folks who survive out here have nerves like barbed wire and wills like granite. Grit’s what keeps a soul from breaking when the wind howls and something evil comes crawling outta the dark. Through perseverance and maybe a little insanity, this hardcase reduces penalties to the Fear check by 2. This stacks with Brave.",
-   "requirements": "Veteran, Spirit d8+, Guts"
+   "requirements": "Veteran, Spirit d8+, Guts",
+   "summary": "Reduce penalties to Fear checks by 2."
   },
   {
    "name": "GUTS",
    "text": "A hero with this Edge has learned to steel themself against the horrors that stalk the Weird West. They get a free reroll when making Fear checks.",
-   "requirements": "Novice, Spirit d6+"
+   "requirements": "Novice, Spirit d6+",
+   "summary": "Free reroll when making Fear checks."
   },
   {
    "name": "HARD TO KILL",
    "text": "This adventurer has more lives than a herd of cats. They may ignore their Wound penalties when making Vigor rolls to avoid Bleeding Out (see page 149).",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "COMBAT EDGES (CONT)"
   },
   {
    "name": "HARDER TO KILL",
    "text": "Your hero is tougher to kill than a three- headed rat. If killed, roll a die. On an odd result, they’re dead as usual. Even, they’re Incapacitated but somehow escape death. They may be captured, stripped of all their belongings, or mistakenly left for dead, but somehow survive.",
-   "requirements": "Veteran, Hard to Kill"
+   "requirements": "Veteran, Hard to Kill",
+   "summary": "Roll a die if the character perishes. Even, they’re Incapacitated but survives somehow."
   },
   {
    "name": "HARROWED",
    "text": "Some folks just don’t know when to die— and a rare few come back after crossing over, dragged outta the grave by things from the depths of the Abyss. They walk the earth again, hollow-eyed and cold as the grave, with death whispering in one ear and life clinging to the other. The price they pay is an eternal battle for their own soul. If you take this Edge, your character has been reborn into unlife and you can read the grisly details on page 248. The Harrowed Edge may only be selected at character creation. To become Harrowed later requires shedding the mortal coil and a whole lot of luck (the Marshal has information on how this might occur), or by taking the Damned Edge at Legendary Rank. Note: Talk it over with your Marshal before you take this Edge, because it sometimes becomes an involuntary Hindrance to everyone else in the posse!",
-   "requirements": "Wild Card, Novice, Spirit d6+"
+   "requirements": "Wild Card, Novice, Spirit d6+",
+   "summary": "This ornery cuss has returned from beyond. See page 72."
   },
   {
    "name": "HEALER",
    "text": "In a land of hexes, hauntings, and horrors, someone who can patch up a bullet wound or pull a soul back from the brink is worth more than their weight in ghost rock. A hero with this Edge adds +2 to all Healing rolls, whether natural or magical in nature.",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "+2 to Healing rolls, magical or otherwise."
   },
   {
    "name": "HELL STEED",
@@ -499,12 +573,14 @@
   {
    "name": "HOLY/UNHOLY WARRIOR",
    "text": "(Miracles), Faith d6+ The faithful are often called on to face the dangers of the Reckoning. To survive such hardships, the forces of good (or evil) grant miracles and the ability to turn their favor into supernatural protection. The chosen may add +1 to the total of a final Soak roll for each Power Point spent, to a maximum of +4.",
-   "requirements": "Seasoned, Arcane Background"
+   "requirements": "Seasoned, Arcane Background",
+   "summary": "Add +1 to +4 to Soak rolls for each Power Point spent."
   },
   {
    "name": "HUMILIATE",
    "text": "Some folks draw a six-shooter. Others draw blood with a smirk and a sneer. This character’s wit cuts deep enough to leave a scar, and they get a free reroll on Taunt Tests when twistin’ the verbal knife.",
-   "requirements": "Novice, Taunt d8+"
+   "requirements": "Novice, Taunt d8+",
+   "summary": "Free reroll when making Taunt rolls."
   },
   {
    "name": "IMPLACABLE",
@@ -519,27 +595,32 @@
   {
    "name": "IMPROVED COUNTERATTACK",
    "text": "This hombre is quicker than a rattler in a dogfight. As above but the hero gets a Free Attack against up to three failed attacks each round.",
-   "requirements": "Veteran, Counterattack"
+   "requirements": "Veteran, Counterattack",
+   "summary": "As Counterattack, but against three failed attacks per turn."
   },
   {
    "name": "IMPROVED EXTRACTION",
    "text": "Up to three foes’ (player’s choice) don’t get attacks when your warrior moves out of melee with them.",
-   "requirements": "Seasoned, Extraction"
+   "requirements": "Seasoned, Extraction",
+   "summary": "Three adjacent foes don’t get free attacks when you withdraw from combat."
   },
   {
    "name": "IMPROVED FAN THE HAMMER",
    "text": "Hammer, Shooting d10+ As Fan the Hammer, above, but each shot suffers a −2 Shooting penalty.",
-   "requirements": "Heroic, Agility d10+, Fan the"
+   "requirements": "Heroic, Agility d10+, Fan the",
+   "summary": "Reduces the penalty for fanning the hammer from –4 to –2."
   },
   {
    "name": "IMPROVED RAPID FIRE",
    "text": "The shooter may now increase their weapon’s Rate of Fire by 1 twice in the same turn (via a Multi-Action). Example: Gabe fires a steam Gatling and has Improved Rapid Fire. The weapon has a Rate of Fire of 3 and Gabe decides to fire it on all three of his allowed actions (see Multi-Actions on page 159). He rolls an extra Shooting die with his first and second attack, raising the weapon’s Rate of Fire to 4 each time. He doesn’t get the bonus on his third attack—the machine gun’s Rate of Fire remains a 3.",
-   "requirements": "Veteran, Rapid Fire"
+   "requirements": "Veteran, Rapid Fire",
+   "summary": "Increase RoF by 1 for up to two Shooting attacks per turn."
   },
   {
    "name": "IMPROVED RAPID RECHARGE",
    "text": "The character now regains 20 Power Points per hour spent resting.",
-   "requirements": "Veteran, Rapid Recharge"
+   "requirements": "Veteran, Rapid Recharge",
+   "summary": "Recover 20 Power Points per hour."
   },
   {
    "name": "IMPROVED TRACKIN’ TEETH",
@@ -554,7 +635,8 @@
   {
    "name": "IMPROVISATIONAL FIGHTER",
    "text": "Anything’s a weapon in the right hands. A brawler with this Edge can use a table leg on a head like an artist uses a paintbrush on a canvas. They ignore the usual −2 penalty when wielding improvised weapons. See page 158 for details on Improvised Weapons.",
-   "requirements": "Seasoned, Smarts d6+"
+   "requirements": "Seasoned, Smarts d6+",
+   "summary": "Ignore –2 penalty when attacking with improvised weapons."
   },
   {
    "name": "INFEST",
@@ -564,12 +646,14 @@
   {
    "name": "INSPIRE",
    "text": "Exceptional leaders inspire those around them to great feats of valor and determination. As a limited action, the hero may roll their Battle skill to Support one type of Trait roll, and apply it to all allied Extras in Command Range. A leader could Support all Shooting attacks in range, for example, or all Spirit rolls to recover from being Shaken. Inspire requires some sort of communi cation with those it affects.",
-   "requirements": "Seasoned, Command"
+   "requirements": "Seasoned, Command",
+   "summary": "+1 to Extras’ Toughness in Command Range."
   },
   {
    "name": "INVESTIGATOR",
    "text": "Investigators spend a great deal of time researching ancient legends, working the streets, or deducing devilish mysteries. Whether it’s tracking down a rogue scientist, a fleshcrafter, or a ghost that leaves letters carved into corpses, Investigators are relentless. Investigators add +2 to Research rolls and Notice rolls made to search through desks for important papers, sift through stacks of junk mail for something of note, or spy obscured items from piles of junk or debris.",
-   "requirements": "Novice, Smarts d8+, Research d8+"
+   "requirements": "Novice, Smarts d8+, Research d8+",
+   "summary": "+2 to Research and certain types of Notice rolls."
   },
   {
    "name": "IRON BOUND",
@@ -579,37 +663,44 @@
   {
    "name": "IRON JAW",
    "text": "This bruider has a chin like a brick wall. The character adds +2 to Soak rolls and Vigor rolls to avoid Knockout Blows (see page 155).",
-   "requirements": "Novice, Vigor d8+"
+   "requirements": "Novice, Vigor d8+",
+   "summary": "+2 to Soak and Vigor rolls to avoid Knockout Blows."
   },
   {
    "name": "IRON WILL",
    "text": "Willed The hero now adds their Strong Willed bonus to resist powers and negate their effects. Iron Will doesn’t stack with Brave, nor does it apply to subsequent rolls resulting from powers such as being Shaken by a damaging power, fear, or the like.",
-   "requirements": "Seasoned, Brave, Strong"
+   "requirements": "Seasoned, Brave, Strong",
+   "summary": "The bonus now applies to resisting and recovery from powers."
   },
   {
    "name": "JACK-OF-ALL-TRADES",
    "text": "You meet all kinds out West—con men, tinkerers, ex-soldiers, and folks who’ve lived five lives before breakfast. The character makes a Smarts roll as an action after observing or studying some subject. They gain a d4 in the relevant skill with success, or d6 with a raise. They may try again after an hour of study, trial and effort, or immersion if they fail or want to try for a raise. This lasts until the character attempts to learn a different subject, whether they’re successful or not.",
-   "requirements": "Novice, Smarts d10+"
+   "requirements": "Novice, Smarts d10+",
+   "summary": "Gain d4 in a skill (or d6 with a raise) until replaced."
   },
   {
    "name": "KILLER INSTINCT",
    "text": "This hero hates losing with a fiery passion, giving them a free reroll in any opposed Test they initiates.",
-   "requirements": "Seasoned"
+   "requirements": "Seasoned",
+   "summary": "The hero gets a free reroll in any opposed Test they initiate."
   },
   {
    "name": "KNACK",
    "text": "This Edge should only be taken during character creation, unless there’s a good reason for the hero to “discover” their latent powers at a later date. The Weird West is a superstitious place, where rumors and old wives’ tales abound. Occasionally, these folktales contain a germ of truth. A Knack is just that—folklore come true. Now you get to choose one of the special events that coincided with the time of your character’s birth. Bastard: Well, that’s what your hero is. Not the mean ornery kind, but the fatherless kind. A child born out of wedlock is said to be able to see the unseen. Spend a Benny to automatically be able to see invisible and hidden critters, or those that supernaturally blend in with their surroundings, for five rounds. Born on All Hallows’ Eve: They say those born on this day have a greater connection to the spirit world. They occasionally receive warnings if their actions are about to cause disastrous consequences. A hero who was Born on All Hallows’ Eve can spend Conviction to reroll a Critical Failure. Born on Christmas: A babe born on Christmas is particularly resistant to arcane effects powered by evil spirits. Only heroes with the Blessed or Shaman Arcane Background can take this Knack. If you wanted to take a different Arcane Background, this isn’t the Knack for you. When targeted by a power from any other Arcane Background, a hero with this Knack can spend a Benny to negate the effect and force the caster to make a Spirit roll (−4) or be Shaken. Breech Birth: A baby born butt-first is said to have the uncanny ability to heal injuries. Your hero is just such a person and can spend a Benny to use the healing power. They don’t need to roll and automatically gets a single success (thus healing one Wound). Seventh Son: Your hero is fated for greatness; his legend will loom large in the Weird West. This hombre has the ability to control fate. Any time a Benny is used in their presence, they can spend a Benny of their own to negate its effect. Shooting Star: A shooting star or comet lit up the sky at the time of your hero’s birth, and many believe it foretold their skills as a great leader. At the beginning of any combat, you may spend a Benny to double the character’s Command Range. This increased range lasts until the end of the encounter. Storm Born: Your character was born in the midst of a great storm and has little fear. When you spend a Benny to reroll a Fear check, you ignore all Fear penalties, both from the critter and the local Fear Level.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "The character was born on a prodigous date. See page 60."
   },
   {
    "name": "LEVEL HEADED",
    "text": "Fighters who can keep their cool when every one else is running for cover make deadly combatants. A hero with this Edge draws an additional Action Card in combat and chooses which to use.",
-   "requirements": "Seasoned, Smarts d8+"
+   "requirements": "Seasoned, Smarts d8+",
+   "summary": "Draw an additional Action Card each round in combat and choose which one to use."
   },
   {
    "name": "LEVEL HEADED (IMP)",
    "text": "As above but the hero draws two additional cards and chooses which to keep.",
-   "requirements": "Seasoned, Level Headed"
+   "requirements": "Seasoned, Level Headed",
+   "summary": "Draw two additional Action Cards each round in combat and choose which one to use."
   },
   {
    "name": "LIKE AN OAK",
@@ -619,12 +710,14 @@
   {
    "name": "LIQUID COURAGE",
    "text": "Some folks say whiskey makes a man brave. Others say it just makes ‘im stupid. But there’s a rare breed for whom a slug o’ moonshine lights a fire in the belly, chases off pain, and steels their hide—at least for a spell. Don’t expect ‘em to be sharp as a Bowie knife, though. This individual processes alcohol differently than most. The round after consuming a stiff drink (about eight ounces of hard liquor or equivalent), their Vigor increases one die type (increasing Toughness as well). The drinker can also ignore one level of Wound penalties (which stacks with other abilities that do the same). Smarts, Agility, and all linked skills suffer a −1 penalty for the duration, however. The effect lasts for one hour after it begins, at which point the boozer suffers a level of Fatigue for the next four hours.",
-   "requirements": "Novice, Vigor d8+"
+   "requirements": "Novice, Vigor d8+",
+   "summary": "Alcohol increases Vigor a die type and ignores one level of Wound penalty; –1 to Agility, Smarts, and related skills."
   },
   {
    "name": "LUCK",
    "text": "There’s no explainin’ it—this one’s just kissed by Lady Luck. When the cards fall, they fall right. When the bullet flies, it misses by an inch. You could call it destiny... or just one helluva lucky streak. They draw one extra Benny at the beginning of each game session, allowing them to succeed at important tasks more often than most, and survive incredible dangers.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "Character has d6 in languages equal to half their Smarts die."
   },
   {
    "name": "MAN OF A THOUSAND FACES",
@@ -634,42 +727,50 @@
   {
    "name": "MARKSMAN",
    "text": "Shooting d8+ Stay still, aim true. The hero is a natural with ranged weapons. If they don’t move in a turn and fire no more than a Rate of Fire of 1 as their first action, they may add +1 to an Athletics (throwing) or Shooting roll, or ignore up to 2 points of penalties from Called Shots, Cover, Range, Scale, or Speed. This is a lesser version of the Aim maneuver and does not stack with it. Marksman doesn’t apply to additional attacks after the first.",
-   "requirements": "Seasoned, Athletics d8+ or"
+   "requirements": "Seasoned, Athletics d8+ or",
+   "summary": "Ignore up to 2 points of penalties from Range, Cover, Called Shot, Scale, or Speed; or add +1 to first Athletics (throwing) or Shooting roll. Character may not move or fire greater than RoF 1."
   },
   {
    "name": "MARTIAL ARTIST",
    "text": "The fighter has trained in basic martial arts. Their fists and feet are weapons (see Natural Weapons, page 159) so they’re always consid ered armed. They add +1 when striking with them and cause Strength+d4 damage. If they already have a Strength damage die from claws or the Brawler Edge, increase the damage a die type. Martial Artist does not add to damage from other Natural Weapons such as fangs or horns.",
-   "requirements": "Novice, Fighting d6+"
+   "requirements": "Novice, Fighting d6+",
+   "summary": "Unarmed Fighting +1, fists and feet count as Natural Weapons, add d4 damage die to unarmed Fighting attacks (or increase die a step if you already have it)."
   },
   {
    "name": "MARTIAL WARRIOR",
    "text": "Increase the warrior’s Fighting bonus to +2 and their damage die an additional step.",
-   "requirements": "Seasoned, Martial Artist"
+   "requirements": "Seasoned, Martial Artist",
+   "summary": "Unarmed Fighting +2, increase damage die type a step."
   },
   {
    "name": "MASTER",
    "text": "in affected Trait The character’s Wild Die increases to a d10 when rolling the selected Expert Trait.",
-   "requirements": "Wild Card, Legendary, Expert"
+   "requirements": "Wild Card, Legendary, Expert",
+   "summary": "The character’s Wild Die is a d10 with a chosen Trait."
   },
   {
    "name": "MASTER OF ARMS",
    "text": "Increase the hero’s Parry an additional +1 and their Fighting bonus damage die is now a d10.",
-   "requirements": "Legendary, Weapon Master"
+   "requirements": "Legendary, Weapon Master",
+   "summary": "Parry further +1 and Fighting bonus damage die is d10."
   },
   {
    "name": "MASTER TACTICIAN",
    "text": "The Tactician now gets a total of two extra Action Cards to distribute each round.",
-   "requirements": "Veteran, Tactician"
+   "requirements": "Veteran, Tactician",
+   "summary": "Draw and distribute two extra Action Cards instead of one."
   },
   {
    "name": "MCGYVER",
    "text": "A McGyver can improvise a device from common resources when the need arises. Given a few simple items, they can make a Repair roll to craft improvised weapons, explosives, or tools, that last until used or the end of the encounter (GM’s call). This takes one entire turn, and they can’t move or take any other actions while constructing the device. Failure means the device isn’t ready. A Critical Failure means they don’t have the right materials and can’t create the device this encounter. Success creates a minor explosive (2d4 explosive in a Small Blast Template), a one shot projectile weapon like a “zip gun” (Range 5/10/20, Damage 2d6), rickety raft, electrical source, etc. A raise creates a larger explosive (2d6 in a Medium Blast Template or 2d4 in a Large), a better ranged weapon (five shots, 2d8 damage, Range 10/20/40), a more stable raft, a more powerful battery, etc. The quality or power of the creation is completely up to the Game Master, but creativity should be rewarded, particularly in the most dire and dramatic situations.",
-   "requirements": "Novice, Smarts d6+, Notice d8+, Repair d6+"
+   "requirements": "Novice, Smarts d6+, Notice d8+, Repair d6+",
+   "summary": "Quickly create improvised devices from scraps."
   },
   {
    "name": "MENACING",
    "text": "Whether it’s the thousand-yard stare, that haunted look in their eyes, or the rumors of what they did back in Wichita, this one don’t need to talk much. They get +2 to Intimidation, and most folks know better than to poke the bear.",
-   "requirements": "Novice, any one of Bloodthirsty, Mean, Ruthless, or Ugly"
+   "requirements": "Novice, any one of Bloodthirsty, Mean, Ruthless, or Ugly",
+   "summary": "+2 to Intimidation."
   },
   {
    "name": "METAL MAGE",
@@ -679,7 +780,8 @@
   {
    "name": "MIGHTY BLOW",
    "text": "If your Action Card is a Joker, double the damage of your first successful Fighting attack this round.",
-   "requirements": "Wild Card, Novice, Fighting d8+"
+   "requirements": "Wild Card, Novice, Fighting d8+",
+   "summary": "On first successful Fighting roll, double damage when dealt a Joker."
   },
   {
    "name": "MIMIC",
@@ -689,17 +791,20 @@
   {
    "name": "MR. FIX IT",
    "text": "These tinkerers can patch up a steam wagon or a Gatling pistol while the parts are still smokin’. The mechanic adds +2 to Repair rolls. With a raise, they halve the time normally required to fix something. This means if a particular Repair job says a raise repairs it in half the time, a Mr. Fix It can finish the job in one-quarter the time with a raise.",
-   "requirements": "Novice, Repair d8+"
+   "requirements": "Novice, Repair d8+",
+   "summary": "+2 to Repair rolls, half the time required with a raise."
   },
   {
    "name": "NATURAL LEADER",
    "text": "This leader has proven themselves time and time again, gaining the respect of all those who fight by their side. Any Leadership Edge that says it applies only to Extras now applies to Wild Cards as well.",
-   "requirements": "Seasoned, Spirit d8+, Command"
+   "requirements": "Seasoned, Spirit d8+, Command",
+   "summary": "Leadership Edges now apply to Wild Cards."
   },
   {
    "name": "NERVES OF STEEL",
    "text": "Your hero has learned to fight on through the most intense pain. They may ignore 1 point of Wound penalties.",
-   "requirements": "Novice, Vigor d8+"
+   "requirements": "Novice, Vigor d8+",
+   "summary": "Ignore one level of Wound penalties."
   },
   {
    "name": "NERVES OF STEEL (IMP)",
@@ -709,7 +814,8 @@
   {
    "name": "NEW POWERS",
    "text": "(Any) Maybe they find an incantation in an old journal dug up from some long-dead ghost town, or hear a whisper in a dream from their old granny and wake up with an idea to call down holy fire on their foes. This Edge grants the character two new powers available to their Rank and Arcane Background. Or they can instead sacrifice one or both of those new powers to add a new Trapping to an existing power, adding an ice Trapping to their existing fire bolt, for example.",
-   "requirements": "Novice, Arcane Background"
+   "requirements": "Novice, Arcane Background",
+   "summary": "Your character knows two new powers."
   },
   {
    "name": "NIGHTMARES",
@@ -719,7 +825,8 @@
   {
    "name": "NO MERCY",
    "text": "When this killer spends a Benny to reroll damage, they add +2 to their final total.",
-   "requirements": "Seasoned"
+   "requirements": "Seasoned",
+   "summary": "+2 damage when spending a Benny to reroll damage."
   },
   {
    "name": "OLD HAND",
@@ -739,42 +846,50 @@
   {
    "name": "POWER POINTS",
    "text": "(Any) Those who tap into eldritch energies always want more power. This Edge grants them an additional 5 Power Points. Power Points may be selected more than once, but only once per Rank. It may be taken as often as desired at Legendary Rank, but each grants only 2 additional points.",
-   "requirements": "Novice, Arcane Background"
+   "requirements": "Novice, Arcane Background",
+   "summary": "Gain 5 additional Power Points, no more than once per Rank."
   },
   {
    "name": "POWER SURGE",
    "text": "Background (Any), arcane skill d8+ The character recovers 10 Power Points when their Action Card is a Joker. This may not exceed their usual limit.",
-   "requirements": "Wild Card, Novice, Arcane"
+   "requirements": "Wild Card, Novice, Arcane",
+   "summary": "Recover 10 Power Points when dealt a Joker in combat."
   },
   {
    "name": "PROFESSIONAL",
    "text": "possible in affected Trait The character is an expert at a particular skill or attribute (their choice). This increases the Trait and its limit one step (a d12+1 becomes a d12+2, for example). This Edge may be selected once per Trait.",
-   "requirements": "Legendary, maximum die type"
+   "requirements": "Legendary, maximum die type",
+   "summary": "The character’s Trait and its limit increases one step."
   },
   {
    "name": "PROVOKE",
    "text": "A well-timed jab or insult can draw even the dead to anger. When this character lands a raise on a Taunt Test, they draw the enemy’s fire—protecting the rest of the posse from harm, while making themselves the target of their wrath. Once per turn, when your hero uses Taunt for a Test (page 164) and gets a raise, they may Provoke the foe. In addition to all the usual effects of the success and raise, the enemy suffers a −2 penalty to affect any other target besides the one who provoked them. This stacks with Distracted but not further instances of Provoke. Provoke lasts until a Joker is drawn, someone else Provokes the target, or the encounter ends. Provoke can affect multiple targets, and may be combined with Rabble Rouser (see below).",
-   "requirements": "Novice, Taunt d6+"
+   "requirements": "Novice, Taunt d6+",
+   "summary": "May “provoke” foes with a raise on a Taunt roll. See text."
   },
   {
    "name": "QUICK",
    "text": "Quick characters have lightning-fast reflexes and a cool head. Whenever you are dealt an Action Card of Five or lower, you may discard it and draw again until you get a card higher than Five, then choose which card to keep. Characters with both the Level Headed and Quick Edges first draw their additional card and choose which to take. If that card is a Five or less, the Quick Edge may be used to draw a replacement until it’s Six or higher, then choose which of those to keep.",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "The hero may discard and redraw Action Cards of 5 or lower."
   },
   {
    "name": "QUICK DRAW",
    "text": "You draw two cards when spending a Benny for an additional Action Card at the beginning of a round. You may choose your final Action Card from any of your available choices, including additional draws from Level Headed, Quick, etc. You also add +2 to Athletics rolls made to interrupt others’ actions (including resisting being interrupted).",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "Draw 2 Action Cards when spending a Benny and +2 to Athletics rolls made to interrupt another’s actions"
   },
   {
    "name": "RABBLE-ROUSER",
    "text": "Whether stirring up a lynch mob, leading a miners’ revolt, or starting trouble in a saloon, this instigator can rile a whole crowd with just a few choice words. When they talk, tempers flare—and fists (or worse) tend to follow. As a limited action, a character with this Edge can make a social Test with Intimidation or Taunt against all enemies in a Medium Blast Template. The targets must be able to see and hear the hero clearly. Each defender resists and is affected by the Test separately.",
-   "requirements": "Seasoned, Spirit d8+"
+   "requirements": "Seasoned, Spirit d8+",
+   "summary": "Affect all foes in a Medium Blast Template with an Intimidation or Taunt Test. Limited action."
   },
   {
    "name": "RALLY",
    "text": "When things look grim, this leader can snap folks out of it like a slap across the face. Once per turn, they can make a Smarts roll at −2 as a free action. Success un-Shakes one ally in Command range; a raise un-Shakes all of ’em. Their rallying cry might be a barked order, a prayer, or a whistle that cuts through gunfire and fear alike.",
-   "requirements": "Seasoned, Command"
+   "requirements": "Seasoned, Command",
+   "summary": "Once per turn, make a Smarts roll at −2 as a free action. Success un-Shakes one ally in Command range; a raise un- Shakes all of ’em"
   },
   {
    "name": "RANGER PROMOTION",
@@ -784,37 +899,44 @@
   {
    "name": "RAPID FIRE",
    "text": "The shooter is practiced at taking quick and accurate shots. As long as they’re armed with a fast-firing ranged weapon of some sort (such as a revolver or semi-automatic) and have enough ammunition to do so, they may increase their weapon’s Rate of Fire by 1 for any one of their Shooting attacks that turn.",
-   "requirements": "Seasoned, Shooting d6+"
+   "requirements": "Seasoned, Shooting d6+",
+   "summary": "Increase RoF by 1 for one Shooting attack per turn."
   },
   {
    "name": "RAPID RECHARGE",
    "text": "Background (Any) Power Points normally recharge at a rate of 5 points every hour spent resting (see Recharging, 169). This Edge increases that rate to 10 every hour.",
-   "requirements": "Seasoned, Spirit d6+, Arcane"
+   "requirements": "Seasoned, Spirit d6+, Arcane",
+   "summary": "Recover 10 Power Points per hour."
   },
   {
    "name": "RELIABLE",
    "text": "Dependable as the rising sun and twice as steady. This cowpoke’s the type you want by your side when the lead starts flyin’—they get a free reroll on Support rolls, and their word’s good as gold.",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "Free reroll when making Support rolls."
   },
   {
    "name": "REPUTATION",
    "text": "Folks whisper stories when this one rides into town—heroic ballads or bloody legends, depending on how they live. With a good Reputation, they get a free reroll on Persuasion with anyone who’s heard their tale. With a bad one, they get +2 to Intimidation instead. Either way, people know.",
-   "requirements": "Veteran"
+   "requirements": "Veteran",
+   "summary": "Good rep grants a reroll on Persuasion; bad rep adds +2 to Intimidation."
   },
   {
    "name": "RETORT",
    "text": "There’s nothing like throwing a fool’s insult right back in their face. When this character resists an Intimidation or Taunt Test with a raise, they leave their opponent Distracted.",
-   "requirements": "Novice, Taunt d6+"
+   "requirements": "Novice, Taunt d6+",
+   "summary": "A raise vs Taunt or Intimidation Distracts the foe."
   },
   {
    "name": "RICH",
    "text": "Whether the individual was born with a silver spoon in their mouth or earned it through hard work, they’ve got more money than most. Rich heroes start with three times the normal starting funds for the setting ($750). If a regular income is appropriate for this setting, the hero receives a $5,000 annual salary.",
-   "requirements": "Novice"
+   "requirements": "Novice",
+   "summary": "Start with $750 and a $5K annual salary."
   },
   {
    "name": "RIGHT HAND OF THE DEVIL",
    "text": "Your hero is fast on the trigger and renowned far and wide as one mean hombre. Folks have taken to calling them the Right Hand of the Devil (or Left if your cowpoke is of the sinister rather than dexter persuasion). Whichever weapon your shootist typically uses in their favored hand has been infused with some of the mythic status they’re accorded, turning that weapon into a powerful relic. A relic weapon does an extra damage die of the same type as that weapon’s highest damage die. So a relic Winchester ‘76 would do a fearsome 3d8 damage. A hero usually dresses it up a bit with a silver filigree, pearl handles, and the like. It’s not a requirement, but most legends are partial to such decor. The Edge remains with the weapon, so if your shootist loses their gun, they lose the Edge as well—at least until they can get it back. And yes, anyone else who finds it in the meantime gets its benefits!",
-   "requirements": "Legendary, Trademark Weapon, Shooting, Fighting, or Athletics d10+"
+   "requirements": "Legendary, Trademark Weapon, Shooting, Fighting, or Athletics d10+",
+   "summary": "One of the killer’s weapons becomes an artifact that does an extra die of damage."
   },
   {
    "name": "RIGOR MORTIS",
@@ -824,7 +946,8 @@
   {
    "name": "ROCK AND ROLL",
    "text": "Experienced shooters learn to compensate for the recoil of those new-fangled Gatling weapons. If a character with Rock and Roll doesn’t move on their turn, they ignore the Recoil penalty when firing at a Rate of Fire of 2 or higher. (See Recoil, page 161.) Note: Of course “rock and roll” is an anachronism here in the Weird West, but we want to keep things kosher with our other settings, Marshal.",
-   "requirements": "Seasoned, Shooting d8+"
+   "requirements": "Seasoned, Shooting d8+",
+   "summary": "Ignore the Recoil penalty when firing weapons with a RoF of 2 or more. Character may not move."
   },
   {
    "name": "ROLLER",
@@ -834,22 +957,26 @@
   {
    "name": "SCAVENGER",
    "text": "Out in the dust and ruin, it’s not just bullets and brains that keep a cowpoke alive—it’s luck and the ability to find a horseshoe in a haystack. These folks always seem to lay hands on just the right gizmo, doohickey, or device when the need’s most dire. Once per encounter the hero may find, “suddenly remember,” or dig up some much- needed piece of equipment, a handful of ammunition, or some other useful device. The Game Master decides what constitutes an encounter, and has the final word on what can and can’t be found.",
-   "requirements": "Novice, Luck"
+   "requirements": "Novice, Luck",
+   "summary": "May find a needed item once per encounter."
   },
   {
    "name": "SCHOLAR",
    "text": "This ain’t your average snake-oil reader— this is a learned person, well-versed in dusty tomes, ancient languages, or maybe even forbidden lore. Pick any one of the following skills: Academics, Battle, Occult, Science, or a Smarts-based “knowledge”-type Trade, and add +2 to the total whenever they’re used. This Edge may be taken more than once if applied to different skills.",
-   "requirements": "Novice, Research d8+"
+   "requirements": "Novice, Research d8+",
+   "summary": "+2 to any one “knowledge” skill."
   },
   {
    "name": "SCOUT",
    "text": "Scouts are masters of navigating the West’s vast wilderness. When the Marshal draws a face card while the posse is traveling— indicating an encounter—the Scout can make a Notice roll at −2 to detect the hazard, critter, or event first. Scouts are always considered alert for Notice rolls versus Stealth, ignore up to 2 points of penalties on Survival rolls to track, and on a raise gain more specific information about what they’re following. They also add +2 to Common Knowledge rolls to recall information about towns, outposts, landmarks and watering holes, people, or tribes along a particular route they’ve traveled before.",
-   "requirements": "Seasoned, Woodsman"
+   "requirements": "Seasoned, Woodsman",
+   "summary": "Notice –2 to detect hazard when Marshal draws traveling encounters; ignore up to 2 points of penalties on Survival rolls to track; +2 to Common Knowledge rolls made to recall local info."
   },
   {
    "name": "SIDEKICK",
    "text": "A character who triumphs over evil time and time again becomes an inspiration to others. Eventually, one of these young crusaders may attempt to join the hero in their epic quests. The hero gains a Novice Rank sidekick. The sidekick is a Wild Card, starts each session with two Bennies, may Advance, and has abilities that complement their mentor. The player character controls their sidekick just like any other ally, though they may occasionally cause trouble by getting captured, running into danger when they’re not supposed to, and so on. The player should be prepared for their Edge to occasionally become a Hindrance! If the sidekick dies, they aren’t replaced unless the hero chooses this Edge again. Fortunately, heroes may always spend Bennies for their sidekicks as if they had the Common Bond Edge. Sidekicks must actually take that Edge to do the same for their mentors.",
-   "requirements": "Wild Card, Legendary"
+   "requirements": "Wild Card, Legendary",
+   "summary": "The character gains a Wild Card sidekick."
   },
   {
    "name": "SILENT AS A CORPSE",
@@ -864,7 +991,8 @@
   {
    "name": "SOLDIER",
    "text": "These grunts have seen hell—maybe even walked through it. From the Union or the South, or just a grudge-bearing merc, they know how to fight dirty and fight smart. They’re used to long walks and heavy loads and enduring harsh conditions. They treat their Strength as one die type higher when determining Encumbrance (page 116) and Minimum Strength to use armor, weapons, and equipment without a penalty (page 114). (This stacks with the Brawny Edge.) They also get a free reroll on Vigor rolls made to survive environmental hazards (see Hazards, page 156).",
-   "requirements": "Novice, Strength d6+, Vigor d6+"
+   "requirements": "Novice, Strength d6+, Vigor d6+",
+   "summary": "Strength one die type higher for Encumbrance and Min Str; reroll Vigor rolls vs environmental Hazards."
   },
   {
    "name": "SOUL EATER",
@@ -904,7 +1032,8 @@
   {
    "name": "STEADY HANDS",
    "text": "Firing from the back of a horse or moving train is tricky business, but your adventurer has figured it out. They ignore the Unstable Platform penalty (page 165). This also helps when running, reducing the usual penalty from −2 to −1 (see Movement, page 146).",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "Ignore Unstable Platform penalty; reduce running penalty to –1."
   },
   {
    "name": "STITCHIN' (IMP)",
@@ -919,12 +1048,14 @@
   {
    "name": "STREETWISE",
    "text": "This one knows which saloons to ask questions in and which alleys to avoid. Streetwise characters add +2 to Intimidation or Persuasion rolls made to Network (see page 228) with shady or criminal elements. They also add +2 to Common Knowledge rolls pertaining to the types of disreputable activities listed above.",
-   "requirements": "Novice, Smarts d6+"
+   "requirements": "Novice, Smarts d6+",
+   "summary": "+2 to Common Knowledge and criminal networking."
   },
   {
    "name": "STRONG WILLED",
    "text": "When the devil’s whispering and the spirits are wailing, this hombre stands firm. They add +2 to their total when resisting Tests with Smarts or Spirit.",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "+2 to resist Smarts or Spirit-based Tests."
   },
   {
    "name": "SUPERIOR KUNG FU",
@@ -939,22 +1070,26 @@
   {
    "name": "SWEEP",
    "text": "With a mighty swing, this warrior strikes everyone in reach—friend or foe! As a limited action, Sweep allows a character to make a single Fighting attack with a two-handed weapon and apply it against all targets in their Reach (friends and foes alike). Resolve damage separately for each enemy that’s hit. A Sweep made without a two-handed weapon suffers a −2 penalty.",
-   "requirements": "Novice, Strength d8+, Fighting d8+"
+   "requirements": "Novice, Strength d8+, Fighting d8+",
+   "summary": "Fighting roll with two-handed weapon (–2 without) to hit all targets in weapon’s Reach. Limited action."
   },
   {
    "name": "SWEEP (IMP)",
    "text": "As above but the whirlwind of death is able to avoid allies when using Sweep.",
-   "requirements": "Veteran, Sweep"
+   "requirements": "Veteran, Sweep",
+   "summary": "As above, but attack can avoid allies. Limited action."
   },
   {
    "name": "TACTICIAN",
    "text": "Tacticians read the battlefield like an old dime novel. The commander has a natural grasp of small unit tactics and can take advantage of rapidly changing situations. A Tactician is dealt an extra Action Card each round of combat or a chase—kept separate from their own cards. At the start of the round, they may discard it or give it to any Extra (or group of Extras sharing an Action Card) in Command Range. The player or GM controlling the receiving character or group can decide whether to accept and replace their current Action Card, or discard it.",
-   "requirements": "Seasoned, Smarts d8+, Command, Battle d6+"
+   "requirements": "Seasoned, Smarts d8+, Command, Battle d6+",
+   "summary": "Draw an extra Action Card each turn that may be assigned to any allied Extra (or group of Extras sharing an Action Card) in Command Range."
   },
   {
    "name": "TALE-TELLER",
    "text": "Persuasion d8+ A good storyteller not only entertains, they give hope and comfort as well. In the Weird West, Tale-Tellers are critical to saving the world! What? The world needs saving? You bet it does. Spreading the tales of your posse’s derring-do is far more important in the grand scheme of things than putting down some ornery varmint. So if you do something amazing, bucko, tell people about it! This Edge gives you two perks. First, when making a Persuasion or Performance roll to lower the local Fear Level, your hero adds +2 to their total. Second, when you successfully lower the local Fear Level and get a raise on the Persuasion or Performance roll, the tale- teller and anyone who Supports them earns Conviction (see page 218).",
-   "requirements": "Novice, Performance or"
+   "requirements": "Novice, Performance or",
+   "summary": "+2 to when attempting to lower Fear Levl; raise grants the teller and those who Support Conviction."
   },
   {
    "name": "TERRITORIAL RANGER",
@@ -964,17 +1099,20 @@
   {
    "name": "THIEF",
    "text": "Call ‘em grifters, second-story men, or tomb robbers—they’re all good at getting in and out unseen. Thieves add +1 to Athletics (climbing) and Stealth rolls in urban areas. Not surprisingly, thieves are also adept at Thievery itself, adding +1 to those rolls in all circumstances.",
-   "requirements": "Novice, Agility d8+, Stealth d6+, Thievery d6+"
+   "requirements": "Novice, Agility d8+, Stealth d6+, Thievery d6+",
+   "summary": "+1 Thievery, Athletics rolls made to climb, Stealth in urban environments."
   },
   {
    "name": "TOUGH AS NAILS",
    "text": "Your character keeps going when others fall. They can take four Wounds before they’re Incapacitated (the maximum Wound penalty is still −3).",
-   "requirements": "Legendary, Vigor d8+"
+   "requirements": "Legendary, Vigor d8+",
+   "summary": "The hero can take four Wounds before being Incapacitated."
   },
   {
    "name": "TOUGHER THAN NAILS",
    "text": "The hero can take up to five Wounds before they’re Incapacitated! The maximum Wound penalty is still −3.",
-   "requirements": "Legendary, Tough as Nails, Vigor d12+"
+   "requirements": "Legendary, Tough as Nails, Vigor d12+",
+   "summary": "The hero can take five Wounds before being Incapacitated."
   },
   {
    "name": "TRACKIN’ TEETH",
@@ -984,7 +1122,8 @@
   {
    "name": "TRADEMARK WEAPON",
    "text": "weapon of d8+ The hero knows one unique weapon, usually given an affectionate name, like the back of their hand. When using it, they add +1 to their Athletics (throwing), Fighting, or Shooting rolls, and +1 to Parry when readied (even if it’s a ranged weapon). A fighter can take this Edge multiple times, applying it to a different weapon each time. If a Trademark Weapon is lost, they can replace it but the benefits don’t kick in for a few days (however long the GM feels is dramatically appropriate).",
-   "requirements": "Novice, skill with chosen"
+   "requirements": "Novice, skill with chosen",
+   "summary": "+1 to Athletics (throwing), Fighting, or Shooting total with a specific weapon; +1 Parry while weapon is readied."
   },
   {
    "name": "TRUE BELIEVER",
@@ -999,17 +1138,20 @@
   {
    "name": "TRUE GRIT",
    "text": "This grizzled veteran has seen things that’d make others’ eyes pop like they just saw a rattler in their bedroll. They ignore all penalties when making Fear checks, and if failed, get one free reroll on the Fear Effects Table if they choose.",
-   "requirements": "Legendary, Spirit d10+, Grit"
+   "requirements": "Legendary, Spirit d10+, Grit",
+   "summary": "Ignore all penalties to Fear checks; reroll on the Fear Table."
   },
   {
    "name": "TWO-FISTED",
    "text": "If a character makes a Fighting attack with one action and another from a different hand in a later action, the second attack doesn’t inflict a Multi-Action penalty. The Off- Hand penalty still applies unless they’re Ambidextrous, however (page 38). If the character has Two-Gun Kid, the second action may also be a ranged attack.",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "The attack and Parry bonus increases to +2."
   },
   {
    "name": "TWO-GUN KID",
    "text": "Two-Gun Kid works just like Two-Fisted, but with ranged weapons, allowing a shooter to fire or throw a weapon in each hand as two different actions but without triggering a Multi-Action penalty. If the character has Two-Fisted, the second action may also be a melee attack. Example: Red has a Bowie knife in one hand and a pistol in the other. She has both Two- Fisted and Two-Gun Kid, so she can make a Fighting attack on one action and then a second Fighting or Shooting attack with no Multi-Action penalty on a later action that turn.",
-   "requirements": "Novice, Agility d8+"
+   "requirements": "Novice, Agility d8+",
+   "summary": "Make one extra Shooting or Athletics (throwing) roll with a second ranged weapon in the off-hand at no Multi-Action penalty."
   },
   {
    "name": "UNHOLY HOST",
@@ -1024,17 +1166,20 @@
   {
    "name": "VERY ATTRACTIVE",
    "text": "This ain’t just some pretty face—it’s the kind that starts bar fights, breaks hearts, and makes folks forget their own names. When this one enters the room, the whole place takes notice. They increase their Performance and Persuasion bonus to +2.",
-   "requirements": "Novice, Attractive"
+   "requirements": "Novice, Attractive",
+   "summary": "+2 to Performance and Persuasion rolls."
   },
   {
    "name": "VETERAN O' THE WEIRD WEST",
    "text": "Those who’ve traveled the Weird West have seen things most folks shouldn’t. Those who survive are marked by their experiences, but also stronger for them. Veterans o’ the Weird West begin play at Seasoned (or one Rank higher than the rest of the cowpokes in your campaign), which means they gain four extra Advances right off the bat. Go ahead and apply those now. There’s a price, though. When you take this Edge, draw a single card from the Action Deck. Show it to the Marshal and she’ll check the table on page 253 to see just what kind of bad luck your hombre wandered into during their travels. Beware—the results can range from maiming to insanity. Your Marshal has all the details. You’ve been warned, Tex!",
-   "requirements": "Wild Card, Novice, Spirit d6+, Occult d6+"
+   "requirements": "Wild Card, Novice, Spirit d6+, Occult d6+",
+   "summary": "Start one Rank higher than normal but the Marshal draws from a table on page 253."
   },
   {
    "name": "WEAPON MASTER",
    "text": "The warrior increases their Parry by +1 and the bonus damage die for Fighting rolls is a d8 instead of a d6 (see Bonus Damage, page 148). They must be armed to gain these benefits, but this includes the Martial Artist Edge, claws, or other abilities that count as weapons.",
-   "requirements": "Legendary, Fighting d12+"
+   "requirements": "Legendary, Fighting d12+",
+   "summary": "Parry increases by +1 and Fighting bonus damage die is d8."
   },
   {
    "name": "WHATELEY BLOOD",
@@ -1054,354 +1199,424 @@
   {
    "name": "WIZARD",
    "text": "(Magic), Spellcasting d6+ Raw magic is limited only by the taker’s will and imagination. A Wizard can spend 1 extra Power Point when casting a power to change its Trapping. A fireball (blast) might manifest as a lightning bolt, for example. This can often have important consequences if a foe has a particular resistance or weakness to the spell’s usual Trapping.",
-   "requirements": "Seasoned, Arcane Background"
+   "requirements": "Seasoned, Arcane Background",
+   "summary": "Recover 5 Power Points for a level of Fatigue."
   },
   {
    "name": "WOODSMAN",
    "text": "These are the loners—scouts, trackers, and quiet types who live by the whisperin’ wind. They are skilled trackers and scouts, and know how to live off the land for months at a time. Woodsmen add +2 to Survival rolls, and Stealth rolls made in the wild (not towns, ruins, or underground).",
-   "requirements": "Novice, Spirit d6+, Survival d8+"
+   "requirements": "Novice, Spirit d6+, Survival d8+",
+   "summary": "+2 to Survival and Stealth in the wilds."
   },
   {
    "name": "WORK THE CROWD",
    "text": "As Work the Room but the hero now adds a third skill die to their Support roll this turn and Supports an additional ally.",
-   "requirements": "Seasoned, Work the Room"
+   "requirements": "Seasoned, Work the Room",
+   "summary": "As above, but roll a third die. Limited action."
   },
   {
    "name": "WORK THE ROOM",
    "text": "This hero’s got a voice like honey and presence like a sermon in a revival tent. As a limited action, you can use Work the Room to roll a second skill die when Supporting with Persuasion or Performance. The additional die Supports another ally normally and can apply to any Trait chosen. It need not be the same Trait for both allies.",
-   "requirements": "Novice, Spirit d8+"
+   "requirements": "Novice, Spirit d8+",
+   "summary": "Roll a second die when Supporting via Performance or Persuasion and apply result to additional ally. Limited action."
   }
  ],
  "hindrances": [
   {
    "name": "AILIN'",
    "text": "Medicine is a rudimentary science on the frontier, and there are worse ways to die than a severe case of lead poisoning. Your cowpoke suffers from a chronic and at least so far incurable disease of some sort. The Minor version of the Hindrance means you subtract 1 from any roll made to resist Fatigue from any source. Subtract 2 if it’s a Major Hindrance. A Critical Failure on such a roll means things are getting worse. If your pistolero has the Minor version, they get worse and the Hindrance becomes Major. If they already have the Major version, the Reaper comes calling. The good news is you gain an immediate point of Conviction. The bad news is you choose when and how your hero dies during that session. They might go out in a blaze of glory or surrounded by friends on a peaceful mountaintop. When they finally pass, the other player characters gain a point of Conviction, drawing strength from the brave death of their stalwart companion. You can also buy off your Hindrance by spending an Advance (two for the Major version of the Hindrance). You should work with the Marshal to figure out a narrative reason for the improvement—treatment at a sanatorium, a miracle cure, a transfusion from a unique donor, or some other story- based explanation for the character’s miraculous improvement.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "Vigor rolls to avoid Fatigue are –1 (–2 for Major). A Crit Fail on such a roll upgrades Ailin’ or grants Conviction— and then the character dies that game session."
   },
   {
    "name": "ALL THUMBS",
    "text": "Not everyone takes to the gear-grinding wizardry of infernal devices—or even a basic six-shooter. Maybe you’re jinxed, or maybe you’ve got the Devil’s own luck around anything with moving parts. All Thumbs inflicts a −2 penalty when using mechanical or infernal devices. If they roll a Critical Failure while using such a device (and it doesn’t already have a built-in effect), it’s broken. If the GM feels it’s appropriate, it can be fixed with a Repair roll and 1d6 hours.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "–2 to use mechanical or electrical devices."
   },
   {
    "name": "ANEMIC",
    "text": "You’ve always been a little pale, a little frail, and quick to tire. Maybe it’s bad blood, or maybe you were touched by something unnatural before you were even born. Either way, you’re more likely to wilt when the heat’s on, the chill sets in, or the trail gets rough. You’re the first to sweat, shiver, or swoon when things go south. They subtract 2 from Vigor rolls made to resist Fatigue (see Hazards, starting on page 220).",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "–2 Vigor when resisting Fatigue."
   },
   {
    "name": "ARROGANT",
    "text": "There’s nobody better than you—and you’re not shy about saying so. You aren’t just good, you’re the best, and you aim to prove it every chance you get. You don’t just want to win, you want your enemies to know they were beat by someone superior. You’ll face the toughest hombres head-on, and if they ain’t ready you’ll wait till they are. It’s pride before the fall, sure, but you’ll never fall, right?",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "Likes to dominate their opponent, challenge the most powerful foe in combat."
   },
   {
    "name": "BAD EYES",
    "text": "Your peepers just aren’t what they used to be— or maybe they were never right to begin with. You might be nearsighted, farsighted, or just cursed with eyes that don’t pick out a buzzard on a cactus till it’s flapping in your face. Your hombre suffers a −1 penalty to any Trait roll dependent on vision (such as ranged attacks and Notice rolls) or −2 as a Major Hindrance. Glasses are available in the Weird West, at least in major cities. They negate the penalty when worn, but if lost or broken during a combat (generally a 50% chance when your hero is Wounded, falls, or suffers some other trauma), they’re Distracted (and Vulnerable if a Major Hindrance) until the end of their next turn.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "–1 to all Trait rolls dependent on vision, or –2 as a Major Hindrance. Eyewear negates penalty but have a 50% chance of breaking when the hero suffers trauma."
   },
   {
    "name": "BAD LUCK",
    "text": "You were born under a bad sign—maybe a blood moon, an eclipsed sun, or your ma crossed a mysterious wanderer and your pa shot a preacher. Whatever the reason, Lady Luck just don’t smile your way. Things go wrong around you more often than not, and fortune always seems to favor the other fella. Your character gets one less Benny per game session than normal, and cannot have both Bad Luck and the Luck Edge.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The characters starts with one less Benny per session."
   },
   {
    "name": "BIG MOUTH",
    "text": "You couldn’t keep a secret if your life depended on it—which, in the Weird West, it often does. The blabbermouth can’t keep a secret very well. They reveal plans and give away things best kept among friends, usually at the worst possible times.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "Unable to keep secrets and constantly gives away private information."
   },
   {
    "name": "BLIND",
    "text": "You can’t see a lick—not the color of the sky, the twitch of a duelist’s hand, or the glow of a haint straight from Hell. The individual is completely without sight and suffers a −6 to all physical tasks that require vision (GM’s call). On the plus side, Blind characters gain their choice of a free Edge to compensate for this particularly difficult Hindrance.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–6 to all tasks that require vision (but choice of a free Edge to offset)."
   },
   {
    "name": "BLOODTHIRSTY",
    "text": "Mercy’s for preachers and poets. You don’t take prisoners, and you sure as hell don’t let ‘em walk away. The world’s too cruel for soft hearts, and you reckon a dead enemy won’t stab you in the back later. Of course, that ruthlessness has a price—burned bridges, lost information, and a reputation that draws lawdogs and bounty hunters like flies to a carcass.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "Never takes prisoners."
   },
   {
    "name": "CAN’T SWIM",
    "text": "Most people in the 19th century can’t swim. Even most sailors are strangers to the water. Your hombre’s one of those. Whether it’s the ocean, a river, or a deep washbasin, they sinks like a stone. Characters with this Hindrance suffer a −2 penalty to the Athletics skill when swimming and each inch moved in water costs 3″ of Pace. See Movement (page 146) for more details and Drowning (221).",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "–2 to swimming (Athletics) rolls; Each inch moved in water costs 3” of Pace."
   },
   {
    "name": "CAUTIOUS",
    "text": "You ain’t the leap-before-you-look type. Every decision’s got to be chewed on, weighed, and double-checked. Your hero never makes rash decisions and likes to plot things out in detail long before any action is taken.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The character plans extensively and/or is overly careful."
   },
   {
    "name": "CLUELESS",
    "text": "You wouldn’t notice a ghost if it danced a jig on your hat. You’re a few cards short of a full deck when it comes to paying attention to what’s going on around you. Maybe it’s naivety, maybe you’re just lost in your own world—but in the Weird West, ignorance ain’t bliss. It’s fatal. Your character subtracts 1 from Common Knowledge and Notice rolls.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–1 to Common Knowledge and Notice rolls."
   },
   {
    "name": "CLUMSY",
    "text": "You’ve got two left feet, a twitchy trigger finger, and all the grace of a newborn calf. Whether you’re trying to sneak through a haunted crypt or just saddle a horse, odds are you’ll trip, fall, or knock something over. Subtle, you ain’t. Subtract 2 from Athletics and Stealth rolls.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–2 to Athletics and Stealth rolls."
   },
   {
    "name": "CODE OF HONOR",
    "text": "You live by a code carved deep in your bones. You don’t break your word, don’t shoot folks in the back, and treat prisoners with dignity. In a land ruled by six-guns and shadows, your honor shines like a lantern in the dark.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The character keeps their word and acts like a gentleman or lady."
   },
   {
    "name": "CURIOUS",
    "text": "You can’t leave well enough alone. Strange tracks? Gotta follow ’em. Locked door? Gotta pick it. Whispered tales of ghost-rock rituals in the hills? Well, now you have to see for yourself. The Weird West is full of things that bite, burn, and beguile—but that never stopped you before.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The character wants to know about everything."
   },
   {
    "name": "CURSED",
    "text": "Everybody’s got skeletons in the closet, but yours are trying to claw their way out! Your hero has done somebody wrong, either through past affiliation or dark, unspoken deeds. For each player character with the Cursed Hindrance, the GM starts with one additional Benny!",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The Marshal starts with one additional Benny."
   },
   {
    "name": "DEATH WISH",
    "text": "You aren’t looking to kick the bucket, but you sure wouldn’t mind if it happened while doing something important. Maybe it’s revenge, redemption, or proving a point—but there’s something deep in your heart that makes you charge into danger with a grin and a shrug. Having a death wish doesn’t mean your adventurer is suicidal—they might just think their life is worth less than some noble but clearly deadly goal. Those with a Death Wish don’t throw their lives away for no reason, but when there’s a chance to complete a goal they do anything— and take any risk—to achieve it.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The hero wants to die after or while completing some epic task."
   },
   {
    "name": "DELUSIONAL",
    "text": "Your hero believes something considered strange by everyone else. Minor Delusions are harmless or the character generally keeps it to themself (President Lincoln is still alive and runs the United States Agency, the moon is made of cheese, we’re all just characters in some bizarre game, and so on). With a Major Delusion, your character expresses their view on the situation frequently and it can occasionally lead to danger (the walkin’ dead are just misunderstood, all machines are the Devil’s handiwork, I’m immune to bullets while wearing my grandfather’s badge).",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The individual believes something strange that causes them occasional or frequent trouble."
   },
   {
    "name": "DOUBTING THOMAS",
    "text": "Some people don’t believe in the supernatural until they’re halfway down some creature’s gullet. Doubting Thomases are skeptics who try their best to rationalize supernatural events. They walk right into danger they don’t believe in and look for alternate explanations to every supernatural event. Even after being confronted with undeniable truth, the doubter’s mind eventually begins to doubt what they saw, rationalizes it away, or compartmentalizes the event as “one of a kind” while continuing to doubt the next mystery.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The character doesn’t believe in the supernatural, often exposing them to unnecessary risks."
   },
   {
    "name": "DRIVEN",
    "text": "You’ve got a goal, and come Hell or high water, you’re gonna reach it. Maybe you want to prove the existence of monsters, get revenge on a bandit gang, or write your name in every history book from here to Deseret. The Minor version shapes the character and pushes their decisions but either happens rarely or is fairly harmless. As a Major Hindrance it’s an overriding desire that comes up frequently or causes peril for the character and maybe even the posse!",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The hero’s actions are driven by some important goal or belief."
   },
   {
    "name": "ELDERLY",
    "text": "Your adventurer is getting on in years, but they’re not quite ready for Boot Hill yet. Their Pace is reduced by 1 and they subtract 1 from running rolls (minimum 1). They also take a −1 penalty to Agility, Strength (including damage), and Vigor rolls, but not linked skills. On the plus side, the wisdom of their years grants the old timer 5 extra skill points which may be used for any skills linked to Smarts.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–1 to Pace, running, Agility, Strength, and Vigor. Hero gets 5 extra skill points."
   },
   {
    "name": "ENEMY",
    "text": "Someone out there hates your sidewinder and wants ‘em ruined, locked away, or dead. The value of the Hindrance depends on how powerful the enemy is and how often they might show up. A Minor Enemy might be a lone gunslinger out for vengeance or a betrayed brotherhood that’s deadly but appears rarely. A Major Enemy might represent powerful authorities like the Agency, a band of outlaws, or a single powerful and relentless rival. If the enemy is one day defeated, the GM should gradually work in a replacement, or the hero may buy off the Hindrance by sacrificing an Advance.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The character has a recurring nemesis."
   },
   {
    "name": "GREEDY",
    "text": "Gold, ghost rock, or even a fancy pair of boots—if it’s worth something, you want it. Maybe you grew up dirt-poor, maybe you just think you deserve more than the rest, or maybe something deeper and darker drives that hunger for wealth. If a Minor Hindrance, they argue bitterly for more than their fair share of any loot or reward the party might come across. As a Major Hindrance, they fight over anything they consider unfair, and may even kill for it if they feel slighted or covet something they can’t have.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The individual is obsessed with wealth and material possessions."
   },
   {
    "name": "GRIM SERVANT O' DEATH",
    "text": "Only Wild Cards can take this Hindrance, and you shouldn’t do it lightly, amigo. Your hero’s a killer. Their family’s probably pushing up daisies, their enemies are worm food, and even a few of “friends” have holes in them that are suspiciously the same caliber as your very own shootin’ iron. The good news is your hombre adds +1 to every damage roll they ever make, whether it’s from Fighting, Shooting, an arcane skill roll, or even using Athletics to throw things at people in a most inhospitable manner. The downside is your malcontent winds up in the hoosegow or on the run from his enemies a lot. Worse, anytime their attack roll is a Critical Failure, they hit the nearest ally in sight—with a raise! This happens whether the target’s in the line of fire or not. Maybe the killer’s gun hand gets jostled, the bullet ricochets, or they catch flying shrapnel from an explosion. Other players’ characters are always first choice, but any friendly soul will do in a pinch. Even hand-to-hand attacks hit allies when a Grim Servant o’ Death gets violent. This may require a little imagination, but either the weapon flies out of the hero’s hand and strikes their friend, or the hero moves adjacent to an erstwhile amigo and “accidentally” whacks ‘em. Even if you’re using miniatures, combat is more fluid than the tabletop depicts.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "+1 to all damage rolls; any Critical Failure on an attack hits an ally and deals damage as thought it was a hit with a raise."
   },
   {
    "name": "HABIT",
    "text": "Your cowpoke has an annoying or dangerous compulsion. A Minor Habit irritates those around them but isn’t dangerous. Maybe they pick their nose, can’t stop fiddling with their pocket watch, curses even in polite company, or chews and spits tobacco everywhere. A Major Habit is a physical or mental addiction of some sort that is debilitating or possibly even deadly. This includes drug use and chronic drinking. An addict who doesn’t get their fix must make a Vigor roll every 24 hours they go without or take a level of Fatigue (see page 156). Once every 24 hours, a Healing roll with some sort of appropriate medicine removes one level of Fatigue for four hours. After that the Fatigue returns and can only be recovered with the addicting substance.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "Addicted to something, suffers Fatigue if deprived."
   },
   {
    "name": "HARD OF HEARING",
    "text": "Gunshots, thunder, and the wailing of things best left unnamed can leave a soul hard of hearing. As a Minor Hindrance, those who have lost some or all of their subtract 4 from all Notice rolls made to hear, including awaking due to loud noises. A Major Hindrance means the character is deaf. They cannot hear and automatically fail all Notice rolls that depend on hearing.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "–4 to Notice sounds; automatic failure if completely deaf."
   },
   {
    "name": "HEAVY SLEEPER",
    "text": "Your cowboy drops off like they’ve been hit with a sledgehammer—and ain’t much wakes them once they’re out. Gunfire, screamin’, thunderin’ hooves—it’s all just background noise to this dreamer. Problem is, when the nightmares come—and in the Weird West, they do—they might not wake up ‘til it’s too late. Once they drop off, they must make a Notice roll (−4) to wake up. They also suffers a −4 penalty to Vigor rolls made to stay awake.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "Notice rolls to wake up and Vigor rolls to stay awake are –4."
   },
   {
    "name": "HEROIC",
    "text": "This noble soul never says no to a person in need. They don’t have to be happy about it, but they come to the rescue of those they feel can’t help themselves. They’re the first one to run into a burning building, usually agree to hunt monsters for little to no pay, and generally a pushover for a sob story.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The character always helps those in need."
   },
   {
    "name": "HESITANT",
    "text": "When bullets start flyin’ and blood hits the dirt, some folks freeze. Maybe it’s nerves, maybe they’re thinking too hard. Either way, this cowpoke’s slow on the draw, which can make the difference between a grave and a tale worth tellin’. Draw two Action Cards in combat and act on the lowest. If you draw a Joker, use it normally and ignore the Hindrance for the round (hence this being a Minor Hindrance, it actually increases your chances of drawing a Joker!) Hesitant characters cannot take the Quick or Level Headed Edges.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "Draw two Action Cards and take the lowest (except Jokers, which may be kept)."
   },
   {
    "name": "ILLITERATE",
    "text": "Your hero cannot read. They can sign their name and know a sign says SALOON or LIVERY, but not much else. They also doesn’t know much about math. They can probably do 2 + 2 = 4, but multiplication and the like are beyond ‘em. Illiterate characters can’t read or write in any language, by the way, no matter how many they actually speak.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The character cannot read or write."
   },
   {
    "name": "IMPULSIVE",
    "text": "This hombre’s got a streak of wild lightning in ‘im. See a locked door? Kick it in. Hear a spooky tale? Go check it out. Whether it’s bravery or bull-headedness is up for debate, but one thing’s for sure—this impulsive soul charges headfirst into trouble, usually without asking how deep the water is.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The hero leaps before they look."
   },
   {
    "name": "JEALOUS",
    "text": "The green-eyed monster rides heavy on this one’s shoulders. Maybe it’s just a simmerin’ grudge when someone else gets praised, or maybe it’s a full-blown obsession with takin’ what ain’t theirs. In a land where reputation can mean life or death, envy’s a dangerous poison. As a Minor Hindrance, the character’s jealousy is focused on one particular subject (such as their “unrivaled” skill as a gunslinger or a romantic interest). As a Major Hindrance, the character is jealous of anyone and everyone they feel outshines them. They consistently bad- mouth their rivals, try to upstage them, or actively plot to discredit those who threaten their ego.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The individual covets what others have."
   },
   {
    "name": "LOYAL",
    "text": "In the Weird West, trust is rarer than a dry match in a flood. That’s what makes your hero different. Whether it’s blood ties or battlefield bonds, they stand by their companions no matter the odds. They might grumble or play it off, but if you’re in trouble, they’re comin’—six-gun in hand and fire in their heart.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The hero is loyal to thei friends and allies."
   },
   {
    "name": "LYIN’ EYES",
    "text": "This poor soul just isn’t cut out for bluffing. Maybe it’s the twitchy hands, the shifty eyes, or the stammering voice—but whatever it is, folks can smell a fib the minute it leaves their lips. That makes bluffing in a poker game mighty difficult—and talking your way outta trouble near impossible. A hero with this Hindrance suffers a −1 penalty to all Intimidation and Persuasion rolls where lies—even little ones— must be told. Worse, if your hero plans to make money playing poker, the penalty also applies to bluffing. That’s −1 to your Gambling rolls in a poker or faro game as well, compadre!",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "–1 to Gambling, Intimidation, and Persuasion when lying is involved."
   },
   {
    "name": "MEAN",
    "text": "Some folks are just born ornery. This one scowls at charity, sneers at good deeds, and spits venom every chance they get. They aren’t necessarily evil—but they sure aren’t friendly either, and kindness seems like a foreign language to ‘em. Besides the obvious roleplaying issues, Mean characters subtract 1 from Persuasion rolls.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "–1 to Persuasion rolls."
   },
   {
    "name": "MILD MANNERED",
    "text": "Not everyone looks like they belong in a showdown at high noon. This tenderfoot has a soft voice, gentle ways, and an aura that screams “not a threat.” Whatever the issue, they have a hard time looking tough. They subtracts 2 when making Intimidation rolls.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "–2 to Intimidation rolls."
   },
   {
    "name": "MUTE",
    "text": "Speech is silver, silence is gold—but for your cowgirl, it’s the only option. Whether by birth, trauma, or a dark deal gone wrong, they can’t speak a word. They rely on notes, signs, or cold stares to get their point across, and when things go south, they better hope actions speak louder than words. Your heroine can write messages to others when needed, use sign language (yes, it exists at this time), or some combination of visual communication. Vision-based communication may require a Notice roll to perceive correctly (illumination and similar penalties apply).",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The hero cannot speak."
   },
   {
    "name": "NIGHT TERRORS",
    "text": "The prospect of sleep is a constant dread for your sidewinder. They toss and turn like a demon on a rack, and likely keep everyone within earshot awake with their nightly torments. The repeated barrage on their psyche results in an overall weakened resolve. They subtract 1 from all Spirit rolls.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–1 to all Spirit rolls."
   },
   {
    "name": "OBESE",
    "text": "Your hero’s built more like a chuckwagon than a mustang. Those who carry their weight well have the Brawny Edge. Those who don’t are Obese. A character cannot be both Brawny and Obese, and this Hindrance can’t increase your Size above +3. An Obese hero’s Size (and therefore Toughness) increases by +1. Their Pace is reduced by 1, and their running die one die type (minimum d4). Strength is considered one die type less (minimum d4) for armor and worn gear (not weapons). They may also have difficulty finding armor or clothing that fits or entering confined spaces.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "Size +1, Pace –1 and running die of d4. Treat Str as one die type lower for Min Str."
   },
   {
    "name": "OBLIGATION",
    "text": "Your hero has a responsibility they must attend to on a daily or regular basis. It could be a job, volunteer work for the local church, taking care of family or friends, etc. The Obligation consumes about 20 hours most weeks, or 40+ for the Major version. Exactly what that entails should be discussed between the player and the Game Master.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The character has a weekly obligation of 20 (Minor) to 40 (Major) hours."
   },
   {
    "name": "OLD WAYS OATH",
    "text": "Your hero has pledged to forego modern technology to honor the nature spirits. Those who remain true to their vows get a free reroll on any Spirit roll. If the character violates the agreement, however, the spirits withdraw this advantage for 24 hours. If the oath-taker uses an item powered by ghost rock—a noxious and cancerous substance to nature spirits—their support is withdrawn for a week.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "Forego modern technology and gain a free reroll on Spirit. Lose the benefit for a day if using regular technology, or for a week if using ghost rock or infernal devices."
   },
   {
    "name": "ONE ARM",
    "text": "By birth or battle, your hero lost an arm. Fortunately, their other arm is (now) their “good” one. Tasks that require two hands, such as some Athletics rolls (GM’s call) or using a two-handed weapon, suffer a −4 modifier.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–4 to tasks (such as Athletics) that require two hands."
   },
   {
    "name": "ONE EYE",
    "text": "This veteran lost an eye and has trouble with depth perception. They subtract 2 from any Trait roll dependent on vision and more than 5″ (10 yards) distant.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–2 to actions at 5″ (10 yards) or more distance."
   },
   {
    "name": "OUTSIDER",
    "text": "In a society made up of only a few types of people, your hero ain’t one of them. A Navajo in Apache lands, a Native American in some Western towns, or a New York dandy on the frontier are all examples. Locals are likely to raise prices on them, ignore pleas for help, and generally treat them as lower class. Outsiders subtract 2 from Persuasion rolls made to influence those who aren’t their own kind.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The character doesn’t fit in to the local environment and subtracts 2 from Persuasion rolls."
   },
   {
    "name": "OVERCONFIDENT",
    "text": "Your hero walks into every town like they’re the fastest draw alive and every haunted mine like it’s already cleared. Confidence like that is powerful—but when it isn’t backed up it can lead straight to Boot Hill. They rarely retreat, don’t reconsider, and sure as hell don’t back down unless it absolutely can’t be helped. They’re not suicidal, but they certainly take on more than common sense dictates.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The hero believes they can do anything."
   },
   {
    "name": "PACIFIST",
    "text": "Bloodshed don’t sit right with this one. Whether from religious conviction, a vow made on a battlefield, or just a heart too kind for the times, your hero avoids violence whenever possible. Minor pacifism means the gal only fights when given no other choice and never allows the killing of prisoners or other defenseless victims. Major Pacifists won’t fight living characters under any circumstances. They may defend themselves, but won’t do anything to permanently harm sapient, living creatures. They may use nonlethal methods (see page 160), but only in self-defense or the defense of others. Note that undeniably evil creatures, undead, demons, and the like are fair game even for Major Pacifists!",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "Fights only in self-defense as a Minor Hindrance, won’t fight at all as Major."
   },
   {
    "name": "PHOBIA",
    "text": "There’s a shadow in your hero’s soul, something that clutches the heart tight whenever it rears its head. Not a common fear—nothing so simple as being scared of vampires or walking into a haunted mine. No, this is stranger: red candles, hymns, or the smell of sulfur and sage. Phobias are overwhelming and irrational fears that plague a hero’s psyche. Whenever a character is in the presence of their phobia (GM’s call, but generally sight), they subtract 1 from all Trait rolls if it’s a Minor Hindrance, and 2 if it’s Major. Phobias shouldn’t be too obvious; everyone should be afraid of vampires, for example, so that’s not a phobia, it’s common sense. Phobias should be of some random element the mind associates with a traumatic event, like the red candles a vampire burned in its crypt, or the player piano music that played every time a ghost showed itself.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The character is afraid of something, and subtracts –1/–2 from all Trait rolls in its presence."
   },
   {
    "name": "POVERTY",
    "text": "Money slips through your cowpoke’s fingers like water in a desert. Maybe they got a taste for drinking, gambling, or just a knack for making bad investments. Or maybe they’re cursed—some folks are. Your hero starts with only $125 (instead of $250) and just can’t seem to hang on to dinero acquired after play begins. In general, the player halves their total funds every game week and is just generally broke.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "Half starting funds and the character is always broke."
   },
   {
    "name": "QUIRK",
    "text": "Quirks are minor foibles; usually humorous but can occasionally troublesome. A Sioux warrior might always want to count coup (touch) on a foe before attacking it, a huckster might constantly shuffle their cards, or a snobby débutante might not eat, drink, or socialize with the lower class, for example.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The individual has some minor but persistent foible that often annoys others."
   },
   {
    "name": "RUTHLESS",
    "text": "The fanatic will do most anything to accomplish their goals. As a Minor Hindrance, they stop short of true harm to anyone except those who directly oppose ‘em. As a Major Hindrance, almost nothing gets in their way.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The character does what it takes to get their way."
   },
   {
    "name": "SECRET",
    "text": "Everyone’s got skeletons, but your hero’s got one that rattles. Could be they made a deal with a manitou, betrayed their posse, or were involved in a massacre that got hushed up. As a Minor Hindrance, the secret is troublesome but not life-threatening. The Major version would cause severe problems if discovered. If it ever becomes public knowledge, they should trade it for Enemy, Shamed, Wanted, or another appropriate Hindrance approved by the GM.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The hero has a dark secret of some kind."
   },
   {
    "name": "SHAMED",
    "text": "Something haunts your adventurer. Maybe they made a vow they didn’t keep. Maybe they were defeated in an honorable fight and ordered the death of their foe anyway for some greater principle. Maybe they aren’t actually cowardly but once ran from a battle and left others to die. As a Minor Hindrance, the shameful circumstances aren’t generally known—it just haunts the hero. They might go out of their way, against all reason, not to repeat the mistake. Or they might give in to the same set of circumstances and hate themselves for it. As a Major Hindrance, their deed is well- known—or at least known among those they care about. The other player characters should be told the tale as soon as possible (preferably at character creation). If not, it should be revealed by nonplayer characters at some point, and occasionally used against the hero.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The individual is haunted by some tragic event from the past."
   },
   {
    "name": "SLOW",
    "text": "This cowpoke doesn’t move like they used to. Maybe they have a limp from an old war wound, a twisted spine from riding the range too long, or just bad luck with a rattler. As a Minor Hindrance, reduce Pace by 1 and running die one step (if already d4, reduce to d4−1). As a Major Hindrance, reduce the running die a step, Pace by 2, and subtract 2 from Athletics rolls and rolls to resist Athletics (such as Tests or Grappling). Slow characters may not take the Fleet- Footed Edge. Prosthesis: A character with the Minor version of this Hindrance may have a prosthesis. If the prosthesis is lost, they suffer the effects of the Major version of Slow. Wheelchairs: These contraptions are rare on the frontier given the state of most streets and lack of ramps, but they do exist. Slow heroes may start with a manual wheelchair at no cost, but they only help over reasonably smooth ground to operate (GM’s call). Pace in a wheelchair is half the hero’s Athletics die (max of 3) and they cannot run.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "Pace –1, reduce running die one step. As Major, Pace –2, –2 to Athletics and rolls to resist Athletics. Neither may take the Fleet-Footed Edge."
   },
   {
    "name": "SMALL",
    "text": "Your cowpoke is knee-high to a grasshopper, or thin as a bean pole. Their Size (see page 18) is reduced by 1, which reduces Toughness by 1 as well. Size can’t be reduced below −1, but the Toughness penalty remains.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "Size and Toughness are reduced by 1. Size cannot be reduced below –1."
   },
   {
    "name": "STUBBORN",
    "text": "Stubborn individuals always want their way and never admit they’re wrong. Even when it’s painfully obvious they’ve made a mistake they try to justify it with half-truths and rationalizations.",
-   "severity": "Minor"
+   "severity": "Minor",
+   "summary": "The character wants their way and rarely admits mistakes."
   },
   {
    "name": "SUSPICIOUS",
    "text": "Trust is a rare coin, and your hero doesn’t carry any. They eye every partner like a potential backstabber and treat every deal like a con. As a Minor Hindrance, their paranoia causes frequent trust issues. They might demand full payment before doing a task, want every agreement in writing, or believe even their friends are out to get them. As a Major Hindrance, Support rolls to aid the distrustful individual are made at −2.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The individual is paranoid. As a Major Hindrance, allies subtract 2 when rolling to Support them."
   },
   {
    "name": "TALISMAN",
    "text": "Your spell-slinger’s tied their mojo to a single item—a charm, deck, amulet, or relic. Anyone who sees the item used to enact a power can tell it’s important. Only characters with an Arcane Background Edge can take this Hindrance. It represents a mental dependence on a physical item to use their powers. The Talisman could be a specific deck of cards for a huckster, a medicine bag for a shaman, a holy item for a blessed, or a unique weapon for a chi master. Whatever the item, the character suffers a −1 penalty to all arcane skill rolls if they don’t have it on their person. As a Major Hindrance, they suffer a −2 without it. The hero can replace a lost Talisman, but it takes two game weeks to acclimate to the replacement, during which time the hombre suffers the appropriate penalties. Note that mad scientists already need a chosen gizmo to enact powers—an actual dependence rather than a mental one. Therefore, characters with that Arcane Background aren’t eligible for this Hindrance.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The caster suffers a –1 (–2 for Major) on arcane skill rolls if they don’t have a specific physical item."
   },
   {
    "name": "TENDERFOOT",
    "text": "Every little cut and scrape makes your cowpoke cry for mama. As long as they have at least one Wound, they suffer an additional −1 penalty to all their actions (so a hero with two Wounds has a −3 Wound penalty, for example, although −3 is still the maximum). A hero with this Hindrance can’t take the Don’t Get ’im Riled! Edge.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The character takes an extra –1 if they have any Wound penalty."
   },
   {
    "name": "THIN SKINNED",
    "text": "Personal attacks get under your skin like a saddlebur. As a Minor Hindrance, your sidewinder subtracts 2 when resisting Taunt attacks. As a Major, they subtract 4.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The character is particularly susceptible to personal attacks. As a Minor Hindrance, they subtract two when resisting Taunt attacks. As a Major, they subtract four."
   },
   {
    "name": "TIMID",
    "text": "Your hero flinches at loud noises, startles at shadows, and breaks a sweat just drawing a weapon. Violence makes them nauseous and terror sticks to ‘em like grave dust. Not everyone’s meant to be a gunslinger—and this one might not even be meant to watch a fight. They subtract 2 from Fear checks and when resisting Intimidation.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "–2 to Fear checks and resisting Intimidation."
   },
   {
    "name": "TONGUE-TIED",
    "text": "Whether it’s nerves, a stammer, or just a knack for saying the wrong thing, this cowpoke’s words tend to work against them. Sweet-talking, bluffing, even telling a joke— none of it lands right. And don’t even try to impress a crowd unless you want laughter for all the wrong reasons. They suffer a −1 penalty to Intimidation, Performance, Persuasion, and Taunt rolls that involve speech.",
-   "severity": "Major"
+   "severity": "Major",
+   "summary": "The character often misspeaks or can’t get their words out. –1 to Intimidation, Persuasion, and Taunt rolls."
   },
   {
    "name": "TROUBLE MAGNET",
    "text": "Bad luck isn’t a rare occurrence for your sodbuster—it’s a lifestlye. As a Minor Hindrance, whenever the character rolls a Critical Failure the consequences are worse in some way. A hero isn’t just spotted trying to infiltrate a US Army fort, someone recognizes their face. A buckaroo doesn’t just fail at Intimidation, the target’s friends take personal offense. Or a botched attack roll results in the cowpoke’s weapon falling apart. The Major Hindrance has a different effect. Anytime the Marshal must choose a “random character” to be hit, attacked, or otherwise negatively affected by something—it’s this poor devil.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "As a Minor Hindrance any Critical Failure carries an additional negative consequence. As a Major Hindrance any time a random character would be chosen, this character is automatically selected."
   },
   {
    "name": "UGLY",
    "text": "This poor soul’s face could sour milk. They subtract 1 from their Persuasion rolls, or 2 if taken as a Major Hindrance.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The character is physically unattractive and subtracts 1 or 2 from Persuasion rolls."
   },
   {
    "name": "VENGEFUL",
    "text": "Those who trouble your ornery cuss are in for payback. As a Minor Hindrance they usually seek vengeance legally. The method varies by situation—some plot and scheme for months while others demand immediate results. Those with the Major version of this Hindrance don’t let anything prevent them from a reckoning. This doesn’t mean they immediately resort to violence, but their actions always escalate until total and complete satisfaction is achieved.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The adventurer seeks payback for past slights. As a Major Hindrance, she’ll cause physical harm to get it."
   },
   {
    "name": "WANTED",
    "text": "Your hero has committed a crime and will be arrested if discovered by the relevant authorities. The level of the Hindrance depends on how serious the crime was and how active the hunters are. A hero Wanted for robbery in a few towns in the Southwest has a Minor Hindrance. A horse-thief or murderer, or the same thief known and Wanted in the main campaign area, has a Major Hindrance.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "The character is wanted by the authorities."
   },
   {
    "name": "YOUNG",
    "text": "The hero is 12–15 years old. They only have 4 points to adjust their attributes instead of 5, and 10 skill points instead of 12. On the plus side, youths have a fair amount of luck. They draw one extra Benny at the beginning of each game session (this stacks with other Edges such Luck or Great Luck). Most Young characters should also take the Small Hindrance, but it’s not mandatory. As a Major Hindrance, the character is Very Young (8 to 11 years old). They have only 3 points for attributes and 10 for skills, and the Small Hindrance. Very Young heroes draw two extra Bennies at the start of each session.",
-   "severity": "Minor Or Major"
+   "severity": "Minor Or Major",
+   "summary": "Minor has 4 attribute points and 10 skill points, extra Benny per session. Major has 3 attribute points, 10 skill points, and two extra Bennies per session, but is also Small."
   }
  ]
 }

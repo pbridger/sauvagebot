@@ -160,6 +160,34 @@ dl.entries dd { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
    chip is the signal, and restyling the name as well read as two kinds of entry.
    Driven off the attribute so it cannot promise a tooltip that is not there. */
 dl.entries dt[title] { cursor: help; }
+
+/* Reveals the full rulebook entry. Deliberately the quietest thing on the line:
+   it repeats on every edge and hindrance, so anything with a border or a fill
+   turned the list into a column of buttons with names beside them. Weight and
+   size come off the bold dt, which is what keeps the name the thing you read. */
+.entry-more {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  vertical-align: 1px;
+  cursor: pointer;
+}
+.entry-more:hover { text-decoration: underline; }
+/* The expanded entry is several sentences where the summary is one line, so it
+   gets the paragraph treatment the summary does not need — and a rule down the
+   side, so that where it ends and the next entry begins stays obvious. */
+dl.entries dd.full {
+  margin-top: 3px;
+  padding-left: 6px;
+  border-left: 2px solid var(--rule);
+  line-height: 1.45;
+}
 p.prose { margin: 4px 0 0; font-size: 12px; }
 
 #log {

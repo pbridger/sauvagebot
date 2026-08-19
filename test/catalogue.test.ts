@@ -47,11 +47,102 @@ describe('the extracted catalogue', () => {
     }
   });
 
+  /**
+   * The digits that a too-greedy page-footer substitution used to eat. It deleted
+   * any 1-3 digit number followed by a capitalised word, which in a rules text is
+   * usually the number that matters — these five entries had lost their mechanic
+   * outright. See MECHANICS-INVENTORY.md §12.6.
+   */
+  it('kept the numbers that carry the rule', () => {
+    expect(findEdge('Power Points')?.text).toContain('additional 5 Power Points');
+    expect(findEdge('Improved Rapid Recharge')?.text).toContain('regains 20 Power Points');
+    expect(findEdge('Power Surge')?.text).toContain('recovers 10 Power Points');
+    expect(findEdge('Extra Effort')?.text).toMatch(/\+1 for 1 Power Point.*\+2 for 3/);
+    expect(findEdge('Agency Promotion')?.text).toContain('Grade 1 Agent');
+  });
+
+  it('left no page footer stranded in the text', () => {
+    // "…along a particular route they've traveled before. 5" — the crop clips a
+    // three-digit page number to its last digit, so this is a bare 1-3 digits at
+    // the very end.
+    for (const entry of [...EDGES, ...HINDRANCES]) {
+      expect(entry.text, entry.name).not.toMatch(/\s\d{1,3}$/);
+      expect(entry.text, entry.name).not.toContain('\u00ad');
+    }
+  });
+
   it('did not swallow a heading into the previous entry', () => {
     // "e    LEVEL HEADED" was a real failure when the right-hand crop caught the
     // last character of the left column.
     expect(findEdge('Level Headed')).toBeDefined();
     expect(findEdge('LEVEL HEADED (IMP)')).toBeDefined();
+  });
+});
+
+/**
+ * The book's own one-line version of each entry, off its summary tables. This is
+ * what shows on a sheet; the full text is behind a control, because six full
+ * entries at once is more than anyone reads.
+ */
+describe('the summaries', () => {
+  it('covers most of the book, and every hindrance', () => {
+    expect(HINDRANCES.every((h) => h.summary)).toBe(true);
+    expect(EDGES.filter((e) => e.summary).length).toBeGreaterThan(140);
+  });
+
+  it('is short enough to sit on a sheet', () => {
+    for (const entry of [...EDGES, ...HINDRANCES]) {
+      if (!entry.summary) continue;
+      expect(entry.summary.length, entry.name).toBeLessThan(300);
+    }
+  });
+
+  /**
+   * Not *always* shorter than the full entry, which is worth pinning rather than
+   * assuming. An improved Edge is written as "As above but…" and leans on the
+   * entry it improves, so the summary table — which restates the whole effect —
+   * says more in fewer words. `entryList` offers no expand control for those.
+   */
+  it('is shorter than the entry it summarises, except where the book defers', () => {
+    const longer = [...EDGES, ...HINDRANCES]
+      .filter((e) => e.summary && e.summary.length > e.text.length)
+      .map((e) => e.name);
+    expect(longer).toEqual([
+      'ARCANE RESISTANCE (IMP)',
+      'FIRST STRIKE (IMP)',
+      'LEVEL HEADED (IMP)',
+      'THIN SKINNED',
+    ]);
+    for (const name of longer.filter((n) => n.endsWith('(IMP)'))) {
+      expect([...EDGES].find((e) => e.name === name)?.text).toMatch(/^As above/);
+    }
+  });
+
+  it('leads with the mechanic', () => {
+    expect(findEdge('Alertness')?.summary).toBe('+2 to Notice rolls.');
+    expect(findEdge('Elan')?.summary).toBe('+2 when spending a Benny to reroll a Trait roll.');
+    expect(findEdge('Guts')?.summary).toBe('Free reroll when making Fear checks.');
+    expect(findHindrance('Anemic')?.summary).toContain('Vigor when resisting Fatigue');
+  });
+
+  /**
+   * The table is laid out with the name centred in a tall row, so its summary
+   * straddles it. Assigning each fragment to the nearest name put the boundary
+   * halfway between two names, which is wrong whenever neighbouring rows differ
+   * in height: Brute began with the tail of Brawny's entry and Scout lost its own
+   * first line. These are the rows that caught it.
+   */
+  it('did not take a line from the row above or below', () => {
+    expect(findEdge('Brute')?.summary).toMatch(/^Link Athletics to Strength/);
+    expect(findEdge('Brawny')?.summary).toMatch(/equipment\.$/);
+    expect(findEdge('Scout')?.summary).toMatch(/^Notice/);
+    expect(findEdge('Ace')?.summary).toMatch(/^Character may spend Bennies/);
+  });
+
+  it('kept the running header printed down the page edge out of the text', () => {
+    for (const entry of [...EDGES, ...HINDRANCES]) {
+      expect(entry.summary ?? '', entry.name).not.toMatch(/Makin|DEADLANDS/);
+    }
   });
 });
 
@@ -122,6 +213,21 @@ describe('against the real party sheets', () => {
       s.edges.filter((e) => !findEdge(e.name)).map((e) => `${s.name}: ${e.name}`),
     );
     expect(missing).toEqual([]);
+  });
+
+  /**
+   * What the party actually sees on their sheets. Agency Promotion is the one
+   * exception and is not an extraction fault: the book never lists it in the
+   * summary tables, because it is documented in the Agent chapter. It falls back
+   * to its full text, which is the intended behaviour rather than a hole.
+   */
+  it('has a one-line summary for every entry the party carries but one', () => {
+    const bare = sheets.flatMap((s) =>
+      [...s.edges, ...s.hindrances]
+        .filter((e) => !findEntry(e.name)?.summary)
+        .map((e) => e.name),
+    );
+    expect([...new Set(bare)]).toEqual(['AGENCY PROMOTION']);
   });
 });
 

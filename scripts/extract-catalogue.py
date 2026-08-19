@@ -1,14 +1,31 @@
 """
 Build a structured catalogue of Edges and Hindrances from the rulebook.
 
-The PDF is two-column, and `pdftotext` reading it whole interleaves the columns
-into nonsense. Each column is extracted separately with a crop box and then
-concatenated, which restores reading order — that is the whole trick.
+Two passes over the same PDF, because the book presents the same material twice
+in layouts that need opposite treatment.
+
+**The entries.** Body pages are two-column, and `pdftotext` reading one whole
+interleaves the columns into nonsense. Each column is extracted separately with a
+crop box and then concatenated, which restores reading order.
+
+**The summaries.** The book also prints its own one-line version of every entry,
+in tables at the back — the designers' precis, leading with the mechanic. That is
+what a character sheet wants; the full entry goes behind a control. Those tables
+run the full page width, so the body's column crop would slice them in half
+("+2 to Noti"), and they are read whole. The Edge table further defeats
+line-based parsing outright, because a tall row centres its name vertically and
+the summary straddles it — so it is parsed from word coordinates instead. See
+`edge_summaries`.
+
+Coverage is deliberately incomplete rather than approximate: an entry whose name
+does not match one the body pass already found is dropped, not guessed at. 215 of
+280 entries get a summary; the rest are setting-specific Edges the book documents
+only in their own chapters, and the UI falls back to their full text.
 
 Run from the repo root with the PDF at ../import/:
     python3 scripts/extract-catalogue.py
 """
-import json, re, subprocess, sys
+import html, json, re, subprocess, sys
 from pathlib import Path
 
 PDF = Path(__file__).resolve().parents[2] / 'import' / 'DLWW_Core_player_extract.pdf'
@@ -83,6 +100,241 @@ def clean(body: list[str]) -> str:
     return text.strip()
 
 
+# ---------------------------------------------------------------- summaries
+#
+# The book prints its own one-line version of every Edge and Hindrance, and it is
+# far better than anything this script could synthesise from the full entry: it is
+# the designers' own precis, it leads with the mechanic, and it is what a player
+# actually wants on a character sheet. The full text goes behind a control; this
+# is what shows.
+#
+# These pages are laid out across the full page width, so the two-column crop used
+# for the body would slice them in half — "+2 to Noti". They are read whole.
+EDGE_SUMMARY_PAGES = range(107, 113)
+HINDRANCE_SUMMARY_PAGES = range(104, 106)
+
+# "Edge   Requirements   Summary". The columns start where those two words start,
+# and the indent shifts from page to page, so it is read off each header rather
+# than hard-coded.
+TABLE_HEAD = re.compile(r'^\s*Edge\s+Requirements\s+Summary')
+# How far left of its heading each column's content may start, in points.
+NAME_GUTTER = 20
+SUM_GUTTER = 6
+# The table proper, horizontally. The book prints its running header as rotated
+# text down *both* page edges — "DEADLANDS: THE WEIRD WEST" at x=8-25 on the left
+# of a verso page, "Makin' Heroes" at x=451-468 on the right of a recto — and
+# `-bbox` reports each word on whatever visual line it happens to sit beside. The
+# left one landed in the name column and lost that row; the right one landed in
+# the summary column and appended "Makin' Heroes" to the rules text. The table
+# itself never passes x=437.
+#
+# Constants rather than the "Edge" heading's own position, because on page 107 the
+# heading is indented to x=67 while its column of names begins at x=40.
+PAGE_MARGIN = 25
+PAGE_RIGHT = 445
+# Vertical gap that separates one table row from the next. The book leads summary
+# lines about 10pt apart within a row and about 14.5pt apart between rows.
+ROW_GAP = 12
+# "Ugly (Minor/Major): The character is physically unattractive…"
+# The same rotated running header, as `-layout` renders it: alone on a line. The
+# coordinate-based Edge parser excludes it by position; this one reads text, so it
+# has to recognise it. Without this, Obligation's summary ended "…hours. Makin'
+# Heroes".
+RUNNING_HEAD = re.compile(r"^(Makin' Heroes|DEADLANDS: THE WEIRD WEST)$")
+HINDRANCE_LINE = re.compile(
+    r"^(?P<name>[A-Z][A-Za-z’'\- ]*?)\s*\((?P<sev>Minor|Major|Minor/Major)\):\s*(?P<text>.*)$")
+
+
+def full_page(page: int) -> str:
+    return subprocess.run(
+        ['pdftotext', '-f', str(page), '-l', str(page), '-layout', str(PDF), '-'],
+        capture_output=True, text=True).stdout
+
+
+def tidy(text: str) -> str:
+    return re.sub(r'\s+', ' ', text).replace('­', '').strip()
+
+
+WORD = re.compile(
+    r'<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)</word>')
+
+
+def page_words(page: int) -> list[tuple[float, float, float, str]]:
+    """Every word on the page as (xMin, xMax, yCentre, text), reading order."""
+    xml = subprocess.run(
+        ['pdftotext', '-f', str(page), '-l', str(page), '-bbox-layout', str(PDF), '-'],
+        capture_output=True, text=True).stdout
+    out = []
+    for x0, y0, x1, y1, text in WORD.findall(xml):
+        if text.strip():
+            out.append((float(x0), float(x1), (float(y0) + float(y1)) / 2,
+                        html.unescape(text)))
+    return out
+
+
+def edge_summaries(known: set[str]) -> dict[str, str]:
+    """
+    Read the Edge summary table.
+
+    Done on word coordinates rather than on `-layout` text, because the table
+    defeats line-based parsing outright. A tall row centres its name vertically,
+    so the summary straddles it:
+
+        |                          Character may spend Bennies to Soak damage for
+        | Ace          N, A d8
+        |                          their vehicle and ignores up to 2 points…
+
+    Read as lines, "Ace" owns only the blank between its two summary lines, and
+    six of the party's own edges came out bare — Investigator, Level-Headed, Holy
+    Warrior, Agency Promotion, Rock and Roll!, Strong Willed. With coordinates the
+    row is recoverable: names and summary fragments are matched by how close they
+    sit vertically, which is the same cue the eye uses.
+
+    Names still wrap ("Arcane" / "Background"), so fragments are glued while the
+    result keeps spelling something the body extraction defined. Anything that
+    matches no known entry is dropped rather than guessed at.
+    """
+    found: dict[str, str] = {}
+    carried: tuple[float, float] | None = None
+
+    for page in EDGE_SUMMARY_PAGES:
+        words = page_words(page)
+
+        # Each table on the page announces itself with its own header row, and a
+        # page can carry two. The header also fixes the column positions, which
+        # shift between tables.
+        heads = []
+        for x0, x1, y, text in words:
+            if text == 'Edge':
+                row = [w for w in words if abs(w[2] - y) < 4]
+                cols = {w[3]: w[0] for w in row}
+                if 'Requirements' in cols and 'Summary' in cols:
+                    heads.append((y, x0, cols['Requirements'], cols['Summary']))
+        heads.sort()
+
+        # A table running over a page break does not repeat its header, and the
+        # rows above the *next* table's header belong to it. Page 109 has no
+        # header at all and page 112 opens mid-table, so requiring one skipped
+        # both — which is where Level Headed, Rock and Roll! and Strong Willed
+        # were going. Carry the last known columns onto whatever precedes.
+        if carried and (not heads or heads[0][0] > 80):
+            heads.insert(0, (0.0, *carried))
+        if not heads:
+            continue
+        carried = (heads[-1][1], heads[-1][2], heads[-1][3])
+
+        for i, (top, _edge_x, req_x, sum_x) in enumerate(heads):
+            bottom = heads[i + 1][0] if i + 1 < len(heads) else 1e9
+            # Anything outside the table's own left margin is the running header
+            # printed down the edge of the page. It sits at x=8 where the table
+            # starts at x=40, and being on the same line as a row it was landing
+            # in the name column — "DEADLANDS: Calculating" matches nothing, so
+            # the row was dropped.
+            body = [w for w in words
+                    if top + 4 < w[2] < bottom
+                    and PAGE_MARGIN <= w[0] and w[1] <= PAGE_RIGHT]
+
+            # Group into visual lines, then split each by column.
+            lines: dict[int, list] = {}
+            for w in body:
+                lines.setdefault(round(w[2] / 3), []).append(w)
+
+            names: list[tuple[float, str]] = []
+            bits: list[tuple[float, str]] = []
+            for key in sorted(lines):
+                row = sorted(lines[key])
+                y = sum(w[2] for w in row) / len(row)
+                # The Requirements column is centre-aligned, so its content
+                # starts well left of where its heading does — "N, A d8," begins
+                # 13pt left of the word "Requirements". Splitting on the heading
+                # position pulled the first requirement into Acrobat's name and
+                # lost the row. Both boundaries sit inside the gutter instead.
+                left = ' '.join(w[3] for w in row if w[0] < req_x - NAME_GUTTER)
+                right = ' '.join(w[3] for w in row if w[0] >= sum_x - SUM_GUTTER)
+                # Section titles ("SOCIAL EDGES") and the running footer.
+                if left and not left.isupper():
+                    names.append((y, left))
+                if right:
+                    bits.append((y, right))
+
+            # Glue a name that wrapped onto the next line back together.
+            merged: list[tuple[float, str]] = []
+            for y, text in names:
+                if merged and normal(f'{merged[-1][1]} {text}') in known:
+                    merged[-1] = (merged[-1][0], f'{merged[-1][1]} {text}')
+                else:
+                    merged.append((y, text))
+            merged = [(y, t) for y, t in merged if normal(t) in known]
+            if not merged:
+                continue
+
+            # Group the summary fragments into rows before matching them to a
+            # name, using the fact that the table leads lines ~10pt apart inside a
+            # row and ~14.5pt apart between rows.
+            #
+            # Matching each fragment to its nearest name instead — which is the
+            # obvious thing, and is exactly right when every row is the same
+            # height — put the boundary halfway between two name centres. Rows are
+            # centred but not equally tall, so a tall row next to a short one has
+            # its edge somewhere else entirely: Brute began with the tail of
+            # Brawny's requirements, and Scout lost its own first line to the row
+            # above. Blocks make the boundary the book's own line spacing.
+            blocks: list[list[tuple[float, str]]] = []
+            for y, text in sorted(bits):
+                if blocks and y - blocks[-1][-1][0] <= ROW_GAP:
+                    blocks[-1].append((y, text))
+                else:
+                    blocks.append([(y, text)])
+
+            # A name belongs to the block its own line falls inside — the name is
+            # centred in the row, so it is bracketed by its summary rather than
+            # sitting above it.
+            def distance(block: list[tuple[float, str]], y: float) -> float:
+                top, bottom = block[0][0], block[-1][0]
+                return 0.0 if top <= y <= bottom else min(abs(top - y), abs(bottom - y))
+
+            for block in blocks:
+                at = min(range(len(merged)), key=lambda k: distance(block, merged[k][0]))
+                found.setdefault(normal(merged[at][1]), tidy(' '.join(t for _, t in block)))
+
+    return found
+
+
+def hindrance_summaries(known: set[str]) -> dict[str, str]:
+    """
+    Read the Hindrance summary, which is running prose rather than a table:
+    "Ugly (Minor/Major): The character is physically unattractive…", wrapping onto
+    following lines until the next name.
+    """
+    found: dict[str, str] = {}
+    name, body = '', []
+
+    def flush() -> None:
+        if name and normal(name) in known and body:
+            found.setdefault(normal(name), tidy(' '.join(body)))
+
+    for page in HINDRANCE_SUMMARY_PAGES:
+        for line in full_page(page).splitlines():
+            if FOOTER.match(line) or not line.strip():
+                continue
+            if RUNNING_HEAD.match(line.strip()):
+                continue
+            start = HINDRANCE_LINE.match(line.strip())
+            if start:
+                flush()
+                name, body = start.group('name'), [start.group('text')]
+            elif name:
+                body.append(line.strip())
+        flush()
+        name, body = '', []
+    return found
+
+
+def normal(name: str) -> str:
+    """Match the catalogue's own loose comparison, so "Elan" finds "ELAN"."""
+    return re.sub(r'[^A-Z0-9]+', ' ', name.upper()).strip()
+
+
 def parse(text: str) -> dict:
     lines = text.splitlines()
     edges, hindrances = {}, {}
@@ -144,9 +396,30 @@ def parse(text: str) -> dict:
     }
 
 
+def attach_summaries(catalogue: dict) -> tuple[int, int]:
+    """Hang the book's one-liners on the entries they belong to."""
+    edge_names = {normal(e['name']) for e in catalogue['edges']}
+    hind_names = {normal(h['name']) for h in catalogue['hindrances']}
+    edges, hinds = edge_summaries(edge_names), hindrance_summaries(hind_names)
+    for entry in catalogue['edges']:
+        if found := edges.get(normal(entry['name'])):
+            entry['summary'] = found
+    for entry in catalogue['hindrances']:
+        if found := hinds.get(normal(entry['name'])):
+            entry['summary'] = found
+    return (sum('summary' in e for e in catalogue['edges']),
+            sum('summary' in h for h in catalogue['hindrances']))
+
+
 if __name__ == '__main__':
     if not PDF.exists():
         sys.exit(f'rulebook not found at {PDF}')
     catalogue = parse(book_text())
+    got_e, got_h = attach_summaries(catalogue)
     OUT.write_text(json.dumps(catalogue, indent=1, ensure_ascii=False) + '\n')
-    print(f"{len(catalogue['edges'])} edges, {len(catalogue['hindrances'])} hindrances -> {OUT}")
+    n_e, n_h = len(catalogue['edges']), len(catalogue['hindrances'])
+    print(f'{n_e} edges, {n_h} hindrances -> {OUT}')
+    print(f'summaries: {got_e}/{n_e} edges, {got_h}/{n_h} hindrances')
+    for entry in catalogue['edges'] + catalogue['hindrances']:
+        if 'summary' not in entry:
+            print(f'  no summary: {entry["name"]}')

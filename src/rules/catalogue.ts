@@ -16,7 +16,17 @@ import data from './catalogue.json' with { type: 'json' };
 
 export interface CatalogueEntry {
   name: string;
+  /** The full printed entry: flavour, then the mechanics, then the exceptions. */
   text: string;
+  /**
+   * The book's own one-line version, from its Edge and Hindrance summary tables.
+   *
+   * The designers' precis rather than anything synthesised here — it leads with
+   * the mechanic and drops the colour, which is exactly what a character sheet
+   * wants. 215 of the 280 entries have one; the rest are setting-specific Edges
+   * documented only in their own chapters, and fall back to the full text.
+   */
+  summary?: string;
   /** Edges only. */
   requirements?: string;
   /** Hindrances only: Minor, Major, or "Minor or Major". */

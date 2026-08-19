@@ -1230,7 +1230,20 @@ function entryList(entries: Sheet['edges'], notes: readonly AbilityNote[]): HTML
   dl.className = 'entries';
   for (const entry of entries) {
     const note = notes.find((n) => n.entry === entry);
-    const text = entry.text?.trim();
+    // `entry.text` is the book's full entry, reattached by `joinSheet`. Good to
+    // have and far too long to sit under six of these at once, so what shows is
+    // the book's own one-line summary and the full text is a click away.
+    const full = entry.text?.trim();
+    const brief = findEntry(entry.name)?.summary?.trim();
+    const shown = brief ?? full;
+    // Nothing to expand when the summary is all there is, or when the two say the
+    // same thing — a control that reveals what is already on screen is worse than
+    // no control. Nor when the full entry is the *shorter* of the two: an improved
+    // Edge is printed as "As above but…" and leans on the entry it improves, so
+    // the summary table says more. Four entries are like that, and offering to
+    // expand them would be offering to show less.
+    const expandable = Boolean(full && brief && full !== brief && full.length > brief.length);
+
     const dt = document.createElement('dt');
     dt.textContent = entry.name;
     if (note && note.klass !== 'text') {
@@ -1239,15 +1252,39 @@ function entryList(entries: Sheet['edges'], notes: readonly AbilityNote[]): HTML
       tag.textContent = note.klass === 'wired' ? 'auto' : 'N.B.';
       tag.title = note.note;
       dt.append(' ', tag);
-    } else if (note && !text) {
+    } else if (note && !shown) {
       dt.title = note.note;
     }
-    dl.append(dt);
-    if (text) {
-      const dd = document.createElement('dd');
-      dd.textContent = text;
-      dl.append(dd);
+
+    const dd = document.createElement('dd');
+    if (shown) dd.textContent = shown;
+
+    if (expandable) {
+      const toggle = document.createElement('button');
+      toggle.className = 'entry-more';
+      toggle.type = 'button';
+      // Starts collapsed on every render. The sheet is rebuilt whenever anything
+      // on it changes, so remembering which entries were open would mean keeping
+      // that state outside the DOM for a control the reader can re-open in one
+      // click.
+      let open = false;
+      const paint = (): void => {
+        toggle.textContent = open ? 'Less' : 'More';
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.title = open ? 'Show the short version' : 'Show the full rulebook entry';
+        dd.textContent = open ? full! : brief!;
+        dd.classList.toggle('full', open);
+      };
+      toggle.addEventListener('click', () => {
+        open = !open;
+        paint();
+      });
+      paint();
+      dt.append(' ', toggle);
     }
+
+    dl.append(dt);
+    if (shown) dl.append(dd);
   }
   return dl;
 }
