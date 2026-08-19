@@ -63,6 +63,8 @@ import {
   bandFor,
   BAND_PENALTY,
   DEFAULT_PARRY,
+  PARRY_VISIBLE_CELLS,
+  showsParry,
   FLAT_TARGET,
   isTargeted,
   parseRangeBands,
@@ -709,7 +711,11 @@ interface TargetRow {
   band?: Band;
   /** The number the attack had to beat, for an attack roll. */
   target?: number;
-  /** Shown alongside, so a shot into melee can be judged by eye. */
+  /**
+   * The target's Parry, and **absent when the table has no business showing it**
+   * rather than merely unknown — see `showsParry`. Left off the row rather than
+   * blanked at render time, so nothing downstream can print what was withheld.
+   */
   parry?: number;
   /** What the target's own conditions gave the attacker, e.g. +2 for Vulnerable. */
   bonus?: number;
@@ -785,6 +791,7 @@ async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
       // where it already was: with the Marshal.
       const parry = sheet.parry ?? DEFAULT_PARRY;
       const target = melee ? parry : FLAT_TARGET;
+      // Whether Parry is any of this table's business — see `showsParry`.
       // Range and the target's own conditions both belong to *this* pairing
       // rather than to the roll, so they are applied here — one resolve per
       // candidate off the one rolled total. See `resolveAimedAttack`.
@@ -795,7 +802,7 @@ async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
         ...(band ? { band } : {}),
         targetBonus: bonus,
       });
-      row.parry = parry;
+      if (showsParry(entry.skill, cells)) row.parry = parry;
       row.target = target;
       row.bonus = bonus;
       row.effective = outcome.effective;
@@ -1009,9 +1016,17 @@ async function fillTargets(holder: HTMLElement, entry: RollEntry): Promise<void>
 
     const stat = document.createElement('td');
     stat.className = 'num';
-    stat.textContent = String(isAttack ? (row.parry ?? '—') : (row.toughness ?? '—'));
-    if (isAttack && row.target !== row.parry) {
-      stat.title = `Parry ${row.parry} — the result beside it is against ${row.target}`;
+    if (isAttack) {
+      // Blank rather than "—" when it is withheld. An em dash here means "this
+      // character has no Parry", which is a different and wrong statement — the
+      // number exists, it is simply not the table's business on a shot that
+      // travelled. See `PARRY_VISIBLE_CELLS`.
+      stat.textContent = row.parry === undefined ? '' : String(row.parry);
+      if (row.parry !== undefined && row.target !== row.parry) {
+        stat.title = `Parry ${row.parry} — the result beside it is against ${row.target}`;
+      }
+    } else {
+      stat.textContent = String(row.toughness ?? '—');
     }
     tr.append(stat);
 
@@ -1089,7 +1104,8 @@ async function fillTargets(holder: HTMLElement, entry: RollEntry): Promise<void>
     note.textContent =
       attackKind(entry.skill!) === 'parry'
         ? 'Resolved against Parry.'
-        : 'Against Parry if the shot is into melee; otherwise the usual 4.';
+        : `Against the usual 4. Parry is shown only within ${PARRY_VISIBLE_CELLS} ` +
+          `cells, where the shot may have been into melee — the Marshal's call.`;
     holder.append(note);
   }
 

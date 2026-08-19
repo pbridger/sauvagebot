@@ -175,6 +175,45 @@ export function isTargeted(skill: string | undefined): boolean {
 }
 
 /**
+ * How close a shot has to land before the target's Parry is worth showing.
+ *
+ * A shot into melee is resolved against Parry rather than the usual 4, and
+ * nothing here can know whether the target is engaged — so distance stands in for
+ * it. Two cells is the Marshal's cue to make that call, not a rule from the book.
+ */
+export const PARRY_VISIBLE_CELLS = 2;
+
+/**
+ * Whether the targeting table should print this target's Parry.
+ *
+ * Presentation rather than arithmetic — `resolveAimedAttack` is given the target
+ * number directly and never consults this. It lives here anyway because it is
+ * only decidable from `attackKind`, and because it is the kind of thing that
+ * regresses silently: it was reported as data leakage, and a change that quietly
+ * put the number back would look like nothing at all in a diff.
+ *
+ * A Fighting roll resolves *against* Parry, so it must be shown — the table
+ * exists because a raise was once claimed with the Parry unknown. A shot resolves
+ * against 4, so printing Parry beside every candidate hands the players a stat
+ * from the sheet of every character on the map and buys the arithmetic nothing.
+ * The exception is the shot that may have been into melee, which is the only case
+ * where the Marshal needs the number.
+ *
+ * An unmeasured distance withholds it. Getting that backwards would leak on
+ * exactly the rolls where something has already gone wrong.
+ */
+export function showsParry(skill: string | undefined, cells: number | undefined): boolean {
+  if (skill === undefined) return false;
+  const kind = attackKind(skill);
+  if (kind === 'parry') return true;
+  // `flat` is not an attack at all — a Notice roll offers no targeting table, and
+  // it is only the caller's `isAttack` guard that stopped this saying otherwise.
+  // Answering correctly without that guard is the point of it living here.
+  if (kind !== 'maybe-parry') return false;
+  return cells !== undefined && cells < PARRY_VISIBLE_CELLS;
+}
+
+/**
  * Whether the engine's flat verdict on this roll is simply wrong.
  *
  * Only for Fighting. A Fighting roll is *always* against the target's Parry, so

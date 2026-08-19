@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { displayName, type Combatant } from '../extension/src/initiativePanel.js';
 import { emptySheet, sheetFromJson, sheetToJson, type Sheet } from '../src/rules/sheet.js';
 import { newTokenState } from '../src/obr/binding.js';
+import { PARRY_VISIBLE_CELLS, showsParry } from '../src/rules/targeting.js';
 
 const combatant = (tokenName: string, sheet: Sheet): Combatant => ({
   tokenId: `t-${tokenName}`,
@@ -75,5 +76,46 @@ describe('a sheet written before the PC flag existed', () => {
   it('prefers an explicit pc when a sheet somehow carries both', () => {
     const both = asJson({ id: 'x', name: 'X', wildCard: true, private: true, pc: true });
     expect(sheetFromJson(both).pc).toBe(true);
+  });
+});
+
+/**
+ * Parry in the targeting table, which was reported as data leakage: a Shooting
+ * roll printed the Parry of every character on the map, and a shot is resolved
+ * against a flat 4 rather than against Parry, so it bought the arithmetic
+ * nothing.
+ *
+ * These pin a decision that would regress invisibly — putting the number back is
+ * a one-word change and looks like nothing in a diff.
+ */
+describe('whose Parry the targeting table will print', () => {
+  it('shows it for Fighting, which is resolved against it', () => {
+    expect(showsParry('Fighting', 1)).toBe(true);
+    expect(showsParry('Fighting', 40)).toBe(true);
+    // Even unmeasured: the number is the target number, so the table is useless
+    // without it. This is the failure the table was built for.
+    expect(showsParry('Fighting', undefined)).toBe(true);
+  });
+
+  it('withholds it for a shot that travelled', () => {
+    expect(showsParry('Shooting', PARRY_VISIBLE_CELLS)).toBe(false);
+    expect(showsParry('Shooting', 12)).toBe(false);
+    expect(showsParry('Throwing', 5)).toBe(false);
+  });
+
+  it('shows it for a shot close enough to have been into melee', () => {
+    expect(showsParry('Shooting', 0)).toBe(true);
+    expect(showsParry('Shooting', 1.9)).toBe(true);
+  });
+
+  /** Withholding is the safe default, so an unmeasured range must not leak. */
+  it('withholds it when the range could not be measured', () => {
+    expect(showsParry('Shooting', undefined)).toBe(false);
+    expect(showsParry('Athletics', undefined)).toBe(false);
+  });
+
+  it('says nothing about a roll that is not an attack', () => {
+    expect(showsParry('Notice', 1)).toBe(false);
+    expect(showsParry(undefined, 1)).toBe(false);
   });
 });
