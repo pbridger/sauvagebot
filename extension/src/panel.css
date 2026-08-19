@@ -156,8 +156,10 @@ dl.entries dd { margin: 1px 0 0; font-size: 12px; color: var(--muted); }
    about — the same grammar as the target-state pills. */
 .entry-tag.wired { background: var(--accent); color: #fff; }
 .entry-tag.note { border: 1px solid var(--muted); color: var(--muted); }
-/* Inert entries stay legible but stop looking load-bearing. */
-dl.entries dt.inert { font-weight: 600; color: var(--muted); cursor: help; }
+/* Entry names are formatted identically whether or not they carry a chip: the
+   chip is the signal, and restyling the name as well read as two kinds of entry.
+   Driven off the attribute so it cannot promise a tooltip that is not there. */
+dl.entries dt[title] { cursor: help; }
 p.prose { margin: 4px 0 0; font-size: 12px; }
 
 #log {
@@ -902,6 +904,16 @@ button.targets-toggle:hover { color: var(--accent); border-color: var(--accent);
 /* Beyond long range: still listed, so "why is he not here?" never comes up. */
 .targets tr.out-of-range { opacity: .45; }
 .targets-note { margin: 3px 0 0; font-size: 10px; color: var(--muted); }
+/* A stray shot is the one note here that wants reading, so it is the one note
+   that is not grey. Bordered rather than coloured text alone — it appears
+   underneath a note that looks almost the same otherwise. */
+.targets-note.stray {
+  margin-top: 4px;
+  padding: 3px 5px;
+  border-left: 2px solid var(--wound-ink);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--wound-ink) 8%, transparent);
+}
 
 /* The Marshal's damage adjustment.
 

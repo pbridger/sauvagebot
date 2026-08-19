@@ -26,6 +26,13 @@ describe('validating what arrives over the wire', () => {
     expect(isRollEntry(entry({ total: 10, ap: 2 }))).toBe(true);
   });
 
+  /** The stray-shot count rides on the entry because the dice do not. */
+  it('accepts a stray count, and rejects one that is not a number', () => {
+    expect(isRollEntry(entry({ stray: 1, strayOn: 2 }))).toBe(true);
+    expect(isRollEntry(entry({ stray: 'yes' as never }))).toBe(false);
+    expect(isRollEntry(entry({ strayOn: Number.NaN }))).toBe(false);
+  });
+
   it('accepts a modifier breakdown, and rejects a malformed one', () => {
     expect(
       isRollEntry(

@@ -92,6 +92,21 @@ export interface RollEntry {
   skill?: string;
   /** The weapon's `12/24/48`, when it had one. Absent for a melee attack. */
   bands?: [number, number, number];
+  /**
+   * How many skill dice on this roll came up low enough to endanger a bystander.
+   *
+   * Carried rather than recomputed for the same reason `mods` is: the dice
+   * themselves go over a *different* channel, are stripped from secret rolls, and
+   * are gone by the time anyone reads the line. A receiving client cannot work
+   * this out, and it is one number.
+   *
+   * Absent when nothing strayed, so its presence is the whole signal. Whether it
+   * *means* anything still depends on the miss, which is per-target and settled in
+   * the targeting table. See `bystanders.ts`.
+   */
+  stray?: number;
+  /** The window that count was taken at — 1, or 2 for a weapon that sprays. */
+  strayOn?: number;
 }
 
 function isRollMod(value: unknown): value is RollMod {
@@ -133,6 +148,8 @@ export function isRollEntry(value: unknown): value is RollEntry {
     typeof entry.explained === 'string' &&
     isOptionalNumber(entry.total) &&
     isOptionalNumber(entry.ap) &&
+    isOptionalNumber(entry.stray) &&
+    isOptionalNumber(entry.strayOn) &&
     (entry.applicable === undefined || typeof entry.applicable === 'boolean') &&
     (entry.animated === undefined || typeof entry.animated === 'boolean') &&
     (entry.character === undefined || typeof entry.character === 'string') &&

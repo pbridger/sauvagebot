@@ -21,6 +21,13 @@ import {
   notesForTrait,
   type AbilityNote,
 } from '../../src/rules/abilities.js';
+import {
+  skillCanStray,
+  strayShots,
+  strayThreshold,
+  strayWarning,
+  STRAY_ON_MISS,
+} from '../../src/rules/bystanders.js';
 import { parseArchetypeCards } from '../../src/rules/importArchetypeCard.js';
 import {
   damageDiceOptions,
@@ -199,11 +206,30 @@ const lastDamage = new Map<string, number>();
  * dice, and a stale one surviving a reload would offer to reroll something
  * nobody remembers.
  */
+/**
+ * The framing that makes a roll an *attack* rather than a number.
+ *
+ * One named type rather than two structural literals, because it is stored on
+ * `LastTrait` and handed back to `publishTrait` by the Benny reroll. Written out
+ * twice, the two drifted immediately: `strayOn` was added to the parameter and
+ * not to the stored copy, which typechecks — structural assignment does not
+ * complain about an extra property on a variable — and works only because the
+ * object is stored by reference. A rename or a spread would have quietly lost it,
+ * and a scattergun reroll would have narrowed from 1–2 back to 1 with nothing to
+ * see.
+ */
+interface AimedRoll {
+  skill: string;
+  bands?: [number, number, number];
+  /** The die value at or under which this weapon endangers bystanders. */
+  strayOn?: number;
+}
+
 interface LastTrait {
   label: string;
   expression: string;
   mods: RollBreakdown;
-  aimed?: { skill: string; bands?: [number, number, number] };
+  aimed?: AimedRoll;
 }
 const lastTraitRoll = new Map<string, LastTrait>();
 let store = roomStore();
@@ -453,7 +479,7 @@ function publishTrait(
   mods: RollBreakdown,
   // Only for an attack. Lets any client work the roll out against a named target
   // instead of against the flat 4 the dice engine assumes — see `targeting.ts`.
-  aimed?: { skill: string; bands?: [number, number, number] },
+  aimed?: AimedRoll,
   /** Set when this *is* a reroll, so it does not overwrite what it is redoing. */
   isReroll = false,
 ): void {
@@ -472,6 +498,12 @@ function publishTrait(
       ...(aimed ? { aimed } : {}),
     });
   }
+  // Counted here rather than at each call site, so a Benny reroll re-counts its
+  // *own* dice against the same weapon's window — the threshold belongs to the
+  // gun and rides on `aimed`, the count belongs to the dice and does not.
+  const strayOn = skillCanStray(aimed?.skill) ? (aimed?.strayOn ?? STRAY_ON_MISS) : undefined;
+  const stray = strayOn === undefined ? 0 : strayShots(result.dice ?? [], strayOn);
+
   publish(
     {
       ...(who ? { character: who } : {}),
@@ -488,6 +520,7 @@ function publishTrait(
       ...(mods.parts.length ? { mods: mods.parts } : {}),
       ...(aimed ? { skill: aimed.skill } : {}),
       ...(aimed?.bands ? { bands: aimed.bands } : {}),
+      ...(stray && strayOn !== undefined ? { stray, strayOn } : {}),
       ...(aimed && from ? { from } : {}),
     },
     result.dice ?? [],
@@ -1059,6 +1092,24 @@ async function fillTargets(holder: HTMLElement, entry: RollEntry): Promise<void>
         : 'Against Parry if the shot is into melee; otherwise the usual 4.';
     holder.append(note);
   }
+
+  // Shown *here* and not on the log line, because the rule turns on the miss and
+  // the miss is per-target: this is the one place on screen that knows one. Held
+  // back entirely when every row hit — a warning about a shot that landed is
+  // noise, and noise is how a warning stops being read.
+  //
+  // Deliberately not per row. Most rows in this table are people nobody was
+  // aiming at, so a marker against each of their misses would mark almost
+  // everything. Who is actually next to the target is a look at the map.
+  if (isAttack && entry.stray && rows.some((row) => row.hit === false && !row.outOfRange)) {
+    const stray = document.createElement('p');
+    stray.className = 'targets-note stray';
+    stray.textContent = strayWarning(entry.stray, entry.strayOn ?? STRAY_ON_MISS).replace(
+      /\*\*/g,
+      '',
+    );
+    holder.append(stray);
+  }
 }
 
 function showSaved(state: 'saving' | 'saved' | ''): void {
@@ -1162,31 +1213,39 @@ function traitButton(
  * — which is exactly the guessing Paul wanted stopped. Now:
  *
  *   `auto` — the app applies it (initiative only; that is the whole list)
- *   `note` — has a number, and there is an asterisk on the trait it belongs to
- *   (none) — text, and visibly so
+ *   `N.B.` — has a number, and there is an asterisk on the trait it belongs to
+ *   (none) — text, and the rules text below it is the whole story
+ *
+ * The name itself is formatted the same either way. It used to be greyed and
+ * lighter when inert, which read as two kinds of entry when the only difference
+ * is whether there is a chip — and the chip is the signal.
+ *
+ * An inert entry gets no tooltip *unless* it has no rules text: "no number the
+ * app can name" was hovering to be told what the paragraph directly underneath
+ * already says. An entry named with no text at all is the opposite case — the
+ * tooltip is the only thing there is to read.
  */
 function entryList(entries: Sheet['edges'], notes: readonly AbilityNote[]): HTMLElement {
   const dl = document.createElement('dl');
   dl.className = 'entries';
   for (const entry of entries) {
     const note = notes.find((n) => n.entry === entry);
+    const text = entry.text?.trim();
     const dt = document.createElement('dt');
     dt.textContent = entry.name;
     if (note && note.klass !== 'text') {
       const tag = document.createElement('span');
       tag.className = `entry-tag ${note.klass}`;
-      tag.textContent = note.klass === 'wired' ? 'auto' : 'note';
+      tag.textContent = note.klass === 'wired' ? 'auto' : 'N.B.';
       tag.title = note.note;
       dt.append(' ', tag);
-    } else if (note) {
-      // Inert, and it has to *look* inert rather than merely not working.
+    } else if (note && !text) {
       dt.title = note.note;
-      dt.classList.add('inert');
     }
     dl.append(dt);
-    if (entry.text) {
+    if (text) {
       const dd = document.createElement('dd');
-      dd.textContent = entry.text;
+      dd.textContent = text;
       dl.append(dd);
     }
   }
@@ -3027,13 +3086,16 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
       attack.textContent = skill;
       attack.title = `Roll ${skill}${mods.parts.length ? ` (${describeMods(mods.parts)})` : ''}`;
       const bands = parseRangeBands(weapon.range);
+      // The stray window is the gun's, not the roll's: a scattergun endangers
+      // bystanders on a 1 *or* a 2, everything else only on a 1.
+      const strayOn = strayThreshold(weapon);
       attack.addEventListener('click', () =>
         publishTrait(
           sheet,
           `${weapon.name} — ${skill}`,
           rollSkill(sheet, skill, penalty),
           mods,
-          { skill, ...(bands ? { bands } : {}) },
+          { skill, ...(bands ? { bands } : {}), strayOn },
         ),
       );
       attackCell.append(attack);

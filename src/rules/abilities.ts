@@ -28,10 +28,11 @@
  *   that trait's row.
  * - `wired` — the app already does this one, so nobody should dial it in a
  *   second time. Level Headed and Quick are the whole list.
- * - `text` — no mechanical effect the app can name. Shown as it always was,
- *   but *visibly* inert, which is what stops the guessing: today a sheet showing
- *   Trademark Weapon and a sheet showing Level Headed look identical and only
- *   one of them does anything.
+ * - `text` — no mechanical effect the app can name. Shown as it always was, and
+ *   carrying no mark, which is what stops the guessing: without this a sheet
+ *   showing Trademark Weapon and a sheet showing Level Headed look identical and
+ *   only one of them does anything. The absence of a mark is the statement; the
+ *   entry's own rules text is left to speak for itself.
  */
 import { ATTRIBUTES, type NamedEntry, type Sheet } from './sheet.js';
 import { formatMod } from './modifiers.js';
