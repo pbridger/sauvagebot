@@ -123,12 +123,15 @@ export interface ModifierState {
 /**
  * How far the manual track runs either side of zero.
  *
- * Six, not four: the named conditions already reach −6 (Pitch Dark), so a dial
- * that stopped at four could not express by hand what the list expresses by
- * name — and the Marshal's own call is the one that has no book value to fall
- * back on.
+ * Six to begin with, because the named conditions already reach −6 (Pitch Dark)
+ * and a dial that stopped at four could not express by hand what the list
+ * expresses by name. Eight at Damian's request: penalties stack — Pitch Dark and
+ * a called shot, say — and the dial was bottoming out before the situation did.
+ *
+ * The cost is width. Seventeen pips on a line that must not wrap is what drives
+ * the labelling in `modifierGroup`: only the ends of each run carry a sign.
  */
-export const MANUAL_RANGE = 6;
+export const MANUAL_RANGE = 8;
 
 export function findSituation(key: string): Situation | undefined {
   return SITUATIONS.find((s) => s.key === key);

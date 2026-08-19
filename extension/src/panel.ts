@@ -63,7 +63,6 @@ import {
   bandFor,
   BAND_PENALTY,
   DEFAULT_PARRY,
-  PARRY_VISIBLE_CELLS,
   showsParry,
   FLAT_TARGET,
   isTargeted,
@@ -1098,14 +1097,13 @@ async function fillTargets(holder: HTMLElement, entry: RollEntry): Promise<void>
   } else {
     holder.replaceChildren(table);
   }
-  if (isAttack) {
+  // Only Fighting gets a note. The ranged one explained why the Parry column was
+  // sometimes blank, which is a paragraph spent on the absence of a number nobody
+  // asked for; the blank says enough on its own.
+  if (isAttack && attackKind(entry.skill!) === 'parry') {
     const note = document.createElement('p');
     note.className = 'targets-note';
-    note.textContent =
-      attackKind(entry.skill!) === 'parry'
-        ? 'Resolved against Parry.'
-        : `Against the usual 4. Parry is shown only within ${PARRY_VISIBLE_CELLS} ` +
-          `cells, where the shot may have been into melee — the Marshal's call.`;
+    note.textContent = 'Resolved against Parry.';
     holder.append(note);
   }
 
@@ -2324,7 +2322,7 @@ function setModifierState(sheet: Sheet, next: ModifierState): void {
  * The green half of the row: everything the Marshal calls, as opposed to what
  * the character is carrying.
  *
- * A dial from −6 to +6 for the one-off ("that's a tough climb, −2") plus named
+ * A dial from −8 to +8 for the one-off ("that's a tough climb, −2") plus named
  * conditions from the book, which carry their page and exact wording in a
  * tooltip so nobody has to remember whether Dark is −2 or −4.
  *
@@ -2356,19 +2354,25 @@ function modifierGroup(sheet: Sheet): HTMLElement {
     const pip = document.createElement('button');
     const on = n === 0 ? manual === 0 : n < 0 ? manual <= n : manual >= n;
     pip.className = on ? 'pip on situational' : 'pip';
-    // Signed, because a pip reading "2" in a track that runs both ways is a
-    // question rather than a label.
-    pip.textContent = formatMod(n) || '+0';
+    // Signs only at the ends of each run: -8 … -1, 0, +1 … +8.
+    //
+    // Every pip used to be signed, which is the honest label for a track that
+    // runs both ways — but seventeen of those will not fit on a line that must
+    // not wrap. The sign is what costs the width, so it is spent where it
+    // disambiguates: the two pips either side of zero, and the two extremes.
+    // Between them position does the work, and the exact value is on hover.
+    const ends = Math.abs(n) === 1 || Math.abs(n) === MANUAL_RANGE;
+    pip.textContent = n === 0 ? '0' : ends ? formatMod(n) : String(Math.abs(n));
     pip.title = n === 0 ? 'No hand-dialled modifier' : `${formatMod(n)} to every trait roll`;
     pip.addEventListener('click', () => change(setManualMod(state, manual === n ? 0 : n)));
     return pip;
   };
-  // A +0 pip rather than a separator: zero is a value on this track, and the
+  // A 0 pip rather than a separator: zero is a value on this track, and the
   // one you most often want to get back to.
   for (let n = -MANUAL_RANGE; n <= MANUAL_RANGE; n++) track.append(dial(n));
-  // No "Modifier" caption: thirteen pips and a total need the whole line. A row
-  // of signed pips beside a green total does not need naming, and each pip says
-  // what it does on hover.
+  // No "Modifier" caption: seventeen pips and a total need the whole line. A row
+  // of pips beside a green total does not need naming, and each pip says what it
+  // does on hover.
   track.title = `Modifier the Marshal called, ${formatMod(-MANUAL_RANGE)} to ${formatMod(MANUAL_RANGE)}`;
   line.append(track);
 

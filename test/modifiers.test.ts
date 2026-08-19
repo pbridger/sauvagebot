@@ -101,6 +101,15 @@ describe('setting conditions', () => {
     expect(situationalTotal(setManualMod(toggleCondition(state(), 'dim'), 1))).toBe(-1);
   });
 
+  /**
+   * The dial reaches as far as the worst thing the book can name, or the pips
+   * cannot express by hand what the condition list expresses by name.
+   */
+  it('reaches at least as far as the deepest named penalty', () => {
+    const worst = Math.min(...SITUATIONS.map((s) => s.value));
+    expect(MANUAL_RANGE).toBeGreaterThanOrEqual(Math.abs(worst));
+  });
+
   it('clears everything at once, which is what keeps a stale -4 from riding along', () => {
     const messy = setManualMod(toggleCondition(state(), 'dark'), -2);
     expect(situationalTotal(clearModifiers(messy))).toBe(0);

@@ -468,12 +468,15 @@ img.portrait {
 .statushalf > .penalty,
 .modline > .penalty { margin-left: auto; flex: none; }
 
-.mod-track { align-items: center; flex-wrap: nowrap; gap: 2px; }
-/* Thirteen pips, -6 to +6, on one line that must not wrap. Narrower than they
-   were at nine, and they lost their "Modifier" label to pay for the width. */
+.mod-track { align-items: center; flex-wrap: nowrap; gap: 1px; }
+/* Seventeen pips, -8 to +8, on one line that must not wrap. They lost their
+   "Modifier" label at thirteen to pay for the width; going to seventeen is paid
+   for by dropping the sign on all but the ends of each run, which makes most
+   labels one character, and by a tighter gap. `width: auto` then lets the four
+   signed pips take the extra character without widening the other thirteen. */
 .mod-track button.pip {
   width: auto;
-  min-width: 19px;
+  min-width: 14px;
   height: 17px;
   padding: 0 2px;
   border-radius: 8px;
