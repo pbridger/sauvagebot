@@ -10,6 +10,42 @@ reload.
 
 ---
 
+## 2026-08-19 — Stray shots, and finding out where the room's space went
+
+`5c80dfd`, `0233223`, `581a184`.
+
+**Innocent bystanders.** A miss whose Shooting die came up 1 hits a random
+character next to whoever you were aiming at — 1 or 2 for a shotgun, full auto
+or anything with RoF 2+. The targeting table now says so when it happens, under
+the results, and only when a row is a genuine miss rather than out of range.
+
+It counts the skill die and never the Wild Die, so a Wild Card who rolled trait
+1 and wild 8 hit with the 8 and still put a 1 on the table. It picks nobody and
+applies no damage: who is actually standing next to your target, and what is in
+the line of fire, is a look at the map and the Marshal's call. Paige's LeMat
+knows the difference between its two barrels — the shotgun one strays on 1–2,
+the pistol one on 1.
+
+The 1–2 window is not shotguns only, which is worth knowing at the table: Fan
+the Hammer says so in its own text, about a single-action revolver. Fanning is
+not detected automatically, because it is something you choose to do rather than
+a property of the gun — if you fan, watch for a 2 yourself.
+
+**Edge and hindrance chips are quieter.** The tooltip that explained "no number
+the app can name" is gone; it only ever appeared on entries whose rules text was
+already printed directly underneath. The chip now reads **N.B.**, and an entry's
+name looks the same whether or not it carries one.
+
+**Storage.** The room ran out of space mid-campaign. The probe panel gained a
+"Storage report" button that says where every byte went, and a "Deep clean" that
+takes the litter out. Between them: a quarter of the room turned out to be
+leftover filler from an earlier measurement run, and clearing it took the room
+from 106% full to 78%, plus half a megabyte off three tokens. Nothing was lost.
+No character data changed. The remaining question — whether the rules text on
+your cards is the same as the book's — has a button for it now too.
+
+---
+
 ## 2026-08-19 — No spoilers on the sheet
 
 `9ca62b7`. A follow-up to the deploy below.
