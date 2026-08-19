@@ -10,6 +10,25 @@ reload.
 
 ---
 
+## 2026-08-19 — Parry stays off the table when you shoot
+
+`4887f83`.
+
+Rolling Shooting listed **every** target's Parry, which told the players a number
+off each of the Marshal's sheets and did nothing for the maths — a shot is
+resolved against a flat 4, not against Parry.
+
+Now it shows only where it earns its place: always on a **Fighting** roll, which
+*is* resolved against it, and on a shot that landed **within 2 cells**, where it
+may have been into melee and you may need the number. Otherwise the column is
+blank. Nothing else about the table changes, and no result moves.
+
+One honest caveat: this stops the number being put in front of people, but the
+roster lives in room metadata and every client can read it. Like hiding an NPC's
+name, it is a screen rather than a lock.
+
+---
+
 ## 2026-08-19 — One line each, and "More" for the rest
 
 `d2736ac`. Fixes the wall of text the entry below introduced.
