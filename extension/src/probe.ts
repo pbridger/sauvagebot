@@ -631,6 +631,30 @@ async function rulesTextCoverage(): Promise<void> {
   log(`    not in the catalogue ........ ${String(missing).padStart(5)}`);
   if (divergentNames.length) log(`    differing: ${divergentNames.join(', ')}`);
   if (missingNames.length) log(`    absent:    ${missingNames.join(', ')}`);
+
+  // Round 4 found 27 of 30 differing and *none* missing, which is not what 27
+  // homebrew edges look like — it is what one systematic difference looks like.
+  // Whether it is cosmetic decides everything: curly quotes or trailing
+  // whitespace means the whole dictionary is droppable, whereas a card that
+  // abridges the printed entry means the stored text is the shorter one and
+  // dropping it would change what is on screen. Print enough to tell them apart.
+  for (const name of divergentNames.slice(0, 3)) {
+    const stored = text[name] ?? '';
+    const book = findEntry(name)?.text ?? '';
+    const at = [...stored].findIndex((c, i) => book[i] !== c);
+    log(`  ── ${name}: stored ${stored.length} chars, catalogue ${book.length}, differ at ${at}`);
+    log(`      stored:    …${JSON.stringify(stored.slice(Math.max(0, at - 20), at + 60))}`);
+    log(`      catalogue: …${JSON.stringify(book.slice(Math.max(0, at - 20), at + 60))}`);
+  }
+  const shorter = divergentNames.filter(
+    (n) => (text[n] ?? '').length < (findEntry(n)?.text ?? '').length,
+  ).length;
+  if (divergentNames.length) {
+    log(
+      `  of the ${divergentNames.length} differing, ${shorter} are SHORTER than the book — ` +
+        `if that is most of them the cards are abridged, and the catalogue is the better text`,
+    );
+  }
   log(
     `  storing only what the catalogue cannot supply would save ${identical} chars ` +
       `(${((identical / total) * 100).toFixed(0)}% of the dictionary)`,
