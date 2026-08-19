@@ -55,12 +55,31 @@ NOISE = {
 }
 
 
+# A page footer, which `-layout` leaves on a line of its own at the foot of the
+# column. The crop is narrower than the page, so a three-digit number is often
+# clipped to its last digit or two — which is why this matches 1-3 digits rather
+# than a plausible page range.
+FOOTER = re.compile(r'^\s*\d{1,3}\s*$')
+
+
 def clean(body: list[str]) -> str:
-    text = ' '.join(line.strip() for line in body)
+    # Footers are dropped *before* the join, while they are still identifiable by
+    # being alone on their line.
+    #
+    # This replaced a substitution that ran after the join and deleted any 1-3
+    # digit number followed by a capital letter. It was written to remove those
+    # same footers and did, but it also silently ate numbers that were part of a
+    # sentence: "5 Power Points" became "Power Points", and "a Grade 1 Agent"
+    # became "a Grade Agent" three times over in AGENCY PROMOTION. Numbers are
+    # the load-bearing part of a rules text, and that one dropped them wherever
+    # the next word happened to be capitalised.
+    text = ' '.join(line.strip() for line in body if not FOOTER.match(line))
     text = re.sub(r'\s+', ' ', text)
-    # Words broken across a line end, and stray page numbers left inline.
-    text = re.sub(r'(\w)­ (\w)', r'\1\2', text)
-    text = re.sub(r'\s+(\d{1,3})\s+(?=[A-Z])', ' ', text)
+    # Soft hyphens mark where the typesetter broke a word across a line. Removing
+    # the character rejoins the word — "hard\xadships" is "hardships". The old
+    # pattern only matched one that had a space after it, so the ones inside a
+    # line survived into the JSON as invisible junk.
+    text = text.replace('­', '')
     return text.strip()
 
 

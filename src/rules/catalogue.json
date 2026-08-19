@@ -13,7 +13,7 @@
   },
   {
    "name": "AGENCY PROMOTION",
-   "text": "This Edge reflects a promotion by the Agency for your hero’s devotion, loyalty, and effectiveness. The first time it’s taken they become a Grade Agent. This grants them a slight pay raise, the ability to spend higher Favors, and a light armored vest (or corset) if they choose (see page 127). The second time they take this Edge they becomes a Grade Agent. They get another pay raise, the ability to call for greater Favors, and a mnemomizer. A player character can take this Edge one final time at Heroic Rank. This makes them a Grade Agent and allows them to ask for 4-point Favors.",
+   "text": "This Edge reflects a promotion by the Agency for your hero’s devotion, loyalty, and effectiveness. The first time it’s taken they become a Grade 1 Agent. This grants them a slight pay raise, the ability to spend higher Favors, and a light armored vest (or corset) if they choose (see page 127). The second time they take this Edge they becomes a Grade 2 Agent. They get another pay raise, the ability to call for greater Favors, and a mnemomizer. A player character can take this Edge one final time at Heroic Rank. This makes them a Grade 3 Agent and allows them to ask for 4-point Favors.",
    "requirements": "Seasoned, Agent"
   },
   {
@@ -33,12 +33,12 @@
   },
   {
    "name": "AMBIDEXTROUS",
-   "text": "Your warrior is as deft with their left hand as the right. They ignore the Off-Hand penalty (see page 160). If holding a weapon in each hand, Ambidextrous characters may stack Parry bonuses (if any) from both weapons.",
+   "text": "Your warrior is as deft with their left hand as the right. They ignore the Off-Hand penalty (see page 160). If holding a weapon in each hand, Ambi dextrous characters may stack Parry bonuses (if any) from both weapons.",
    "requirements": "Novice, Agility d8+"
   },
   {
    "name": "ARCANE BACKGROUND",
-   "text": "Certain characters can call upon supernatural power. In the Weird West, there are eight types, detailed on the listed pages. 8  BLESSED: Page 68.  CHI MASTER: Page 70.  HARROWED: Page 72.  HUCKSTER: Page 83.  MAD SCIENTIST: Page 87.  SHAMANS: Page 92.  VOODOOISTS: Page 97.  WITCHES: Page 99.  NOTE: Arcane Background (Black Magic /Magic /Miracles) is the generic Edge used by some nonplayer characters who fall outside those paths available to player characters. Those with Black Magic or Magic use Spellcasting as their arcane skill, while those with Miracles use Faith. Both have however many Power Points and abilities the Marshal feels is appropriate to their background (nonplayer characters don’t advance like player characters). Critical Failure on an arcane skill roll causes a level of Fatigue and all currently active powers terminate instantly. Marshals have more rules on page 247 for Black Magic in Deadlands.",
+   "text": "Certain characters can call upon supernatural power. In the Weird West, there are eight types, detailed on the listed pages.  BLESSED: Page 68.  CHI MASTER: Page 70.  HARROWED: Page 72.  HUCKSTER: Page 83.  MAD SCIENTIST: Page 87.  SHAMANS: Page 92.  VOODOOISTS: Page 97.  WITCHES: Page 99.  NOTE: Arcane Background (Black Magic /Magic /Miracles) is the generic Edge used by some nonplayer characters who fall outside those paths available to player characters. Those with Black Magic or Magic use Spellcasting as their arcane skill, while those with Miracles use Faith. Both have however many Power Points and abilities the Marshal feels is appropriate to their background (nonplayer characters don’t advance like player characters). Critical Failure on an arcane skill roll causes a level of Fatigue and all currently active powers terminate instantly. Marshals have more rules on page 247 for Black Magic in Deadlands.",
    "requirements": "By Type"
   },
   {
@@ -118,12 +118,12 @@
   },
   {
    "name": "BRAVE",
-   "text": "Terrors walk the West—shadows that shriek, ghosts that whisper, and beasts best left undescribed. This hero’s seen things 0 that would drive most to prayer or panic, but they steel themselves against it. They’ve stared into the maw of madness and didn’t blink. These valiant explorers add +2 to Fear checks and subtract 2 from Fear Table results (see 217).",
+   "text": "Terrors walk the West—shadows that shriek, ghosts that whisper, and beasts best left undescribed. This hero’s seen things that would drive most to prayer or panic, but they steel themselves against it. They’ve stared into the maw of madness and didn’t blink. These valiant explorers add +2 to Fear checks and subtract 2 from Fear Table results (see 217).",
    "requirements": "Novice, Spirit d6+"
   },
   {
    "name": "BRAWLER",
-   "text": "Your cowpoke hits like a freight train and soaks up hurt like a cast-iron bathtub. Brawlers increase their Toughness by 1 and roll Strength +d4 when hitting with their fists or feet. If they already have a damage die from Claws (page 310), the Martial Artist Edge, etc., increase the damage die type by one instead. The Brawler Edge doesn’t make the char­acter’s fists Natural Weapons (page 159).",
+   "text": "Your cowpoke hits like a freight train and soaks up hurt like a cast-iron bathtub. Brawlers increase their Toughness by 1 and roll Strength +d4 when hitting with their fists or feet. If they already have a damage die from Claws (page 310), the Martial Artist Edge, etc., increase the damage die type by one instead. The Brawler Edge doesn’t make the character’s fists Natural Weapons (page 159).",
    "requirements": "Novice, Strength d8+, Vigor d8+"
   },
   {
@@ -198,7 +198,7 @@
   },
   {
    "name": "CHILL O' THE GRAVE",
-   "text": "The Harrowed radiates the icy chill of death in a Large Blast Template centered on themself. This costs a Benny and takes an action. Living beings in 7 the template who aren’t protected by cold weather gear or the like are automatically Vulnerable.",
+   "text": "The Harrowed radiates the icy chill of death in a Large Blast Template centered on themself. This costs a Benny and takes an action. Living beings in the template who aren’t protected by cold weather gear or the like are automatically Vulnerable.",
    "requirements": "Seasoned, Harrowed"
   },
   {
@@ -233,12 +233,12 @@
   },
   {
    "name": "CONCENTRATION",
-   "text": "(Any) Some of those with hoodoo can quiet the world like still water. Through grit, prayer, or sheer focus, these arcane types hold their magic longer than most. The base Duration of any non-Instant power is doubled. This includes maintaining powers as well. 4",
+   "text": "(Any) Some of those with hoodoo can quiet the world like still water. Through grit, prayer, or sheer focus, these arcane types hold their magic longer than most. The base Duration of any non-Instant power is doubled. This includes maintaining powers as well.",
    "requirements": "Seasoned, Arcane Background"
   },
   {
    "name": "CONNECTIONS",
-   "text": "Whether they know a ghost rock tycoon, a high-up in the Explorer’s Society, or someone deep in the Black River payroll, this hero’s got ties. Once per session, they can call in a favor—from shady deals to timely reinforcements—as long as they can get word to their people. Connections may be taken more than once, selecting a new faction or contact each time. Once per session, and assuming they can get in touch with them, the heroine can call on their friends for a favor. The favor depends on the nature of the contact (GM’s call), but might include a loan, gear, a few allied fighters, transportation, information, or even a professional with critical skills the party doesn’t have, like a hacker or scholar. 6",
+   "text": "Whether they know a ghost rock tycoon, a high-up in the Explorer’s Society, or someone deep in the Black River payroll, this hero’s got ties. Once per session, they can call in a favor—from shady deals to timely reinforcements—as long as they can get word to their people. Connections may be taken more than once, selecting a new faction or contact each time. Once per session, and assuming they can get in touch with them, the heroine can call on their friends for a favor. The favor depends on the nature of the contact (GM’s call), but might include a loan, gear, a few allied fighters, transportation, information, or even a professional with critical skills the party doesn’t have, like a hacker or scholar.",
    "requirements": "Novice"
   },
   {
@@ -258,7 +258,7 @@
   },
   {
    "name": "DEAD MAN’S HAND",
-   "text": "Harrowed with this power can continue to control their own severed body parts— usually a hand or an eye—for short periods of time. To use the Edge, the deader slices off their own hand or plucks out an eyeball. The severed body part remains active and under its owner’s mental control up to a Range of one mile. The deader can maintain the Dead Man’s Hand as long as they wish, though they have the One Arm or One Eye Hindrance until the body part is reattached. Severed hands use the Animate Hand profile (see page 321). They can “walk” on their fingers at a Pace of 6 (no running). Eyeballs magically transmit back whatever they see to the owner, and can roll around at a Pace of 6 (no running). Ears can’t move on their own, but if left behind somewhere they relay whatever they “hear” back to their owner. Healing: Severing a body part causes an immediate Wound and any Hindrance associated with it (One Eye for the removal of an eye, One Arm for a hand, Hard of Hearing for an ear, and so on). Sewing the body part back on reattaches it, but it doesn’t actually work until the next time they make a successful natural Healing roll. 6",
+   "text": "Harrowed with this power can continue to control their own severed body parts— usually a hand or an eye—for short periods of time. To use the Edge, the deader slices off their own hand or plucks out an eyeball. The severed body part remains active and under its owner’s mental control up to a Range of one mile. The deader can maintain the Dead Man’s Hand as long as they wish, though they have the One Arm or One Eye Hindrance until the body part is reattached. Severed hands use the Animate Hand profile (see page 321). They can “walk” on their fingers at a Pace of 6 (no running). Eyeballs magically transmit back whatever they see to the owner, and can roll around at a Pace of 6 (no running). Ears can’t move on their own, but if left behind somewhere they relay whatever they “hear” back to their owner. Healing: Severing a body part causes an immediate Wound and any Hindrance associated with it (One Eye for the removal of an eye, One Arm for a hand, Hard of Hearing for an ear, and so on). Sewing the body part back on reattaches it, but it doesn’t actually work until the next time they make a successful natural Healing roll.",
    "requirements": "Veteran, Harrowed"
   },
   {
@@ -313,7 +313,7 @@
   },
   {
    "name": "EXTRA EFFORT",
-   "text": "(Gifted), Focus d6+ Some of the Gifted dig deep—real deep— when times are tough and boost their powers. Extra Effort in­creases a Focus total after it’s rolled by +1 for Power Point, or +2 for Power Points. It may not be used to improve a Critical Failure.",
+   "text": "(Gifted), Focus d6+ Some of the Gifted dig deep—real deep— when times are tough and boost their powers. Extra Effort increases a Focus total after it’s rolled by +1 for 1 Power Point, or +2 for 3 Power Points. It may not be used to improve a Critical Failure.",
    "requirements": "Seasoned, Arcane Background"
   },
   {
@@ -328,7 +328,7 @@
   },
   {
    "name": "FAMILIAR",
-   "text": "(Witch), Spellcasting d8+ Your witch has a small (Size −3) creature that serves them. The familiar has the Loyal Hindrance to its mistress but isn’t a slave. It acts like a typical but very smart version of its species and can occasionally be distracted by its own inherent instincts. A cat might interrupt its task to chase a mouse or take a brief nap and will most likely hide during combat. A familiar is a Wild Card with respect to Wounds and rolling a Wild Die with its Trait rolls. It doesn’t get Bennies, but the witch can spend her own on its behalf. The familiar can understand its mistress’s speech and vice-versa (others hear only the creature’s natural sounds). The bond between the familiar and its mistress makes it immune to the beast friend power. If a familiar dies, the witch is automatically Stunned (no matter how far away it is). They can summon another after 13 days, and can change the type if they choose. Familiars do not advance as allies. Instead, a familiar has any one of the advantages below for each of the witch’s Ranks (including Novice) and for every fourth advance the witch gains past Legendary, gaining them as they advance or starting with them if they must replace a fallen pet. Only increasing a Trait or gaining an Edge may be taken more than once.  The witch can transfer Wounds and Fatigue to and from the familiar as a free action.  The witch can increase one of the familiar’s Traits one die type. This may only be taken once per Trait.  Your witch can use the familiar’s senses as if they were their own. This requires concentration and the maximum range for this ability is 10 miles.  The familiar gains an Edge. It must make sense for the familiar’s species and meet the Requirements as usual.  The familiar has Power Points of its own. It cannot cast spells, but the witch can draw on them as if they were their own. They recharge separately and at the same rate as the witch’s.",
+   "text": "(Witch), Spellcasting d8+ Your witch has a small (Size −3) creature that serves them. The familiar has the Loyal Hindrance to its mistress but isn’t a slave. It acts like a typical but very smart version of its species and can occasionally be distracted by its own inherent instincts. A cat might interrupt its task to chase a mouse or take a brief nap and will most likely hide during combat. A familiar is a Wild Card with respect to Wounds and rolling a Wild Die with its Trait rolls. It doesn’t get Bennies, but the witch can spend her own on its behalf. The familiar can understand its mistress’s speech and vice-versa (others hear only the creature’s natural sounds). The bond between the familiar and its mistress makes it immune to the beast friend power. If a familiar dies, the witch is automatically Stunned (no matter how far away it is). They can summon another after 13 days, and can change the type if they choose. Familiars do not advance as allies. Instead, a familiar has any one of the advantages below for each of the witch’s Ranks (including Novice) and for every fourth advance the witch gains past Legendary, gaining them as they advance or starting with them if they must replace a fallen pet. Only increasing a Trait or gaining an Edge may be taken more than once.  The witch can transfer Wounds and Fatigue to and from the familiar as a free action.  The witch can increase one of the familiar’s Traits one die type. This may only be taken once per Trait.  Your witch can use the familiar’s senses as if they were their own. This requires concentration and the maximum range for this ability is 10 miles.  The familiar gains an Edge. It must make sense for the familiar’s species and meet the Requirements as usual.  The familiar has 5 Power Points of its own. It cannot cast spells, but the witch can draw on them as if they were their own. They recharge separately and at the same rate as the witch’s.",
    "requirements": "Novice, Arcane Background"
   },
   {
@@ -348,7 +348,7 @@
   },
   {
    "name": "FAST AS LIGHTNING",
-   "text": "When your hero reaches for their shootin’ irons, folks rarely have time to blink, much less draw down. Some say they’re the fastest gun in the West. Your hero gets a fourth action. This increases the maximum Multi-Action penalty to −6 (which can be reduced 2 by any Edges or abilities that do so, such as Two-Fisted or Two-Gun Kid).",
+   "text": "When your hero reaches for their shootin’ irons, folks rarely have time to blink, much less draw down. Some say they’re the fastest gun in the West. Your hero gets a fourth action. This increases the maximum Multi-Action penalty to −6 (which can be reduced by any Edges or abilities that do so, such as Two-Fisted or Two-Gun Kid).",
    "requirements": "Legendary, Agility d10+, Quick"
   },
   {
@@ -378,12 +378,12 @@
   },
   {
    "name": "FILTHY RICH",
-   "text": "This fortunate individual is very wealthy. They have five times the starting funds for the setting during character creation ($1,250) and, if appropriate, a yearly income after responsibilities of around $10,000. Even wealthier char­acters may exist, but unless there’s a game effect it probably shouldn’t matter. This should be worked out with the GM and come with many more assets as well as onerous responsibilities.",
+   "text": "This fortunate individual is very wealthy. They have five times the starting funds for the setting during character creation ($1,250) and, if appropriate, a yearly income after responsibilities of around $10,000. Even wealthier characters may exist, but unless there’s a game effect it probably shouldn’t matter. This should be worked out with the GM and come with many more assets as well as onerous responsibilities.",
    "requirements": "Novice, Rich"
   },
   {
    "name": "FIRST STRIKE",
-   "text": "Move into reach of this wrangler and you’ll eat a fist full of knuckles. Once per round, as long as they’re not Shaken or Stunned, the hero gets a free Fighting attack immediately after a foe moves into Reach. (See Free Attacks on page 156). 4",
+   "text": "Move into reach of this wrangler and you’ll eat a fist full of knuckles. Once per round, as long as they’re not Shaken or Stunned, the hero gets a free Fighting attack immediately after a foe moves into Reach. (See Free Attacks on page 156).",
    "requirements": "Novice, Agility d8+"
   },
   {
@@ -398,12 +398,12 @@
   },
   {
    "name": "FLOCK",
-   "text": "(Blessed), Persuasion d8+ The greatest prophets and preachers are attended by followers. These men and women have found salvation of one sort or another in the blessed, and devoted their lives to their cause. Flock gives your padre five followers who serve at their side in whatever capacity you choose. They have the stats of Townsfolk (see page 318), though like any other Allies they may Advance (see page 111). They come with nothing but the clothes on their back and a few dollars, but can be armed and outfitted however the blessed sees fit. Members of the Flock who perish are slowly replaced over time (usually by giving a “revival”). The Edge may not be taken more than once until the blessed is Legendary. At that point they may take it as many times as they like (as well as the Followers Edge, if they choose). 6",
+   "text": "(Blessed), Persuasion d8+ The greatest prophets and preachers are attended by followers. These men and women have found salvation of one sort or another in the blessed, and devoted their lives to their cause. Flock gives your padre five followers who serve at their side in whatever capacity you choose. They have the stats of Townsfolk (see page 318), though like any other Allies they may Advance (see page 111). They come with nothing but the clothes on their back and a few dollars, but can be armed and outfitted however the blessed sees fit. Members of the Flock who perish are slowly replaced over time (usually by giving a “revival”). The Edge may not be taken more than once until the blessed is Legendary. At that point they may take it as many times as they like (as well as the Followers Edge, if they choose).",
    "requirements": "Veteran, Arcane Background"
   },
   {
    "name": "FOLLOWERS",
-   "text": "Each time this Edge is chosen, five followers come to fight by the hero’s side. If any are lost, others eventually take their place (how long is up to the GM and the circumstances). Followers must be cared for and generally want a share of whatever loot, treasure, or other rewards the hero acquires. Otherwise, they are completely dedicated to their task. They won’t throw their lives away but are willing to risk them repeatedly in their service. Use the Soldier profile found on page 317 for the followers. A hero may outfit their allies as they see fit. Followers Advance just like player characters (see page 111). Use the Allies rules on page 203 to give them distinctive personal­ities if desired.",
+   "text": "Each time this Edge is chosen, five followers come to fight by the hero’s side. If any are lost, others eventually take their place (how long is up to the GM and the circumstances). Followers must be cared for and generally want a share of whatever loot, treasure, or other rewards the hero acquires. Otherwise, they are completely dedicated to their task. They won’t throw their lives away but are willing to risk them repeatedly in their service. Use the Soldier profile found on page 317 for the followers. A hero may outfit their allies as they see fit. Followers Advance just like player characters (see page 111). Use the Allies rules on page 203 to give them distinctive personalities if desired.",
    "requirements": "Wild Card, Legendary"
   },
   {
@@ -423,7 +423,7 @@
   },
   {
    "name": "GADGETEER",
-   "text": "(Weird Science), Weird Science d6+ Some mad scientists can slap together miracles outta baling wire, ghost rock, and gumption! A Gadgeteer can spend up to three Power Points to “jury rig” a device from any reasonable collection of spare parts. This allows them to activate any power normally available to Mad Scientists of their Rank or lower, with a Power Point cost of 3 or lower. The total cost of an individual power (plus any modifiers) cannot exceed the points spent to create it, nor can the inventor apply Limitations to the gadget. They may attempt to create multiple devices as long as they have the points to do so. Each gadget is created and activated with a Weird Science roll at −2. This takes one entire turn, during which they can do nothing else (they cannot take Multi-Actions that turn). In all other ways, it works as the normal activation of a power. The inventor uses Power Points directly from their pool for the device, but once its initial Duration is finished (it cannot be maintained) it falls apart into its component pieces. Example: Gabe has Arcane Background (Mad Science). He wants to use boost Trait to help Red fight a giant rattlesnake, but only has the burst and blast powers. Fortunately, he’s a Gadgeteer, so Gabe can put boost Trait into an “electrical bio-inducer.” The device can take up to three points worth of powers, so he adds the Hurry modifier and gives Red +2 Pace as well. 0",
+   "text": "(Weird Science), Weird Science d6+ Some mad scientists can slap together miracles outta baling wire, ghost rock, and gumption! A Gadgeteer can spend up to three Power Points to “jury rig” a device from any reasonable collection of spare parts. This allows them to activate any power normally available to Mad Scientists of their Rank or lower, with a Power Point cost of 3 or lower. The total cost of an individual power (plus any modifiers) cannot exceed the points spent to create it, nor can the inventor apply Limitations to the gadget. They may attempt to create multiple devices as long as they have the points to do so. Each gadget is created and activated with a Weird Science roll at −2. This takes one entire turn, during which they can do nothing else (they cannot take Multi-Actions that turn). In all other ways, it works as the normal activation of a power. The inventor uses Power Points directly from their pool for the device, but once its initial Duration is finished (it cannot be maintained) it falls apart into its component pieces. Example: Gabe has Arcane Background (Mad Science). He wants to use boost Trait to help Red fight a giant rattlesnake, but only has the burst and blast powers. Fortunately, he’s a Gadgeteer, so Gabe can put boost Trait into an “electrical bio-inducer.” The device can take up to three points worth of powers, so he adds the Hurry modifier and gives Red +2 Pace as well.",
    "requirements": "Seasoned, Arcane Background"
   },
   {
@@ -488,7 +488,7 @@
   },
   {
    "name": "HEXSLINGING",
-   "text": "Background (Huckster), Shooting d8+ John Henry “Doc” Holliday was a huckster who learned the secrets of “rune magic,” a process the ancient Vikings used to enchant their weapons in days long past. He carved the runes on his favorite six-gun and “hexslinging” was born. Taking a cue from Hoyle, Doc passed those techniques on to his friends in a series of dime novels appropriately called The Adventures of Doc Holliday. Hexslingers who learn Holliday’s secrets gain the ammo whammy power (page 172) and can create their own rune- engraved “hex guns.” This takes four hours per weapon, most of which is spent inscribing the barrel with various 6 runes. The weapon can be any firearm—a pistol is common, but nothing stops a hero from making a hex gun out of a derringer or even a Gatling if they want! Once complete, any hexslinger can use that weapon to cast any of the following powers (assuming they have them) on or with the hex gun without incurring a Multi-Action penalty: ammo whammy, deflection, boost Shooting, and protection. These spells have a Range of Self when cast in this way and can’t use the Additional Recipients modifier if they have it. Activation causes the runes on the weapon to glow subtly, throw sparks, or some similar effect.",
+   "text": "Background (Huckster), Shooting d8+ John Henry “Doc” Holliday was a huckster who learned the secrets of “rune magic,” a process the ancient Vikings used to enchant their weapons in days long past. He carved the runes on his favorite six-gun and “hexslinging” was born. Taking a cue from Hoyle, Doc passed those techniques on to his friends in a series of dime novels appropriately called The Adventures of Doc Holliday. Hexslingers who learn Holliday’s secrets gain the ammo whammy power (page 172) and can create their own rune- engraved “hex guns.” This takes four hours per weapon, most of which is spent inscribing the barrel with various runes. The weapon can be any firearm—a pistol is common, but nothing stops a hero from making a hex gun out of a derringer or even a Gatling if they want! Once complete, any hexslinger can use that weapon to cast any of the following powers (assuming they have them) on or with the hex gun without incurring a Multi-Action penalty: ammo whammy, deflection, boost Shooting, and protection. These spells have a Range of Self when cast in this way and can’t use the Additional Recipients modifier if they have it. Activation causes the runes on the weapon to glow subtly, throw sparks, or some similar effect.",
    "requirements": "Seasoned, Arcane"
   },
   {
@@ -498,7 +498,7 @@
   },
   {
    "name": "HOLY/UNHOLY WARRIOR",
-   "text": "(Miracles), Faith d6+ The faithful are often called on to face the dangers of the Reckoning. To survive such hard­ships, the forces of good (or evil) grant miracles and the ability to turn their favor into supernatural protection. The chosen may add +1 to the total of a final Soak roll for each Power Point spent, to a max­imum of +4.",
+   "text": "(Miracles), Faith d6+ The faithful are often called on to face the dangers of the Reckoning. To survive such hardships, the forces of good (or evil) grant miracles and the ability to turn their favor into supernatural protection. The chosen may add +1 to the total of a final Soak roll for each Power Point spent, to a maximum of +4.",
    "requirements": "Seasoned, Arcane Background"
   },
   {
@@ -533,12 +533,12 @@
   },
   {
    "name": "IMPROVED RAPID FIRE",
-   "text": "The shooter may now increase their weapon’s Rate of Fire by 1 twice in the same turn (via a Multi-Action). Example: Gabe fires a steam Gatling and has Improved Rapid Fire. The weapon has a Rate of Fire of 3 and Gabe decides to fire it on all three of his allowed actions (see Multi-­Actions on page 159). He rolls an extra Shooting die with his first and second attack, raising the weapon’s Rate of Fire to 4 each time. He doesn’t get the bonus on his third attack—the machine gun’s Rate of Fire remains a 3.",
+   "text": "The shooter may now increase their weapon’s Rate of Fire by 1 twice in the same turn (via a Multi-Action). Example: Gabe fires a steam Gatling and has Improved Rapid Fire. The weapon has a Rate of Fire of 3 and Gabe decides to fire it on all three of his allowed actions (see Multi-Actions on page 159). He rolls an extra Shooting die with his first and second attack, raising the weapon’s Rate of Fire to 4 each time. He doesn’t get the bonus on his third attack—the machine gun’s Rate of Fire remains a 3.",
    "requirements": "Veteran, Rapid Fire"
   },
   {
    "name": "IMPROVED RAPID RECHARGE",
-   "text": "The character now regains Power Points per hour spent resting.",
+   "text": "The character now regains 20 Power Points per hour spent resting.",
    "requirements": "Veteran, Rapid Recharge"
   },
   {
@@ -563,7 +563,7 @@
   },
   {
    "name": "INSPIRE",
-   "text": "Exceptional leaders inspire those around them to great feats of valor and determination. As a limited action, the hero may roll their Battle skill to Support one type of Trait roll, and apply it to all allied Extras in Command Range. A leader could Support all Shooting attacks in range, for example, or all Spirit rolls to recover from being Shaken. Inspire requires some sort of communication with those it affects.",
+   "text": "Exceptional leaders inspire those around them to great feats of valor and determination. As a limited action, the hero may roll their Battle skill to Support one type of Trait roll, and apply it to all allied Extras in Command Range. A leader could Support all Shooting attacks in range, for example, or all Spirit rolls to recover from being Shaken. Inspire requires some sort of communi cation with those it affects.",
    "requirements": "Seasoned, Command"
   },
   {
@@ -583,7 +583,7 @@
   },
   {
    "name": "IRON WILL",
-   "text": "Willed The hero now adds their Strong Willed bonus to resist powers and negate their effects. Iron Will doesn’t stack with Brave, nor does it apply to subse­quent rolls resulting from powers such as being Shaken by a damaging power, fear, or the like.",
+   "text": "Willed The hero now adds their Strong Willed bonus to resist powers and negate their effects. Iron Will doesn’t stack with Brave, nor does it apply to subsequent rolls resulting from powers such as being Shaken by a damaging power, fear, or the like.",
    "requirements": "Seasoned, Brave, Strong"
   },
   {
@@ -603,7 +603,7 @@
   },
   {
    "name": "LEVEL HEADED",
-   "text": "Fighters who can keep their cool when everyone else is running for cover make deadly combatants. A hero with this Edge draws an additional Action Card in combat and chooses which to use.",
+   "text": "Fighters who can keep their cool when every one else is running for cover make deadly combatants. A hero with this Edge draws an additional Action Card in combat and chooses which to use.",
    "requirements": "Seasoned, Smarts d8+"
   },
   {
@@ -613,7 +613,7 @@
   },
   {
    "name": "LIKE AN OAK",
-   "text": "Few things settle the nerves of a posse like the sight of a Ranger standing toe- to-toe with some horrific abomination. All allies within 12” of the Ranger negate up 2 points of Fear penalties when making a Fear check. If the Ranger fails their Fear check or is Shaken or Stunned, the allies do not get the benefit. If a group makes the check at the same time, the Ranger goes first. 9",
+   "text": "Few things settle the nerves of a posse like the sight of a Ranger standing toe- to-toe with some horrific abomination. All allies within 12” of the Ranger negate up 2 points of Fear penalties when making a Fear check. If the Ranger fails their Fear check or is Shaken or Stunned, the allies do not get the benefit. If a group makes the check at the same time, the Ranger goes first.",
    "requirements": "Veteran, Grit, Territorial Ranger"
   },
   {
@@ -633,12 +633,12 @@
   },
   {
    "name": "MARKSMAN",
-   "text": "Shooting d8+ Stay still, aim true. The hero is a natural with ranged weapons. If they don’t move in a turn and fire no more than a Rate of Fire of 1 as their first action, they may add +1 to an Athletics (throwing) or Shooting roll, or ignore up to 2 points of penalties from Called Shots, Cover, Range, Scale, or Speed. This is a lesser version of the Aim maneuver and does not stack with it. Marksman doesn’t apply to additional attacks after the first. 4",
+   "text": "Shooting d8+ Stay still, aim true. The hero is a natural with ranged weapons. If they don’t move in a turn and fire no more than a Rate of Fire of 1 as their first action, they may add +1 to an Athletics (throwing) or Shooting roll, or ignore up to 2 points of penalties from Called Shots, Cover, Range, Scale, or Speed. This is a lesser version of the Aim maneuver and does not stack with it. Marksman doesn’t apply to additional attacks after the first.",
    "requirements": "Seasoned, Athletics d8+ or"
   },
   {
    "name": "MARTIAL ARTIST",
-   "text": "The fighter has trained in basic martial arts. Their fists and feet are weapons (see Natural Weapons, page 159) so they’re always considered armed. They add +1 when striking with them and cause Strength+d4 damage. If they already have a Strength damage die from claws or the Brawler Edge, increase the damage a die type. Martial Artist does not add to damage from other Natural Weapons such as fangs or horns.",
+   "text": "The fighter has trained in basic martial arts. Their fists and feet are weapons (see Natural Weapons, page 159) so they’re always consid ered armed. They add +1 when striking with them and cause Strength+d4 damage. If they already have a Strength damage die from claws or the Brawler Edge, increase the damage a die type. Martial Artist does not add to damage from other Natural Weapons such as fangs or horns.",
    "requirements": "Novice, Fighting d6+"
   },
   {
@@ -653,7 +653,7 @@
   },
   {
    "name": "MASTER OF ARMS",
-   "text": "Increase the hero’s Parry an additional +1 and their Fighting bonus damage die is now a d10. 6",
+   "text": "Increase the hero’s Parry an additional +1 and their Fighting bonus damage die is now a d10.",
    "requirements": "Legendary, Weapon Master"
   },
   {
@@ -673,12 +673,12 @@
   },
   {
    "name": "METAL MAGE",
-   "text": "Scientist), Occult d6+, Weird Science d8+ Metal mages use devices like any other weird scientist, but can also Deal with the Devil like a huckster (see page 85). Roll Occult instead of Gambling in step 3, and Weird Science instead of Spellcasting in step 5. Metal mages can’t take huckster Edges for more cards, but do get an extra card if they have at least 20 pounds of loose metal parts within arm’s reach, and another card if they burn an ounce of ghost rock in the process. It’s quite a spectacular show when a metal mage successfully Deals with the Devil! Metal bits swirl about the scientist, either appearing from thin air or levitating from whatever crates, bins, or toolkits are within a few feet of them. Unseen hands assemble the bits into a Hellish device or effect, twisting, shaping, turning and smashing pieces together in a storm of hot wind that smells of brimstone and madness. And if one looks closely, they just might see a demonic face howling with glee in the middle of the swirling metal maelstrom! There’s no denying something super­natural is happening when a metal mage deals with the Devil. Anyone who sees the event knows deviltry is afoot. Metal mages only resort to this measure as an absolute last resort when strangers are about. The devilish devices created in this way last as long as the power itself lasts, then collapse into a pile of their component parts—often burning hot or icy cold from the touch of the demonic forces that assembled them.  NEW AVAILABLE POWERS: Metal mages gain access to breakdown and mend, and may also take the huckster power trinkets. The device (Trapping) can be a clockwork assembler or some such, or it can just be a bag of random components the metal mage “assembles” when they activate the power. In any case, they always use their Weird Science skill. 8",
+   "text": "Scientist), Occult d6+, Weird Science d8+ Metal mages use devices like any other weird scientist, but can also Deal with the Devil like a huckster (see page 85). Roll Occult instead of Gambling in step 3, and Weird Science instead of Spellcasting in step 5. Metal mages can’t take huckster Edges for more cards, but do get an extra card if they have at least 20 pounds of loose metal parts within arm’s reach, and another card if they burn an ounce of ghost rock in the process. It’s quite a spectacular show when a metal mage successfully Deals with the Devil! Metal bits swirl about the scientist, either appearing from thin air or levitating from whatever crates, bins, or toolkits are within a few feet of them. Unseen hands assemble the bits into a Hellish device or effect, twisting, shaping, turning and smashing pieces together in a storm of hot wind that smells of brimstone and madness. And if one looks closely, they just might see a demonic face howling with glee in the middle of the swirling metal maelstrom! There’s no denying something supernatural is happening when a metal mage deals with the Devil. Anyone who sees the event knows deviltry is afoot. Metal mages only resort to this measure as an absolute last resort when strangers are about. The devilish devices created in this way last as long as the power itself lasts, then collapse into a pile of their component parts—often burning hot or icy cold from the touch of the demonic forces that assembled them.  NEW AVAILABLE POWERS: Metal mages gain access to breakdown and mend, and may also take the huckster power trinkets. The device (Trapping) can be a clockwork assembler or some such, or it can just be a bag of random components the metal mage “assembles” when they activate the power. In any case, they always use their Weird Science skill.",
    "requirements": "Novice, Arcane Background (Mad"
   },
   {
    "name": "MIGHTY BLOW",
-   "text": "If your Action Card is a Joker, double the damage of your first successful Fighting attack this round. 6",
+   "text": "If your Action Card is a Joker, double the damage of your first successful Fighting attack this round.",
    "requirements": "Wild Card, Novice, Fighting d8+"
   },
   {
@@ -728,7 +728,7 @@
   },
   {
    "name": "ORE EATER",
-   "text": "(Mad Scientist), Weird Science d6+ Though your mad scientist probably doesn’t want anyone to know it, they’ve developed a taste for ghost rock! Eating it raw isn’t really possible—it’s rock, after all—but it’s easy to powder or crush and sprinkle it into their favorite whiskey or spread it like salt over their vittles! This is obviously a dangerous practice, but greatly increases the Weird Scientist’s connection to the Hunting Grounds. They gains Power Points when this Edge is taken (in addition to any gained from the Power Points Edge). The downside is that anytime they must roll on the Malfunction Table and rolls a 13, they get ghost rock fever instead of the Gremlin result! They can only contract the fever once, and must live or die by the rules set forth under Ghost Rock Fever, page 248. 0",
+   "text": "(Mad Scientist), Weird Science d6+ Though your mad scientist probably doesn’t want anyone to know it, they’ve developed a taste for ghost rock! Eating it raw isn’t really possible—it’s rock, after all—but it’s easy to powder or crush and sprinkle it into their favorite whiskey or spread it like salt over their vittles! This is obviously a dangerous practice, but greatly increases the Weird Scientist’s connection to the Hunting Grounds. They gains 5 Power Points when this Edge is taken (in addition to any gained from the Power Points Edge). The downside is that anytime they must roll on the Malfunction Table and rolls a 13, they get ghost rock fever instead of the Gremlin result! They can only contract the fever once, and must live or die by the rules set forth under Ghost Rock Fever, page 248.",
    "requirements": "Novice, Arcane Background"
   },
   {
@@ -738,12 +738,12 @@
   },
   {
    "name": "POWER POINTS",
-   "text": "(Any) Those who tap into eldritch energies always want more power. This Edge grants them an additional Power Points. Power Points may be selected more than once, but only once per Rank. It may be taken as often as desired at Legendary Rank, but each grants only 2 additional points.",
+   "text": "(Any) Those who tap into eldritch energies always want more power. This Edge grants them an additional 5 Power Points. Power Points may be selected more than once, but only once per Rank. It may be taken as often as desired at Legendary Rank, but each grants only 2 additional points.",
    "requirements": "Novice, Arcane Background"
   },
   {
    "name": "POWER SURGE",
-   "text": "Background (Any), arcane skill d8+ The character recovers Power Points when their Action Card is a Joker. This may not exceed their usual limit.",
+   "text": "Background (Any), arcane skill d8+ The character recovers 10 Power Points when their Action Card is a Joker. This may not exceed their usual limit.",
    "requirements": "Wild Card, Novice, Arcane"
   },
   {
@@ -808,7 +808,7 @@
   },
   {
    "name": "RICH",
-   "text": "Whether the individual was born with a silver spoon in their mouth or earned it through hard work, they’ve got more money than most. Rich heroes start with three times the normal starting funds for the setting ($750). If a regular income is 2 appropriate for this setting, the hero receives a $5,000 annual salary.",
+   "text": "Whether the individual was born with a silver spoon in their mouth or earned it through hard work, they’ve got more money than most. Rich heroes start with three times the normal starting funds for the setting ($750). If a regular income is appropriate for this setting, the hero receives a $5,000 annual salary.",
    "requirements": "Novice"
   },
   {
@@ -818,7 +818,7 @@
   },
   {
    "name": "RIGOR MORTIS",
-   "text": "A deader uses this power to inflict terrible pain on everyone who gets too close to their cadaverous corpse. Activating Rigor Mortis is a free action that creates a field of agony the size of a Medium Blast Template centered on the Harrowed. Everyone who enters the template (friend and foe alike) is wracked with pain and stiffness and Distracted. The condition terminates at the end of a victim’s turn if they’re no longer in the area of effect. Rigor Mortis can be maintained as long as the Harrowed desires, but terminates if they don’t make a Smarts roll when Shaken, Stunned, or Wounded. 7",
+   "text": "A deader uses this power to inflict terrible pain on everyone who gets too close to their cadaverous corpse. Activating Rigor Mortis is a free action that creates a field of agony the size of a Medium Blast Template centered on the Harrowed. Everyone who enters the template (friend and foe alike) is wracked with pain and stiffness and Distracted. The condition terminates at the end of a victim’s turn if they’re no longer in the area of effect. Rigor Mortis can be maintained as long as the Harrowed desires, but terminates if they don’t make a Smarts roll when Shaken, Stunned, or Wounded.",
    "requirements": "Heroic, Harrowed"
   },
   {
@@ -843,7 +843,7 @@
   },
   {
    "name": "SCOUT",
-   "text": "Scouts are masters of navigating the West’s vast wilderness. When the Marshal draws a face card while the posse is traveling— indicating an encounter—the Scout can make a Notice roll at −2 to detect the hazard, critter, or event first. Scouts are always considered alert for Notice rolls versus Stealth, ignore up to 2 points of penalties on Survival rolls to track, and on a raise gain more specific information about what they’re following. They also add +2 to Common Knowledge rolls to recall information about towns, outposts, landmarks and watering holes, people, or tribes along a particular route they’ve traveled before. 5",
+   "text": "Scouts are masters of navigating the West’s vast wilderness. When the Marshal draws a face card while the posse is traveling— indicating an encounter—the Scout can make a Notice roll at −2 to detect the hazard, critter, or event first. Scouts are always considered alert for Notice rolls versus Stealth, ignore up to 2 points of penalties on Survival rolls to track, and on a raise gain more specific information about what they’re following. They also add +2 to Common Knowledge rolls to recall information about towns, outposts, landmarks and watering holes, people, or tribes along a particular route they’ve traveled before.",
    "requirements": "Seasoned, Woodsman"
   },
   {
@@ -888,7 +888,7 @@
   },
   {
    "name": "SPIRIT'S FAVOR",
-   "text": "(Shaman), Faith d8+ The shaman has gained the favor of a particular spirit and the singular power it grants them. Choose one of the shaman’s powers each time this Edge is taken. The shaman may cast that power as an action without incurring a Multi-Action penalty, allowing them to invoke protection, for example, then make an attack, pray for another blessing, or perform some other action. The shaman may only claim this benefit once per turn, even if they take Spirit’s Favor more than once. 9",
+   "text": "(Shaman), Faith d8+ The shaman has gained the favor of a particular spirit and the singular power it grants them. Choose one of the shaman’s powers each time this Edge is taken. The shaman may cast that power as an action without incurring a Multi-Action penalty, allowing them to invoke protection, for example, then make an attack, pray for another blessing, or perform some other action. The shaman may only claim this benefit once per turn, even if they take Spirit’s Favor more than once.",
    "requirements": "Seasoned, Arcane Background"
   },
   {
@@ -918,7 +918,7 @@
   },
   {
    "name": "STREETWISE",
-   "text": "This one knows which saloons to ask questions in and which alleys to avoid. Streetwise characters add +2 to Intimidation or Persuasion rolls made to Network (see page 228) with shady or cri­minal elements. They also add +2 to Common Knowledge rolls per­taining to the types of disreputable activities listed above.",
+   "text": "This one knows which saloons to ask questions in and which alleys to avoid. Streetwise characters add +2 to Intimidation or Persuasion rolls made to Network (see page 228) with shady or criminal elements. They also add +2 to Common Knowledge rolls pertaining to the types of disreputable activities listed above.",
    "requirements": "Novice, Smarts d6+"
   },
   {
@@ -928,7 +928,7 @@
   },
   {
    "name": "SUPERIOR KUNG FU",
-   "text": "Background (Chi Master), Fighting d8+ Through years of concentrated study under a wizened teacher, your hero has mastered several styles or stances that make up their particular practice of kung fu. Choose one of the options below the first time you take this Edge, and another each additional time you take it. As a free action at the start of their turn, the fighter can assume any one of the styles they’ve taken below. The benefits of the style remain in place until they change to a different one.  DRUNKEN STYLE: The fighter weaves around like they’re out of a tree on firewater, making their moves hard to follow or predict due to a staggering gait. Opponents subtract 2 from attack rolls to hit them, but Pace is reduced by 2 (they may still run).  EAGLE CLAW: The warrior holds her hands like claws, then strikes quickly and viciously at the enemy like a pecking raptor. This gives them unarmed Fighting attacks AP 4 and it’s considered a Heavy Weapon! This ability is critical for those chi masters who find themselves pitted against heavily armored foes, like Dr. Hellstromme’s metal automatons!  MANTIS: A mantis stu­dent holds their hands like hooks, moving from mesmerizing calm to startling strikes in a terrifying instant. Once per round, anyone who fails a Fighting attack against the martial artist is Distracted or Vulnerable (martial artist’s choice). This is particularly effective when combined with the Counterattack Edge.  MONKEY: The hero shakes their limbs like a primate, contorting and twisting in odd ways that throw off surrounding foes. The martial artist gains +2 Parry, rapidly slapping and blocking away their foes’ strikes. They may also make an Athletics Test against all adjacent foes as a single action. Each one resists separately.  SHUAI CHAO: This form emphasizes light grappling techniques followed by throws or strikes. Once per round, when a foe fails a Fighting attack against the martial artist, they may make a grapple attempt as a free action (see Grappling, page 157).  TAN TUI: The chi master focuses their attack into a powerful snap kick— increasing unarmed combat damage for one Fighting attack per round by one die type. If the attack causes the foe to be Shaken or Wounded, they’re also knocked back 1d4” with success, or 1d4+2” with a raise. With a successful Athletics roll, they can also rise from being prone without costing the usual 2” of movement.  WING CHUN: Wing Chun focuses on fast blocks and flexibility against attacks, like bamboo before a storm. This gives the warrior +1 Parry and subtracts 2 from any melee damage they take while using this style.",
+   "text": "Background (Chi Master), Fighting d8+ Through years of concentrated study under a wizened teacher, your hero has mastered several styles or stances that make up their particular practice of kung fu. Choose one of the options below the first time you take this Edge, and another each additional time you take it. As a free action at the start of their turn, the fighter can assume any one of the styles they’ve taken below. The benefits of the style remain in place until they change to a different one.  DRUNKEN STYLE: The fighter weaves around like they’re out of a tree on fire water, making their moves hard to follow or predict due to a staggering gait. Opponents subtract 2 from attack rolls to hit them, but Pace is reduced by 2 (they may still run).  EAGLE CLAW: The warrior holds her hands like claws, then strikes quickly and viciously at the enemy like a pecking raptor. This gives them unarmed Fighting attacks AP 4 and it’s considered a Heavy Weapon! This ability is critical for those chi masters who find themselves pitted against heavily armored foes, like Dr. Hellstromme’s metal automatons!  MANTIS: A mantis student holds their hands like hooks, moving from mes merizing calm to startling strikes in a terrifying instant. Once per round, anyone who fails a Fighting attack against the martial artist is Distracted or Vulnerable (martial artist’s choice). This is particularly effective when combined with the Counterattack Edge.  MONKEY: The hero shakes their limbs like a primate, contorting and twisting in odd ways that throw off surrounding foes. The martial artist gains +2 Parry, rapidly slapping and blocking away their foes’ strikes. They may also make an Athletics Test against all adjacent foes as a single action. Each one resists separately.  SHUAI CHAO: This form emphasizes light grappling techniques followed by throws or strikes. Once per round, when a foe fails a Fighting attack against the martial artist, they may make a grapple attempt as a free action (see Grappling, page 157).  TAN TUI: The chi master focuses their attack into a powerful snap kick— increasing unarmed combat damage for one Fighting attack per round by one die type. If the attack causes the foe to be Shaken or Wounded, they’re also knocked back 1d4” with success, or 1d4+2” with a raise. With a successful Athletics roll, they can also rise from being prone without costing the usual 2” of movement.  WING CHUN: Wing Chun focuses on fast blocks and flexibility against attacks, like bamboo before a storm. This gives the warrior +1 Parry and subtracts 2 from any melee damage they take while using this style.",
    "requirements": "Novice, Spirit d6+, Arcane"
   },
   {
@@ -978,7 +978,7 @@
   },
   {
    "name": "TRACKIN’ TEETH",
-   "text": "The dead tend to lose body parts here and there. Those with this Edge can keep track of those parts, whether they’re attached to the rest of their cadaver or not! Trackin’ Teeth is a bit of a misnomer as it actually applies to any part of the deader’s body, but this is what Coot Jenkins called it and the name stuck. A clever Harrowed can learn to use it to not only keep track of their parts, but their enemies’ whereabouts as well. They need simply plant a substantial piece of themselves in or on a thing or person. By “substantial” we mean a piece of durable body matter such as a chunk of bone or tooth, not something comparatively insubstantial or perishable, like hair or a scrap of rotten flesh. The most accessible parts of a Harrowed are teeth— hence the Edge’s name. As long as the Harrowed’s piece—tooth or otherwise—is within 10 miles, they can automatically sense its direction and approximate distance. If the piece moves out of range, the Harrowed loses track of it, but they pick it up if it comes back in range again. 2",
+   "text": "The dead tend to lose body parts here and there. Those with this Edge can keep track of those parts, whether they’re attached to the rest of their cadaver or not! Trackin’ Teeth is a bit of a misnomer as it actually applies to any part of the deader’s body, but this is what Coot Jenkins called it and the name stuck. A clever Harrowed can learn to use it to not only keep track of their parts, but their enemies’ whereabouts as well. They need simply plant a substantial piece of themselves in or on a thing or person. By “substantial” we mean a piece of durable body matter such as a chunk of bone or tooth, not something comparatively insubstantial or perishable, like hair or a scrap of rotten flesh. The most accessible parts of a Harrowed are teeth— hence the Edge’s name. As long as the Harrowed’s piece—tooth or otherwise—is within 10 miles, they can automatically sense its direction and approximate distance. If the piece moves out of range, the Harrowed loses track of it, but they pick it up if it comes back in range again.",
    "requirements": "Seasoned, Harrowed"
   },
   {
@@ -993,7 +993,7 @@
   },
   {
    "name": "TRUE GENIUS",
-   "text": "(Mad Scientist) Some say the New Science is inspired by supernatural entities. Most inventors call that superstitious poppycock, but a true genius not only accepts it, they embrace it! After all, it doesn’t matter where the idea comes from, it’s what you do with the technology that matters! Right? Anytime you have to use the Madness Table or infernal device Malfunction Table, you can spend a Benny to have the Marshal roll again, then choose the result you prefer. You may spend as many Bennies as you like until you’re out or as satisfied with the result as you’re gonna get! EXAMPLE: DOC GORDO Doc Samantha “Sam” Gordon needs to cast spiders. She doesn’t have that particular p antes up a Benny and makes an Occult ro card. She’s in a scrapyard full of metal so an ounce of ghost rock for one more card. a Joker, gets a Full House! The Joker gives h Power Points and double damage! Sam needs three Power Points for the spe Blast Template, +1), and Damage (+2) for remaining three Power Points from her Ful −2 for it being a Rank above her (she’s a N Science skill and with the bonus gets an 8! T for a whopping 4d6 damage—doubled afte",
+   "text": "(Mad Scientist) Some say the New Science is inspired by supernatural entities. Most inventors call that superstitious poppycock, but a true genius not only accepts it, they embrace it! After all, it doesn’t matter where the idea comes from, it’s what you do with the technology that matters! Right? Anytime you have to use the Madness Table or infernal device Malfunction Table, you can spend a Benny to have the Marshal roll again, then choose the result you prefer. You may spend as many Bennies as you like until you’re out or as satisfied with the result as you’re gonna get! EXAMPLE: DOC GORDO Doc Samantha “Sam” Gordon needs to cast spiders. She doesn’t have that particular p antes up a Benny and makes an Occult ro card. She’s in a scrapyard full of metal so an ounce of ghost rock for one more card. a Joker, gets a Full House! The Joker gives h 10 Power Points and double damage! Sam needs three Power Points for the spe Blast Template, +1), and Damage (+2) for remaining three Power Points from her Ful −2 for it being a Rank above her (she’s a N Science skill and with the bonus gets an 8! T for a whopping 4d6 damage—doubled afte",
    "requirements": "Novice, Arcane Background"
   },
   {
@@ -1008,7 +1008,7 @@
   },
   {
    "name": "TWO-GUN KID",
-   "text": "Two-Gun Kid works just like Two-Fisted, but with ranged weapons, allowing a shooter to fire or throw a weapon in each hand as two different actions but without triggering a Multi-Action penalty. If the character has Two-Fisted, the second action may also be a melee attack. Example: Red has a Bowie knife in one hand and a pistol in the other. She has both Two- Fisted and Two-Gun Kid, so she can make a Fighting attack on one action and then a second Fighting or Shooting attack with no Multi-Action penalty on a later action that turn. 8",
+   "text": "Two-Gun Kid works just like Two-Fisted, but with ranged weapons, allowing a shooter to fire or throw a weapon in each hand as two different actions but without triggering a Multi-Action penalty. If the character has Two-Fisted, the second action may also be a melee attack. Example: Red has a Bowie knife in one hand and a pistol in the other. She has both Two- Fisted and Two-Gun Kid, so she can make a Fighting attack on one action and then a second Fighting or Shooting attack with no Multi-Action penalty on a later action that turn.",
    "requirements": "Novice, Agility d8+"
   },
   {
@@ -1023,7 +1023,7 @@
   },
   {
    "name": "VERY ATTRACTIVE",
-   "text": "This ain’t just some pretty face—it’s the kind that starts bar fights, breaks hearts, and makes folks forget their own names. When this one enters the room, the whole place takes notice. They increase their Performance and Persuasion bonus to +2. 3",
+   "text": "This ain’t just some pretty face—it’s the kind that starts bar fights, breaks hearts, and makes folks forget their own names. When this one enters the room, the whole place takes notice. They increase their Performance and Persuasion bonus to +2.",
    "requirements": "Novice, Attractive"
   },
   {
@@ -1038,12 +1038,12 @@
   },
   {
    "name": "WHATELEY BLOOD",
-   "text": "(Huckster) Somewhere in your family tree is a crooked branch known as the Whateleys. This twisted family of inbred witches and warlocks is known by arcane types as being powerful— and extremely crazy. Hucksters with Whateley spirit running through their veins have learned “blood magic.” Many of the Whateleys are deformed, although your hero doesn’t have to be (take the appropriate Hindrance if they are). All have some telltale mark—pale skin, jet-black hair, long fingernails, sallow complexion, and so on, and all have green eyes. Whatever mark you choose, there’s something about their tainted blood that puts folks off. That unsettled feeling reduces the huckster’s Persuasion rolls by 1, though many overcome it with other Edges taken separately (Attractive, Charismatic, etc.). Now for the meat of the Edge. A huckster with Whateley Blood can voluntarily suffer a Fatigue level for Power Points, or a Wound for 10. This is done exactly as you’d think— by cutting, carving, or otherwise maiming themselves (as a free action, which makes it pretty messy!). Whateleys are a slippery bunch, so if this Incapacitates the caster they complete their turn before keeling over for a dirt nap.",
+   "text": "(Huckster) Somewhere in your family tree is a crooked branch known as the Whateleys. This twisted family of inbred witches and warlocks is known by arcane types as being powerful— and extremely crazy. Hucksters with Whateley spirit running through their veins have learned “blood magic.” Many of the Whateleys are deformed, although your hero doesn’t have to be (take the appropriate Hindrance if they are). All have some telltale mark—pale skin, jet-black hair, long fingernails, sallow complexion, and so on, and all have green eyes. Whatever mark you choose, there’s something about their tainted blood that puts folks off. That unsettled feeling reduces the huckster’s Persuasion rolls by 1, though many overcome it with other Edges taken separately (Attractive, Charismatic, etc.). Now for the meat of the Edge. A huckster with Whateley Blood can voluntarily suffer a Fatigue level for 5 Power Points, or a Wound for 10. This is done exactly as you’d think— by cutting, carving, or otherwise maiming themselves (as a free action, which makes it pretty messy!). Whateleys are a slippery bunch, so if this Incapacitates the caster they complete their turn before keeling over for a dirt nap.",
    "requirements": "Novice, Arcane Background"
   },
   {
    "name": "WICHITA WITCH",
-   "text": "(Witch), Spellcasting d8+ Mina Devlin teaches her orphan girls reading, writing, arithmetic, etiquette, and of course, witchcraft! Her “girls” also learn how to defend themselves, intimidate the rough hired guns they often command, and of course, fight. The trademark black mask, provocative leather outfit, and long whip mark the witch as one of Mina’s witches (whether the character is still with her or not). When fully decked out, they add +1 to Intimidation rolls and +1 to Persuasion rolls to those who might be attracted to them. (They subtract 1 from Persuasion rolls when dealing with authorities or “law and order” types— GM’s call). Wichita witches also learn to charge their whip with violent energy. This costs one Power Point, is a free action, and can be triggered after the witch hits with the whip. If they hit with a raise and spend the Power Point, they can add a bonus die to the damage as usual (instead of only Entangling the foe—see Whips on page 120). 1",
+   "text": "(Witch), Spellcasting d8+ Mina Devlin teaches her orphan girls reading, writing, arithmetic, etiquette, and of course, witchcraft! Her “girls” also learn how to defend themselves, intimidate the rough hired guns they often command, and of course, fight. The trademark black mask, provocative leather outfit, and long whip mark the witch as one of Mina’s witches (whether the character is still with her or not). When fully decked out, they add +1 to Intimidation rolls and +1 to Persuasion rolls to those who might be attracted to them. (They subtract 1 from Persuasion rolls when dealing with authorities or “law and order” types— GM’s call). Wichita witches also learn to charge their whip with violent energy. This costs one Power Point, is a free action, and can be triggered after the witch hits with the whip. If they hit with a raise and spend the Power Point, they can add a bonus die to the damage as usual (instead of only Entangling the foe—see Whips on page 120).",
    "requirements": "Novice, Arcane Background"
   },
   {
@@ -1058,7 +1058,7 @@
   },
   {
    "name": "WOODSMAN",
-   "text": "These are the loners—scouts, trackers, and quiet types who live by the whisperin’ wind. They are skilled trackers and scouts, and know how to live off the land for months at a time. Woodsmen add +2 to Survival rolls, and Stealth rolls made in the wild (not towns, ruins, or underground). 5",
+   "text": "These are the loners—scouts, trackers, and quiet types who live by the whisperin’ wind. They are skilled trackers and scouts, and know how to live off the land for months at a time. Woodsmen add +2 to Survival rolls, and Stealth rolls made in the wild (not towns, ruins, or underground).",
    "requirements": "Novice, Spirit d6+, Survival d8+"
   },
   {
@@ -1068,14 +1068,14 @@
   },
   {
    "name": "WORK THE ROOM",
-   "text": "This hero’s got a voice like honey and presence like a sermon in a revival tent. As a limited action, you can use Work the Room to roll a second skill die when Supporting with Persuasion or Performance. The additional die Supports another ally normally and can 8 apply to any Trait chosen. It need not be the same Trait for both allies.",
+   "text": "This hero’s got a voice like honey and presence like a sermon in a revival tent. As a limited action, you can use Work the Room to roll a second skill die when Supporting with Persuasion or Performance. The additional die Supports another ally normally and can apply to any Trait chosen. It need not be the same Trait for both allies.",
    "requirements": "Novice, Spirit d8+"
   }
  ],
  "hindrances": [
   {
    "name": "AILIN'",
-   "text": "Medicine is a rudimentary science on the frontier, and there are worse ways to die than a severe case of lead poisoning. Your cowpoke suffers from a chronic and at least so far incurable disease of some sort. The Minor version of the Hindrance means you subtract 1 from any roll made to resist Fatigue from any source. Subtract 2 if it’s a Major Hindrance. A Critical Failure on such a roll means things are getting worse. If your pistolero has the Minor version, they get worse and the Hindrance becomes Major. If they already have the Major version, the Reaper comes calling. The good news is you gain an immediate point of Conviction. The bad news is you choose when and how your hero dies during that session. They might go out in a blaze of glory or surrounded by friends on a peaceful mountaintop. When they finally pass, the other player characters gain a point of Conviction, drawing strength from the brave death of their stalwart companion. You can also buy off your Hindrance by spending an Advance (two for the Major version of the Hindrance). You should work with the Marshal to figure out a narrative reason for the improvement—treatment at a sanatorium, a miracle cure, a transfusion from a unique donor, or some other story- based explanation for the character’s miraculous improvement. 0",
+   "text": "Medicine is a rudimentary science on the frontier, and there are worse ways to die than a severe case of lead poisoning. Your cowpoke suffers from a chronic and at least so far incurable disease of some sort. The Minor version of the Hindrance means you subtract 1 from any roll made to resist Fatigue from any source. Subtract 2 if it’s a Major Hindrance. A Critical Failure on such a roll means things are getting worse. If your pistolero has the Minor version, they get worse and the Hindrance becomes Major. If they already have the Major version, the Reaper comes calling. The good news is you gain an immediate point of Conviction. The bad news is you choose when and how your hero dies during that session. They might go out in a blaze of glory or surrounded by friends on a peaceful mountaintop. When they finally pass, the other player characters gain a point of Conviction, drawing strength from the brave death of their stalwart companion. You can also buy off your Hindrance by spending an Advance (two for the Major version of the Hindrance). You should work with the Marshal to figure out a narrative reason for the improvement—treatment at a sanatorium, a miracle cure, a transfusion from a unique donor, or some other story- based explanation for the character’s miraculous improvement.",
    "severity": "Minor Or Major"
   },
   {
@@ -1120,7 +1120,7 @@
   },
   {
    "name": "CAN’T SWIM",
-   "text": "Most people in the 19th century can’t swim. Even most sailors are strangers to the water. Your hombre’s one of those. Whether it’s the ocean, a river, or a deep washbasin, they sinks like a stone. Characters with this Hindrance suffer a −2 penalty to the Athletics skill when swimming and each inch moved in water costs 3″ of Pace. See Movement (page 146) for more details and Drowning (221). 2",
+   "text": "Most people in the 19th century can’t swim. Even most sailors are strangers to the water. Your hombre’s one of those. Whether it’s the ocean, a river, or a deep washbasin, they sinks like a stone. Characters with this Hindrance suffer a −2 penalty to the Athletics skill when swimming and each inch moved in water costs 3″ of Pace. See Movement (page 146) for more details and Drowning (221).",
    "severity": "Minor"
   },
   {
@@ -1130,7 +1130,7 @@
   },
   {
    "name": "CLUELESS",
-   "text": "You wouldn’t notice a ghost if it danced a jig on your hat. You’re a few cards short of a full deck when it comes to paying attention to what’s going on around you. Maybe it’s naivety, maybe you’re just lost in your own world—but in the Weird West, ignorance ain’t bliss. It’s fatal. Your character subtracts 1 from Common Know­ledge and Notice rolls.",
+   "text": "You wouldn’t notice a ghost if it danced a jig on your hat. You’re a few cards short of a full deck when it comes to paying attention to what’s going on around you. Maybe it’s naivety, maybe you’re just lost in your own world—but in the Weird West, ignorance ain’t bliss. It’s fatal. Your character subtracts 1 from Common Knowledge and Notice rolls.",
    "severity": "Major"
   },
   {
@@ -1240,7 +1240,7 @@
   },
   {
    "name": "LYIN’ EYES",
-   "text": "This poor soul just isn’t cut out for bluffing. Maybe it’s the twitchy hands, the shifty eyes, or the stammering voice—but whatever it is, folks can smell a fib the minute it leaves their lips. That makes bluffing in a poker game mighty difficult—and talking your way outta trouble near impossible. A hero with this Hindrance suffers a −1 penalty to all Intimidation and Persuasion rolls where lies—even little ones— must be told. Worse, if your hero plans to make money playing poker, the penalty also applies to bluffing. That’s −1 to your Gambling rolls in a poker or faro game as well, compadre! 2",
+   "text": "This poor soul just isn’t cut out for bluffing. Maybe it’s the twitchy hands, the shifty eyes, or the stammering voice—but whatever it is, folks can smell a fib the minute it leaves their lips. That makes bluffing in a poker game mighty difficult—and talking your way outta trouble near impossible. A hero with this Hindrance suffers a −1 penalty to all Intimidation and Persuasion rolls where lies—even little ones— must be told. Worse, if your hero plans to make money playing poker, the penalty also applies to bluffing. That’s −1 to your Gambling rolls in a poker or faro game as well, compadre!",
    "severity": "Minor"
   },
   {
@@ -1325,7 +1325,7 @@
   },
   {
    "name": "SECRET",
-   "text": "Everyone’s got skeletons, but your hero’s got one that rattles. Could be they made a deal with a manitou, betrayed their posse, or were involved in a massacre that got hushed up. As a Minor Hindrance, the secret is troublesome but not life-threatening. The Major version would cause severe problems if discovered. If it ever becomes public knowledge, they should trade it for Enemy, Shamed, Wanted, or another appropriate Hindrance approved by the GM. 8",
+   "text": "Everyone’s got skeletons, but your hero’s got one that rattles. Could be they made a deal with a manitou, betrayed their posse, or were involved in a massacre that got hushed up. As a Minor Hindrance, the secret is troublesome but not life-threatening. The Major version would cause severe problems if discovered. If it ever becomes public knowledge, they should trade it for Enemy, Shamed, Wanted, or another appropriate Hindrance approved by the GM.",
    "severity": "Minor Or Major"
   },
   {
@@ -1380,7 +1380,7 @@
   },
   {
    "name": "TROUBLE MAGNET",
-   "text": "Bad luck isn’t a rare occurrence for your sodbuster—it’s a lifestlye. As a Minor Hindrance, whenever the character 2 rolls a Critical Failure the consequences are worse in some way. A hero isn’t just spotted trying to infiltrate a US Army fort, someone recognizes their face. A buckaroo doesn’t just fail at Intimidation, the target’s friends take personal offense. Or a botched attack roll results in the cowpoke’s weapon falling apart. The Major Hindrance has a different effect. Anytime the Marshal must choose a “random character” to be hit, attacked, or otherwise negatively affected by something—it’s this poor devil.",
+   "text": "Bad luck isn’t a rare occurrence for your sodbuster—it’s a lifestlye. As a Minor Hindrance, whenever the character rolls a Critical Failure the consequences are worse in some way. A hero isn’t just spotted trying to infiltrate a US Army fort, someone recognizes their face. A buckaroo doesn’t just fail at Intimidation, the target’s friends take personal offense. Or a botched attack roll results in the cowpoke’s weapon falling apart. The Major Hindrance has a different effect. Anytime the Marshal must choose a “random character” to be hit, attacked, or otherwise negatively affected by something—it’s this poor devil.",
    "severity": "Minor Or Major"
   },
   {
@@ -1390,7 +1390,7 @@
   },
   {
    "name": "VENGEFUL",
-   "text": "Those who trouble your ornery cuss are in for pay­back. As a Minor Hindrance they usually seek vengeance legally. The method varies by situation—some plot and scheme for months while others demand immediate results. Those with the Major version of this Hindrance don’t let anything prevent them from a reckoning. This doesn’t mean they immediately resort to violence, but their actions always escalate until total and complete satisfaction is achieved.",
+   "text": "Those who trouble your ornery cuss are in for payback. As a Minor Hindrance they usually seek vengeance legally. The method varies by situation—some plot and scheme for months while others demand immediate results. Those with the Major version of this Hindrance don’t let anything prevent them from a reckoning. This doesn’t mean they immediately resort to violence, but their actions always escalate until total and complete satisfaction is achieved.",
    "severity": "Minor Or Major"
   },
   {
