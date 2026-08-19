@@ -10,6 +10,25 @@ reload.
 
 ---
 
+## 2026-08-19 — The modifier dial goes to ±8
+
+`0097a72`. Damian's request.
+
+The hand-dialled modifier now runs **−8 to +8** instead of −6 to +6. Penalties
+stack — Pitch Dark and a called shot will do it — and the dial was running out
+before the situation did.
+
+Seventeen pips will not fit across the panel with a sign on every one, so the
+signs are now only where they earn their place: **−8 7 6 5 4 3 2 −1 0 +1 2 3 4 5
+6 7 +8**. The ends of each run are marked and position does the rest. Hover still
+gives the exact value. It ends up slightly *narrower* than the old thirteen.
+
+The line under a ranged attack's target table is gone — it explained why the
+Parry column was blank, which was more words than the blank needed. Fighting
+still says "Resolved against Parry."
+
+---
+
 ## 2026-08-19 — Parry stays off the table when you shoot
 
 `4887f83`.
