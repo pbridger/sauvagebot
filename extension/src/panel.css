@@ -334,6 +334,10 @@ button.shot-roll {
   color: var(--accent);
 }
 tr.shot-outcome td { padding-top: 3px; border-top: 1px solid var(--rule); }
+/* While the dice are still in the air. The panel holds its verdict for exactly
+   as long as the log holds its line — printing it here first would answer the
+   question the animation is in the middle of asking. */
+.shot-rolling { color: var(--muted); font-size: 11px; }
 tr.shot-outcome .hit { color: var(--accent); }
 tr.shot-outcome .miss { color: var(--muted); }
 .shot-parry { margin-left: 7px; font-size: 11px; color: var(--muted); }

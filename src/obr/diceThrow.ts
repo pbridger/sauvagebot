@@ -221,23 +221,52 @@ export function acedIn(wave: readonly DieEvent[], next: readonly DieEvent[] | un
 }
 
 /**
- * Reveal the result anyway after this long, however the tray is getting on.
+ * Reveal the result anyway after this long, when we do not know what was thrown.
  *
  * The log is the source of truth and the tray is decoration: a stalled physics
  * simulation, a lost message or a WebGL context loss must cost the table a nice
  * animation, never a result.
+ *
+ * Only for a roll whose dice have not arrived — a remote line whose throw is still
+ * in flight on the other channel. With the dice to hand, `revealDelay` knows how
+ * many waves there are and can do better than a flat guess.
  */
 export const REVEAL_CAP_MS = 6_000;
+
+/**
+ * How long one wave takes to come to rest.
+ *
+ * The physics settle, not a guess at the whole throw. It was **700ms** inside
+ * `revealDelay`'s per-ace term, which was far short of what the tray actually
+ * spends: each extra wave costs an `await` on the box settling the new dice, and
+ * that is the same order as the first throw rather than half of it.
+ */
+export const THROW_MS = 1_500;
+
+/**
+ * Never hold a line longer than this, however many aces there were.
+ *
+ * Above `REVEAL_CAP_MS` because it is reached only by a roll we can see the dice
+ * for — four aces in a chain genuinely takes this long to animate, and cutting it
+ * off at six seconds is what produced the bug this replaces: the line appearing
+ * while the dice bought by the second ace were still in the air.
+ */
+export const REVEAL_MAX_MS = 9_000;
 
 /**
  * How long to hold a log line back, when nothing has said the dice have stopped.
  *
  * The tray reports its own settle and that is what normally triggers the reveal;
  * this is the fallback for a client whose tray was closed, torn down for idleness,
- * or never opened — and for a tray that has quietly died. Roughly the time a throw
- * takes to come to rest, plus a beat for each ace, and never more than the cap.
+ * or never opened — and for a tray that has quietly died.
+ *
+ * It must not be *shorter* than the animation, which is the trap it fell into. A
+ * fallback that fires early is not a fallback at all — it is a race with the real
+ * mechanism, and it wins exactly when there is something worth watching. An ace
+ * costs the beat before the die it bought is thrown **and** the time that die
+ * takes to settle, and only the first of those was being counted.
  */
 export function revealDelay(dice: readonly DieEvent[]): number {
   const extra = Math.max(0, waves(dice).length - 1);
-  return Math.min(REVEAL_CAP_MS, 1_500 + extra * (ACE_BEAT_MS + 700));
+  return Math.min(REVEAL_MAX_MS, THROW_MS + extra * (ACE_BEAT_MS + THROW_MS));
 }

@@ -245,6 +245,14 @@ interface AimedRoll {
   bands?: [number, number, number];
   /** The die value at or under which this weapon endangers bystanders. */
   strayOn?: number;
+  /**
+   * The declared target's name, for a roll made through the shot panel.
+   *
+   * Its presence suppresses the log line's targeting table, because the range and
+   * the cover that table would apply are already inside this total. See
+   * `RollEntry.target`.
+   */
+  target?: string;
 }
 
 interface LastTrait {
@@ -468,6 +476,10 @@ function reveal(id: string): void {
   clearTimeout(timer);
   held.delete(id);
   renderLog();
+  // The sheet as well as the log: the shot panel holds its verdict for the same
+  // dice, so revealing one without the other would put the answer on screen in
+  // the place the player is already looking while the log still waited.
+  render();
 }
 
 /**
@@ -544,6 +556,7 @@ function publishTrait(
       ...(mods.parts.length ? { mods: mods.parts } : {}),
       ...(aimed ? { skill: aimed.skill } : {}),
       ...(aimed?.bands ? { bands: aimed.bands } : {}),
+      ...(aimed?.target ? { target: aimed.target } : {}),
       ...(stray && strayOn !== undefined ? { stray, strayOn } : {}),
       ...(aimed && from ? { from } : {}),
     },
@@ -3761,6 +3774,21 @@ async function fillShotTargets(
       const cell = document.createElement('td');
       cell.colSpan = 5;
 
+      // Held while the dice are still in the air, exactly as the log line is.
+      // The panel used to print "hit, 2 raises" the instant the button was
+      // pressed, which told the player the answer while the tray was still
+      // making a show of finding it — and made the log's own hold pointless,
+      // since the result was already on screen six inches above it.
+      if (held.has(session.rolled.entryId)) {
+        const rolling = document.createElement('i');
+        rolling.className = 'shot-rolling';
+        rolling.textContent = 'rolling…';
+        cell.append(rolling);
+        outcome.append(cell);
+        table.append(outcome);
+        continue;
+      }
+
       // Resolved against a flat 4, and against Parry only when the Marshal
       // judges the shot was into melee — the same call `showsParry` describes.
       const parry = victim.parry ?? DEFAULT_PARRY;
@@ -3858,6 +3886,7 @@ function takeTheShot(
       skill: session.skill,
       ...(session.bands ? { bands: session.bands } : {}),
       strayOn,
+      target: targetName,
     },
   );
 
@@ -3941,6 +3970,7 @@ function damageButton(
       weapon.ap,
       diceColourOf(sheet),
       activeToken(sheet)?.token.id,
+      targetName,
     );
     // A second press supersedes the first: rolling damage again is redoing it,
     // not adding to it, and Apply must spend the roll on screen.

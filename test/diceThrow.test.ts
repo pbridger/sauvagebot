@@ -9,10 +9,15 @@ import { describe, it, expect } from 'vitest';
 import { JavaRandom } from '../src/dice/javaRandom.js';
 import { Roller, type DieEvent } from '../src/dice/roller.js';
 import {
+  ACE_BEAT_MS,
   MAX_DICE,
+  REVEAL_CAP_MS,
+  REVEAL_MAX_MS,
+  THROW_MS,
   isDiceThrow,
   isSeat,
   notation,
+  revealDelay,
   waves,
   type DiceThrow,
 } from '../src/obr/diceThrow.js';
@@ -382,5 +387,57 @@ describe('dice colours', () => {
     const sheet = { ...emptySheet('reggie', 'Reggie'), diceColour: '#a32e26' };
     expect(diceColourOf(sheet)).toBe('#a32e26');
     expect(diceColourOf(emptySheet('reggie', 'Reggie'))).toBe(defaultDiceColour('reggie'));
+  });
+});
+
+/**
+ * The fallback timer must never be *shorter* than the animation it is backing up.
+ * A fallback that fires early is not a fallback — it is a race with the tray's own
+ * "settled" message, and it wins exactly when there is something worth watching.
+ */
+describe('how long a line is held', () => {
+  const die = (step: number, chain: number): DieEvent => ({
+    sides: 6,
+    value: 6,
+    role: 'trait',
+    step,
+    chain,
+  });
+
+  it('is one throw for dice that did not ace', () => {
+    expect(revealDelay([die(0, 1), die(0, 2)])).toBe(THROW_MS);
+  });
+
+  /** Each ace costs the beat *and* the settle of the die it bought. */
+  it('counts both halves of an ace', () => {
+    expect(revealDelay([die(0, 1), die(1, 1)])).toBe(THROW_MS + ACE_BEAT_MS + THROW_MS);
+  });
+
+  it('grows with the length of the chain', () => {
+    const two = revealDelay([die(0, 1), die(1, 1)]);
+    const three = revealDelay([die(0, 1), die(1, 1), die(2, 1)]);
+    expect(three).toBeGreaterThan(two);
+    expect(three - two).toBe(ACE_BEAT_MS + THROW_MS);
+  });
+
+  /**
+   * The regression: `[2; w6+6+3]` — a wild die that aced twice — was held for
+   * 3,800ms against an animation nearer 5,400, so the line appeared while the
+   * dice bought by the second ace were still rolling.
+   */
+  it('outlasts the animation of a die that aced twice', () => {
+    const doubleAce = [die(0, 1), die(0, 2), die(1, 2), die(2, 2)];
+    expect(revealDelay(doubleAce)).toBeGreaterThanOrEqual(5_400);
+  });
+
+  it('never waits longer than the ceiling', () => {
+    const chain = Array.from({ length: 12 }, (_, step) => die(step, 1));
+    expect(revealDelay(chain)).toBe(REVEAL_MAX_MS);
+  });
+
+  /** The blind fallback, for a remote line whose dice have not arrived. */
+  it('leaves the no-dice cap where it was', () => {
+    expect(REVEAL_CAP_MS).toBe(6_000);
+    expect(REVEAL_MAX_MS).toBeGreaterThan(REVEAL_CAP_MS);
   });
 });
