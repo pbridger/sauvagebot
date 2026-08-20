@@ -23,7 +23,6 @@ import {
 } from '../../src/rules/abilities.js';
 import {
   skillCanStray,
-  spraysLead,
   strayShots,
   strayThreshold,
   strayWarning,
@@ -36,7 +35,6 @@ import {
   isRollableDamage,
   parseGear,
   weaponSkill,
-  type Weapon,
 } from '../../src/rules/gear.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
 import { RollInterpreter } from '../../src/dice/interpreter.js';
@@ -73,24 +71,7 @@ import {
   verdictIsMeaningless,
   withoutFlatVerdict,
   type Band,
-  type RangeBands,
 } from '../../src/rules/targeting.js';
-import {
-  CALLED_SHOTS,
-  COVER,
-  SLUG_DAMAGE,
-  asRollMods,
-  calledShotDamage,
-  describeAmendment,
-  reachesExtreme,
-  shotTotal,
-  shotgunDamage,
-  shotgunMod,
-  straysAsFired,
-  type Aim,
-  type ShotMod,
-  type ShotTotal,
-} from '../../src/rules/shot.js';
 import { newCharacter, pruneEmptyEntries } from '../../src/rules/sheetEdit.js';
 import { parseStatBlocks } from '../../src/rules/statBlock.js';
 import {
@@ -339,12 +320,11 @@ function describe(error: unknown): string {
  * screen. Keeping it local works because the person hiding the roll is the one
  * making it.
  */
-/** @returns the id of the entry, so a caller can amend it later. */
 function publish(
   partial: Omit<RollEntry, 'id' | 'at' | 'by'>,
   dice: DieEvent[] = [],
   colour?: string,
-): string {
+): void {
   const total = partial.total ?? totalOf(partial.explained);
   // Over the cap there is no animation: `20d20!` is a legal expression and an
   // unwatchable throw, and a locked-up tab is worse than an unanimated result.
@@ -372,7 +352,6 @@ function publish(
       .sendMessage(ROLL_CHANNEL, forBroadcast(entry), { destination: 'REMOTE' })
       .catch((error: unknown) => notify(`could not share that roll: ${describe(error)}`));
   }
-  return entry.id;
 }
 
 /**
@@ -504,7 +483,7 @@ function publishTrait(
   aimed?: AimedRoll,
   /** Set when this *is* a reroll, so it does not overwrite what it is redoing. */
   isReroll = false,
-): string {
+): void {
   const who = rollerName(sheet);
   const from = activeToken(sheet)?.token.id;
   // Every trait roll off a sheet comes through here, which is what makes this the
@@ -526,7 +505,7 @@ function publishTrait(
   const strayOn = skillCanStray(aimed?.skill) ? (aimed?.strayOn ?? STRAY_ON_MISS) : undefined;
   const stray = strayOn === undefined ? 0 : strayShots(result.dice ?? [], strayOn);
 
-  return publish(
+  publish(
     {
       ...(who ? { character: who } : {}),
       label,
@@ -3166,730 +3145,6 @@ function render(): void {
   // to be a bar here, which is where it was invisible.
 }
 
-// ---------------------------------------------------------------------------
-// The shot panel
-// ---------------------------------------------------------------------------
-
-/**
- * One shot being lined up, from picking up the gun to applying the wound.
- *
- * ## Why the roll is not the first thing that happens
- *
- * The weapons table used to roll Shooting the moment you pressed it, and *then*
- * offer a table of everyone it might have been aimed at, each with their own
- * hit, miss and raise count worked out. Damian objected, and was right: it shows
- * the outcome against six people when the player had already decided which one
- * they were shooting at, and it reads as the app dealing out possibilities.
- *
- * The book agrees, and says so in as many words (p147): *"Before you roll, assign
- * your dice to all possible targets."* So the target is named first and the dice
- * come after.
- *
- * ## The one thing that cannot be taken back
- *
- * Everything on a shot stays adjustable after the dice land except the dice. The
- * Marshal reads the logged roll, says "you aimed last round", the player clicks
- * Aim, and the damage is rolled against the corrected number. Nothing re-rolls.
- * That is `lockedByTheRoll` in `shot.ts`, and it means the panel has exactly one
- * irreversible step for the player to feel.
- *
- * ## Where this lives
- *
- * Module state, ephemeral, and it must stay that way. It is not written to room
- * metadata, which is a whole-document 16 kB budget that a fight had already
- * pushed to 106% — and none of this outlives the shot anyway. Same reasoning as
- * `adjustments`, next door.
- *
- * !! Rate of Fire is fixed at 1 here. The rules for firing more are written and
- * tested in `shot.ts` — Recoil, the stray window, the ceiling — but the panel
- * needs a step for assigning each rolled die to a declared target before it can
- * offer them, and that is the next piece rather than this one. !!
- */
-interface ShotSession {
-  /** Sheet and weapon together, so the panel reopens on the right row. */
-  key: string;
-  skill: string;
-  bands?: RangeBands;
-  aim: Aim;
-  calledShot?: string;
-  scoped: boolean;
-  slugs: boolean;
-  dial: number;
-  /** Cover per target, because the water trough is not a property of the shot. */
-  cover: Map<string, number>;
-  /** Who was declared. Named before the dice, per p147. */
-  targetId?: string;
-  /** Set once the dice have been thrown, and never unset except by a new shot. */
-  rolled?: {
-    entryId: string;
-    expression: string;
-    /**
-     * The band the target was in **when the trigger was pulled**.
-     *
-     * Frozen rather than re-measured. The range at the moment of the shot is a
-     * fact about the shot, and a target who walks two cells afterwards did not
-     * retroactively make it a harder one.
-     */
-    band?: Band;
-    /** The raw rolled total, before any of the shot's modifiers. */
-    raw: number;
-    /** The modifiers as they stood at the moment of rolling. */
-    mods: ShotMod[];
-    /** The modifiers as they stand now, after any corrections. */
-    current: ShotMod[];
-    total: number;
-  };
-}
-
-let openShot: ShotSession | undefined;
-
-function shotKey(sheet: Sheet, weapon: Weapon): string {
-  return `${sheet.id}::${weapon.name}`;
-}
-
-/**
- * Open the panel on this weapon, or close it if it is already open.
- *
- * Opening a different weapon replaces the session outright rather than keeping
- * two. A half-aimed shot with the other gun is not something anyone wants
- * restored three rounds later, and a shot the player has walked away from should
- * cost nothing to abandon — the manual roller and manual wounds are always there,
- * and are the answer whenever the panel cannot express what happened.
- */
-function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBands): void {
-  const key = shotKey(sheet, weapon);
-  openShot =
-    openShot?.key === key
-      ? undefined
-      : {
-          key,
-          skill,
-          ...(bands ? { bands } : {}),
-          aim: 'off',
-          scoped: false,
-          slugs: false,
-          dial: 0,
-          cover: new Map(),
-        };
-  render();
-}
-
-/** A small labelled row of mutually exclusive buttons. */
-function shotChoice<T>(
-  label: string,
-  options: readonly { value: T; text: string; title: string }[],
-  current: T,
-  pick: (value: T) => void,
-): HTMLElement {
-  const row = document.createElement('div');
-  row.className = 'shot-choice';
-  const name = document.createElement('span');
-  name.className = 'shot-label';
-  name.textContent = label;
-  row.append(name);
-  for (const option of options) {
-    const button = document.createElement('button');
-    button.className = option.value === current ? 'shot-opt on' : 'shot-opt';
-    button.textContent = option.text;
-    button.title = option.title;
-    button.addEventListener('click', () => pick(option.value));
-    row.append(button);
-  }
-  return row;
-}
-
-/**
- * The modifiers on this shot at one particular target.
- *
- * The sheet's own `RollBreakdown` is deliberately *not* folded in here — it is
- * added once at the roll, and `ShotRequest.state` is left empty for the same
- * reason. Both carry the situational track, and passing both would count the
- * dark twice.
- */
-function shotMods(session: ShotSession, band: Band | undefined, tokenId?: string): ShotTotal {
-  return shotTotal({
-    rof: 1,
-    aim: session.aim,
-    calledShot: session.calledShot,
-    ...(band ? { band } : {}),
-    cover: tokenId ? session.cover.get(tokenId) : 0,
-    scoped: session.scoped,
-    dial: session.dial,
-  });
-}
-
-/**
- * Publish a correction to a roll that has already been made.
- *
- * Appends rather than editing — see `RollEntry.amends`. The label says what
- * changed in words rather than as a delta, because a Marshal reading "you aimed
- * last round" back off the log wants to see the word Aim, not "+4".
- */
-function amendShot(
-  sheet: Sheet,
-  session: ShotSession,
-  mods: ShotMod[],
-  /** The shot's own modifiers, summed. */
-  modTotal: number,
-  /** Everything the sheet contributes: wounds, fatigue, the token's own track. */
-  sheetTotal: number,
-): void {
-  const rolled = session.rolled;
-  if (!rolled) return;
-  const what = describeAmendment(rolled.current, mods);
-  if (!what) return;
-  // What the log shows is the **roll** total, not the modifier sum. They are
-  // different numbers and putting the wrong one here would publish an entry whose
-  // `total` says -4 for a roll of 7 — and `RollLog.latest` hands that number to
-  // whatever reads the line next.
-  const before = rolled.raw + sheetTotal + rolled.total;
-  const after = rolled.raw + sheetTotal + modTotal;
-  rolled.current = mods;
-  rolled.total = modTotal;
-  publish({
-    ...named(sheet),
-    label: what,
-    expression: rolled.expression,
-    explained: `${before} → **${after}**`,
-    total: after,
-    amends: rolled.entryId,
-    ...(mods.length ? { mods: asRollMods(mods) } : {}),
-  });
-}
-
-/**
- * Recompute the declared shot and log a correction if anything moved.
- *
- * Called from every control, after the change and before the redraw. It no-ops
- * before the roll — there is nothing to correct yet — and no-ops again when the
- * modifiers come out identical, so a control clicked back to where it started
- * costs nothing.
- *
- * Deliberately *not* called from the render path. Doing it there would publish an
- * amendment every time a target drifted across a band boundary, which is a change
- * nobody asked for. A correction is something a person does.
- */
-function amendFromControls(
-  sheet: Sheet,
-  weapon: Weapon,
-  session: ShotSession,
-  sheetMods: RollBreakdown,
-): void {
-  const rolled = session.rolled;
-  if (!rolled) return;
-  const next = shotMods(session, rolled.band, session.targetId);
-  const gun = shotgunMod(weapon, session.slugs);
-  const mods = gun ? [...next.mods, gun] : next.mods;
-  amendShot(
-    sheet,
-    session,
-    mods,
-    next.total + (gun?.value ?? 0),
-    sheetMods.total,
-  );
-}
-
-/**
- * The panel that opens under a weapon: how you are shooting, then who at.
- *
- * Rebuilt from scratch on every change, like the rest of the sheet. The targets
- * arrive asynchronously — ranges come from OBR — so the list fills in under a
- * placeholder rather than the whole panel waiting on the scene.
- */
-function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTMLElement {
-  const session = openShot!;
-  const box = document.createElement('div');
-  box.className = 'shot';
-  // Every control goes through here: change the session, log the correction if
-  // the dice have already been thrown, then rebuild. A control that skipped this
-  // would change the arithmetic without telling the Marshal, which is the one
-  // thing the amendment mechanism exists to prevent.
-  const redraw = (): void => {
-    amendFromControls(sheet, weapon, session, sheetMods);
-    render();
-  };
-
-  // --- how the shot is being taken ----------------------------------------
-
-  const controls = document.createElement('div');
-  controls.className = 'shot-controls';
-
-  controls.append(
-    shotChoice(
-      'Aim',
-      [
-        { value: 'off' as Aim, text: 'No', title: 'Not aimed' },
-        {
-          value: 'cancel' as Aim,
-          text: 'Cancel 4',
-          title:
-            'Spent last turn aiming: ignore up to 4 points of range, cover, called shot, scale or speed (p152)',
-        },
-        {
-          value: 'bonus' as Aim,
-          text: '+2',
-          title: 'Spent last turn aiming, taken as a flat +2 instead (p152)',
-        },
-      ],
-      session.aim,
-      (value) => {
-        session.aim = value;
-        redraw();
-      },
-    ),
-  );
-
-  controls.append(
-    shotChoice(
-      'Called shot',
-      [
-        {
-          value: undefined as string | undefined,
-          text: 'No',
-          title: 'Shooting at the body',
-        },
-        ...CALLED_SHOTS.map((shot) => ({
-          value: shot.key as string | undefined,
-          text: shot.label,
-          title: `${shot.value} to hit. ${shot.note}`,
-        })),
-      ],
-      session.calledShot,
-      (value) => {
-        if (value === undefined) delete session.calledShot;
-        else session.calledShot = value;
-        redraw();
-      },
-    ),
-  );
-
-  // Only worth asking when the answer changes something. A scope matters at
-  // Extreme Range and nowhere else the book names; slugs matter only for a gun
-  // that would otherwise be firing buckshot.
-  if (reachesExtreme(weapon, session.slugs)) {
-    controls.append(
-      shotChoice(
-        'Scope',
-        [
-          { value: false, text: 'No', title: 'Iron sights' },
-          {
-            value: true,
-            text: 'Yes',
-            title: 'Extreme Range costs 6 instead of 8 (p146)',
-          },
-        ],
-        session.scoped,
-        (value) => {
-          session.scoped = value;
-          redraw();
-        },
-      ),
-    );
-  }
-  if (spraysLead(weapon)) {
-    controls.append(
-      shotChoice(
-        'Load',
-        [
-          {
-            value: false,
-            text: 'Shot',
-            title:
-              'Buckshot: damage falls off with range, and strays on a 1 or a 2',
-          },
-          {
-            value: true,
-            text: 'Slugs',
-            title:
-              '2d10 at any range, may be fired at Extreme, and strays only on a 1 (p161)',
-          },
-        ],
-        session.slugs,
-        (value) => {
-          session.slugs = value;
-          redraw();
-        },
-      ),
-    );
-  }
-
-  box.append(controls);
-
-  // The hand dial, for every rule the app will never know. Deliberately outside
-  // anything Aim can reach — see `shotTotal`.
-  const dialRow = document.createElement('div');
-  dialRow.className = 'shot-choice';
-  const dialLabel = document.createElement('span');
-  dialLabel.className = 'shot-label';
-  dialLabel.textContent = 'Modifier';
-  dialRow.append(dialLabel);
-  const track = document.createElement('div');
-  // The same track as the token's own dial, and deliberately the same classes:
-  // it is the same control doing the same job, and two that looked different
-  // would read as two different kinds of number.
-  track.className = 'pips mod-track';
-  for (let n = -MANUAL_RANGE; n <= MANUAL_RANGE; n++) {
-    const pip = document.createElement('button');
-    pip.className = n === session.dial ? 'pip on situational' : 'pip';
-    const ends = Math.abs(n) === 1 || Math.abs(n) === MANUAL_RANGE;
-    pip.textContent = n === 0 ? '0' : ends ? formatMod(n) : String(Math.abs(n));
-    pip.title = n === 0 ? 'No hand modifier' : `${formatMod(n)} by hand`;
-    pip.addEventListener('click', () => {
-      session.dial = session.dial === n ? 0 : n;
-      redraw();
-    });
-    track.append(pip);
-  }
-  dialRow.append(track);
-  box.append(dialRow);
-
-  // --- who at --------------------------------------------------------------
-
-  const list = document.createElement('div');
-  list.className = 'shot-targets';
-  list.textContent = 'measuring…';
-  box.append(list);
-  void fillShotTargets(list, sheet, weapon, sheetMods, session);
-
-  return box;
-}
-
-/**
- * Who the shot could be aimed at, and — once it has been — what happened.
- *
- * Filled asynchronously because ranges come from OBR and arrive late. By the time
- * they do the sheet may have been rebuilt out from under this node, which is why
- * it checks it is still in the document rather than resuming blind. Same shape as
- * `fillTargets`, for the same reason.
- */
-async function fillShotTargets(
-  holder: HTMLElement,
-  sheet: Sheet,
-  weapon: Weapon,
-  sheetMods: RollBreakdown,
-  session: ShotSession,
-): Promise<void> {
-  const from = activeToken(sheet)?.token.id;
-  const candidates = await candidateTargets(from);
-  if (!holder.isConnected) return;
-
-  // Once a target has been declared the list is that target. Everyone else stops
-  // being a candidate the moment the trigger is pulled, and leaving them on
-  // screen would put back exactly the row of alternative outcomes this replaced.
-  const shown = session.rolled
-    ? candidates.filter((c) => c.token.id === session.targetId)
-    : [...candidates].sort(
-        (a, b) => (a.cells ?? Infinity) - (b.cells ?? Infinity),
-      );
-
-  if (!shown.length) {
-    holder.textContent = session.rolled
-      ? 'That target has left the map.'
-      : 'Nothing bound and visible to aim at.';
-    return;
-  }
-
-  const table = document.createElement('table');
-  table.className = 'shot-table';
-
-  for (const { token, state, sheet: victim, cells } of shown) {
-    const cover = session.cover.get(token.id) ?? 0;
-    // Once the shot is taken the band is the one it was taken at, not the one the
-    // target has since walked into. See `ShotSession.rolled.band`.
-    const band = session.rolled
-      ? session.rolled.band
-      : cells !== undefined && session.bands
-        ? bandFor(cells, session.bands, {
-            extreme: reachesExtreme(weapon, session.slugs),
-          })
-        : undefined;
-    const shot = shotMods(session, band, token.id);
-    const shotgun = shotgunMod(weapon, session.slugs);
-    const mods = shotgun ? [...shot.mods, shotgun] : shot.mods;
-    const total = shot.total + (shotgun?.value ?? 0);
-
-    const tr = document.createElement('tr');
-    if (band === 'over') tr.className = 'out-of-range';
-
-    const name = document.createElement('td');
-    name.className = 'who';
-    // Same rule as the targeting table: an NPC's real name is the Marshal's.
-    name.textContent = victim.pc || isGM ? victim.name : token.name;
-    tr.append(name);
-
-    const pills = document.createElement('td');
-    pills.className = 'state';
-    for (const pill of targetPills(state)) {
-      const chip = document.createElement('span');
-      chip.className = pill.value ? 'pill applied' : 'pill';
-      chip.textContent = pill.letter;
-      chip.title = pill.value
-        ? `${pill.label} (${formatMod(pill.value)} to the attacker) — ${pill.note}`
-        : `${pill.label} — ${pill.note}. Not applied: judge it yourself.`;
-      pills.append(chip);
-    }
-    tr.append(pills);
-
-    const range = document.createElement('td');
-    range.className = 'num';
-    if (cells === undefined) {
-      range.textContent = '—';
-      range.title = from
-        ? 'Not on this map'
-        : 'No token on the map to shoot from';
-    } else if (band === 'over') {
-      range.textContent = `${Math.round(cells)} — over`;
-      range.title = reachesExtreme(weapon, session.slugs)
-        ? 'Past four times long range — the shot cannot be taken (p146)'
-        : 'Past long range, and this weapon may not be fired at Extreme Range (p146, p161)';
-    } else {
-      const penalty = band ? BAND_PENALTY[band] : 0;
-      range.textContent = penalty
-        ? `${Math.round(cells)} (${penalty})`
-        : String(Math.round(cells));
-      range.title =
-        `${cells.toFixed(1)} cells — ${band ?? 'unbanded'} range` +
-        (band === 'extreme'
-          ? '. Extreme Range requires the shooter to have spent their last turn aiming (p146).'
-          : '');
-      if (band === 'extreme') range.classList.add('extreme');
-    }
-    tr.append(range);
-
-    // Cover is per target and belongs on the target's row: with more than one
-    // target a shared control could not say that one is behind a water trough
-    // and the other is standing in the open.
-    // Live after the roll as well as before it, and that is the point rather than
-    // an oversight: "hold on, he was behind the water trough" is the archetypal
-    // thing the Marshal says once the dice have already landed.
-    const coverCell = document.createElement('td');
-    coverCell.className = 'shot-cover';
-    for (const step of COVER) {
-      const button = document.createElement('button');
-      button.className = step.value === cover ? 'shot-opt on' : 'shot-opt';
-      button.textContent =
-        step.value === 0 ? '·' : String(Math.abs(step.value));
-      button.title = `${step.label} cover — ${step.note}`;
-      button.addEventListener('click', () => {
-        if (step.value) session.cover.set(token.id, step.value);
-        else session.cover.delete(token.id);
-        // After the roll this is a correction rather than a setting: it
-        // appends to the log instead of quietly changing the number.
-        amendFromControls(sheet, weapon, session, sheetMods);
-        render();
-      });
-      coverCell.append(button);
-    }
-    tr.append(coverCell);
-
-    const action = document.createElement('td');
-    action.className = 'num';
-    if (!session.rolled) {
-      const roll = document.createElement('button');
-      roll.className = 'shot-roll';
-      roll.textContent = 'Roll';
-      roll.disabled = band === 'over';
-      const sum = sheetMods.total + total;
-      roll.title =
-        band === 'over'
-          ? 'Out of range'
-          : `Roll ${session.skill}${sum ? ` ${formatMod(sum)}` : ''} at ${name.textContent}` +
-            (mods.length
-              ? ` — ${mods.map((m) => `${m.label} ${formatMod(m.value)}`).join(', ')}`
-              : '');
-      roll.addEventListener('click', () =>
-        takeTheShot(
-          sheet,
-          weapon,
-          sheetMods,
-          session,
-          token.id,
-          band,
-          mods,
-          total,
-        ),
-      );
-      action.append(roll);
-    }
-    tr.append(action);
-    table.append(tr);
-
-    // --- what happened ----------------------------------------------------
-
-    if (session.rolled) {
-      const outcome = document.createElement('tr');
-      outcome.className = 'shot-outcome';
-      const cell = document.createElement('td');
-      cell.colSpan = 5;
-
-      // Resolved against a flat 4, and against Parry only when the Marshal
-      // judges the shot was into melee — the same call `showsParry` describes.
-      const parry = victim.parry ?? DEFAULT_PARRY;
-      const target = FLAT_TARGET;
-      // The band is deliberately *not* passed. Its penalty is already inside the
-      // shot's modifiers — `rangeMod` put it there before the dice were thrown —
-      // and letting `resolveAimedAttack` apply it again would subtract the range
-      // twice. Only the refusal is forwarded, for a target that walked out of
-      // range after the shot was rolled.
-      const resolved = resolveAimedAttack({
-        total: session.rolled.raw + sheetMods.total + session.rolled.total,
-        target,
-        ...(band === 'over' ? { band: 'over' as const } : {}),
-        targetBonus: targetTotal(state),
-      });
-
-      const verdict = document.createElement('b');
-      verdict.className = resolved.hit ? 'hit' : 'miss';
-      verdict.textContent = resolved.outOfRange
-        ? 'out of range'
-        : resolved.hit
-          ? resolved.raises
-            ? `hit, ${resolved.raises} raise${resolved.raises === 1 ? '' : 's'}`
-            : 'hit'
-          : 'miss';
-      verdict.title = `${resolved.effective} vs ${target}`;
-      cell.append(verdict);
-
-      if (showsParry(session.skill, cells)) {
-        const p = document.createElement('span');
-        p.className = 'shot-parry';
-        p.textContent = `Parry ${parry}`;
-        p.title =
-          'Close enough that the shot may have been into melee — the Marshal’s call';
-        cell.append(p);
-      }
-
-      if (resolved.hit) {
-        cell.append(damageButton(sheet, weapon, session, band));
-      }
-
-      outcome.append(cell);
-      table.append(outcome);
-    }
-  }
-
-  holder.replaceChildren(table);
-}
-
-/**
- * Roll the attack. The one step in the sequence that cannot be taken back.
- *
- * Everything above stays live afterwards and appends corrections; this throws
- * dice, and dice are not re-thrown. See `lockedByTheRoll`.
- */
-function takeTheShot(
-  sheet: Sheet,
-  weapon: Weapon,
-  sheetMods: RollBreakdown,
-  session: ShotSession,
-  tokenId: string,
-  band: Band | undefined,
-  mods: ShotMod[],
-  total: number,
-): void {
-  const result = rollSkill(sheet, session.skill, sheetMods.total + total);
-  const raw = totalOf(result.explained);
-  if (raw === undefined) {
-    notify('could not read that roll');
-    return;
-  }
-  // The stray window comes from the shot as fired rather than from the gun —
-  // a Gatling firing once puts one bullet in the air. RoF is 1 until the panel
-  // can assign several dice to several targets, but the number travels from the
-  // declaration either way, so this does not need revisiting when it can.
-  const strayOn = straysAsFired(weapon, 1, session.slugs) ? 2 : 1;
-
-  const entryId = publishTrait(
-    sheet,
-    `${weapon.name} — ${session.skill}`,
-    result,
-    // The shot's own modifiers ride alongside the sheet's, so the log line shows
-    // the range and the cover next to the wounds rather than as a bare number.
-    {
-      ...sheetMods,
-      total: sheetMods.total + total,
-      parts: [...sheetMods.parts, ...asRollMods(mods)],
-    },
-    {
-      skill: session.skill,
-      ...(session.bands ? { bands: session.bands } : {}),
-      strayOn,
-    },
-  );
-
-  session.targetId = tokenId;
-  session.rolled = {
-    entryId,
-    expression: result.expression,
-    ...(band ? { band } : {}),
-    raw: raw - sheetMods.total - total,
-    mods,
-    current: mods,
-    total,
-  };
-  render();
-}
-
-/**
- * Roll this weapon's damage, with anything the attack earned already in it.
- *
- * A Called Shot to the head is −4 to hit **and +4 damage** (p154), so it has to
- * survive the roll and reach here — which is most of the reason the panel holds
- * its state across roll, damage and apply rather than publishing and forgetting.
- *
- * The raise die is not added here. You only learn you got a raise once the attack
- * is resolved, and `+ raise` on the log line already rolls it — one way to do it
- * rather than two that could disagree.
- */
-function damageButton(
-  sheet: Sheet,
-  weapon: Weapon,
-  session: ShotSession,
-  band: Band | undefined,
-): HTMLElement {
-  const bonus = calledShotDamage(session.calledShot);
-  // A scattergun's dice depend on the range, which the panel now knows — so it
-  // picks rather than offering all three and hoping. Slugs are flat at any range.
-  const options = weapon.damage ? damageDiceOptions(weapon.damage) : [];
-  const base = session.slugs
-    ? SLUG_DAMAGE
-    : options.length
-      ? shotgunDamage(options, band)
-      : weapon.damage
-        ? damageExpression(weapon.damage, sheet.attributes.strength?.die)
-        : undefined;
-
-  const button = document.createElement('button');
-  button.className = 'shot-damage';
-  if (!base) {
-    button.textContent = 'no damage on this weapon';
-    button.disabled = true;
-    return button;
-  }
-  const expression = bonus ? `${base}+${bonus}` : base;
-  button.textContent = `Damage ${expression}`;
-  button.title =
-    `Roll ${expression}` +
-    (bonus
-      ? ' — the +4 for a called shot to the head or vitals is already in it (p154)'
-      : '') +
-    (session.slugs ? ' — slugs do 2d10 at any range (p161)' : '') +
-    (options.length && !session.slugs
-      ? ` — buckshot at ${band ?? 'close'} range (p161)`
-      : '');
-  button.addEventListener('click', () =>
-    rollFreeform(
-      expression,
-      `${weapon.name} damage`,
-      rollerName(sheet),
-      weapon.ap,
-      diceColourOf(sheet),
-      activeToken(sheet)?.token.id,
-    ),
-  );
-  return button;
-}
-
 /**
  * Gear as a weapons table plus a bulleted list, rather than the card's one long
  * sentence. Damage is a button: a weapon's damage is the roll you make right
@@ -3935,35 +3190,21 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
       const attackCell = document.createElement('td');
       const attack = document.createElement('button');
       attack.className = 'atk';
+      attack.textContent = skill;
+      attack.title = `Roll ${skill}${mods.parts.length ? ` (${describeMods(mods.parts)})` : ''}`;
       const bands = parseRangeBands(weapon.range);
       // The stray window is the gun's, not the roll's: a scattergun endangers
       // bystanders on a 1 *or* a 2, everything else only on a 1.
       const strayOn = strayThreshold(weapon);
-
-      // A ranged attack opens the shot panel instead of rolling. "Shoot" rather
-      // than "Shooting", because it is the start of the sequence and not a roll
-      // yet — the roll happens further down, once there is a target to name.
-      // Fighting still rolls straight off the button: a melee panel would need
-      // Gang Up and Wild Attack, which is a different piece of work.
-      const ranged = skill === 'Shooting';
-      attack.textContent = ranged ? 'Shoot' : skill;
-      attack.title = ranged
-        ? `Line up a shot with the ${weapon.name} — pick the target, then roll`
-        : `Roll ${skill}${mods.parts.length ? ` (${describeMods(mods.parts)})` : ''}`;
-      if (ranged && openShot?.key === shotKey(sheet, weapon)) attack.classList.add('on');
-      attack.addEventListener('click', () => {
-        if (!ranged) {
-          publishTrait(
-            sheet,
-            `${weapon.name} — ${skill}`,
-            rollSkill(sheet, skill, penalty),
-            mods,
-            { skill, ...(bands ? { bands } : {}), strayOn },
-          );
-          return;
-        }
-        toggleShot(sheet, weapon, skill, bands);
-      });
+      attack.addEventListener('click', () =>
+        publishTrait(
+          sheet,
+          `${weapon.name} — ${skill}`,
+          rollSkill(sheet, skill, penalty),
+          mods,
+          { skill, ...(bands ? { bands } : {}), strayOn },
+        ),
+      );
       attackCell.append(attack);
       row.append(attackCell);
 
@@ -4042,19 +3283,6 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
         td.textContent = weapon.notes;
         noteRow.append(td);
         table.append(noteRow);
-      }
-
-      // The shot panel opens *here*, under the gun it belongs to, rather than in
-      // a corner of the sheet. Half of what it is for is that the weapon and the
-      // shot are one thing.
-      if (openShot?.key === shotKey(sheet, weapon)) {
-        const shotRow = document.createElement('tr');
-        shotRow.className = 'shot-row';
-        const td = document.createElement('td');
-        td.colSpan = 6;
-        td.append(shotPanel(sheet, weapon, mods));
-        shotRow.append(td);
-        table.append(shotRow);
       }
     }
     sheetEl.append(table);

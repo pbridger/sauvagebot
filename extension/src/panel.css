@@ -276,6 +276,75 @@ table.weapons tr.note td {
   font-size: 11px;
 }
 
+/* ---------------------------------------------------------------------------
+   The shot panel.
+
+   Lighter than the sheet around it, and sitting inside the weapons table rather
+   than beside it, because a shot and the gun that takes it are one thing. The
+   tint is the log's, on purpose: this is where rolling happens, and it should
+   read as belonging to the log rather than to the character.
+   --------------------------------------------------------------------------- */
+table.weapons tr.shot-row > td { padding: 0 0 6px; }
+.shot {
+  padding: 6px 7px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+.shot-controls { display: flex; flex-direction: column; gap: 3px; }
+.shot-choice { display: flex; align-items: center; gap: 4px; min-height: 19px; }
+/* Fixed width so every label's buttons start at the same x — a row of controls
+   that jogs left and right is much harder to scan than one that does not. */
+.shot-label {
+  flex: none;
+  width: 64px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+button.shot-opt {
+  padding: 0 5px;
+  height: 17px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--muted);
+}
+button.shot-opt.on {
+  background: var(--env);
+  border-color: var(--env);
+  color: #fff;
+}
+
+table.shot-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+table.shot-table td { padding: 2px 4px 2px 0; vertical-align: middle; }
+table.shot-table td.who { font-weight: 700; }
+table.shot-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.shot-table tr.out-of-range { opacity: .45; }
+/* Extreme range is legal but conditional — it wants the shooter to have aimed.
+   Marked rather than refused, so the Marshal makes the call and the app does
+   not make it for them. */
+table.shot-table .extreme { color: var(--accent); }
+.shot-cover { display: flex; gap: 1px; padding-top: 2px; }
+.shot-cover button.shot-opt { min-width: 15px; padding: 0 2px; text-align: center; }
+button.shot-roll {
+  padding: 1px 9px;
+  font-weight: 700;
+  color: var(--accent);
+}
+tr.shot-outcome td { padding-top: 3px; border-top: 1px solid var(--rule); }
+tr.shot-outcome .hit { color: var(--accent); }
+tr.shot-outcome .miss { color: var(--muted); }
+.shot-parry { margin-left: 7px; font-size: 11px; color: var(--muted); }
+button.shot-damage {
+  margin-left: 9px;
+  padding: 1px 7px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
 ul.gear { margin: 4px 0 0; padding-left: 18px; }
 ul.gear li { margin: 1px 0; }
 ul.gear .detail { color: var(--muted); }

@@ -248,6 +248,66 @@ export function rangeMod(band: Band, scoped = false): ShotMod | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Shotguns
+// ---------------------------------------------------------------------------
+
+/**
+ * `"shotguns add +2 to the user's Shooting rolls and cause 3d6 damage at Short
+ * Range, 2d6 at Medium, and 1d6 at Long."` — p161.
+ *
+ * Not with slugs: *"The attacker doesn't get the +2 shotgun bonus to their
+ * Shooting roll, but the damage is 2d10 regardless of Range."*
+ *
+ * Categorised `other`, so Aim cannot spend its budget cancelling a bonus — which
+ * `applyAim` refuses anyway, but a bonus filed under `range` would be a trap for
+ * whoever next changes that function.
+ */
+export const SHOTGUN_BONUS = 2;
+
+export function shotgunMod(
+  weapon: Pick<Weapon, 'name' | 'damage'>,
+  slugs = false,
+): ShotMod | undefined {
+  if (slugs || reachesExtreme(weapon, false)) return undefined;
+  return {
+    key: 'shotgun',
+    label: 'Shotgun',
+    value: SHOTGUN_BONUS,
+    category: 'other',
+    kind: 'fact',
+    scope: 'shot',
+    note: 'A spread of shot is easier to land: +2 to Shooting (p161).',
+  };
+}
+
+/** Damage with slugs, at any range. */
+export const SLUG_DAMAGE = '2d10';
+
+/**
+ * Which of a scattergun's dice counts apply at this range.
+ *
+ * `damageDiceOptions` turns `1–3d6` into `['1d6', '2d6', '3d6']` — fewest first,
+ * because that is how the range is written. The bands run the other way: the most
+ * dice at Short, where the least of the shot has spread.
+ *
+ * Extreme never arrives here — a shotgun firing buckshot cannot reach it, which
+ * is `reachesExtreme`'s business — but it is answered rather than left to fall
+ * through, since a silent `undefined` would read as "this gun does no damage".
+ */
+export function shotgunDamage(options: readonly string[], band: Band | undefined): string | undefined {
+  if (!options.length) return undefined;
+  const byBand: Partial<Record<Band, number>> = {
+    short: options.length - 1,
+    medium: options.length - 2,
+    long: options.length - 3,
+    extreme: 0,
+    over: 0,
+  };
+  const index = band === undefined ? options.length - 1 : byBand[band];
+  return options[Math.max(0, Math.min(options.length - 1, index ?? options.length - 1))];
+}
+
+// ---------------------------------------------------------------------------
 // Cover
 // ---------------------------------------------------------------------------
 
@@ -466,7 +526,14 @@ export interface ShotRequest {
   dial?: number | undefined;
   /** Whether Rock and Roll!, a bipod or a tripod cancels Recoil. */
   steady?: boolean | undefined;
-  /** The persistent track from the token: wounds, fatigue, darkness, Running. */
+  /**
+   * The persistent track from the token: darkness, Running, an unstable platform.
+   *
+   * !! Leave this out if the caller already holds a `RollBreakdown`. That carries
+   * the same numbers — `rollBreakdown` sums `situationalMods` itself — and
+   * passing both counts every condition twice. It is here for a caller that has
+   * a token state and nothing else. !!
+   */
   state?: ModifierState | undefined;
 }
 

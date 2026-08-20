@@ -6,6 +6,7 @@ import {
   CALLED_SHOTS,
   COVER,
   RECOIL,
+  SHOTGUN_BONUS,
   applyAim,
   calledShotDamage,
   calledShotMod,
@@ -18,6 +19,8 @@ import {
   reachesExtreme,
   recoilFor,
   shotTotal,
+  shotgunDamage,
+  shotgunMod,
   straysAsFired,
   type ShotMod,
 } from '../src/rules/shot.js';
@@ -353,5 +356,50 @@ describe('describing an amendment', () => {
   it('says nothing when nothing changed', () => {
     const mods = [rangeMod('long')!, coverMod(-2)!];
     expect(describeAmendment(mods, mods)).toBe('');
+  });
+});
+
+/**
+ * `"shotguns add +2 to the user's Shooting rolls and cause 3d6 damage at Short
+ * Range, 2d6 at Medium, and 1d6 at Long."` — p161.
+ */
+describe('shotguns', () => {
+  const options = ['1d6', '2d6', '3d6'];
+
+  it('add two to the roll', () => {
+    expect(shotgunMod(shotgun)?.value).toBe(SHOTGUN_BONUS);
+  });
+
+  it('give that bonus up when firing slugs', () => {
+    expect(shotgunMod(shotgun, true)).toBeUndefined();
+  });
+
+  it('say nothing about a rifle', () => {
+    expect(shotgunMod(peacemaker)).toBeUndefined();
+  });
+
+  /** Aim's budget must never be spent cancelling a bonus. */
+  it('are not something aim can touch', () => {
+    expect(AIMABLE).not.toContain(shotgunMod(shotgun)!.category);
+  });
+
+  it('do the most damage where the least of the shot has spread', () => {
+    expect(shotgunDamage(options, 'short')).toBe('3d6');
+    expect(shotgunDamage(options, 'medium')).toBe('2d6');
+    expect(shotgunDamage(options, 'long')).toBe('1d6');
+  });
+
+  it('fall back to the closest band when the range is unknown', () => {
+    expect(shotgunDamage(options, undefined)).toBe('3d6');
+  });
+
+  it('have nothing to offer a weapon that does not write a range of dice', () => {
+    expect(shotgunDamage([], 'short')).toBeUndefined();
+  });
+
+  /** Never a silent undefined, which would read as "this gun does no damage". */
+  it('answer for a band buckshot cannot reach rather than falling through', () => {
+    expect(shotgunDamage(options, 'extreme')).toBe('1d6');
+    expect(shotgunDamage(options, 'over')).toBe('1d6');
   });
 });

@@ -10,6 +10,65 @@ reload.
 
 ---
 
+## 2026-08-20 — Shoot, then roll
+
+Rolling Shooting used to throw the dice first and *then* offer a table of
+everyone the shot might have been aimed at, each with their own hit, miss and
+raise count worked out. Damian objected: it deals out six outcomes when the
+player had already decided who they were shooting at. He was right, and so is
+the book — p147 says *"Before you roll, assign your dice to all possible
+targets."*
+
+On the weapons table, **Shooting is now Shoot**. It opens a panel under that
+weapon rather than rolling, and the roll happens further down once there is a
+target to name.
+
+**What the panel holds.** How you are taking the shot — Aim, a Called Shot, a
+scope, buckshot or slugs, and the hand dial — then everyone in sight with their
+range and their own cover. Cover is on the target's row rather than the shot's,
+because the water trough belongs to whoever is behind it.
+
+**Everything stays live after the dice land, except the dice.** This is the part
+worth knowing. Roll first, and if the Marshal says "you aimed last round", click
+Aim — the arithmetic changes and the damage is rolled against the corrected
+number. Nothing re-rolls, ever. Each correction appends a line to the log,
+folded under the roll it corrects, so the Marshal sees what changed and when
+without a wall of new lines. Rate of Fire is the one thing fixed at the moment
+you roll, because it decides how many dice are thrown.
+
+**Rules that arrived with it.**
+
+- **Extreme Range.** Shots past long range were refused outright — the app said
+  "the shot cannot be taken" to a rifleman with a target well inside what the
+  book allows. Extreme reaches **4× long range at −8**, or −6 with a scope, and
+  wants the shooter to have aimed last turn. Shotguns firing buckshot and thrown
+  weapons still cannot; slugs can.
+- **Aim** cancels up to 4 points of range, cover, called shot, scale or speed —
+  or a flat +2. It does *not* touch Recoil, darkness, wounds or anything you
+  dialled by hand, and the panel says which penalties it spent its four points
+  on rather than deciding quietly.
+- **Called Shots.** Head or vitals is −4 to hit and **+4 damage**, and the +4 is
+  already in the damage button when you get there.
+- **Shotguns** add +2 and pick their own dice from the range — 3d6 short, 2d6
+  medium, 1d6 long — instead of offering all three and hoping. Slugs are 2d10 at
+  any range, give up the +2, and stray only on a 1.
+- **Recoil** (−2 for firing more than one shot) and the stray-shot window now
+  read the Rate of Fire you **declared**, not the one printed on the gun. A
+  Gatling fired one shot at a time had been taking a penalty it should not and
+  endangering bystanders on a 1–2 when one bullet was in the air.
+
+**Not yet.** Rate of Fire is fixed at 1. The rules for firing more are written
+and tested underneath, but assigning each rolled die to a different target is a
+step the panel does not have yet, and that is the next piece. Fighting still
+rolls straight off its button — a melee panel wants Gang Up and Wild Attack,
+which is separate work. Suppressive Fire is not here at all.
+
+**If the panel cannot say what happened, use the manual roller and apply wounds
+by hand.** That path is not going away, and it is the right answer whenever this
+one gets in the way.
+
+---
+
 ## 2026-08-19 — The modifier dial goes to ±8
 
 `0097a72`. Damian's request.
