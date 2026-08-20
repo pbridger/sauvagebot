@@ -81,12 +81,15 @@ import {
   COVER,
   SLUG_DAMAGE,
   asRollMods,
+  bakesModifiers,
+  bulletsLeft as spareBullets,
   calledShotDamage,
   describeAmendment,
   firesBuckshot,
   maxRateOfFire,
   reachesExtreme,
   shotTotal,
+  shotsFired as shotsOf,
   shotgunDamage,
   shotgunMod,
   straysAsFired,
@@ -3399,23 +3402,11 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
   render();
 }
 
-/**
- * How many dice this shot throws: the declared bullets, added up.
- *
- * `"Unless the weapon says otherwise, you can always roll less dice"` (p147), and
- * declaring fewer bullets than the Rate of Fire allows is how you say so. Before
- * anything has been declared it is one, so the panel can price a shot that has
- * not been aimed yet.
- */
-function shotsFired(session: ShotSession): number {
-  const declared = [...session.bullets.values()].reduce((sum, n) => sum + n, 0);
-  return Math.max(1, Math.min(session.rof, declared));
-}
-
-/** The bullets still to be spoken for, for the cycling per-target counter. */
-function bulletsLeft(session: ShotSession): number {
-  return session.rof - [...session.bullets.values()].reduce((sum, n) => sum + n, 0);
-}
+// The cycle's arithmetic lives in `shot.ts`, where it can be tested without OBR
+// — `bakesModifiers` in particular decides which of two resolution paths a shot
+// takes, and had nothing covering it.
+const shotsFired = (session: ShotSession): number => shotsOf(session.rof, session.bullets);
+const bulletsLeft = (session: ShotSession): number => spareBullets(session.rof, session.bullets);
 
 /**
  * The modifiers on a shot at one target, whichever way the roll was made.
@@ -3912,9 +3903,13 @@ async function fillShotTargets(
           ? ` — ${mods.map((m) => `${m.label} ${formatMod(m.value)}`).join(', ')}`
           : '');
 
+      const spare = bulletsLeft(session);
       const button = document.createElement('button');
       button.className = mine ? 'shot-roll on' : 'shot-roll';
-      button.disabled = band === 'over';
+      // Nothing to offer a target with no bullets when there are none left to
+      // give: the cycle would wrap straight back to zero and the click would do
+      // nothing at all, which reads as a broken button rather than a full one.
+      button.disabled = band === 'over' || (session.rof > 1 && mine === 0 && spare === 0);
 
       if (session.rof === 1) {
         // A revolver has nothing to count. One click names the target and fires,
@@ -3932,7 +3927,6 @@ async function fillShotTargets(
         // them all back. There is no "Roll" state on it — with several targets
         // the last click is not necessarily the one that should fire, so rolling
         // is its own button below.
-        const spare = bulletsLeft(session);
         button.textContent =
           mine === 0 ? 'Assign' : `${mine} bullet${mine === 1 ? '' : 's'}`;
         button.title =
@@ -4161,8 +4155,12 @@ function dicePicker(
     wrap.append(die);
   }
 
+  // Only reachable when a declared target has left the map since the roll: its
+  // slots stop being drawn, so its results have nowhere left to go. Said plainly
+  // rather than reassuringly — a shot is stranded, and the manual roller is the
+  // way to finish it.
   if (wrap.childElementCount === 1) {
-    label.textContent = 'every shot has been given out';
+    label.textContent = 'no shot left to give — one was declared at a target that has gone';
     label.className = 'shot-rolling';
   }
   return wrap;
@@ -4205,10 +4203,7 @@ function takeTheShot(
   // because one roll cannot carry two different range penalties. So a single
   // target keeps the log line reading `s8-2 … = 13`, and a shot at several rolls
   // bare and has each target's modifiers applied to its own assigned shot.
-  // One target *and* one bullet. Two bullets into one man are two attacks, and
-  // although they share a range they do not share a die — baking would put the
-  // modifier into both totals and then the resolution would want it once each.
-  const baked = shots === 1 && named.length === 1;
+  const baked = bakesModifiers(session.rof, session.bullets);
   const stub: ShotSession = { ...session, rolled: { ...emptyRolled(), bands, baked } };
   const perTarget = baked && single ? shotAgainst(stub, weapon, single) : undefined;
   const level = shotLevel(session, weapon);

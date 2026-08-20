@@ -8,6 +8,8 @@ import {
   RECOIL,
   SHOTGUN_BONUS,
   applyAim,
+  bakesModifiers,
+  bulletsLeft,
   calledShotDamage,
   calledShotMod,
   coverMod,
@@ -20,6 +22,7 @@ import {
   reachesExtreme,
   recoilFor,
   shotTotal,
+  shotsFired,
   shotgunDamage,
   shotgunMod,
   straysAsFired,
@@ -434,33 +437,81 @@ describe('telling buckshot from rapid fire', () => {
 
 /**
  * The number every other rule reads. Recoil and the stray window key off the
- * shots actually fired, and that is the count of targets *declared*, not the
+ * shots actually fired, and that is the count of bullets *declared*, not the
  * weapon's Rate of Fire — "you can always roll less dice" (p147).
  */
 describe('how many dice a shot throws', () => {
-  it('is one for a weapon that fires once', () => {
-    expect(Math.min(maxRateOfFire(peacemaker), 1)).toBe(1);
-    expect(recoilFor(1)).toBeUndefined();
+  const bullets = (...pairs: [string, number][]): Map<string, number> => new Map(pairs);
+
+  it('is one before anything has been declared, so a shot can be priced', () => {
+    expect(shotsFired(3, bullets())).toBe(1);
+    expect(recoilFor(shotsFired(3, bullets()))).toBeUndefined();
   });
 
-  it('is the number declared, not the number allowed', () => {
-    const allowed = maxRateOfFire(gatling);
-    expect(allowed).toBe(3);
-    // Two bandits named out of a possible three: two dice, and Recoil applies
-    // because more than one shot is in the air.
-    expect(recoilFor(2)?.value).toBe(RECOIL);
-    expect(straysAsFired(gatling, 2)).toBe(true);
+  it('adds up the bullets rather than counting the targets', () => {
+    expect(shotsFired(3, bullets(['a', 2]))).toBe(2);
+    expect(shotsFired(3, bullets(['a', 2], ['b', 1]))).toBe(3);
+    expect(shotsFired(3, bullets(['a', 1], ['b', 1]))).toBe(2);
+  });
+
+  /** A stale declaration must never throw more dice than the gun in hand allows. */
+  it('never exceeds the weapon’s rate of fire', () => {
+    expect(shotsFired(1, bullets(['a', 3]))).toBe(1);
+    expect(maxRateOfFire(peacemaker)).toBe(1);
+  });
+
+  it('leaves bullets to spend until the ceiling is reached', () => {
+    expect(bulletsLeft(3, bullets())).toBe(3);
+    expect(bulletsLeft(3, bullets(['a', 2]))).toBe(1);
+    expect(bulletsLeft(3, bullets(['a', 2], ['b', 1]))).toBe(0);
   });
 
   /** One target named from a three-shot weapon is one shot, and costs nothing. */
-  it('leaves a single declared target firing once', () => {
-    expect(recoilFor(1)).toBeUndefined();
-    expect(straysAsFired(gatling, 1)).toBe(false);
-    expect(shotTotal({ rof: 1, aim: 'off', band: 'short' }).total).toBe(0);
+  it('takes no Recoil for one bullet from a three-shot weapon', () => {
+    expect(recoilFor(shotsFired(3, bullets(['a', 1])))).toBeUndefined();
+    expect(straysAsFired(gatling, shotsFired(3, bullets(['a', 1])))).toBe(false);
+  });
+
+  it('takes Recoil as soon as a second bullet is spoken for', () => {
+    expect(recoilFor(shotsFired(3, bullets(['a', 2])))?.value).toBe(RECOIL);
+    expect(straysAsFired(gatling, shotsFired(3, bullets(['a', 2])))).toBe(true);
   });
 
   it('prices the whole shot from the declared count', () => {
     expect(shotTotal({ rof: 2, aim: 'off', band: 'short' }).total).toBe(RECOIL);
     expect(shotTotal({ rof: 3, aim: 'off', band: 'medium' }).total).toBe(RECOIL - 2);
+  });
+});
+
+/**
+ * Which of two resolution paths a shot takes. One shot at one target can carry
+ * its range and cover inside the rolled expression; anything else cannot, and
+ * has them applied to each assigned shot afterwards.
+ */
+describe('whether the modifiers ride in the roll', () => {
+  const bullets = (...pairs: [string, number][]): Map<string, number> => new Map(pairs);
+
+  it('bakes one bullet at one target', () => {
+    expect(bakesModifiers(3, bullets(['a', 1]))).toBe(true);
+    expect(bakesModifiers(1, bullets(['a', 1]))).toBe(true);
+  });
+
+  /**
+   * The subtle one. Two bullets into one man share a range but not a die: baking
+   * would put the range inside both totals while the resolution still applies it
+   * once to each, so the second would be resolved against a number it had already
+   * paid. Simplifying this to "one target" reintroduces the double-count the
+   * whole panel exists to have fixed.
+   */
+  it('does not bake two bullets at one target', () => {
+    expect(bakesModifiers(3, bullets(['a', 2]))).toBe(false);
+  });
+
+  it('does not bake a shot spread over two targets', () => {
+    expect(bakesModifiers(3, bullets(['a', 1], ['b', 1]))).toBe(false);
+  });
+
+  it('does not bake a shot nobody has declared', () => {
+    expect(bakesModifiers(3, bullets())).toBe(false);
   });
 });

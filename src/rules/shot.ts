@@ -117,6 +117,59 @@ export function maxRateOfFire(weapon: Pick<Weapon, 'rof'> | undefined): number {
   return Math.max(1, weapon?.rof ?? 1);
 }
 
+/**
+ * How many shots each target was declared to take.
+ *
+ * `"Before you roll, assign your dice to all possible targets. With a Rate of
+ * Fire 3, for example, you might put 2 dice into one walkin' dead and a third
+ * into another"` (p147) — so a declaration is a count per target rather than a
+ * list of targets, and the sum of the counts is how many dice are thrown.
+ *
+ * A Map for its insertion order, which is the order the targets were named and
+ * so the order they are shown in.
+ */
+export type Bullets = ReadonlyMap<string, number>;
+
+/**
+ * How many dice a shot throws: the declared bullets, added up.
+ *
+ * `"Unless the weapon says otherwise, you can always roll less dice"` (p147), so
+ * declaring fewer bullets than the Rate of Fire allows is how a shooter says so —
+ * and this, not the weapon's Rate of Fire, is the number Recoil and the
+ * stray-shot window read.
+ *
+ * One when nothing has been declared, so a shot can be priced before it has been
+ * aimed. Capped at the ceiling, so a stale declaration left over from a larger
+ * weapon cannot throw more dice than the gun in hand allows.
+ */
+export function shotsFired(rof: number, bullets: Bullets): number {
+  const declared = [...bullets.values()].reduce((sum, n) => sum + n, 0);
+  return Math.max(1, Math.min(rof, declared));
+}
+
+/** Bullets not yet spoken for — what the per-target counter has left to give. */
+export function bulletsLeft(rof: number, bullets: Bullets): number {
+  return rof - [...bullets.values()].reduce((sum, n) => sum + n, 0);
+}
+
+/**
+ * Whether this shot's per-target modifiers can ride inside the rolled expression.
+ *
+ * Only when there is exactly one shot at exactly one target. Then range and cover
+ * are unambiguous and the log line can read `s8-2 … = 13`, which is what it does
+ * today and worth keeping.
+ *
+ * **Two bullets into one man do not qualify**, even though they share a range.
+ * They are two attacks with two dice, and baking would put the range inside both
+ * totals while the resolution still wants to apply it once to each — so the
+ * second would be resolved against a number it had already paid. Simplifying this
+ * to "one target" would reintroduce the double-count this whole panel exists to
+ * have fixed.
+ */
+export function bakesModifiers(rof: number, bullets: Bullets): boolean {
+  return shotsFired(rof, bullets) === 1 && bullets.size === 1;
+}
+
 /** Recoil is a flat −2 (p161). */
 export const RECOIL = -2;
 
