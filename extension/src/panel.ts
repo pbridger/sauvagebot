@@ -759,30 +759,40 @@ interface TargetRow {
   applicable?: boolean;
 }
 
-/**
- * Everyone this roll could have been aimed at, with the arithmetic done.
- *
- * Built here rather than carried on the entry: the defenders' stats are looked up
- * from the roster this client already has, so nothing about the Marshal's
- * characters travels over the broadcast. Parry, Toughness and Pace are shown to
- * everybody by decision — they are numbers the table does arithmetic against all
- * evening — but the rest of an NPC's sheet is not, and must not be put on a
- * `RollEntry` to get here.
- */
-async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
-  const isAttack = isTargeted(entry.skill);
-  const melee = entry.skill !== undefined && attackKind(entry.skill) === 'parry';
+/** One thing that could be shot at, and how far away it is. */
+interface Candidate {
+  token: (typeof tokens)[number];
+  state: NonNullable<ReturnType<typeof readBinding>>;
+  sheet: Sheet;
+  /** Grid cells from the origin, absent when either end is not on the map. */
+  cells?: number;
+}
 
+/**
+ * Everyone a shot from this token could be aimed at, measured.
+ *
+ * Split out of `targetRows` because the shot panel needs exactly this half and
+ * needs it **before** any roll exists: the whole point of the panel is that you
+ * see and pick your target before the dice are thrown. `targetRows` keeps the
+ * other half — resolving one rolled total against each of them.
+ *
+ * The defenders' stats are looked up from the roster this client already has, so
+ * nothing about the Marshal's characters travels over the broadcast. Parry,
+ * Toughness and Pace are shown to everybody by decision — they are numbers the
+ * table does arithmetic against all evening — but the rest of an NPC's sheet is
+ * not, and must not be put on a `RollEntry` to get here.
+ */
+async function candidateTargets(from: string | undefined): Promise<Candidate[]> {
   // Everything bound and on the map except whoever rolled. Not "every NPC": when
   // the Marshal rolls a bandit's attack the targets are the players.
   const candidates = tokens.filter((token) => {
-    if (token.id === entry.from) return false;
+    if (token.id === from) return false;
     if (!token.visible) return false;
     const state = readBinding(token.metadata);
     return state !== undefined && sheets.some((sheet) => sheet.id === state.sheetId);
   });
 
-  const origin = entry.from ? tokens.find((token) => token.id === entry.from) : undefined;
+  const origin = from ? tokens.find((token) => token.id === from) : undefined;
   const distances = await Promise.all(
     candidates.map(async (token) => {
       if (!origin) return undefined;
@@ -796,11 +806,29 @@ async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
     }),
   );
 
-  const rows: TargetRow[] = [];
-  for (const [i, token] of candidates.entries()) {
+  return candidates.map((token, i) => {
     const state = readBinding(token.metadata)!;
-    const sheet = sheets.find((s) => s.id === state.sheetId)!;
     const cells = distances[i];
+    return {
+      token,
+      state,
+      sheet: sheets.find((s) => s.id === state.sheetId)!,
+      ...(cells === undefined ? {} : { cells }),
+    };
+  });
+}
+
+/**
+ * Everyone this roll could have been aimed at, with the arithmetic done.
+ *
+ * One resolve per candidate off the one rolled total — see `resolveAimedAttack`.
+ */
+async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
+  const isAttack = isTargeted(entry.skill);
+  const melee = entry.skill !== undefined && attackKind(entry.skill) === 'parry';
+
+  const rows: TargetRow[] = [];
+  for (const { token, state, sheet, cells } of await candidateTargets(entry.from)) {
     const bands = entry.bands;
     const band = cells !== undefined && bands ? bandFor(cells, bands) : undefined;
 
