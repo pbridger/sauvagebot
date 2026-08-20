@@ -82,6 +82,7 @@ import {
   asRollMods,
   calledShotDamage,
   describeAmendment,
+  firesBuckshot,
   reachesExtreme,
   shotTotal,
   shotgunDamage,
@@ -3233,12 +3234,24 @@ interface ShotSession {
     band?: Band;
     /** The raw rolled total, before any of the shot's modifiers. */
     raw: number;
-    /** The modifiers as they stood at the moment of rolling. */
-    mods: ShotMod[];
-    /** The modifiers as they stand now, after any corrections. */
+    /**
+     * The modifiers as they stand, corrections included.
+     *
+     * Only the current set is kept. A snapshot of how the shot looked when it was
+     * fired was written here and never read — the log already holds that, in the
+     * entry the corrections amend, which is the copy that survives a reload.
+     */
     current: ShotMod[];
     total: number;
   };
+  /**
+   * The damage roll, once there is one.
+   *
+   * Held so the panel can carry the sequence through to Apply. Without it the
+   * player has to go and find the token in OBR and press Apply on the log line —
+   * for damage the panel itself rolled, at a target the panel itself declared.
+   */
+  damageId?: string;
 }
 
 let openShot: ShotSession | undefined;
@@ -3486,7 +3499,10 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
       ),
     );
   }
-  if (spraysLead(weapon)) {
+  // Buckshot only. `spraysLead` would say yes to a Gatling as well, which cannot
+  // be loaded with slugs — the same conflation of "rapid" with "spread" that
+  // `straysAsFired` was written to undo.
+  if (firesBuckshot(weapon)) {
     controls.append(
       shotChoice(
         'Load',
@@ -3761,6 +3777,8 @@ async function fillShotTargets(
 
       if (resolved.hit) {
         cell.append(damageButton(sheet, weapon, session, band));
+        const applied = shotDamageRow(sheet, session, { token, state, sheet: victim });
+        if (applied) cell.append(applied);
       }
 
       outcome.append(cell);
@@ -3823,7 +3841,6 @@ function takeTheShot(
     expression: result.expression,
     ...(band ? { band } : {}),
     raw: raw - sheetMods.total - total,
-    mods,
     current: mods,
     total,
   };
@@ -3877,17 +3894,73 @@ function damageButton(
     (options.length && !session.slugs
       ? ` — buckshot at ${band ?? 'close'} range (p161)`
       : '');
-  button.addEventListener('click', () =>
-    rollFreeform(
+  button.addEventListener('click', () => {
+    const id = rollFreeform(
       expression,
       `${weapon.name} damage`,
       rollerName(sheet),
       weapon.ap,
       diceColourOf(sheet),
       activeToken(sheet)?.token.id,
-    ),
-  );
+    );
+    // A second press supersedes the first: rolling damage again is redoing it,
+    // not adding to it, and Apply must spend the roll on screen.
+    if (id) session.damageId = id;
+    render();
+  });
   return button;
+}
+
+/**
+ * What the damage came to, and the button that spends it.
+ *
+ * The last step of the sequence, and the reason the panel holds a target at all:
+ * it declared who was being shot at, so it does not then ask the player to go and
+ * select that token in OBR and find the roll again in the log.
+ *
+ * The Marshal's adjustment bar is the one from the targeting table — the same
+ * halved-for-a-Construct decision, made in the same place, keyed on the same
+ * entry — rather than a second copy that could drift from it.
+ */
+function shotDamageRow(sheet: Sheet, session: ShotSession, victim: {
+  token: (typeof tokens)[number];
+  state: TokenState;
+  sheet: Sheet;
+}): HTMLElement | undefined {
+  if (!session.damageId) return undefined;
+  // Through `latest`, so a damage roll that grew a raise die applies the total it
+  // grew to rather than the one it started at.
+  const entry = log.latest(session.damageId);
+  if (!entry || entry.total === undefined) return undefined;
+
+  const row = document.createElement('div');
+  row.className = 'shot-apply';
+
+  const outcome = applyDamage(
+    victim.sheet,
+    victim.state,
+    { damage: entry.total, ...(entry.ap ? { ap: entry.ap } : {}) },
+    adjustments.get(entry.id),
+  );
+  const says = document.createElement('span');
+  says.className = 'shot-outcome-text';
+  // The engine's own wording, so the preview and the applied line cannot
+  // disagree about what happened.
+  says.textContent = outcome.description.replace(/\*\*/g, '');
+  says.title = `vs Toughness ${effectiveToughness(victim.sheet, entry.ap ?? 0)}`;
+  row.append(says);
+
+  row.append(adjustBar(entry, () => render()));
+
+  const apply = document.createElement('button');
+  apply.className = 'apply';
+  apply.textContent = `Apply to ${victim.sheet.pc || isGM ? victim.sheet.name : victim.token.name}`;
+  apply.title = `Apply ${describeAdjustment(entry.total, adjustments.get(entry.id)) || entry.total} to ${victim.token.name}`;
+  apply.addEventListener('click', () => {
+    void applyToTarget(entry, victim, adjustments.get(entry.id));
+  });
+  row.append(apply);
+  return row;
 }
 
 /**
@@ -4231,9 +4304,9 @@ function rollFreeform(
   colour?: string,
   /** The rolling token, when there is one, so the damage table can show ranges. */
   from?: string,
-): void {
+): string | undefined {
   const trimmed = expression.trim();
-  if (!trimmed) return;
+  if (!trimmed) return undefined;
   try {
     const dice: DieEvent[] = [];
     const explained = new RollInterpreter(
@@ -4241,7 +4314,7 @@ function rollFreeform(
     )
       .run(parse([trimmed]))
       .trim();
-    publish(
+    return publish(
       {
         expression: trimmed,
         explained,
@@ -4271,6 +4344,7 @@ function rollFreeform(
     // expandable itself, so this only ever closes.
     focusLatest(failed);
     renderLog();
+    return undefined;
   }
 }
 

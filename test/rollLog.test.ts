@@ -252,6 +252,58 @@ describe('amending a roll that has already been made', () => {
     expect(log.latest('shot')?.total).toBe(1);
   });
 
+  /**
+   * The correction says what changed and nothing else. Handing it back in place
+   * of the roll would say the roll had no skill and endangered nobody — which is
+   * the targeting table disappearing and the bystander warning going quiet the
+   * moment anyone clicks Aim.
+   */
+  it('merges the correction into the roll rather than replacing it', () => {
+    const log = new RollLog();
+    log.add(
+      entry({
+        id: 'aimed-shot',
+        at: 1_000,
+        total: 5,
+        skill: 'Shooting',
+        from: 'token-1',
+        bands: [12, 24, 48],
+        stray: 1,
+        strayOn: 1,
+        ap: 1,
+        applicable: false,
+      }),
+    );
+    log.add(entry({ id: 'fix', at: 1_100, total: 9, amends: 'aimed-shot' }));
+
+    const now = log.latest('aimed-shot')!;
+    expect(now.total).toBe(9);
+    // Everything describing what kind of roll it was survives the correction.
+    expect(now.skill).toBe('Shooting');
+    expect(now.from).toBe('token-1');
+    expect(now.bands).toEqual([12, 24, 48]);
+    expect(now.stray).toBe(1);
+    expect(now.ap).toBe(1);
+    // And it stays the same entry, so anything keyed on the id still matches.
+    expect(now.id).toBe('aimed-shot');
+    expect(now.amends).toBeUndefined();
+  });
+
+  it('takes the corrected modifiers when the correction carries them', () => {
+    const log = new RollLog();
+    log.add(entry({ id: 'm', at: 1_000, mods: [{ label: 'Long range', value: -4, kind: 'situational' }] }));
+    log.add(entry({ id: 'm2', at: 1_100, amends: 'm', mods: [] }));
+    expect(log.latest('m')?.mods).toEqual([]);
+  });
+
+  it('keeps the roll’s own modifiers when the correction says nothing about them', () => {
+    const log = new RollLog();
+    const mods = [{ label: 'Long range', value: -4, kind: 'situational' as const }];
+    log.add(entry({ id: 'm', at: 1_000, mods }));
+    log.add(entry({ id: 'm2', at: 1_100, amends: 'm', total: 3 }));
+    expect(log.latest('m')?.mods).toEqual(mods);
+  });
+
   it('has nothing to say about a roll it never saw', () => {
     expect(new RollLog().latest('nobody')).toBeUndefined();
   });

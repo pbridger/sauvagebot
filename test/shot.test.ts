@@ -12,6 +12,7 @@ import {
   calledShotMod,
   coverMod,
   describeAmendment,
+  firesBuckshot,
   lockedByTheRoll,
   maxRateOfFire,
   negatesRecoil,
@@ -401,5 +402,32 @@ describe('shotguns', () => {
   it('answer for a band buckshot cannot reach rather than falling through', () => {
     expect(shotgunDamage(options, 'extreme')).toBe('1d6');
     expect(shotgunDamage(options, 'over')).toBe('1d6');
+  });
+});
+
+/**
+ * A Gatling is not a shotgun. `spraysLead` counts `rof >= 2` towards its own
+ * broader question, which is right for bystanders and wrong for everything that
+ * follows from the *spread* — slugs, damage by band, and Extreme Range.
+ */
+describe('telling buckshot from rapid fire', () => {
+  it('knows a scattergun by its spread of damage dice', () => {
+    expect(firesBuckshot(shotgun)).toBe(true);
+    expect(firesBuckshot({ name: 'Winchester Lever-Action', damage: '1–3d6' })).toBe(true);
+  });
+
+  it('knows one by name even when the damage is written plainly', () => {
+    expect(firesBuckshot({ name: 'Sawed-off scattergun', damage: '3d6' })).toBe(true);
+  });
+
+  it('does not mistake a rapid-firing weapon for one', () => {
+    expect(firesBuckshot(gatling)).toBe(false);
+    expect(firesBuckshot(peacemaker)).toBe(false);
+  });
+
+  /** Which is what keeps the slug selector and Extreme Range off a Gatling. */
+  it('leaves a Gatling able to reach extreme range', () => {
+    expect(reachesExtreme(gatling)).toBe(true);
+    expect(reachesExtreme(shotgun)).toBe(false);
   });
 });

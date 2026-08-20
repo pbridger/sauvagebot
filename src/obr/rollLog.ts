@@ -251,17 +251,30 @@ export class RollLog {
   }
 
   /**
-   * The version of a roll that currently stands.
+   * The version of a roll that currently stands: the roll, with the corrections
+   * applied to it.
    *
-   * Anything reading a *number* off an entry wants this rather than the entry —
-   * `isApplicable` and `totalOf` are per-entry by design and cannot know they are
-   * looking at a total something later superseded. Applying the pre-Aim damage of
-   * a shot that was corrected is exactly the kind of quiet wrongness the panel
-   * exists to stop.
+   * A **merge**, not a substitution, and that distinction is load-bearing. An
+   * amendment carries the numbers that changed and nothing else — no `skill`, no
+   * `bands`, no `from`, no `stray`. Returning it in place of the roll would say
+   * the roll had no skill and endangered nobody, which reads downstream as the
+   * targeting table vanishing and the bystander warning going quiet the moment
+   * anyone corrects a shot. A bare amendment is not a version of the roll.
+   *
+   * So everything describing *what kind of roll this was* comes from the roll,
+   * and only the numbers come from the correction. The id is the roll's too, so
+   * anything keyed on it — the Marshal's damage adjustment, an open targeting
+   * table — stays attached to the thing it was attached to.
    */
   latest(id: string): RollEntry | undefined {
-    const amendments = this.amendmentsOf(id);
-    return amendments.at(-1) ?? this.entries.find((entry) => entry.id === id);
+    const roll = this.entries.find((entry) => entry.id === id);
+    const last = this.amendmentsOf(id).at(-1);
+    if (!roll || !last) return roll ?? last;
+    return {
+      ...roll,
+      ...(last.total === undefined ? {} : { total: last.total }),
+      ...(last.mods === undefined ? {} : { mods: last.mods }),
+    };
   }
 
   clear(): void {

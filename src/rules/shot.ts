@@ -165,6 +165,24 @@ export function negatesRecoil(edgeNames: readonly string[], weaponNotes?: string
 }
 
 /**
+ * Whether this weapon throws buckshot rather than a bullet.
+ *
+ * `spraysLead` answers a broader question — does this put more lead in the air
+ * than it aims — and counts `rof >= 2` towards it, which is right for bystanders
+ * but wrong for everything that follows from the *spread*. A Gatling is not a
+ * shotgun: it cannot be loaded with slugs, its damage does not fall off by band,
+ * and it may be fired at Extreme Range.
+ *
+ * Two signals, and neither is the Rate of Fire. Damage written as a die *range*
+ * — `1–3d6` — is the scattergun's signature in both books, because the number of
+ * dice depends on how far the shot has spread. The rest is the name.
+ */
+export function firesBuckshot(weapon: Pick<Weapon, 'name' | 'damage'>): boolean {
+  if (weapon.damage && !isRollableDamage(weapon.damage)) return true;
+  return /shotgun|scatter\s?gun|buckshot|blunderbuss/i.test(weapon.name);
+}
+
+/**
  * The stray-shot window for a shot *as fired*.
  *
  * `bystanders.ts` reads RoF off the weapon, which was right when nothing could
@@ -190,8 +208,7 @@ export function straysAsFired(
   // carried over — a Gatling's window is wide because of the number of bullets in
   // the air, which is exactly the thing the declared RoF now states. Reading it
   // off the name as well would put the old bug back under a different signal.
-  if (weapon.damage && !isRollableDamage(weapon.damage)) return true;
-  return /shotgun|scatter\s?gun|buckshot|blunderbuss/i.test(weapon.name);
+  return firesBuckshot(weapon);
 }
 
 // ---------------------------------------------------------------------------
@@ -216,10 +233,7 @@ export function reachesExtreme(
   slugs = false,
 ): boolean {
   if (slugs) return true;
-  if (/shotgun|scatter\s?gun|buckshot|blunderbuss/i.test(weapon.name)) return false;
-  // A die *range* for damage — `1–3d6` — is buckshot under another name, and the
-  // signature of every scattergun in the book that is not called one.
-  if (weapon.damage && !isRollableDamage(weapon.damage)) return false;
+  if (firesBuckshot(weapon)) return false;
   return !/^\s*str/i.test(weapon.damage ?? '');
 }
 
