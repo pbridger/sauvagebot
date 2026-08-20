@@ -80,11 +80,24 @@ die was still rolling. Both fixed.
   Gatling fired one shot at a time had been taking a penalty it should not and
   endangering bystanders on a 1–2 when one bullet was in the air.
 
-**Not yet.** Rate of Fire is fixed at 1. The rules for firing more are written
-and tested underneath, but assigning each rolled die to a different target is a
-step the panel does not have yet, and that is the next piece. Fighting still
-rolls straight off its button — a melee panel wants Gang Up and Wild Attack,
-which is separate work. Suppressive Fire is not here at all.
+**Firing more than once.** A weapon with a Rate of Fire above 1 gets a **Shots**
+row. Name a target and the button says *Target*; name the last one it allows and
+it says *Roll*. Want to fire fewer — which the book lets you do — name fewer and
+press **Roll 2**.
+
+After the dice land you **place them by hand**: each result is a button, and you
+give it to whichever target you like. That is the rule (p147) rather than a
+convenience, and it is the honest answer to Damian's original objection — you see
+the dice before you place them, but placing them is your move, not the app's. Two
+shots may go to the same target; that is two attacks, each with its own verdict,
+damage roll and Apply.
+
+Rate of Fire is a ceiling, not a quantity, so a Gatling putting one bullet into
+one man takes no Recoil and endangers bystanders only on a 1.
+
+**Not yet.** Fighting still rolls straight off its button — a melee panel wants
+Gang Up and Wild Attack, which is separate work. Suppressive Fire is not here at
+all.
 
 **If the panel cannot say what happened, use the manual roller and apply wounds
 by hand.** That path is not going away, and it is the right answer whenever this
