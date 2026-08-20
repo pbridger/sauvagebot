@@ -36,6 +36,11 @@ folded under the roll it corrects, so the Marshal sees what changed and when
 without a wall of new lines. Rate of Fire is the one thing fixed at the moment
 you roll, because it decides how many dice are thrown.
 
+**It carries through to the wound.** Hit, then Damage, then the Marshal's
+½ / ×2 / ±2 adjustment, then Apply — at the target the panel already declared,
+without going back to the map to select the token or back to the log to find the
+roll.
+
 **Rules that arrived with it.**
 
 - **Extreme Range.** Shots past long range were refused outright — the app said
