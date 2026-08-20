@@ -28,21 +28,66 @@
 /** Short, medium, long — as a weapon writes them, e.g. `12/24/48`. */
 export type RangeBands = [short: number, medium: number, long: number];
 
-export type Band = 'short' | 'medium' | 'long' | 'over';
+export type Band = 'short' | 'medium' | 'long' | 'extreme' | 'over';
 
 /**
  * The penalty for shooting at each band.
  *
- * !! SWADE-standard, confirmed with Paul rather than from the book. !!
+ * Short, medium and long are from the Weird West core rules, p146. Extreme is
+ * from the same table, and was missing until now — see `EXTREME_MULTIPLE`.
  */
 export const BAND_PENALTY: Record<Band, number> = {
   short: 0,
   medium: -2,
   long: -4,
-  // Beyond long is not a penalty but a refusal: the shot cannot be taken, and a
-  // number here would imply it could.
+  extreme: -8,
+  // Beyond *extreme* is not a penalty but a refusal: the shot cannot be taken,
+  // and a number here would imply it could.
   over: Number.NaN,
 };
+
+/**
+ * How far past long range a weapon can still reach: `"up to 4× its Long Range"`
+ * (p114, and the range table on p146).
+ *
+ * This band did not exist here until Paul asked for the shot panel, and its
+ * absence was a live bug rather than a gap: `over` was modelled as a refusal, so
+ * a rifleman with a `24/48/96` Winchester was told a shot at 120 cells could not
+ * be taken when the book says it can, at −8.
+ */
+export const EXTREME_MULTIPLE = 4;
+
+/**
+ * What a scope is worth at Extreme Range: the penalty is *"−8, or −6 with a
+ * scope"* (p146).
+ *
+ * Expressed as the difference rather than as the resulting number, so it can ride
+ * as an ordinary `range`-category modifier on top of `BAND_PENALTY.extreme`
+ * instead of being a second way to compute the same figure. −8 + 2 = −6, and Aim
+ * then eats it in the same pass as everything else in its category.
+ */
+export const SCOPE_AT_EXTREME = 2;
+
+/**
+ * Whether a weapon can reach Extreme Range at all.
+ *
+ * Two exceptions in the book, and both are refusals rather than penalties:
+ * *"Shotguns may not be fired at Extreme Range"* (p161) and *"Characters may not
+ * throw weapons at Extreme Range"* (p146). A shotgun firing **slugs** may — which
+ * is a choice the shooter makes rather than a property of the gun, so it is the
+ * caller's to pass, not something read off a weapon here.
+ */
+export interface BandOptions {
+  /**
+   * Whether this shot may reach Extreme Range.
+   *
+   * Defaults to **false**, so a caller that has not thought about it keeps the
+   * behaviour it had before this band existed: past long is out of range. The
+   * shot panel opts in; the skills list, which does not know what weapon is in
+   * anyone's hand, does not.
+   */
+  extreme?: boolean;
+}
 
 /** `"12/24/48"` → `[12, 24, 48]`, or nothing if the line does not say. */
 export function parseRangeBands(range: string | undefined): RangeBands | undefined {
@@ -57,12 +102,18 @@ export function parseRangeBands(range: string | undefined): RangeBands | undefin
  *
  * Inclusive at each boundary: a weapon with `Range 12/24/48` still reaches at
  * exactly 12, which is how a range is written on a card.
+ *
+ * Extreme is opt-in rather than automatic. It is not simply a further band — it
+ * requires the shooter to have spent the previous turn Aiming, which nothing
+ * here can know, and it is barred outright to shotguns and thrown weapons. So a
+ * caller has to say that this shot could reach it. See `BandOptions`.
  */
-export function bandFor(cells: number, bands: RangeBands): Band {
+export function bandFor(cells: number, bands: RangeBands, options: BandOptions = {}): Band {
   const [short, medium, long] = bands;
   if (cells <= short) return 'short';
   if (cells <= medium) return 'medium';
   if (cells <= long) return 'long';
+  if (options.extreme && cells <= long * EXTREME_MULTIPLE) return 'extreme';
   return 'over';
 }
 
@@ -127,9 +178,11 @@ export interface AimedAttack extends AttackOutcome {
  * same for *raises* too, which are counted off the margin — a Vulnerable target
  * at short range is easier to hit well, not merely easier to hit.
  *
- * Beyond long range the shot is not taken at all. That is not a penalty and must
- * not be modelled as one: a big enough bonus would otherwise let someone hit a
- * target the weapon cannot reach.
+ * Past the last band the weapon can reach, the shot is not taken at all. That is
+ * not a penalty and must not be modelled as one: a big enough bonus would
+ * otherwise let someone hit a target the weapon cannot reach. Which band that is
+ * depends on the shot rather than the distance — see `bandFor` and `BandOptions`
+ * — so `over` arrives here already decided.
  */
 export function resolveAimedAttack({
   total,

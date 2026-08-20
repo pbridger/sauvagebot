@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { MANUAL_RANGE } from '../src/rules/modifiers.js';
 import {
+  BAND_PENALTY,
+  EXTREME_MULTIPLE,
   FLAT_TARGET,
+  SCOPE_AT_EXTREME,
   attackKind,
   bandFor,
   isTargeted,
@@ -39,6 +43,64 @@ describe('range bands', () => {
     expect(bandFor(13, bands)).toBe('medium');
     expect(bandFor(25, bands)).toBe('long');
     expect(bandFor(49, bands)).toBe('over');
+  });
+});
+
+/**
+ * `"Extreme Range: If you're looking to pick off a target way out yonder (up to
+ * 4× Long Range)"` — p146. Until this band existed the app told a rifleman his
+ * shot could not be taken, which is the bug these pin.
+ */
+describe('extreme range', () => {
+  const bands = parseRangeBands('12/24/48')!;
+
+  it('is not offered unless the shot asks for it', () => {
+    expect(bandFor(49, bands)).toBe('over');
+    expect(bandFor(192, bands)).toBe('over');
+  });
+
+  it('reaches four times long range when it is', () => {
+    expect(bandFor(49, bands, { extreme: true })).toBe('extreme');
+    expect(bandFor(192, bands, { extreme: true })).toBe('extreme');
+  });
+
+  /** Four times long and not a cell further, inclusive like every other band. */
+  it('stops at four times long range', () => {
+    expect(bandFor(193, bands, { extreme: true })).toBe('over');
+    expect(48 * EXTREME_MULTIPLE).toBe(192);
+  });
+
+  it('leaves the closer bands alone', () => {
+    for (const cells of [0, 12, 13, 24, 25, 48]) {
+      expect(bandFor(cells, bands, { extreme: true })).toBe(bandFor(cells, bands));
+    }
+  });
+
+  it('costs eight, or six with a scope', () => {
+    expect(BAND_PENALTY.extreme).toBe(-8);
+    expect(BAND_PENALTY.extreme + SCOPE_AT_EXTREME).toBe(-6);
+  });
+
+  /**
+   * The dial has to be able to express by hand what the band expresses by name,
+   * or a Marshal waiving the rule cannot dial the penalty back in.
+   */
+  it('is within reach of the manual dial', () => {
+    expect(Math.abs(BAND_PENALTY.extreme)).toBeLessThanOrEqual(MANUAL_RANGE);
+  });
+
+  it('resolves as an ordinary penalty rather than a refusal', () => {
+    const outcome = resolveAimedAttack({ total: 14, target: 4, band: 'extreme' });
+    expect(outcome.outOfRange).toBe(false);
+    expect(outcome.effective).toBe(6);
+    expect(outcome.hit).toBe(true);
+  });
+
+  /** Past four times long there is still nothing to hit, and no bonus reaches it. */
+  it('still refuses beyond four times long', () => {
+    const outcome = resolveAimedAttack({ total: 30, target: 4, band: 'over' });
+    expect(outcome.outOfRange).toBe(true);
+    expect(outcome.hit).toBe(false);
   });
 });
 
