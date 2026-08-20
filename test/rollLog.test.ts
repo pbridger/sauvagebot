@@ -202,3 +202,81 @@ describe('applying a roll to a token', () => {
     expect(isApplicable(entry({ expression: '3#s8', applicable: true }))).toBe(false);
   });
 });
+
+/**
+ * A shot's modifiers stay live after the dice land: the Marshal says "you aimed
+ * last round", the player clicks Aim, and the arithmetic changes. The correction
+ * appends rather than rewriting, because a log the Marshal is using for oversight
+ * is worth less if lines can change under them.
+ */
+describe('amending a roll that has already been made', () => {
+  const shot = entry({ id: 'shot', at: 1_000, total: 5, label: 'Peacemaker — Shooting' });
+  const aimed = entry({ id: 'aim', at: 1_100, total: 7, amends: 'shot' });
+
+  it('accepts an amendment over the wire', () => {
+    expect(isRollEntry(aimed)).toBe(true);
+    expect(isRollEntry(entry({ amends: 42 as never }))).toBe(false);
+  });
+
+  it('keeps both entries, since the original roll did happen', () => {
+    const log = new RollLog();
+    log.add(shot);
+    log.add(aimed);
+    expect(log.list()).toHaveLength(2);
+  });
+
+  it('draws one line, not two', () => {
+    const log = new RollLog();
+    log.add(shot);
+    log.add(aimed);
+    expect(log.roots().map((e) => e.id)).toEqual(['shot']);
+    expect(log.amendmentsOf('shot').map((e) => e.id)).toEqual(['aim']);
+  });
+
+  /** Read forwards, so the reason comes before the answer it produced. */
+  it('reads a chain of corrections oldest first', () => {
+    const log = new RollLog();
+    log.add(shot);
+    log.add(aimed);
+    log.add(entry({ id: 'cover', at: 1_200, total: 5, amends: 'shot' }));
+    expect(log.amendmentsOf('shot').map((e) => e.id)).toEqual(['aim', 'cover']);
+  });
+
+  it('answers with the version that currently stands', () => {
+    const log = new RollLog();
+    log.add(shot);
+    expect(log.latest('shot')?.total).toBe(5);
+    log.add(aimed);
+    expect(log.latest('shot')?.total).toBe(7);
+    log.add(entry({ id: 'cover', at: 1_200, total: 1, amends: 'shot' }));
+    expect(log.latest('shot')?.total).toBe(1);
+  });
+
+  it('has nothing to say about a roll it never saw', () => {
+    expect(new RollLog().latest('nobody')).toBeUndefined();
+  });
+
+  /** Broadcasts from different clients can land in either order. */
+  it('stands an orphan on its own until its parent arrives', () => {
+    const log = new RollLog();
+    log.add(aimed);
+    expect(log.roots().map((e) => e.id)).toEqual(['aim']);
+    log.add(shot);
+    expect(log.roots().map((e) => e.id)).toEqual(['shot']);
+  });
+
+  /** A long fight pushes the roll off the end while its correction is still here. */
+  it('stands an orphan on its own when its parent has aged out', () => {
+    const log = new RollLog(2);
+    log.add(shot);
+    log.add(aimed);
+    log.add(entry({ id: 'later', at: 2_000 }));
+    expect(log.list().map((e) => e.id)).toEqual(['later', 'aim']);
+    expect(log.roots().map((e) => e.id)).toEqual(['later', 'aim']);
+  });
+
+  it('carries a whole entry, so a late client can read it alone', () => {
+    expect(aimed.total).toBe(7);
+    expect(isRollEntry(forBroadcast(aimed))).toBe(true);
+  });
+});

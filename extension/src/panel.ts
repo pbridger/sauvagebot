@@ -537,14 +537,25 @@ function publishTrait(
 function renderLog(): void {
   logEl.replaceChildren(
     ...log
+      // Amendments are folded into the line they correct rather than drawn as
+      // lines of their own — one line on screen, the whole history underneath.
+      // See `RollEntry.amends`.
+      .roots()
       // Held lines are in the log but not yet on screen — their dice are still in
       // the air. See `show`.
-      .list()
       .filter((entry) => !held.has(entry.id))
       .map((entry) => {
       const line = document.createElement('div');
       line.className = 'entry';
       if (entry.secret) line.classList.add('secret');
+
+      // The version that currently stands. For a roll nobody corrected this is
+      // the roll itself; for a shot the Marshal amended it is the corrected one.
+      // Everything that reads a *number* off the line uses it, because applying
+      // the pre-Aim damage of a shot that was Aimed is exactly the quiet
+      // wrongness the amendment mechanism exists to prevent.
+      const current = log.latest(entry.id) ?? entry;
+      const amendments = log.amendmentsOf(entry.id);
 
       // Two lines: who and what on the first, the dice and the answer on the
       // second. One line held a name, a label, an expression, every die and a
@@ -592,17 +603,35 @@ function renderLog(): void {
       }
 
       const target = damageTarget();
-      if (target && isApplicable(entry)) {
+      if (target && isApplicable(current)) {
         const apply = document.createElement('button');
         apply.className = 'apply';
         apply.textContent = `\u2192 ${rollerName(target.sheet) ?? target.token.name}`;
         apply.title =
-          `Apply ${entry.total} damage to ${target.token.name}` +
-          (entry.ap ? `, ignoring ${entry.ap} armour` : '');
-        apply.addEventListener('click', () => void applyToTarget(entry, target));
+          `Apply ${current.total} damage to ${target.token.name}` +
+          (current.ap ? `, ignoring ${current.ap} armour` : '');
+        apply.addEventListener('click', () => void applyToTarget(current, target));
         body.append(apply);
       }
       line.append(body);
+
+      // Each correction on its own row beneath the roll, oldest first, so the
+      // sequence reads forwards: what was rolled, then what someone remembered,
+      // then what it came to.
+      for (const amendment of amendments) {
+        const row = document.createElement('div');
+        row.className = 'amendment';
+        const arrow = document.createElement('span');
+        arrow.className = 'amendment-total';
+        arrow.textContent = `\u2192 ${amendment.total ?? ''}`;
+        row.append(arrow);
+        const why = document.createElement('span');
+        why.className = 'amendment-why';
+        why.textContent = amendment.label ?? 'amended';
+        why.title = `${amendment.by} changed this after the roll \u2014 the dice were not re-rolled`;
+        row.append(why);
+        line.append(row);
+      }
 
       // Who could this have been aimed at? Only for the rolls where naming a
       // target changes the answer: an attack, which is resolved against Parry
@@ -612,16 +641,16 @@ function renderLog(): void {
       // damage is rolled — so it is offered on the line rather than asked for up
       // front. Damage rolls only: a raise on a Notice roll buys information, not
       // dice.
-      if (isApplicable(entry)) {
+      if (isApplicable(current)) {
         const raise = document.createElement('button');
         raise.className = 'targets-toggle';
         raise.textContent = '+ raise';
         raise.title = `Roll the raise's bonus ${RAISE_DIE} and log the new total`;
-        raise.addEventListener('click', () => rollRaiseDamage(entry));
+        raise.addEventListener('click', () => rollRaiseDamage(current));
         body.append(raise);
       }
 
-      if (targetsWorthShowing(entry)) {
+      if (targetsWorthShowing(current)) {
         const toggle = document.createElement('button');
         toggle.className = 'targets-toggle';
         const open = expanded.has(entry.id);
@@ -642,7 +671,7 @@ function renderLog(): void {
           // Ranges come from OBR and so arrive late. By the time they do the log
           // may have been re-rendered out from under this node, which is why the
           // fill checks it is still in the document rather than resuming blind.
-          void fillTargets(holder, entry);
+          void fillTargets(holder, current);
         }
       }
       return line;

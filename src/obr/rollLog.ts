@@ -107,6 +107,27 @@ export interface RollEntry {
   stray?: number;
   /** The window that count was taken at — 1, or 2 for a weapon that sprays. */
   strayOn?: number;
+  /**
+   * The id of a roll this entry corrects.
+   *
+   * A shot's modifiers stay live after the dice land — the Marshal reads the
+   * logged roll, says "you aimed last round", and the player clicks Aim. The
+   * arithmetic changes; the dice never do.
+   *
+   * An amendment is its own entry rather than an edit of the one it corrects, and
+   * that is not a workaround for `add` refusing a repeated id. It is the point:
+   * the original roll happened, everyone saw it, and a log that rewrites itself
+   * under a Marshal using it for oversight is worth less than one that appends.
+   * `rollRaiseDamage` reached the same conclusion for the same reason.
+   *
+   * What is shown is a different question from what is stored. The panel folds an
+   * amendment into the line it amends — one line on screen, the whole history
+   * underneath. See `amendmentsOf` and `latest`.
+   *
+   * Carrying `total` and `mods` afresh, rather than a delta, means a client that
+   * joined late or missed the parent still reads a complete entry.
+   */
+  amends?: string;
 }
 
 function isRollMod(value: unknown): value is RollMod {
@@ -155,6 +176,7 @@ export function isRollEntry(value: unknown): value is RollEntry {
     (entry.character === undefined || typeof entry.character === 'string') &&
     (entry.label === undefined || typeof entry.label === 'string') &&
     (entry.from === undefined || typeof entry.from === 'string') &&
+    (entry.amends === undefined || typeof entry.amends === 'string') &&
     (entry.skill === undefined || typeof entry.skill === 'string') &&
     (entry.bands === undefined ||
       (Array.isArray(entry.bands) &&
@@ -202,6 +224,44 @@ export class RollLog {
 
   list(): readonly RollEntry[] {
     return this.entries;
+  }
+
+  /**
+   * The lines to draw, with amendments folded away into what they amend.
+   *
+   * An amendment whose parent is *not* here stands on its own. That happens two
+   * ways and both are real: the parent aged out past `limit` during a long fight,
+   * or the broadcasts landed out of order and the parent has not arrived yet. The
+   * second case heals itself on the next render, which is why this is computed
+   * per call rather than maintained.
+   */
+  roots(): readonly RollEntry[] {
+    return this.entries.filter((entry) => entry.amends === undefined || !this.seen.has(entry.amends));
+  }
+
+  /**
+   * Every correction to one roll, **oldest first** — the order they were made.
+   *
+   * Against the log's own newest-first ordering on purpose: an amendment chain is
+   * read as a sequence of corrections to one thing, and reversing it would show
+   * the current answer before the reason for it.
+   */
+  amendmentsOf(id: string): readonly RollEntry[] {
+    return this.entries.filter((entry) => entry.amends === id).reverse();
+  }
+
+  /**
+   * The version of a roll that currently stands.
+   *
+   * Anything reading a *number* off an entry wants this rather than the entry —
+   * `isApplicable` and `totalOf` are per-entry by design and cannot know they are
+   * looking at a total something later superseded. Applying the pre-Aim damage of
+   * a shot that was corrected is exactly the kind of quiet wrongness the panel
+   * exists to stop.
+   */
+  latest(id: string): RollEntry | undefined {
+    const amendments = this.amendmentsOf(id);
+    return amendments.at(-1) ?? this.entries.find((entry) => entry.id === id);
   }
 
   clear(): void {
