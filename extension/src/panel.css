@@ -333,8 +333,8 @@ button.shot-roll {
   font-weight: 700;
   color: var(--accent);
 }
-/* A target that has been named but not yet shot at. Quieter than the button that
-   will do the rolling, so the one live action on the panel stays obvious. */
+/* A target with bullets spoken for but not yet fired. Quieter than the button
+   that will do the rolling, so the one live action on the panel stays obvious. */
 button.shot-roll.on {
   background: var(--env);
   border-color: var(--env);

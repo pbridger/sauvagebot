@@ -3272,13 +3272,23 @@ interface ShotSession {
    */
   rof: number;
   /**
-   * Who this shot was declared against, in the order they were named.
+   * How many shots each target was declared to receive, in the order named.
    *
-   * `"Before you roll, assign your dice to all possible targets"` (p147). The
-   * declaration is what fixes the dice count, and it is the one thing the roll
-   * closes off — you cannot add a target you did not name.
+   * `"Before you roll, assign your dice to all possible targets. With a Rate of
+   * Fire 3, for example, you might put 2 dice into one walkin' dead and a third
+   * into another"` (p147). So the declaration is a **count per target**, not a
+   * list of targets — two bullets into one man is a thing you say before you
+   * fire, and the sum of the counts is how many dice are thrown.
+   *
+   * What stays free until after the roll is *which* result fills each slot:
+   * *"assign them in whatever order you like to the targets you declared"*. The
+   * counts are the plan; the placing is the reveal.
+   *
+   * A Map for its insertion order, which is the order the targets were named and
+   * therefore the order they are shown in. A target dialled back to zero is
+   * deleted rather than kept at 0, so it leaves that order too.
    */
-  declared: string[];
+  bullets: Map<string, number>;
   /** Set once the dice have been thrown, and never unset except by a new shot. */
   rolled?: {
     entryId: string;
@@ -3383,22 +3393,28 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
           dial: 0,
           cover: new Map(),
           rof: maxRateOfFire(weapon),
-          declared: [],
+          bullets: new Map(),
           damageIds: new Map(),
         };
   render();
 }
 
 /**
- * How many dice this shot throws: one per declared target.
+ * How many dice this shot throws: the declared bullets, added up.
  *
  * `"Unless the weapon says otherwise, you can always roll less dice"` (p147), and
- * declaring fewer targets than the Rate of Fire allows is how you say so. Before
- * anyone has been declared it is one, so the panel can price a shot that has not
- * been aimed yet.
+ * declaring fewer bullets than the Rate of Fire allows is how you say so. Before
+ * anything has been declared it is one, so the panel can price a shot that has
+ * not been aimed yet.
  */
 function shotsFired(session: ShotSession): number {
-  return Math.max(1, Math.min(session.rof, session.declared.length));
+  const declared = [...session.bullets.values()].reduce((sum, n) => sum + n, 0);
+  return Math.max(1, Math.min(session.rof, declared));
+}
+
+/** The bullets still to be spoken for, for the cycling per-target counter. */
+function bulletsLeft(session: ShotSession): number {
+  return session.rof - [...session.bullets.values()].reduce((sum, n) => sum + n, 0);
 }
 
 /**
@@ -3541,7 +3557,7 @@ function amendShot(
   // set. For an unbaked one it is measured against the shot-level half only —
   // range and cover differ per target and are applied at resolution, so a change
   // to them is not a change to *the shot*.
-  const first = session.declared[0];
+  const first = [...session.bullets.keys()][0];
   const next = rolled.baked && first ? shotAgainst(session, weapon, first) : shotLevel(session, weapon);
   amendShot(sheet, session, next.mods, next.total, sheetMods.total);
 }
@@ -3608,9 +3624,19 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
           // many there were. See `lockedByTheRoll`.
           if (session.rolled) return;
           session.rof = value;
-          // Targets already named beyond the new ceiling are dropped rather than
-          // silently ignored, so what is on screen is what will be rolled.
-          session.declared = session.declared.slice(0, value);
+          // Bullets already spoken for beyond the new ceiling are given back
+          // rather than silently ignored, so what is on screen is what will be
+          // rolled. Trimmed from the last target named, which is the one the
+          // player was most recently thinking about.
+          let over = [...session.bullets.values()].reduce((a, b) => a + b, 0) - value;
+          for (const id of [...session.bullets.keys()].reverse()) {
+            if (over <= 0) break;
+            const had = session.bullets.get(id)!;
+            const keep = Math.max(0, had - over);
+            over -= had - keep;
+            if (keep) session.bullets.set(id, keep);
+            else session.bullets.delete(id);
+          }
           render();
         },
       ),
@@ -3775,7 +3801,7 @@ async function fillShotTargets(
   // pulled, and leaving them on screen would put back exactly the row of
   // alternative outcomes this panel replaced.
   const shown = session.rolled
-    ? session.declared
+    ? [...session.bullets.keys()]
         .map((id) => candidates.find((c) => c.token.id === id))
         .filter((c): c is NonNullable<typeof c> => c !== undefined)
     : [...candidates].sort((a, b) => (a.cells ?? Infinity) - (b.cells ?? Infinity));
@@ -3791,7 +3817,7 @@ async function fillShotTargets(
   table.className = 'shot-table';
 
   for (const { token, state, sheet: victim, cells } of shown) {
-    const declared = session.declared.includes(token.id);
+    const declared = (session.bullets.get(token.id) ?? 0) > 0;
     const cover = session.cover.get(token.id) ?? 0;
     // Once the shot is taken the band is the one it was taken at, not the one the
     // target has since walked into. See `ShotSession.rolled.bands`.
@@ -3878,40 +3904,53 @@ async function fillShotTargets(
     const action = document.createElement('td');
     action.className = 'num';
     if (!session.rolled) {
-      // `"Before you roll, assign your dice to all possible targets"` (p147). The
-      // last one to be named rolls, which is why the button changes its mind:
-      // there is no separate Roll to hunt for when the quota is full.
-      const last = session.declared.length + 1 >= session.rof;
-      const roll = document.createElement('button');
-      roll.className = declared ? 'shot-roll on' : 'shot-roll';
-      roll.textContent = declared ? 'Named' : last ? 'Roll' : 'Target';
-      roll.disabled = band === 'over' || (!declared && session.declared.length >= session.rof);
+      const mine = session.bullets.get(token.id) ?? 0;
       const sum = sheetMods.total + total;
-      roll.title =
-        band === 'over'
-          ? 'Out of range'
-          : declared
-            ? 'Declared. Click to take the name back.'
-            : last
-              ? `Roll ${session.skill}${sum ? ` ${formatMod(sum)}` : ''} at ${name.textContent}` +
-                (mods.length
-                  ? ` — ${mods.map((m) => `${m.label} ${formatMod(m.value)}`).join(', ')}`
-                  : '')
-              : `Name ${name.textContent} as a target, then pick the next`;
-      roll.addEventListener('click', () => {
-        if (declared) {
-          session.declared = session.declared.filter((id) => id !== token.id);
-          render();
-          return;
-        }
-        session.declared = [...session.declared, token.id];
-        if (session.declared.length >= session.rof) {
+      const priced =
+        `${session.skill}${sum ? ` ${formatMod(sum)}` : ''} at ${name.textContent}` +
+        (mods.length
+          ? ` — ${mods.map((m) => `${m.label} ${formatMod(m.value)}`).join(', ')}`
+          : '');
+
+      const button = document.createElement('button');
+      button.className = mine ? 'shot-roll on' : 'shot-roll';
+      button.disabled = band === 'over';
+
+      if (session.rof === 1) {
+        // A revolver has nothing to count. One click names the target and fires,
+        // which is what it did before any of this and what it should keep doing.
+        button.textContent = 'Roll';
+        button.title = band === 'over' ? 'Out of range' : `Roll ${priced}`;
+        button.addEventListener('click', () => {
+          session.bullets = new Map([[token.id, 1]]);
           takeTheShot(sheet, weapon, sheetMods, session, candidates);
-          return;
-        }
-        render();
-      });
-      action.append(roll);
+        });
+      } else {
+        // `"you might put 2 dice into one walkin' dead and a third into another"`
+        // (p147). So this counts rather than toggling: each click spends another
+        // bullet on this target, and the click after the last one available puts
+        // them all back. There is no "Roll" state on it — with several targets
+        // the last click is not necessarily the one that should fire, so rolling
+        // is its own button below.
+        const spare = bulletsLeft(session);
+        button.textContent =
+          mine === 0 ? 'Assign' : `${mine} bullet${mine === 1 ? '' : 's'}`;
+        button.title =
+          band === 'over'
+            ? 'Out of range'
+            : mine === 0
+              ? `Put a bullet into ${name.textContent} — ${priced}`
+              : spare > 0
+                ? `${mine} of ${session.rof}. Click for another; ${spare} left to spend.`
+                : `${mine} of ${session.rof}, and all of them spoken for. Click to put them back.`;
+        button.addEventListener('click', () => {
+          const next = spare > 0 ? mine + 1 : 0;
+          if (next === 0) session.bullets.delete(token.id);
+          else session.bullets.set(token.id, next);
+          render();
+        });
+      }
+      action.append(button);
     }
     tr.append(action);
     table.append(tr);
@@ -3947,17 +3986,10 @@ async function fillShotTargets(
         .map(([index]) => index)
         .sort((a, b) => a - b);
 
-      if (!mine.length) {
-        // `"Then roll that number of Shooting dice and assign them in whatever
-        // order you like to the targets you declared"` (p147). The assignment is
-        // the player's, made knowing what the dice did — which is the honest
-        // version of the reveal that started all this.
-        cell.append(dicePicker(weapon, session, token.id));
-        outcome.append(cell);
-        table.append(outcome);
-        continue;
-      }
-
+      // How many this target was declared to take. Slots still empty keep the
+      // picker on screen: two bullets declared into one man means two results to
+      // place, not one.
+      const slots = session.bullets.get(token.id) ?? 1;
       const against = shotAgainst(session, weapon, token.id);
       const parry = victim.parry ?? DEFAULT_PARRY;
       const target = FLAT_TARGET;
@@ -4036,29 +4068,45 @@ async function fillShotTargets(
         cell.append(line);
       }
 
+      if (mine.length < slots) {
+        // `"Then roll that number of Shooting dice and assign them in whatever
+        // order you like to the targets you declared"` (p147). The counts were
+        // fixed before the dice; which result fills each slot is the player's,
+        // made knowing what the dice did — the honest version of the reveal that
+        // started all this.
+        cell.append(dicePicker(weapon, session, token.id, slots - mine.length));
+      }
+
       outcome.append(cell);
       table.append(outcome);
     }
   }
 
-  // Rolling with fewer targets than the Rate of Fire allows. The row buttons roll
-  // by themselves only when the quota is filled, so without this a Gatling
-  // declared against two bandits had no way to fire at all: both rows would read
-  // "Named" and nothing on the panel would throw the dice. It lives here rather
-  // than with the other controls because this is where the measured candidates
-  // are, and `takeTheShot` needs them to freeze each target's band.
+  // The button that actually fires, for a weapon that can fire more than once.
+  // The per-target control counts bullets and has no Roll state of its own —
+  // with several targets the last click is not necessarily the one that should
+  // fire, and a counter that sometimes rolled would be a counter you could not
+  // click freely. It lives here rather than with the other controls because this
+  // is where the measured candidates are, and `takeTheShot` needs them to freeze
+  // each target's band.
   const rows: HTMLElement[] = [table];
-  if (!session.rolled && session.declared.length >= 1 && session.declared.length < session.rof) {
+  // Always, once a bullet has been spoken for — the per-target control counts and
+  // has no Roll state of its own, because with several targets the last click is
+  // not necessarily the one that should fire.
+  if (!session.rolled && session.rof > 1 && session.bullets.size >= 1) {
     const bar = document.createElement('div');
     bar.className = 'shot-rollnow';
     const go = document.createElement('button');
     go.className = 'shot-roll';
     const shots = shotsFired(session);
     go.textContent = `Roll ${shots}`;
+    const spare = bulletsLeft(session);
     go.title =
-      `Fire ${shots} shot${shots === 1 ? '' : 's'} at the ${session.declared.length} ` +
-      `named, rather than the ${session.rof} this weapon allows — "you can always ` +
-      `roll less dice" (p147)`;
+      `Fire ${shots} shot${shots === 1 ? '' : 's'} at the ${session.bullets.size} ` +
+      `target${session.bullets.size === 1 ? '' : 's'} named` +
+      (spare > 0
+        ? ` — ${spare} of the ${session.rof} this weapon allows left unspent, which "you can always roll less dice" permits (p147)`
+        : '');
     go.addEventListener('click', () => takeTheShot(sheet, weapon, sheetMods, session, candidates));
     bar.append(go);
     rows.push(bar);
@@ -4078,14 +4126,20 @@ async function fillShotTargets(
  * it, and the book allows it outright — *"you might put 2 dice into one walkin'
  * dead"*. Nothing here prevents it, and the second one gets its own damage roll.
  */
-function dicePicker(weapon: Weapon, session: ShotSession, tokenId: string): HTMLElement {
+function dicePicker(
+  weapon: Weapon,
+  session: ShotSession,
+  tokenId: string,
+  /** How many of this target's declared bullets are still to be filled. */
+  slots: number,
+): HTMLElement {
   const rolled = session.rolled!;
   const wrap = document.createElement('span');
   wrap.className = 'shot-picker';
 
   const label = document.createElement('span');
   label.className = 'shot-picker-label';
-  label.textContent = 'Give it';
+  label.textContent = slots > 1 ? `Give it ${slots}` : 'Give it';
   wrap.append(label);
 
   for (const [index, value] of rolled.values.entries()) {
@@ -4132,11 +4186,12 @@ function takeTheShot(
   candidates: readonly { token: { id: string; name: string }; sheet: Sheet; cells?: number }[],
 ): void {
   const shots = shotsFired(session);
-  const single = session.declared[0];
+  const named = [...session.bullets.keys()];
+  const single = shots === 1 ? named[0] : undefined;
 
   // The band each target was in at this moment, frozen for the rest of the shot.
   const bands = new Map<string, Band | undefined>();
-  for (const id of session.declared) {
+  for (const id of named) {
     const found = candidates.find((c) => c.token.id === id);
     bands.set(
       id,
@@ -4150,7 +4205,10 @@ function takeTheShot(
   // because one roll cannot carry two different range penalties. So a single
   // target keeps the log line reading `s8-2 … = 13`, and a shot at several rolls
   // bare and has each target's modifiers applied to its own assigned shot.
-  const baked = session.declared.length === 1;
+  // One target *and* one bullet. Two bullets into one man are two attacks, and
+  // although they share a range they do not share a die — baking would put the
+  // modifier into both totals and then the resolution would want it once each.
+  const baked = shots === 1 && named.length === 1;
   const stub: ShotSession = { ...session, rolled: { ...emptyRolled(), bands, baked } };
   const perTarget = baked && single ? shotAgainst(stub, weapon, single) : undefined;
   const level = shotLevel(session, weapon);
@@ -4161,7 +4219,7 @@ function takeTheShot(
   const values = totalsOf(result.explained);
   if (values.length !== shots) {
     notify(`could not read ${shots === 1 ? 'that roll' : 'those rolls'}`);
-    session.declared = [];
+    session.bullets = new Map();
     render();
     return;
   }
@@ -4169,9 +4227,13 @@ function takeTheShot(
   // The stray window comes from the shot as fired rather than from the gun — a
   // Gatling firing once puts one bullet in the air.
   const strayOn = straysAsFired(weapon, shots, session.slugs) ? 2 : 1;
-  const names = session.declared
-    .map((id) => candidates.find((c) => c.token.id === id))
-    .map((c, i) => (c ? (c.sheet.pc || isGM ? c.sheet.name : c.token.name) : session.declared[i]!))
+  const names = named
+    .map((id, i) => {
+      const found = candidates.find((c) => c.token.id === id);
+      const who = found ? (found.sheet.pc || isGM ? found.sheet.name : found.token.name) : named[i]!;
+      const count = session.bullets.get(id) ?? 1;
+      return count > 1 ? `${who} ×${count}` : who;
+    })
     .join(', ');
 
   const entryId = publishTrait(
