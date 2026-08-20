@@ -648,8 +648,12 @@ function renderLog(): void {
         body.append(ap);
       }
 
+      // Not for a roll the shot panel made. That panel declared its target before
+      // the dice were thrown and carries its own Apply for it; a second button
+      // here spends the same damage on whatever happens to be *selected*, which
+      // is a different creature as often as not.
       const target = damageTarget();
-      if (target && isApplicable(current)) {
+      if (target && isApplicable(current) && current.target === undefined) {
         const apply = document.createElement('button');
         apply.className = 'apply';
         apply.textContent = `\u2192 ${rollerName(target.sheet) ?? target.token.name}`;
