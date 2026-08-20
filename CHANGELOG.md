@@ -36,10 +36,21 @@ folded under the roll it corrects, so the Marshal sees what changed and when
 without a wall of new lines. Rate of Fire is the one thing fixed at the moment
 you roll, because it decides how many dice are thrown.
 
+**The raise die comes with the damage.** A raise on the attack is worth +1d6 —
+one die however many raises — and the panel resolved the attack, so it puts the
+die in the damage expression rather than asking you to remember to claim it. It
+appears and disappears as you correct the shot afterwards.
+
 **It carries through to the wound.** Hit, then Damage, then the Marshal's
 ½ / ×2 / ±2 adjustment, then Apply — at the target the panel already declared,
 without going back to the map to select the token or back to the log to find the
 roll.
+
+**The log line names its target instead of offering a table.** A shot rolled
+through the panel already has range and cover inside its total; the old
+expandable target table applied them a second time, which turned two raises into
+one. Rolls that did *not* name a target — the skills list, a Fighting swing —
+keep the table, which is where it was useful all along.
 
 **Rules that arrived with it.**
 
