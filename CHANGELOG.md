@@ -52,6 +52,13 @@ expandable target table applied them a second time, which turned two raises into
 one. Rolls that did *not* name a target — the skills list, a Fighting swing —
 keep the table, which is where it was useful all along.
 
+**The dice finish before the answer appears.** The panel holds its verdict for
+exactly as long as the log holds its line — it used to print "hit, 2 raises" the
+moment you pressed Roll, which answered the question the animation was still in
+the middle of asking. The log's own fallback timer was also firing early on
+exploding dice, so a wild die that aced twice had its line appear while the last
+die was still rolling. Both fixed.
+
 **Rules that arrived with it.**
 
 - **Extreme Range.** Shots past long range were refused outright — the app said
