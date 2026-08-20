@@ -338,16 +338,21 @@ tr.shot-outcome .hit { color: var(--accent); }
 tr.shot-outcome .miss { color: var(--muted); }
 .shot-parry { margin-left: 7px; font-size: 11px; color: var(--muted); }
 /* The last step: what the damage came to, the Marshal's adjustment, and the
-   button that spends it on the target the panel already declared. */
-.shot-apply {
+   button that spends it on the target the panel already declared.
+
+   Two lines, not one. The outcome is a sentence and the controls are a row of
+   chips; side by side they wrapped into each other and the Apply button fell off
+   the end of the panel. */
+.shot-apply { margin-top: 5px; }
+.shot-outcome-text { font-size: 11px; margin-bottom: 3px; }
+.shot-apply-controls {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 5px;
-  margin-top: 4px;
 }
-.shot-outcome-text { font-size: 11px; }
-.shot-apply button.apply { font-weight: 700; }
+.shot-apply-controls .adjust-bar { margin: 0; flex: 1; min-width: 0; }
+.shot-apply button.apply { flex: none; font-weight: 700; padding: 1px 10px; }
 
 button.shot-damage {
   margin-left: 9px;
@@ -618,6 +623,10 @@ button.cond.marker.on {
 #log .entry .head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; line-height: 1.3; }
 #log .entry .body { line-height: 1.3; }
 #log .entry .what::before { content: "\2014"; margin-right: 4px; font-weight: 400; color: var(--muted); }
+/* Who the roll was declared against. Text rather than an expandable table: the
+   shot panel already answered the question the table exists to ask, and its
+   total already carries the range and cover the table would re-apply. */
+#log .at-target { font-size: 11px; color: var(--muted); }
 /* Both pills the same size and sitting on the text baseline: they are read as
    one row with the name, not as floating decoration. */
 #log .rollmod {

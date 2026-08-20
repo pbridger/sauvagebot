@@ -204,6 +204,34 @@ describe('applying a roll to a token', () => {
 });
 
 /**
+ * A roll that named its target arrived from the shot panel with range, cover and
+ * the defender's conditions already in its total. The log line must not offer to
+ * do that arithmetic again.
+ */
+describe('a roll that already knows what it was aimed at', () => {
+  it('accepts a declared target over the wire', () => {
+    expect(isRollEntry(entry({ target: 'Sir Ed Fiddlebottom III' }))).toBe(true);
+    expect(isRollEntry(entry({ target: 7 as never }))).toBe(false);
+  });
+
+  it('survives the trip to other clients', () => {
+    const sent = forBroadcast(entry({ target: 'Sallow Jake' }));
+    expect(sent.target).toBe('Sallow Jake');
+  });
+
+  /**
+   * The bug: a 15 that had already lost 2 to medium range was shown in the table
+   * as 11, because the table subtracted the range a second time — two raises
+   * reported as one.
+   */
+  it('is a name rather than a token id, so any client can read it', () => {
+    const shot = entry({ target: 'Sallow Jake', from: 'token-9' });
+    expect(typeof shot.target).toBe('string');
+    expect(shot.target).not.toBe(shot.from);
+  });
+});
+
+/**
  * A shot's modifiers stay live after the dice land: the Marshal says "you aimed
  * last round", the player clicks Aim, and the arithmetic changes. The correction
  * appends rather than rewriting, because a log the Marshal is using for oversight

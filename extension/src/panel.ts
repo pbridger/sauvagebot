@@ -55,6 +55,7 @@ import {
   type RollEntry,
 } from '../../src/obr/rollLog.js';
 import {
+  adjustedDamage,
   applyDamage,
   describeAdjustment,
   effectiveToughness,
@@ -596,6 +597,16 @@ function renderLog(): void {
         head.append(what);
       }
 
+      // Named here because the targeting table is not offered for these rolls —
+      // the answer is already known, so it is text rather than a thing to expand.
+      if (entry.target) {
+        const at = document.createElement('span');
+        at.className = 'at-target';
+        at.textContent = `\u2192 ${entry.target}`;
+        at.title = 'Declared before the roll — range and cover are already in the total';
+        head.append(at);
+      }
+
       // Compact modifier pills, in the sheet's two colours: 2W, 1F, -4. The full
       // wording is in the tooltip.
       for (const mod of entry.mods ?? []) {
@@ -663,7 +674,10 @@ function renderLog(): void {
       // damage is rolled — so it is offered on the line rather than asked for up
       // front. Damage rolls only: a raise on a Notice roll buys information, not
       // dice.
-      if (isApplicable(current)) {
+      // Not for a roll the shot panel made: it puts the raise die into the damage
+      // expression itself, from the raises it worked out, and two ways to add the
+      // same d6 is one way to add it twice.
+      if (isApplicable(current) && current.target === undefined) {
         const raise = document.createElement('button');
         raise.className = 'targets-toggle';
         raise.textContent = '+ raise';
@@ -701,8 +715,16 @@ function renderLog(): void {
   );
 }
 
-/** An attack or a damage roll, made by a token we can measure from. */
+/**
+ * An attack or a damage roll, made by a token we can measure from — and one that
+ * has *not* already said what it was aimed at.
+ *
+ * A roll carrying `target` arrived from the shot panel with range, cover and the
+ * defender's conditions already inside its total. Showing the table beside it
+ * would apply every one of them a second time. See `RollEntry.target`.
+ */
 function targetsWorthShowing(entry: RollEntry): boolean {
+  if (entry.target !== undefined) return false;
   return isTargeted(entry.skill) || (entry.applicable === true && entry.total !== undefined);
 }
 
@@ -3720,6 +3742,7 @@ async function fillShotTargets(
           sheetMods,
           session,
           token.id,
+          name.textContent ?? '',
           band,
           mods,
           total,
@@ -3776,7 +3799,9 @@ async function fillShotTargets(
       }
 
       if (resolved.hit) {
-        cell.append(damageButton(sheet, weapon, session, band));
+        cell.append(
+          damageButton(sheet, weapon, session, band, resolved.raises, name.textContent ?? ''),
+        );
         const applied = shotDamageRow(sheet, session, { token, state, sheet: victim });
         if (applied) cell.append(applied);
       }
@@ -3801,6 +3826,7 @@ function takeTheShot(
   sheetMods: RollBreakdown,
   session: ShotSession,
   tokenId: string,
+  targetName: string,
   band: Band | undefined,
   mods: ShotMod[],
   total: number,
@@ -3863,6 +3889,10 @@ function damageButton(
   weapon: Weapon,
   session: ShotSession,
   band: Band | undefined,
+  /** How well the attack landed. A raise is worth a die. */
+  raises: number,
+  /** The declared target, so the damage roll names it as the attack did. */
+  targetName: string,
 ): HTMLElement {
   const bonus = calledShotDamage(session.calledShot);
   // A scattergun's dice depend on the range, which the panel now knows — so it
@@ -3883,10 +3913,19 @@ function damageButton(
     button.disabled = true;
     return button;
   }
-  const expression = bonus ? `${base}+${bonus}` : base;
+  // `"If your hero gets a raise on their attack roll (regardless of how many
+  // raises), they add +1d6 to the final total. Bonus dice can also Ace!"` — p148.
+  // One die for a raise, not one per raise, and it goes in the expression rather
+  // than behind a button on the log line: the panel worked the raises out, so the
+  // player should not have to remember to claim what they have already earned.
+  // Recomputed on every render, so correcting a modifier afterwards adds or drops
+  // the die along with everything else that correction changes.
+  const raiseDie = raises >= 1 ? `+${RAISE_DIE}` : '';
+  const expression = `${base}${raiseDie}${bonus ? `+${bonus}` : ''}`;
   button.textContent = `Damage ${expression}`;
   button.title =
     `Roll ${expression}` +
+    (raises ? ` — +${RAISE_DIE} for the raise, one die however many raises (p148)` : '') +
     (bonus
       ? ' — the +4 for a called shot to the head or vitals is already in it (p154)'
       : '') +
@@ -3928,11 +3967,15 @@ function shotDamageRow(sheet: Sheet, session: ShotSession, victim: {
   sheet: Sheet;
 }): HTMLElement | undefined {
   if (!session.damageId) return undefined;
-  // Through `latest`, so a damage roll that grew a raise die applies the total it
-  // grew to rather than the one it started at.
-  const entry = log.latest(session.damageId);
+  // The roll **as rolled**, deliberately not `latest`. The Marshal's adjustment is
+  // logged as a correction to this entry, and `applyDamage` applies that same
+  // adjustment itself — so reading the corrected total here would halve an
+  // already-halved number. The entry is the dice; the adjustment is what they
+  // count for; the two are combined in exactly one place.
+  const entry = log.list().find((e) => e.id === session.damageId);
   if (!entry || entry.total === undefined) return undefined;
 
+  const adjust = adjustments.get(entry.id);
   const row = document.createElement('div');
   row.className = 'shot-apply';
 
@@ -3940,9 +3983,11 @@ function shotDamageRow(sheet: Sheet, session: ShotSession, victim: {
     victim.sheet,
     victim.state,
     { damage: entry.total, ...(entry.ap ? { ap: entry.ap } : {}) },
-    adjustments.get(entry.id),
+    adjust,
   );
-  const says = document.createElement('span');
+  // What it comes to gets its own line. It is a sentence, and the controls that
+  // change it are a row of chips — side by side they wrapped into each other.
+  const says = document.createElement('div');
   says.className = 'shot-outcome-text';
   // The engine's own wording, so the preview and the applied line cannot
   // disagree about what happened.
@@ -3950,17 +3995,61 @@ function shotDamageRow(sheet: Sheet, session: ShotSession, victim: {
   says.title = `vs Toughness ${effectiveToughness(victim.sheet, entry.ap ?? 0)}`;
   row.append(says);
 
-  row.append(adjustBar(entry, () => render()));
+  const controls = document.createElement('div');
+  controls.className = 'shot-apply-controls';
+  // Changing the Marshal's adjustment on a shot the panel rolled is a correction
+  // like any other, so it appends to the log rather than silently changing what
+  // Apply is about to spend. Halving a Construct's damage in the panel and
+  // leaving the log saying the original number is the kind of quiet disagreement
+  // the amendment mechanism exists to close.
+  controls.append(
+    adjustBar(entry, () => {
+      amendDamage(entry);
+      render();
+    }),
+  );
 
   const apply = document.createElement('button');
   apply.className = 'apply';
-  apply.textContent = `Apply to ${victim.sheet.pc || isGM ? victim.sheet.name : victim.token.name}`;
-  apply.title = `Apply ${describeAdjustment(entry.total, adjustments.get(entry.id)) || entry.total} to ${victim.token.name}`;
+  // Just "Apply". The row it sits in is already headed by the target's name, and
+  // spelling it out again ran the line off the end of the panel.
+  apply.textContent = 'Apply';
+  const to = victim.sheet.pc || isGM ? victim.sheet.name : victim.token.name;
+  apply.title = `Apply ${describeAdjustment(entry.total, adjust) || entry.total} to ${to}`;
   apply.addEventListener('click', () => {
     void applyToTarget(entry, victim, adjustments.get(entry.id));
   });
-  row.append(apply);
+  controls.append(apply);
+  row.append(controls);
   return row;
+}
+
+/**
+ * Log the Marshal's damage adjustment as a correction to the damage roll.
+ *
+ * The roll happened and everyone saw it; what changed is what it counts for. So
+ * the amendment carries the adjusted number and says how it got there in the
+ * engine's own words — "11 halved = 5" — which is the same string the applied
+ * line will use.
+ *
+ * No-ops when the adjustment says nothing, so clicking a chip back off does not
+ * publish "11 = 11".
+ */
+function amendDamage(entry: RollEntry): void {
+  if (entry.total === undefined) return;
+  const adjust = adjustments.get(entry.id);
+  const what = describeAdjustment(entry.total, adjust);
+  const now = adjustedDamage(entry.total, adjust);
+  const last = log.latest(entry.id);
+  if ((last?.total ?? entry.total) === now) return;
+  publish({
+    ...(entry.character ? { character: entry.character } : {}),
+    label: what || 'adjustment cleared',
+    expression: entry.expression,
+    explained: `${entry.total} → **${now}**`,
+    total: now,
+    amends: entry.id,
+  });
 }
 
 /**
@@ -4304,6 +4393,8 @@ function rollFreeform(
   colour?: string,
   /** The rolling token, when there is one, so the damage table can show ranges. */
   from?: string,
+  /** Who it was declared against — see `RollEntry.target`. */
+  target?: string,
 ): string | undefined {
   const trimmed = expression.trim();
   if (!trimmed) return undefined;
@@ -4325,6 +4416,7 @@ function rollFreeform(
         ...(character ? { character } : {}),
         ...(ap ? { ap } : {}),
         ...(from ? { from } : {}),
+        ...(target ? { target } : {}),
       },
       dice,
       colour,

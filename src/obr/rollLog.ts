@@ -108,6 +108,25 @@ export interface RollEntry {
   /** The window that count was taken at — 1, or 2 for a weapon that sprays. */
   strayOn?: number;
   /**
+   * Who this roll was **declared against**, by name, before the dice were thrown.
+   *
+   * Its presence changes what the log line is allowed to do, and that is the
+   * whole point of it. A roll that named its target has already had the range,
+   * the cover and the target's own conditions folded into the number — so
+   * offering the targeting table beside it would re-apply all three to a total
+   * that already carried them. That is not hypothetical: the first build of the
+   * shot panel left the table in place, and a 15 that had already lost 2 to
+   * medium range was resolved as 11, turning two raises into one.
+   *
+   * So the table is for rolls that did *not* name a target — the skills list, a
+   * Fighting swing — where working out who it might have been is the useful
+   * thing. Here the answer is known and it goes in the line as text.
+   *
+   * A display name rather than a token id: the line is read by every client, and
+   * an id would need a lookup that a client without that token cannot do.
+   */
+  target?: string;
+  /**
    * The id of a roll this entry corrects.
    *
    * A shot's modifiers stay live after the dice land — the Marshal reads the
@@ -177,6 +196,7 @@ export function isRollEntry(value: unknown): value is RollEntry {
     (entry.label === undefined || typeof entry.label === 'string') &&
     (entry.from === undefined || typeof entry.from === 'string') &&
     (entry.amends === undefined || typeof entry.amends === 'string') &&
+    (entry.target === undefined || typeof entry.target === 'string') &&
     (entry.skill === undefined || typeof entry.skill === 'string') &&
     (entry.bands === undefined ||
       (Array.isArray(entry.bands) &&
