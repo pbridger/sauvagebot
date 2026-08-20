@@ -431,3 +431,36 @@ describe('telling buckshot from rapid fire', () => {
     expect(reachesExtreme(shotgun)).toBe(false);
   });
 });
+
+/**
+ * The number every other rule reads. Recoil and the stray window key off the
+ * shots actually fired, and that is the count of targets *declared*, not the
+ * weapon's Rate of Fire — "you can always roll less dice" (p147).
+ */
+describe('how many dice a shot throws', () => {
+  it('is one for a weapon that fires once', () => {
+    expect(Math.min(maxRateOfFire(peacemaker), 1)).toBe(1);
+    expect(recoilFor(1)).toBeUndefined();
+  });
+
+  it('is the number declared, not the number allowed', () => {
+    const allowed = maxRateOfFire(gatling);
+    expect(allowed).toBe(3);
+    // Two bandits named out of a possible three: two dice, and Recoil applies
+    // because more than one shot is in the air.
+    expect(recoilFor(2)?.value).toBe(RECOIL);
+    expect(straysAsFired(gatling, 2)).toBe(true);
+  });
+
+  /** One target named from a three-shot weapon is one shot, and costs nothing. */
+  it('leaves a single declared target firing once', () => {
+    expect(recoilFor(1)).toBeUndefined();
+    expect(straysAsFired(gatling, 1)).toBe(false);
+    expect(shotTotal({ rof: 1, aim: 'off', band: 'short' }).total).toBe(0);
+  });
+
+  it('prices the whole shot from the declared count', () => {
+    expect(shotTotal({ rof: 2, aim: 'off', band: 'short' }).total).toBe(RECOIL);
+    expect(shotTotal({ rof: 3, aim: 'off', band: 'medium' }).total).toBe(RECOIL - 2);
+  });
+});

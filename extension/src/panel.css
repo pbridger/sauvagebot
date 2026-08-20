@@ -333,7 +333,51 @@ button.shot-roll {
   font-weight: 700;
   color: var(--accent);
 }
+/* A target that has been named but not yet shot at. Quieter than the button that
+   will do the rolling, so the one live action on the panel stays obvious. */
+button.shot-roll.on {
+  background: var(--env);
+  border-color: var(--env);
+  color: #fff;
+  font-weight: 400;
+}
+table.shot-table tr.declared td.who { color: var(--env-ink); }
+
+/* One rolled shot, waiting to be given to somebody. The assignment happens after
+   the dice land, which is the rule (p147) and the honest version of the reveal
+   the old target table was doing badly. */
+.shot-picker { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 3px; }
+.shot-picker-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  margin-right: 2px;
+}
+button.shot-die {
+  min-width: 22px;
+  padding: 0 5px;
+  height: 18px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+button.shot-die.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  margin-right: 6px;
+}
 tr.shot-outcome td { padding-top: 3px; border-top: 1px solid var(--rule); }
+/* One line per shot given to this target. Usually one; two when the player put
+   two dice into the same walkin' dead, which is two attacks rather than one
+   bigger one — so each gets its own verdict, damage roll and Apply. */
+.shot-shot { display: block; margin-bottom: 2px; }
+.shot-shot + .shot-shot { padding-top: 3px; border-top: 1px dotted var(--rule); }
+.shot-rollnow { display: flex; justify-content: flex-end; margin-top: 5px; }
 /* While the dice are still in the air. The panel holds its verdict for exactly
    as long as the log holds its line — printing it here first would answer the
    question the animation is in the middle of asking. */

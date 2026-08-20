@@ -339,3 +339,33 @@ describe('a shot with no weapon behind it', () => {
     expect(outcome.hit).toBe(false);
   });
 });
+
+/**
+ * The shot panel resolves its own rolls. When a shot has several targets its
+ * modifiers cannot ride in the expression — one roll cannot carry two different
+ * range penalties — so the engine counts its raises off a total the range has not
+ * been taken out of, and says two raises where the panel says one.
+ */
+describe('whose verdict the line keeps', () => {
+  it('strips it from a Fighting roll, which is never against 4', () => {
+    expect(verdictIsMeaningless('Fighting')).toBe(true);
+  });
+
+  it('keeps it on an ordinary roll off the skills list', () => {
+    expect(verdictIsMeaningless('Shooting')).toBe(false);
+    expect(verdictIsMeaningless('Athletics')).toBe(false);
+    expect(verdictIsMeaningless('Notice')).toBe(false);
+  });
+
+  /** A roll that named its target had its verdict worked out somewhere better. */
+  it('strips it from any roll that named its target', () => {
+    expect(verdictIsMeaningless('Shooting', true)).toBe(true);
+    expect(verdictIsMeaningless('Athletics', true)).toBe(true);
+    expect(verdictIsMeaningless(undefined, true)).toBe(true);
+  });
+
+  it('leaves the wording alone when it is kept', () => {
+    const line = 's8+2: [6; w5] + 2 = **8** (success)';
+    expect(withoutFlatVerdict(line)).toBe('s8+2: [6; w5] + 2 = **8**');
+  });
+});

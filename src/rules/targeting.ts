@@ -269,17 +269,27 @@ export function showsParry(skill: string | undefined, cells: number | undefined)
 /**
  * Whether the engine's flat verdict on this roll is simply wrong.
  *
- * Only for Fighting. A Fighting roll is *always* against the target's Parry, so
- * "(success; 1 raise)" against 4 is meaningless and gets stripped.
+ * Two ways it can be.
  *
- * Not for Shooting, Throwing or Athletics, even though all three offer a
- * targeting table. There, 4 genuinely is the number to beat unless the shot is
- * into melee — so the verdict is right in the common case, and the table shows
- * the same 4 beside it. Stripping it would have been worse than leaving it: an
- * Athletics roll to climb a cliff is a plain roll against 4, and it would have
- * silently lost the only verdict it had.
+ * **Fighting**, always. A Fighting roll is resolved against the target's Parry,
+ * so "(success; 1 raise)" against 4 is meaningless and gets stripped.
+ *
+ * **Any roll that named its target**, because the shot panel resolves it. When a
+ * shot has several targets its modifiers cannot ride in the expression — one roll
+ * cannot carry two different range penalties — so the engine counts its raises
+ * off a total that has not had the range taken out of it yet. It says two raises
+ * where the panel says one, or a miss. That is the same disagreement Damian
+ * reported twice, arriving through a third route.
+ *
+ * Not for an ordinary Shooting, Throwing or Athletics roll off the skills list.
+ * There 4 genuinely is the number to beat unless the shot was into melee, so the
+ * verdict is right in the common case and the targeting table shows the same 4
+ * beside it. Stripping it would have been worse than leaving it: an Athletics
+ * roll to climb a cliff is a plain roll against 4, and it would have silently
+ * lost the only verdict it had.
  */
-export function verdictIsMeaningless(skill: string | undefined): boolean {
+export function verdictIsMeaningless(skill: string | undefined, named = false): boolean {
+  if (named) return true;
   return skill !== undefined && attackKind(skill) === 'parry';
 }
 
