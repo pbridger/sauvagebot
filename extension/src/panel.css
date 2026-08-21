@@ -1225,6 +1225,11 @@ button.kind {
   color: var(--muted);
 }
 button.kind:hover { color: var(--accent); border-color: var(--accent); }
+/* Parked — on the map, but not in this fight. Struck through rather than merely
+   dimmed: every button in this column is already grey, so "OUT" and "IN" would
+   read the same at a glance down a roster of forty. */
+button.kind.parked { text-decoration: line-through; opacity: .7; }
+table.roster tr.parked button.creature-name { opacity: .55; }
 .pane-block input[type='search'] {
   width: 100%;
   font: inherit;

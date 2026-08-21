@@ -121,6 +121,27 @@ export interface Sheet {
    */
   pc: boolean;
   /**
+   * Out of the fight entirely — not dealt an Action Card, not in anybody's
+   * initiative list, not offered as a target.
+   *
+   * For the Marshal who prepares one large map with five rooms on it. Every
+   * encounter is placed before the session starts, and without this a single
+   * "Deal round" deals forty cards, exhausts the deck twice over and buries the
+   * six people actually in the room.
+   *
+   * **Not the same as hidden**, and the two are deliberately separate controls:
+   * Owlbear's eye decides who the players can *see*, this decides who is in the
+   * fight at all. An invisible villain and a reinforcement waiting off-stage are
+   * both hidden and both very much in the fight — they hold cards and take
+   * turns, which is the whole reason the eye could not do this job on its own.
+   *
+   * Per sheet, so it is one click for a creature type rather than one per mook;
+   * the eye is the per-token half. Absent means in the fight, so the flag costs
+   * room storage only for the ones parked, and nothing changes for a table that
+   * never touches it.
+   */
+  parked?: boolean;
+  /**
    * What colour this character's animated dice are.
    *
    * On the sheet rather than on the player, because a character is the thing you

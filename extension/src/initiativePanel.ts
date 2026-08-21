@@ -112,6 +112,10 @@ export function combatants(
     const state = readBinding(token.metadata);
     const sheet = state && byId.get(state.sheetId);
     if (!state || !sheet) continue;
+    // Parked: prepped on the map for a room nobody has walked into. Out of the
+    // fight for everybody including the Marshal — this is not a screen, it is
+    // "these forty tokens are not in this encounter". See `Sheet.parked`.
+    if (sheet.parked) continue;
     out.push({
       tokenId: token.id,
       // What the table calls it, which is the map label when there is one.
@@ -149,7 +153,10 @@ export function renderInitiative(
   // Screened before anything counts them: the empty-list message, the "deal to
   // n combatants" title and the turn order all have to be built from the list
   // this client is allowed to know about, not from the full one.
-  const all = (hooks.showHidden ?? true) ? everyone : everyone.filter((c) => !c.hidden);
+  // Defaults to *not* showing them. `revealNpcs` two lines down defaults the same
+  // way, and for the same reason: a caller that forgets to pass this should leak
+  // nothing, and forgetting is the failure mode a default exists for.
+  const all = hooks.showHidden ? everyone : everyone.filter((c) => !c.hidden);
 
   const bar = document.createElement('div');
   bar.className = 'init-bar';
@@ -163,7 +170,7 @@ export function renderInitiative(
   // "Deal round", not "Deal": each row has its own Deal, and in the same pane the
   // bare word would not say whether it meant everyone or this one.
   deal.textContent = state?.round ? 'Deal next round' : 'Deal round';
-  const mayDeal = hooks.mayDeal ?? true;
+  const mayDeal = hooks.mayDeal ?? false;
   deal.disabled = !mayDeal || all.length === 0;
   deal.title = !mayDeal
     ? 'The Marshal deals'

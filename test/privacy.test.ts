@@ -144,6 +144,36 @@ describe('a combatant hidden on the map', () => {
     expect(list[0]?.tokenId).toBe('t1');
   });
 
+  /**
+   * Parked is the other axis, and the two do not do each other's job.
+   *
+   * Hidden is about being *seen*: an invisible villain and a reinforcement in
+   * the corridor are both hidden and both holding cards. Parked is about being
+   * in the fight at all — room five's bandits, placed at prep time, dealt
+   * nothing and shown to nobody including the Marshal.
+   */
+  it('is still dealt in when it is only hidden', () => {
+    expect(seen(false)).toHaveLength(2);
+  });
+
+  it('drops out of the fight entirely when its sheet is parked', () => {
+    const parked = { ...bandit, parked: true };
+    const list = combatants(
+      [
+        {
+          id: 't1',
+          name: 'Bandit',
+          label: 'Lefty',
+          layer: 'CHARACTER',
+          visible: true,
+          metadata: { [TOKEN_KEY]: newTokenState(parked.id) },
+        },
+      ],
+      [parked],
+    );
+    expect(list).toHaveLength(0);
+  });
+
   /** Both are on show, so both are in the list, told apart by their labels. */
   it('leaves a revealed encounter alone', () => {
     expect(seen(true).filter((c) => !c.hidden).map((c) => c.name)).toEqual(['Lefty', 'Curly']);

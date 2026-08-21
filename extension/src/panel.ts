@@ -864,7 +864,12 @@ async function candidateTargets(from: string | undefined): Promise<Candidate[]> 
     if (token.id === from) return false;
     if (!token.visible) return false;
     const state = readBinding(token.metadata);
-    return state !== undefined && sheets.some((sheet) => sheet.id === state.sheetId);
+    if (!state) return false;
+    // Not something parked for a later room — see `Sheet.parked`. It is on the
+    // map because the Marshal prepped the whole floor at once, not because it is
+    // standing in front of you.
+    const sheet = sheets.find((s) => s.id === state.sheetId);
+    return sheet !== undefined && !sheet.parked;
   });
 
   const origin = from ? tokens.find((token) => token.id === from) : undefined;
@@ -1888,6 +1893,13 @@ function rosterBlock(): HTMLElement {
     ['', 'Wild Card', false],
     ['Character', '', false],
     ['PC', "Whose character it is. An NPC stays out of the players' panels.", true],
+    [
+      'Scene',
+      'Whether this character is in the fight at all — parked ones are dealt no ' +
+        'Action Card and offered as nobody\u2019s target, however many of them are on ' +
+        'the map. Separate from Owlbear\u2019s eye, which decides who can be seen.',
+      true,
+    ],
     ['Bennies', 'What they hold now', true],
     ['', 'Hand one over', true],
   ] as [string, string, boolean][]) {
@@ -1905,6 +1917,7 @@ function rosterBlock(): HTMLElement {
   for (const sheet of ordered) {
     const row = document.createElement('tr');
     if (!sheet.pc) row.className = 'npc';
+    if (sheet.parked) row.classList.add('parked');
 
     // The star is the stat blocks' own notation for a Wild Card, which is where
     // the Marshal has already learned to read it.
@@ -1946,6 +1959,31 @@ function rosterBlock(): HTMLElement {
     });
     kindCell.append(kind);
     row.append(kindCell);
+
+    // The other half of "who is in this room". The eye on the map hides a token
+    // from the players; this takes a whole creature type out of the fight, which
+    // is what a floor with five prepped encounters on it needs. Deliberately not
+    // folded into one control: an invisible villain and a reinforcement waiting
+    // in the corridor are hidden *and* in the fight.
+    const sceneCell = document.createElement('td');
+    sceneCell.className = 'num';
+    const scene = document.createElement('button');
+    scene.className = sheet.parked ? 'kind parked' : 'kind';
+    scene.textContent = sheet.parked ? 'OUT' : 'IN';
+    scene.title = sheet.parked
+      ? `Bring ${sheet.name} into the fight — dealt a card, and a target`
+      : `Park ${sheet.name}: no Action Card, and out of every target list`;
+    scene.addEventListener('click', () => {
+      void (async () => {
+        // Stored only when parked, so the common case costs the room nothing.
+        const { parked: _was, ...rest } = sheet;
+        await roster.save(sheet.parked ? rest : { ...sheet, parked: true });
+        await reload();
+        renderSheetArea();
+      })();
+    });
+    sceneCell.append(scene);
+    row.append(sceneCell);
 
     const count = document.createElement('td');
     count.className = 'num';
@@ -4966,6 +5004,11 @@ async function applyToTarget(
     label: 'takes damage',
     expression: `${entry.total}`,
     explained: outcome.description,
+    // Local when the thing hit is hidden on the map. It cannot be shot at
+    // through the target list — that already screens the eye — but the Marshal
+    // can select one and apply by hand, and "Robed Figure takes damage" is the
+    // ambush introducing itself.
+    ...(target.token.visible === false ? { secret: true } : {}),
   });
 }
 

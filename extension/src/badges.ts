@@ -118,8 +118,11 @@ export async function renderBadges(
    * client from metadata every client can read — so a hidden ambusher's SHAKEN
    * badge would otherwise be painted onto a player's empty floor tile, pointing
    * at the thing the eye icon was hiding.
+   *
+   * Defaults to false. A caller that forgets to say leaves badges off a hidden
+   * token, which costs the Marshal a redraw; the other default costs the ambush.
    */
-  seesHidden = true,
+  seesHidden = false,
 ): Promise<void> {
   if (!(await OBR.scene.isReady())) return;
   await clearBadges();
