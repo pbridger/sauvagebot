@@ -80,10 +80,12 @@ die was still rolling. Both fixed.
   Gatling fired one shot at a time had been taking a penalty it should not and
   endangering bystanders on a 1–2 when one bullet was in the air.
 
-**Firing more than once.** A weapon with a Rate of Fire above 1 gets a **Shots**
-row. Name a target and the button says *Target*; name the last one it allows and
-it says *Roll*. Want to fire fewer — which the book lets you do — name fewer and
-press **Roll 2**.
+**Firing more than once.** A weapon with a Rate of Fire above 1 shows a row of
+**cartridges** on every target — one per shot the gun can throw. Click to give
+that target one, two, three; click the one you are on to take it back. The rows
+share a magazine, so a round spent on one man is drawn spent on everyone. Then
+press **Roll**. Fire fewer than the gun allows and it rolls fewer dice, which the
+book permits outright.
 
 After the dice land you **place them by hand**: each result is a button, and you
 give it to whichever target you like. That is the rule (p147) rather than a
@@ -94,6 +96,15 @@ damage roll and Apply.
 
 Rate of Fire is a ceiling, not a quantity, so a Gatling putting one bullet into
 one man takes no Recoil and endangers bystanders only on a 1.
+
+**Rock and Roll! works.** The Edge that ignores the Recoil penalty was doing
+nothing at all — Reggie has it and was paying the −2 anyway. A bipod or tripod
+written on the weapon does the same.
+
+**The panel stays open between shots.** A Multi-Action is roll, damage, apply,
+roll again, rather than closing and reopening the pane each time. Aim, the called
+shot, the dial, the load and each target's cover carry into the next shot; they
+are how you are shooting, not what you shot at.
 
 **Not yet.** Fighting still rolls straight off its button — a melee panel wants
 Gang Up and Wild Attack, which is separate work. Suppressive Fire is not here at
