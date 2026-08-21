@@ -395,6 +395,17 @@ tr.shot-outcome td { padding-top: 3px; border-top: 1px solid var(--rule); }
 .shot-shot { display: block; margin-bottom: 2px; }
 .shot-shot + .shot-shot { padding-top: 3px; border-top: 1px dotted var(--rule); }
 .shot-rollnow { display: flex; justify-content: flex-end; margin-top: 5px; }
+/* The bystander reminder. A pill rather than the log's bordered paragraph: this
+   panel is already dense with rows, and the rule it is quoting is four lines
+   long and a Marshal's call — so the chip says "look at this" and the tooltip
+   says what to look at. Coloured like a wound because that is what it is. */
+.shot-note { display: flex; margin-top: 5px; }
+.pill.stray {
+  border-color: var(--wound-ink);
+  color: var(--wound-ink);
+  background: color-mix(in srgb, var(--wound-ink) 10%, transparent);
+  cursor: help;
+}
 /* While the dice are still in the air. The panel holds its verdict for exactly
    as long as the log holds its line — printing it here first would answer the
    question the animation is in the middle of asking. */

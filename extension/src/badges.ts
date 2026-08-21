@@ -115,11 +115,16 @@ export async function renderBadges(
     const sheet = byId.get(state.sheetId);
     if (!sheet) continue;
 
-    // Three edges, three kinds of thing, each with a fixed home:
+    // Two edges, and the other two left clear:
     //
-    //   below   wounds and fatigue — what the character is carrying
     //   above   the initiative card — the thing you scan the map for in a fight
-    //   right   Shaken and the temporary conditions, stacked
+    //   left    wounds and fatigue, then Shaken, then the conditions, stacked
+    //
+    // Everything that is not the card is now in one column down the left. Below
+    // the token is deliberately empty: that is where Owlbear draws a token's own
+    // name label, and the table has started relying on those names — an NPC is
+    // referred to by what is written on the map, not by what is on the Marshal's
+    // sheet. A wound badge sitting on top of that name was the thing in the way.
     //
     // Wounds stay separate from Shaken, which is the original lesson here: one
     // badge for both meant a Shaken-but-unwounded character looked fine, and a
@@ -139,13 +144,6 @@ export async function renderBadges(
     const halfWidth = Math.min(token.width / 2, cap);
     const halfHeight = Math.min(token.height / 2, cap);
 
-    const damage = damageBadge(state, sheet);
-    if (damage) {
-      const colour = state.wounds > 0 ? WOUND_RED : FATIGUE_AMBER;
-      // A label grows upward from its position, so clearing the bottom edge
-      // takes the half-height plus a whole label.
-      items.push(badge(token, damage, colour, { x: 0, y: halfHeight + LABEL_HEIGHT }));
-    }
     if (state.card) {
       const joker = isJoker(state.card);
       items.push(
@@ -162,21 +160,29 @@ export async function renderBadges(
       );
     }
 
-    // The condition column, top-down beside the token. Shaken leads because it
-    // is the one that stops you acting; the rest keep their list order so the
-    // column does not reshuffle as they come and go.
+    // The status column, top-down beside the token. Damage leads, then Shaken,
+    // then the rest in their list order so the column does not reshuffle as they
+    // come and go.
+    //
+    // Damage at the head rather than mixed in: a wound is the one thing here that
+    // does not clear at the end of a turn, and it keeps its own colours so it
+    // still reads as "hurt" rather than as one more marker.
     //
     // Placed clear of the artwork by a fixed amount, because a label's rendered
     // width is not knowable here — enough for the widest of these ("SHAKEN" at
-    // five or six characters), which is why the badge texts are kept short.
+    // five or six characters), which is why the badge texts are kept short. The
+    // label is centred on its position, so the leftward push mirrors what the
+    // column used to have on the right.
+    const damage = damageBadge(state, sheet);
     const column = [
+      ...(damage ? [{ text: damage, colour: state.wounds > 0 ? WOUND_RED : FATIGUE_AMBER }] : []),
       ...(state.shaken ? [{ text: 'SHAKEN', colour: SHAKEN_YELLOW }] : []),
       ...conditionBadges(state).map((text) => ({ text, colour: STATUS_SLATE })),
     ];
     column.forEach(({ text, colour }, row) => {
       items.push(
         badge(token, text, colour, {
-          x: halfWidth + GAP * 14,
+          x: -(halfWidth + GAP * 14),
           // Grown downward from a little above the middle, so one or two markers
           // — the common case — sit level with the token rather than above it.
           y: LABEL_HEIGHT * 0.75 + row * (LABEL_HEIGHT + GAP),

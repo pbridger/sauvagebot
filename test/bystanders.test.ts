@@ -42,11 +42,7 @@ describe('which shots can go astray', () => {
     expect(strayShots([die(2)], STRAY_ON_SPRAY)).toBe(1);
   });
 
-  /**
-   * Counted rather than flagged. RoF is not implemented, so this is 0 or 1 today
-   * — but each die is its own stray shot, and the shape should not need changing
-   * when it is.
-   */
+  /** Counted rather than flagged: each die is its own stray shot. */
   it('counts each qualifying die', () => {
     expect(strayShots([die(1), die(1), die(5)], STRAY_ON_MISS)).toBe(2);
   });
@@ -68,6 +64,23 @@ describe('which shots can go astray', () => {
     expect(two.explained).toContain('[2; w2]');
     expect(strayShots(two.dice, STRAY_ON_MISS)).toBe(0);
     expect(strayShots(two.dice, STRAY_ON_SPRAY)).toBe(1);
+  });
+
+  /**
+   * Three trait dice, from the engine, through the real path.
+   *
+   * The point is the **roles**. `strayShots` filters `role === 'trait'`, and the
+   * whole count silently becomes zero if a multi-die trait roll were to come back
+   * as one `trait` plus two `plain` — which is exactly the RoF > 1 case the shot
+   * panel now depends on, and the case this function predates. Seed 5 rolls
+   * `3s8: [1; 2; 6; w3]`: one stray for a rifle, two for a scattergun.
+   */
+  it('counts every trait die of a multi-shot roll', () => {
+    const burst = rollTrait({ die: 8, mod: 0, wildCard: true, count: 3 }, new JavaRandom(5));
+    expect(burst.explained).toContain('[1; 2; 6; w3]');
+    expect(burst.dice.filter((d) => d.role === 'trait')).toHaveLength(3);
+    expect(strayShots(burst.dice, STRAY_ON_MISS)).toBe(1);
+    expect(strayShots(burst.dice, STRAY_ON_SPRAY)).toBe(2);
   });
 
   /** The modifier is not on the die: an untrained d4−2 strays on the face, not the total. */

@@ -3,6 +3,7 @@ import { displayName, type Combatant } from '../extension/src/initiativePanel.js
 import { emptySheet, sheetFromJson, sheetToJson, type Sheet } from '../src/rules/sheet.js';
 import { newTokenState } from '../src/obr/binding.js';
 import { PARRY_VISIBLE_CELLS, showsParry } from '../src/rules/targeting.js';
+import { wireName } from '../src/rules/naming.js';
 
 const combatant = (tokenName: string, sheet: Sheet): Combatant => ({
   tokenId: `t-${tokenName}`,
@@ -26,8 +27,20 @@ describe("one of the Marshal's characters", () => {
     expect(displayName(all[0]!, all, false)).toBe('Big Rock');
   });
 
-  it('shows the Marshal the real name', () => {
+  /**
+   * Both halves, and for every NPC rather than only for a gang sharing a sheet.
+   * The token name is the one a player will say out loud, so the Marshal has to
+   * be able to map "Big Rock" back to what it actually is without counting how
+   * many of them are on the map.
+   */
+  it('shows the Marshal the real name and the token it is on', () => {
     const all = [combatant('Big Rock', landshark)];
+    expect(displayName(all[0]!, all, true)).toBe('Landshark \u00b7 Big Rock');
+  });
+
+  /** Nothing to append when the Marshal never renamed the token. */
+  it('says it once when the token carries the sheet name already', () => {
+    const all = [combatant('Landshark', landshark)];
     expect(displayName(all[0]!, all, true)).toBe('Landshark');
   });
 
@@ -41,6 +54,20 @@ describe("one of the Marshal's characters", () => {
     const bandit = { ...emptySheet('bandit', 'Bandit'), wildCard: false };
     const all = [combatant('Bandit 1', bandit), combatant('Bandit 2', bandit)];
     expect(displayName(all[0]!, all, true)).toBe('Bandit · Bandit 1');
+  });
+
+  /**
+   * The rule that a name on the wire must not depend on who computed it.
+   *
+   * This is the one that went wrong: the shot panel joined its target names on
+   * the roller's client, with the roller's `isGM`, and put the result on a
+   * broadcast roll — so a Marshal shooting at a Landshark published the word
+   * "Landshark" into every player's log, pre-joined and unrecoverable.
+   */
+  it('never puts the sheet name of one of the Marshal\u2019s on the wire', () => {
+    expect(wireName(landshark, 'Big Rock')).toBe('Big Rock');
+    // The GM has no say. There is no argument here for them to have one with.
+    expect(wireName(reggie, 'Reggie Kane')).toBe('Reggie Kane');
   });
 
   it('survives export and re-import, so it moves rooms with the roster', () => {

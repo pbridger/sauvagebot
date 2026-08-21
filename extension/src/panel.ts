@@ -130,6 +130,7 @@ import {
   traitPenalty,
   type RollBreakdown,
 } from '../../src/rules/status.js';
+import { localName, wireName } from '../../src/rules/naming.js';
 import {
   MANUAL_RANGE,
   SITUATIONS,
@@ -907,7 +908,7 @@ async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
 
     const row: TargetRow = {
       tokenId: token.id,
-      name: sheet.pc || isGM ? sheet.name : token.name,
+      name: localName(sheet, token.name, isGM),
       pills: targetPills(state),
       ...(cells === undefined ? {} : { cells }),
       ...(band ? { band } : {}),
@@ -1446,6 +1447,8 @@ function renderSheetArea(): void {
     sheetEl.replaceChildren(
       renderInitiative(initiative, combatants(tokens, sheets), {
         revealNpcs: isGM,
+        // The deck is the Marshal's. See `InitiativeHooks.mayDeal`.
+        mayDeal: isGM,
         onDeal: () => void deal(),
         onClear: () => void endFight(),
         onSelect: (tokenId) => void takeTurn(tokenId),
@@ -3364,6 +3367,17 @@ interface ShotSession {
      */
     current: ShotMod[];
     total: number;
+    /**
+     * How many skill dice came up inside the stray window.
+     *
+     * Counted once, when the dice land, because the window is a fact about the
+     * shot as fired and the raw dice are not recoverable afterwards — `values`
+     * holds totals, and a baked shot has the range already subtracted into them.
+     * The Wild Die is excluded by `strayShots`; the rule never counts it.
+     */
+    stray: number;
+    /** 1, or 2 for a shot that sprays. See `straysAsFired`. */
+    strayOn: number;
   };
   /**
    * The damage roll for each *shot*, once there is one.
@@ -3881,6 +3895,12 @@ async function fillShotTargets(
   const table = document.createElement('table');
   table.className = 'shot-table';
 
+  // Gathered while the outcomes are drawn, for the bystander note below: the
+  // rule fires on a **miss**, and a shot nobody has been given yet may still
+  // become one.
+  let missed = false;
+  let pending = false;
+
   for (const { token, state, sheet: victim, cells } of shown) {
     const declared = (session.bullets.get(token.id) ?? 0) > 0;
     const cover = session.cover.get(token.id) ?? 0;
@@ -3903,7 +3923,7 @@ async function fillShotTargets(
     const name = document.createElement('td');
     name.className = 'who';
     // Same rule as the targeting table: an NPC's real name is the Marshal's.
-    name.textContent = victim.pc || isGM ? victim.name : token.name;
+    name.textContent = localName(victim, token.name, isGM);
     tr.append(name);
 
     const pills = document.createElement('td');
@@ -3922,18 +3942,18 @@ async function fillShotTargets(
     const range = document.createElement('td');
     range.className = 'num';
     if (cells === undefined) {
-      range.textContent = 'RNG —';
+      range.textContent = 'Dist —';
       range.title = from ? 'Not on this map' : 'No token on the map to shoot from';
     } else if (band === 'over') {
-      range.textContent = `RNG ${Math.round(cells)} — over`;
+      range.textContent = `Dist ${Math.round(cells)} — over`;
       range.title = reachesExtreme(weapon, session.slugs)
         ? 'Past four times long range — the shot cannot be taken (p146)'
         : 'Past long range, and this weapon may not be fired at Extreme Range (p146, p161)';
     } else {
       const penalty = band ? BAND_PENALTY[band] : 0;
       range.textContent = penalty
-        ? `RNG ${Math.round(cells)} (${penalty})`
-        : `RNG ${Math.round(cells)}`;
+        ? `Dist ${Math.round(cells)} (${penalty})`
+        : `Dist ${Math.round(cells)}`;
       range.title =
         `${cells.toFixed(1)} cells — ${band ?? 'unbanded'} range` +
         (band === 'extreme'
@@ -4122,6 +4142,7 @@ async function fillShotTargets(
             : 'miss';
         verdict.title = `${raw} … = ${resolved.effective} vs ${target}`;
         line.append(verdict);
+        if (!resolved.hit) missed = true;
 
         // The sum on the line rather than only in a tooltip. Correcting a
         // modifier after the roll is the panel's whole trick, and "did that
@@ -4166,6 +4187,7 @@ async function fillShotTargets(
       }
 
       if (mine.length < slots) {
+        pending = true;
         // `"Then roll that number of Shooting dice and assign them in whatever
         // order you like to the targets you declared"` (p147). The counts were
         // fixed before the dice; which result fills each slot is the player's,
@@ -4187,6 +4209,32 @@ async function fillShotTargets(
   // is where the measured candidates are, and `takeTheShot` needs them to freeze
   // each target's band.
   const rows: HTMLElement[] = [table];
+
+  // The bystander reminder, which used to live under the log's targeting table
+  // and went quiet when that table was replaced by this panel.
+  //
+  // Conditional on purpose, and not gated any harder than this. The book scopes
+  // it to a miss — *"When an attacker misses a Shooting or Athletics (throwing)
+  // roll"* (p158) — so a shot still to be placed counts, because it may yet be
+  // one. What is deliberately *not* attempted is saying which shot strayed: the
+  // raw dice cannot be recovered from `values` once modifiers are baked in, and
+  // the rule treats each die as its own stray anyway. It ends *"only use this
+  // rule when it's dramatically appropriate"*, which is the Marshal's, not ours.
+  if (session.rolled && session.rolled.stray > 0 && (missed || pending)) {
+    const bar = document.createElement('div');
+    bar.className = 'shot-note';
+    const note = document.createElement('span');
+    note.className = 'pill stray';
+    const count = session.rolled.stray;
+    note.textContent =
+      count === 1 ? 'Bystander?' : `Bystanders? \u00d7${count}`;
+    // The pill is the reminder; the rule itself is a paragraph and belongs on
+    // hover rather than across the panel.
+    note.title = strayWarning(count, session.rolled.strayOn).replace(/\*\*(.+?)\*\*/g, '$1');
+    bar.append(note);
+    rows.push(bar);
+  }
+
   // Once a round has been spoken for, and again after a shot has resolved — the
   // cartridges count and have no Roll state of their own, because with several
   // targets the last one clicked is not necessarily the one that should fire.
@@ -4331,7 +4379,7 @@ function takeTheShot(
   const names = named
     .map((id, i) => {
       const found = candidates.find((c) => c.token.id === id);
-      const who = found ? (found.sheet.pc || isGM ? found.sheet.name : found.token.name) : named[i]!;
+      const who = found ? wireName(found.sheet, found.token.name) : named[i]!;
       const count = session.bullets.get(id) ?? 1;
       return count > 1 ? `${who} ×${count}` : who;
     })
@@ -4368,6 +4416,8 @@ function takeTheShot(
     sheetTotal: sheetMods.total,
     current: modsForLine.mods,
     total: modsForLine.total,
+    stray: strayShots(result.dice ?? [], strayOn),
+    strayOn,
   };
   render();
 }
@@ -4384,6 +4434,8 @@ function emptyRolled(): NonNullable<ShotSession['rolled']> {
     sheetTotal: 0,
     current: [],
     total: 0,
+    stray: 0,
+    strayOn: STRAY_ON_MISS,
   };
 }
 
@@ -4532,7 +4584,7 @@ function shotDamageRow(
   // Just "Apply". The row it sits in is already headed by the target's name, and
   // spelling it out again ran the line off the end of the panel.
   apply.textContent = 'Apply';
-  const to = victim.sheet.pc || isGM ? victim.sheet.name : victim.token.name;
+  const to = localName(victim.sheet, victim.token.name, isGM);
   apply.title = `Apply ${describeAdjustment(entry.total, adjust) || entry.total} to ${to}`;
   apply.addEventListener('click', () => {
     void applyToTarget(entry, victim, adjustments.get(entry.id));

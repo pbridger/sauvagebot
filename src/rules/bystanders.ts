@@ -21,8 +21,9 @@
  *    The count travels with the roll; the targeting table decides whether to say
  *    anything.
  * 3. **Per die.** Each qualifying die is its own stray shot, which is why this
- *    counts rather than returning a boolean — RoF is not implemented today, so
- *    the count is always 0 or 1, and this will not need reshaping when it is not.
+ *    counts rather than returning a boolean. Written when RoF was not implemented
+ *    and the count could only be 0 or 1; a shot declared at RoF 3 now genuinely
+ *    puts three trait dice through here, each its own attack and its own stray.
  * 4. **Only when there is someone to hit, and only when it is dramatic.** The
  *    book says so outright, and it is a Marshal's judgement. Nothing here picks a
  *    victim or applies damage.

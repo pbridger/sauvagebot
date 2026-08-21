@@ -22,6 +22,7 @@ import {
 import type { Sheet } from '../../src/rules/sheet.js';
 import { readBinding, type TokenLike, type TokenState } from '../../src/obr/binding.js';
 import { describeStatus, isIncapacitated } from '../../src/rules/status.js';
+import { localName } from '../../src/rules/naming.js';
 
 export interface Combatant {
   tokenId: string;
@@ -59,6 +60,21 @@ export interface InitiativeHooks {
    * name on the Marshal's sheet.
    */
   revealNpcs?: boolean;
+  /**
+   * Whether this client may work the deck — deal a round, deal one combatant in,
+   * end the fight. The Marshal's, all three: a player dealing a round mid-fight
+   * would replace everybody's card, and there is no undo for that.
+   *
+   * Separate from `revealNpcs` although the same person holds both today. That
+   * one is about what a name says; this is about who may act. Folding them
+   * together would mean any future reason to reveal a name also handed out the
+   * deck.
+   *
+   * A screen rather than a lock, like everything else here — the initiative state
+   * lives in room metadata, which every client can write. It stops the accidental
+   * click, which is the failure that actually happens.
+   */
+  mayDeal?: boolean;
 }
 
 /** Everyone bound to a sheet in this scene, with whatever card they hold. */
@@ -114,14 +130,20 @@ export function renderInitiative(
   // "Deal round", not "Deal": each row has its own Deal, and in the same pane the
   // bare word would not say whether it meant everyone or this one.
   deal.textContent = state?.round ? 'Deal next round' : 'Deal round';
-  deal.disabled = all.length === 0;
-  deal.title = all.length ? `Deal to ${all.length} combatant(s)` : 'Bind some tokens first';
+  const mayDeal = hooks.mayDeal ?? true;
+  deal.disabled = !mayDeal || all.length === 0;
+  deal.title = !mayDeal
+    ? 'The Marshal deals'
+    : all.length
+      ? `Deal to ${all.length} combatant(s)`
+      : 'Bind some tokens first';
   deal.addEventListener('click', hooks.onDeal);
   bar.append(deal);
 
   const clear = document.createElement('button');
   clear.textContent = 'End fight';
-  clear.disabled = !state?.round;
+  clear.disabled = !mayDeal || !state?.round;
+  if (!mayDeal) clear.title = 'The Marshal ends the fight';
   clear.addEventListener('click', hooks.onClear);
   bar.append(clear);
   out.append(bar);
@@ -214,12 +236,14 @@ export function renderInitiative(
     const dealOne = document.createElement('button');
     dealOne.className = 'sheet-link';
     dealOne.textContent = 'Deal';
-    dealOne.disabled = !state?.round || outOfFight;
-    dealOne.title = !state?.round
-      ? 'Deal a round first'
-      : outOfFight
-        ? 'Out of the fight'
-        : `Deal ${displayName(combatant, all, hooks.revealNpcs ?? false)} a card, replacing any they hold`;
+    dealOne.disabled = !mayDeal || !state?.round || outOfFight;
+    dealOne.title = !mayDeal
+      ? 'The Marshal deals'
+      : !state?.round
+        ? 'Deal a round first'
+        : outOfFight
+          ? 'Out of the fight'
+          : `Deal ${displayName(combatant, all, hooks.revealNpcs ?? false)} a card, replacing any they hold`;
     dealOne.addEventListener('click', (event) => {
       event.stopPropagation();
       hooks.onReplace(combatant.tokenId);
@@ -250,21 +274,22 @@ export function renderInitiative(
  * The character's name, not the token's — a token called "Npc Linguist 4" tells
  * the GM nothing about who is acting.
  *
- * The exception is a gang of Extras sharing one sheet, where the sheet name is
- * identical for all of them and the token name is the only way to tell which
- * bandit is up. There, and only there, the token name is appended.
+ * For one of the Marshal's, the GM gets **both**: the sheet name says what the
+ * thing is, the token name says which one of them it is. That used to be shown
+ * only for a gang of Extras sharing one sheet, on the reasoning that the token
+ * name is redundant otherwise — but the token name is what a player will say out
+ * loud, so the Marshal has to be able to map it back for every NPC rather than
+ * only for the ones that come in threes.
+ *
+ * A player gets the token name alone. A PC is their sheet name to everybody:
+ * appending "Reggie Kane · Reggie" tells nobody anything.
  */
 export function displayName(
   combatant: Combatant,
-  all: readonly Combatant[],
+  _all: readonly Combatant[],
   revealNpcs = true,
 ): string {
-  // One of the Marshal's is named by its token, which everyone can already read
-  // off the map.
-  if (!combatant.sheet.pc && !revealNpcs) return combatant.name;
-  const shared = all.filter((other) => other.sheet.id === combatant.sheet.id).length > 1;
-  if (!shared || combatant.name === combatant.sheet.name) return combatant.sheet.name;
-  return `${combatant.sheet.name} · ${combatant.name}`;
+  return localName(combatant.sheet, combatant.name, revealNpcs);
 }
 
 /** Compact wound / fatigue / Shaken markers, matching the token badge colours. */
