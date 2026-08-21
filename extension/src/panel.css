@@ -289,7 +289,13 @@ table.weapons tr.shot-row > td { padding: 0 0 6px; }
   padding: 6px 7px 7px;
   border: 1px solid var(--rule);
   border-radius: 5px;
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  /* Exactly the log's surface, and deliberately: this is transient machinery for
+     making a roll, not part of the character. Sharing the colour says so without
+     a label — you are looking at the same kind of thing, moved next to the gun. */
+  background: color-mix(in srgb, #ffffff 55%, var(--paper));
+}
+@media (prefers-color-scheme: dark) {
+  .shot { background: color-mix(in srgb, #ffffff 7%, var(--paper)); }
 }
 .shot-controls { display: flex; flex-direction: column; gap: 3px; }
 .shot-choice { display: flex; align-items: center; gap: 4px; min-height: 19px; }
@@ -333,15 +339,26 @@ button.shot-roll {
   font-weight: 700;
   color: var(--accent);
 }
-/* A target with bullets spoken for but not yet fired. Quieter than the button
-   that will do the rolling, so the one live action on the panel stays obvious. */
-button.shot-roll.on {
-  background: var(--env);
-  border-color: var(--env);
-  color: #fff;
-  font-weight: 400;
-}
 table.shot-table tr.declared td.who { color: var(--env-ink); }
+
+/* One cartridge per point of Rate of Fire. The rows share a magazine: a round
+   spent on another target is drawn spent here too, so the belt reads as one
+   decision spread across the table rather than a counter per row. */
+.shot-belt { display: flex; gap: 1px; justify-content: flex-end; }
+button.shot-round {
+  padding: 1px 2px;
+  border: 0;
+  border-radius: 3px;
+  line-height: 0;
+  color: var(--muted);
+  opacity: .35;
+}
+button.shot-round.on { color: var(--accent); opacity: 1; }
+button.shot-round:disabled { opacity: .12; }
+button.shot-round:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  opacity: 1;
+}
 
 /* One rolled shot, waiting to be given to somebody. The assignment happens after
    the dice land, which is the rule (p147) and the honest version of the reveal

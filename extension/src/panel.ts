@@ -83,6 +83,7 @@ import {
   asRollMods,
   bakesModifiers,
   bulletsLeft as spareBullets,
+  negatesRecoil,
   calledShotDamage,
   describeAmendment,
   firesBuckshot,
@@ -3292,6 +3293,15 @@ interface ShotSession {
    * deleted rather than kept at 0, so it leaves that order too.
    */
   bullets: Map<string, number>;
+  /**
+   * Whether Recoil is cancelled outright for this shooter and this gun.
+   *
+   * `"Ignore the Recoil penalty when firing weapons with a RoF of 2 or higher"` —
+   * the Rock and Roll! Edge (p47), and the same for a bipod or tripod written on
+   * the weapon. Read once when the panel opens rather than on every render: it is
+   * a fact about the sheet and the gun, and neither changes mid-shot.
+   */
+  steady: boolean;
   /** Set once the dice have been thrown, and never unset except by a new shot. */
   rolled?: {
     entryId: string;
@@ -3396,6 +3406,10 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
           dial: 0,
           cover: new Map(),
           rof: maxRateOfFire(weapon),
+          steady: negatesRecoil(
+            sheet.edges.map((edge) => edge.name),
+            weapon.notes,
+          ),
           bullets: new Map(),
           damageIds: new Map(),
         };
@@ -3429,6 +3443,53 @@ function shotAgainst(
     total: shot.total + (gun?.value ?? 0),
     band,
   };
+}
+
+/**
+ * A cartridge, for the per-target shot count.
+ *
+ * Drawn rather than spelled, because "2 bullets" in a table cell is three times
+ * the width of the thing it describes and the row is already carrying a name, a
+ * range and five cover chips. `currentColor` throughout, so a spent round and an
+ * unspent one differ only by the colour the button gives it.
+ */
+function cartridge(): SVGSVGElement {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 8 18');
+  svg.setAttribute('width', '7');
+  svg.setAttribute('height', '15');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  // Pointed nose, straight case, a rim at the base — a cartridge rather than a
+  // bullet, since what is being counted is what goes into the gun.
+  path.setAttribute('d', 'M4 0.5 C6 3 6.8 5 6.8 7 L6.8 12 L1.2 12 L1.2 7 C1.2 5 2 3 4 0.5 Z');
+  path.setAttribute('fill', 'currentColor');
+  const rim = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rim.setAttribute('x', '0.6');
+  rim.setAttribute('y', '12.4');
+  rim.setAttribute('width', '6.8');
+  rim.setAttribute('height', '4.6');
+  rim.setAttribute('rx', '1');
+  rim.setAttribute('fill', 'currentColor');
+  svg.append(path, rim);
+  return svg;
+}
+
+/**
+ * Put the panel back to before the dice, keeping how the shot is being taken.
+ *
+ * A turn is often two shots — a Multi-Action, or simply the next round — and
+ * closing the panel and reopening it to fire again is clumsy and loses the cover
+ * and the dial along with the spent shot. So the declaration controls stay live
+ * after a shot resolves, and touching one starts the next.
+ *
+ * Aim, the called shot, the dial, the load and the per-target cover all survive.
+ * They are how this character is shooting, not what they shot at.
+ */
+function nextShot(session: ShotSession): void {
+  delete session.rolled;
+  session.bullets = new Map();
+  session.damageIds = new Map();
 }
 
 /** A small labelled row of mutually exclusive buttons. */
@@ -3474,6 +3535,10 @@ function shotMods(session: ShotSession, band: Band | undefined, tokenId?: string
     cover: tokenId ? session.cover.get(tokenId) : 0,
     scoped: session.scoped,
     dial: session.dial,
+    // Rock and Roll!, a bipod or a tripod. This was the last wire left unjoined:
+    // `negatesRecoil` was written and tested and nothing ever called it, so
+    // Reggie — who has the Edge — was paying the −2 the Edge exists to remove.
+    steady: session.steady,
   });
 }
 
@@ -3787,20 +3852,17 @@ async function fillShotTargets(
   const candidates = await candidateTargets(from);
   if (!holder.isConnected) return;
 
-  // Once the dice are thrown the list is the declared targets, in the order they
-  // were named. Everyone else stops being a candidate the moment the trigger is
-  // pulled, and leaving them on screen would put back exactly the row of
-  // alternative outcomes this panel replaced.
-  const shown = session.rolled
-    ? [...session.bullets.keys()]
-        .map((id) => candidates.find((c) => c.token.id === id))
-        .filter((c): c is NonNullable<typeof c> => c !== undefined)
-    : [...candidates].sort((a, b) => (a.cells ?? Infinity) - (b.cells ?? Infinity));
+  // Everyone stays on the list, before the roll and after it. A turn is often two
+  // shots, and closing the panel to fire again is clumsy — so the declaration
+  // controls stay live and the next shot starts from the same place.
+  //
+  // What does *not* come back is the row of alternative outcomes this panel was
+  // built to replace: an outcome is drawn only under a target the current shot
+  // actually gave a die to.
+  const shown = [...candidates].sort((a, b) => (a.cells ?? Infinity) - (b.cells ?? Infinity));
 
   if (!shown.length) {
-    holder.textContent = session.rolled
-      ? 'The declared target has left the map.'
-      : 'Nothing bound and visible to aim at.';
+    holder.textContent = 'Nothing bound and visible to aim at.';
     return;
   }
 
@@ -3894,8 +3956,9 @@ async function fillShotTargets(
 
     const action = document.createElement('td');
     action.className = 'num';
-    if (!session.rolled) {
+    {
       const mine = session.bullets.get(token.id) ?? 0;
+      const spare = bulletsLeft(session);
       const sum = sheetMods.total + total;
       const priced =
         `${session.skill}${sum ? ` ${formatMod(sum)}` : ''} at ${name.textContent}` +
@@ -3903,48 +3966,57 @@ async function fillShotTargets(
           ? ` — ${mods.map((m) => `${m.label} ${formatMod(m.value)}`).join(', ')}`
           : '');
 
-      const spare = bulletsLeft(session);
-      const button = document.createElement('button');
-      button.className = mine ? 'shot-roll on' : 'shot-roll';
-      // Nothing to offer a target with no bullets when there are none left to
-      // give: the cycle would wrap straight back to zero and the click would do
-      // nothing at all, which reads as a broken button rather than a full one.
-      button.disabled = band === 'over' || (session.rof > 1 && mine === 0 && spare === 0);
-
       if (session.rof === 1) {
         // A revolver has nothing to count. One click names the target and fires,
         // which is what it did before any of this and what it should keep doing.
-        button.textContent = 'Roll';
-        button.title = band === 'over' ? 'Out of range' : `Roll ${priced}`;
-        button.addEventListener('click', () => {
+        const roll = document.createElement('button');
+        roll.className = 'shot-roll';
+        roll.textContent = 'Roll';
+        roll.disabled = band === 'over';
+        roll.title = band === 'over' ? 'Out of range' : `Roll ${priced}`;
+        roll.addEventListener('click', () => {
+          nextShot(session);
           session.bullets = new Map([[token.id, 1]]);
           takeTheShot(sheet, weapon, sheetMods, session, candidates);
         });
+        action.append(roll);
       } else {
-        // `"you might put 2 dice into one walkin' dead and a third into another"`
-        // (p147). So this counts rather than toggling: each click spends another
-        // bullet on this target, and the click after the last one available puts
-        // them all back. There is no "Roll" state on it — with several targets
-        // the last click is not necessarily the one that should fire, so rolling
-        // is its own button below.
-        button.textContent =
-          mine === 0 ? 'Assign' : `${mine} bullet${mine === 1 ? '' : 's'}`;
-        button.title =
-          band === 'over'
-            ? 'Out of range'
-            : mine === 0
-              ? `Put a bullet into ${name.textContent} — ${priced}`
-              : spare > 0
-                ? `${mine} of ${session.rof}. Click for another; ${spare} left to spend.`
-                : `${mine} of ${session.rof}, and all of them spoken for. Click to put them back.`;
-        button.addEventListener('click', () => {
-          const next = spare > 0 ? mine + 1 : 0;
-          if (next === 0) session.bullets.delete(token.id);
-          else session.bullets.set(token.id, next);
-          render();
-        });
+        // One cartridge per point of Rate of Fire, filled up to what this target
+        // has been given. `"you might put 2 dice into one walkin' dead and a
+        // third into another"` (p147) — so the rows share one magazine, and a
+        // round already spent elsewhere is drawn spent here.
+        const belt = document.createElement('div');
+        belt.className = 'shot-belt';
+        for (let n = 1; n <= session.rof; n++) {
+          const round = document.createElement('button');
+          const loaded = n <= mine;
+          // Beyond this target's own rounds plus what is left in the magazine.
+          const reachable = n <= mine + spare;
+          round.className = loaded ? 'shot-round on' : 'shot-round';
+          round.disabled = band === 'over' || !reachable;
+          round.append(cartridge());
+          round.title =
+            band === 'over'
+              ? 'Out of range'
+              : !reachable
+                ? `Only ${session.rof} shot${session.rof === 1 ? '' : 's'}, and the rest are spoken for`
+                : loaded && n === mine
+                  ? `${mine} into ${name.textContent}. Click to take this one back.`
+                  : `Put ${n} shot${n === 1 ? '' : 's'} into ${name.textContent} — ${priced}`;
+          round.addEventListener('click', () => {
+            // Clicking the round you are already on steps back, so a count can be
+            // wound down without hunting for a separate control — the same
+            // grammar as the wound and fatigue pips.
+            const next = mine === n ? n - 1 : n;
+            if (session.rolled) nextShot(session);
+            if (next <= 0) session.bullets.delete(token.id);
+            else session.bullets.set(token.id, next);
+            render();
+          });
+          belt.append(round);
+        }
+        action.append(belt);
       }
-      action.append(button);
     }
     tr.append(action);
     table.append(tr);
@@ -4084,10 +4156,10 @@ async function fillShotTargets(
   // is where the measured candidates are, and `takeTheShot` needs them to freeze
   // each target's band.
   const rows: HTMLElement[] = [table];
-  // Always, once a bullet has been spoken for — the per-target control counts and
-  // has no Roll state of its own, because with several targets the last click is
-  // not necessarily the one that should fire.
-  if (!session.rolled && session.rof > 1 && session.bullets.size >= 1) {
+  // Once a round has been spoken for, and again after a shot has resolved — the
+  // cartridges count and have no Roll state of their own, because with several
+  // targets the last one clicked is not necessarily the one that should fire.
+  if (session.rof > 1 && session.bullets.size >= 1) {
     const bar = document.createElement('div');
     bar.className = 'shot-rollnow';
     const go = document.createElement('button');

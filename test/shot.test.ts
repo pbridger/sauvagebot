@@ -515,3 +515,48 @@ describe('whether the modifiers ride in the roll', () => {
     expect(bakesModifiers(3, bullets())).toBe(false);
   });
 });
+
+/**
+ * `"Ignore the Recoil penalty when firing weapons with a RoF of 2 or higher"` —
+ * the Rock and Roll! Edge, p47. Reggie has it, and was paying the −2 anyway:
+ * `negatesRecoil` was written and tested and nothing ever called it.
+ */
+describe('an Edge that cancels Recoil', () => {
+  it('takes the penalty off a burst', () => {
+    const without = shotTotal({ rof: 3, aim: 'off', band: 'short' });
+    const with_ = shotTotal({ rof: 3, aim: 'off', band: 'short', steady: true });
+    expect(without.total).toBe(RECOIL);
+    expect(with_.total).toBe(0);
+  });
+
+  it('leaves everything else on the shot alone', () => {
+    const shot = shotTotal({ rof: 3, aim: 'off', band: 'long', cover: -2, steady: true });
+    expect(shot.total).toBe(-6);
+    expect(shot.mods.map((m) => m.key)).not.toContain('recoil');
+  });
+
+  /** Nothing to cancel on a single shot, so the Edge changes nothing. */
+  it('is worth nothing when only one shot is fired', () => {
+    expect(shotTotal({ rof: 1, aim: 'off', band: 'short', steady: true }).total).toBe(0);
+    expect(shotTotal({ rof: 1, aim: 'off', band: 'short' }).total).toBe(0);
+  });
+
+  it('is read off the sheet and off the gun', () => {
+    expect(negatesRecoil(['Rock and Roll!', 'Steady Hands'])).toBe(true);
+    expect(negatesRecoil(['Steady Hands'])).toBe(false);
+    expect(negatesRecoil(['Steady Hands'], 'Mounted on a bipod')).toBe(true);
+  });
+});
+
+/** The character it was reported against, read off his own card. */
+describe('Reggie', () => {
+  it('has the Edge that cancels Recoil', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const { parseArchetypeCards } = await import('../src/rules/importArchetypeCard.js');
+    const reggie = parseArchetypeCards(
+      readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
+    )[0]!;
+    expect(negatesRecoil(reggie.edges.map((edge) => edge.name))).toBe(true);
+  });
+});
