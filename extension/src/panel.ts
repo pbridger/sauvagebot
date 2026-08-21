@@ -681,7 +681,11 @@ function renderLog(): void {
         row.className = 'amendment';
         const arrow = document.createElement('span');
         arrow.className = 'amendment-total';
-        arrow.textContent = `\u2192 ${amendment.total ?? ''}`;
+        // A correction to a shot at several targets has no single new total to
+        // print — its values are raw and the panel applies each target's own
+        // modifiers to its own shot. A bare arrow pointing at nothing read as a
+        // correction that had failed.
+        arrow.textContent = amendment.total === undefined ? '\u00b7' : `\u2192 ${amendment.total}`;
         row.append(arrow);
         const why = document.createElement('span');
         why.className = 'amendment-why';
@@ -3576,14 +3580,22 @@ function amendShot(
   const one = rolled.baked && rolled.values.length === 1 ? rolled.values[0] : undefined;
   const after = one === undefined ? undefined : one - rolled.total + modTotal;
   void sheetTotal;
+  // A shot at one target has one total, and the correction can say what it became.
+  //
+  // A shot at several does not, and must not pretend to. Its rolled values are
+  // raw — the per-target modifiers were never inside them — so there is no sum to
+  // rewrite here; what changed is the modifier the panel then applies to each
+  // shot. Saying so is honest and still visibly *something*, which is the
+  // complaint: a correction that printed nothing looked like a correction that
+  // did nothing.
   publish({
     ...named(sheet),
     label: what,
     expression: rolled.expression,
     explained:
-      one === undefined || after === undefined
-        ? `${what} — after the roll`
-        : `${one} → **${after}**`,
+      one !== undefined && after !== undefined
+        ? `${one} → **${after}**`
+        : `on each shot: ${formatMod(rolled.total) || '0'} → **${formatMod(modTotal) || '0'}**`,
     ...(after === undefined ? {} : { total: after }),
     amends: rolled.entryId,
     ...(mods.length ? { mods: asRollMods(mods) } : {}),
@@ -3910,16 +3922,18 @@ async function fillShotTargets(
     const range = document.createElement('td');
     range.className = 'num';
     if (cells === undefined) {
-      range.textContent = '—';
+      range.textContent = 'RNG —';
       range.title = from ? 'Not on this map' : 'No token on the map to shoot from';
     } else if (band === 'over') {
-      range.textContent = `${Math.round(cells)} — over`;
+      range.textContent = `RNG ${Math.round(cells)} — over`;
       range.title = reachesExtreme(weapon, session.slugs)
         ? 'Past four times long range — the shot cannot be taken (p146)'
         : 'Past long range, and this weapon may not be fired at Extreme Range (p146, p161)';
     } else {
       const penalty = band ? BAND_PENALTY[band] : 0;
-      range.textContent = penalty ? `${Math.round(cells)} (${penalty})` : String(Math.round(cells));
+      range.textContent = penalty
+        ? `RNG ${Math.round(cells)} (${penalty})`
+        : `RNG ${Math.round(cells)}`;
       range.title =
         `${cells.toFixed(1)} cells — ${band ?? 'unbanded'} range` +
         (band === 'extreme'
@@ -4023,7 +4037,11 @@ async function fillShotTargets(
 
     // --- what happened ----------------------------------------------------
 
-    if (session.rolled) {
+    // Only a target this shot was actually declared against. The list shows
+    // everyone so the next shot can be lined up without closing the panel — but
+    // an outcome under a target nobody fired at is nonsense, and the dice picker
+    // under one would let a result be given to somebody who was never declared.
+    if (session.rolled && session.bullets.has(token.id)) {
       const outcome = document.createElement('tr');
       outcome.className = 'shot-outcome';
       const cell = document.createElement('td');
@@ -4102,11 +4120,24 @@ async function fillShotTargets(
               ? `hit, ${resolved.raises} raise${resolved.raises === 1 ? '' : 's'}`
               : 'hit'
             : 'miss';
-        verdict.title =
-          `${raw}` +
-          (session.rolled.baked || !against.total ? '' : ` ${formatMod(against.total)}`) +
-          ` = ${resolved.effective} vs ${target}`;
+        verdict.title = `${raw} … = ${resolved.effective} vs ${target}`;
         line.append(verdict);
+
+        // The sum on the line rather than only in a tooltip. Correcting a
+        // modifier after the roll is the panel's whole trick, and "did that
+        // actually change anything" should be answerable by looking rather than
+        // by hovering — which is how it was reported.
+        const working = document.createElement('span');
+        working.className = 'shot-working';
+        const parts = [
+          String(raw),
+          ...(session.rolled.baked
+            ? []
+            : against.mods.map((m) => `${formatMod(m.value)} ${m.label.toLowerCase()}`)),
+          ...(targetTotal(state) ? [`${formatMod(targetTotal(state))} target`] : []),
+        ];
+        working.textContent = `${parts.join(' ')} = ${resolved.effective} vs ${target}`;
+        line.append(working);
 
         if (showsParry(session.skill, cells)) {
           const p = document.createElement('span');
@@ -4205,7 +4236,10 @@ function dicePicker(
 
   const label = document.createElement('span');
   label.className = 'shot-picker-label';
-  label.textContent = slots > 1 ? `Give it ${slots}` : 'Give it';
+  // Spelled as an instruction. This is the step that gates damage — no shot
+  // assigned means no verdict and no damage button — and "Give it" read as a
+  // caption rather than as the thing you have to do next.
+  label.textContent = slots > 1 ? `Give this target ${slots} shots:` : 'Give this target a shot:';
   wrap.append(label);
 
   for (const [index, value] of rolled.values.entries()) {
