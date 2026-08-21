@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { displayName, type Combatant } from '../extension/src/initiativePanel.js';
+import { combatants, displayName, type Combatant } from '../extension/src/initiativePanel.js';
 import { emptySheet, sheetFromJson, sheetToJson, type Sheet } from '../src/rules/sheet.js';
-import { newTokenState } from '../src/obr/binding.js';
+import { newTokenState, TOKEN_KEY } from '../src/obr/binding.js';
 import { PARRY_VISIBLE_CELLS, showsParry } from '../src/rules/targeting.js';
 import { localName, mapName, wireName } from '../src/rules/naming.js';
 
@@ -101,6 +101,52 @@ describe("one of the Marshal's characters", () => {
   it('survives export and re-import, so it moves rooms with the roster', () => {
     expect(sheetFromJson(sheetToJson(landshark)).pc).toBe(false);
     expect(sheetFromJson(sheetToJson(reggie)).pc).toBe(true);
+  });
+});
+
+/**
+ * The Marshal running five rooms on one map.
+ *
+ * Every encounter is placed before the session starts, so the initiative list
+ * is the obvious place for the next two rooms to announce themselves. Hidden is
+ * Owlbear's own per-token eye, and per token is the granularity the problem has
+ * — room one's bandits and room two's share a sheet.
+ */
+describe('a combatant hidden on the map', () => {
+  const bandit = { ...emptySheet('bandit', 'Bandit'), wildCard: false };
+  const seen = (visible: boolean): Combatant[] =>
+    combatants(
+      [
+        { id: 't1', label: 'Lefty', visible: true },
+        { id: 't2', label: 'Curly', visible },
+      ].map((token) => ({
+        ...token,
+        name: 'Bandit',
+        layer: 'CHARACTER',
+        metadata: { [TOKEN_KEY]: newTokenState(bandit.id) },
+      })),
+      [bandit],
+    );
+
+  it('is marked hidden, and only when it is', () => {
+    const [shown, ambush] = seen(false);
+    expect(shown?.hidden).toBeUndefined();
+    expect(ambush?.hidden).toBe(true);
+  });
+
+  /**
+   * Absent from a player's list rather than dimmed in it. A greyed row reading
+   * "something is here" is the leak, not the cure.
+   */
+  it('is absent from a list built without hidden combatants', () => {
+    const list = seen(false).filter((c) => !c.hidden);
+    expect(list).toHaveLength(1);
+    expect(list[0]?.tokenId).toBe('t1');
+  });
+
+  /** Both are on show, so both are in the list, told apart by their labels. */
+  it('leaves a revealed encounter alone', () => {
+    expect(seen(true).filter((c) => !c.hidden).map((c) => c.name)).toEqual(['Lefty', 'Curly']);
   });
 });
 

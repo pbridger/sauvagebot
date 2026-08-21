@@ -925,6 +925,21 @@ ol.initiative .chip.out { background: #444; }
 ol.initiative li.acted { opacity: .45; }
 ol.initiative li.acted .who { text-decoration: line-through; }
 ol.initiative li.out .who { font-style: italic; }
+/* Hidden on the map, and so only ever on the Marshal's screen: a player's list
+   does not contain the row at all. Dimmed rather than struck through, because
+   the row is live — it holds a card and takes its turn — it is just not
+   something the table knows about yet. */
+ol.initiative li.hidden-token { opacity: .6; }
+.pill.hidden-mark {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-color: var(--marker);
+  color: var(--marker);
+  letter-spacing: .04em;
+}
+@media (prefers-color-scheme: dark) {
+  .pill.hidden-mark { border-color: var(--muted); color: var(--muted); }
+}
 
 button.sheet-link {
   padding: 0 6px;

@@ -60,6 +60,8 @@ const GAP = 4;
 const ROW_PITCH = 1.15;
 
 interface Token extends TokenLike {
+  /** Owlbear's own eye. Absent is treated as shown. */
+  visible?: boolean;
   /** The artwork's centre, which is not necessarily the item's `position`. */
   centre: { x: number; y: number };
   /** Rendered size in scene units. */
@@ -109,6 +111,15 @@ function badge(
 export async function renderBadges(
   tokens: readonly Token[],
   sheets: readonly Sheet[],
+  /**
+   * Whether this client may draw on a token that is hidden on the map.
+   *
+   * It has to be asked. These are **local** items, built independently by every
+   * client from metadata every client can read — so a hidden ambusher's SHAKEN
+   * badge would otherwise be painted onto a player's empty floor tile, pointing
+   * at the thing the eye icon was hiding.
+   */
+  seesHidden = true,
 ): Promise<void> {
   if (!(await OBR.scene.isReady())) return;
   await clearBadges();
@@ -118,6 +129,7 @@ export async function renderBadges(
   const items: Item[] = [];
 
   for (const token of tokens) {
+    if (token.visible === false && !seesHidden) continue;
     const state = readBinding(token.metadata);
     if (!state) continue;
     const sheet = byId.get(state.sheetId);

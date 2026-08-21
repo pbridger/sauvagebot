@@ -32,6 +32,17 @@ export interface Combatant {
   card?: Card;
   /** The token's artwork, so a row is recognisable at a glance. */
   imageUrl?: string;
+  /**
+   * Hidden on the map — Owlbear's own eye, which the Marshal sees through and a
+   * player does not.
+   *
+   * The Marshal prepping one large map with five rooms on it has every encounter
+   * placed at once, and a player must not learn from the initiative list what is
+   * waiting two doors down. Per **token** rather than per sheet, because that is
+   * the granularity the problem has: room one's bandits and room two's share a
+   * sheet and must not share a fate.
+   */
+  hidden?: boolean;
 }
 
 export interface InitiativeHooks {
@@ -75,11 +86,24 @@ export interface InitiativeHooks {
    * click, which is the failure that actually happens.
    */
   mayDeal?: boolean;
+  /**
+   * Whether combatants hidden on the map belong in this list at all.
+   *
+   * The Marshal's, and a third flag rather than a reuse of the other two on
+   * purpose: `revealNpcs` is about what a name says and `mayDeal` about who may
+   * act, and this is about what exists. They happen to be the same person today,
+   * and folding them together would mean any future reason to grant one handed
+   * over the others.
+   *
+   * For a player a hidden combatant is not dimmed or redacted — it is absent.
+   * A greyed row saying "something is here" is the leak, not the cure.
+   */
+  showHidden?: boolean;
 }
 
 /** Everyone bound to a sheet in this scene, with whatever card they hold. */
 export function combatants(
-  tokens: readonly (TokenLike & { imageUrl?: string })[],
+  tokens: readonly (TokenLike & { imageUrl?: string; visible?: boolean })[],
   sheets: readonly Sheet[],
 ): Combatant[] {
   const byId = new Map(sheets.map((sheet) => [sheet.id, sheet]));
@@ -96,6 +120,9 @@ export function combatants(
       state,
       ...(state.card ? { card: state.card } : {}),
       ...(token.imageUrl ? { imageUrl: token.imageUrl } : {}),
+      // Absent rather than false when the token is on show, so `hidden` reads as
+      // the exception it is.
+      ...(token.visible === false ? { hidden: true } : {}),
     });
   }
   return out;
@@ -113,11 +140,16 @@ function edgeSummary(sheet: Sheet): string {
 
 export function renderInitiative(
   state: InitiativeState | undefined,
-  all: readonly Combatant[],
+  everyone: readonly Combatant[],
   hooks: InitiativeHooks,
   lastDraws?: ReadonlyMap<string, Draw>,
 ): DocumentFragment {
   const out = document.createDocumentFragment();
+
+  // Screened before anything counts them: the empty-list message, the "deal to
+  // n combatants" title and the turn order all have to be built from the list
+  // this client is allowed to know about, not from the full one.
+  const all = (hooks.showHidden ?? true) ? everyone : everyone.filter((c) => !c.hidden);
 
   const bar = document.createElement('div');
   bar.className = 'init-bar';
@@ -180,6 +212,7 @@ export function renderInitiative(
     if (hooks.acted?.has(combatant.tokenId)) row.classList.add('acted');
     if (combatant.card && isJoker(combatant.card)) row.classList.add('joker');
     if (outOfFight) row.classList.add('out');
+    if (combatant.hidden) row.classList.add('hidden-token');
 
     if (combatant.imageUrl) {
       const thumb = document.createElement('img');
@@ -203,6 +236,17 @@ export function renderInitiative(
     name.className = 'who';
     name.textContent = displayName(combatant, all, hooks.revealNpcs ?? false);
     row.append(name);
+
+    // Only the Marshal ever sees one of these, by construction — a player's list
+    // does not contain the row. It says why the row is dim, so "did I forget to
+    // reveal that one" is answerable from here rather than from the map.
+    if (combatant.hidden) {
+      const mark = document.createElement('span');
+      mark.className = 'pill hidden-mark';
+      mark.textContent = 'HIDDEN';
+      mark.title = 'Hidden on the map, so it is not in the players\u2019 list at all';
+      row.append(mark);
+    }
 
     // Same colours as the token badges and the sheet pips: one scheme throughout.
     const status = statusChips(combatant);

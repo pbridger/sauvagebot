@@ -1450,6 +1450,8 @@ function renderSheetArea(): void {
         revealNpcs: isGM,
         // The deck is the Marshal's. See `InitiativeHooks.mayDeal`.
         mayDeal: isGM,
+        // And so is the half of the map nobody has walked into yet.
+        showHidden: isGM,
         onDeal: () => void deal(),
         onClear: () => void endFight(),
         onSelect: (tokenId) => void takeTurn(tokenId),
@@ -1512,6 +1514,11 @@ async function deal(): Promise<void> {
   lastDraws = result.draws;
 
   const dealt = [...result.draws]
+    // A hidden combatant is not in the players' initiative list, so it must not
+    // arrive in their log either — "Something ♠K" is the ambush announcing
+    // itself. The Marshal has the whole order on the initiative tab, which is
+    // where they are reading it from anyway; this line is the table's copy.
+    .filter(([id]) => !table.find((c) => c.tokenId === id)?.hidden)
     .map(([id, draw]) => {
       // The character's name, as everywhere else — a token called
       // "Npc Linguist 4" says nothing about who just drew a king.
@@ -2842,6 +2849,11 @@ async function replaceCard(tokenId: string): Promise<void> {
   // be identifiable in the log. The published line is named for everyone, so a
   // private character shows as its token whoever pressed the button.
   const who = displayName(combatant, table, false);
+  // Nothing for a token the players cannot see. See the deal, above.
+  if (combatant.hidden) {
+    await refreshTokens();
+    return;
+  }
   publish({
     label: 'draws a new Action Card',
     expression: 'initiative',
@@ -2964,7 +2976,7 @@ function updateBindButton(): void {
 async function refreshTokens(): Promise<void> {
   tokens = await characterTokens();
   renderSheetArea();
-  await renderBadges(tokens, sheets);
+  await renderBadges(tokens, sheets, isGM);
 }
 
 /**
