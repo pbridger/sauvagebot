@@ -2071,6 +2071,12 @@ async function addCreature(name: string, source?: string): Promise<void> {
     explained:
       `**${sheet.name}**` +
       (stale.length ? ` — note ${stale.join(', ')} predates this edition` : ''),
+    // Local only. This line names the creature — "Rattler Cultist", "Landshark"
+    // — and it is broadcast, so it announced what the Marshal had just put in
+    // the roster to everyone at the table, an hour before they met it. Nobody
+    // but whoever pressed the button wants this line at all: it is a receipt for
+    // a roster edit, not something that happened in the fiction.
+    secret: true,
   });
   await reload();
 }
@@ -4939,7 +4945,11 @@ async function applyToTarget(
   // No `total`: this line is the *outcome* of applying damage, and offering to
   // apply it again to whoever is selected next would only ever be a mistake.
   publish({
-    ...named(target.sheet),
+    // The token, not `named()`. Both screen an NPC the same way, but `named`
+    // finds *a* token bound to the sheet — with five bandits sharing one, that
+    // is as likely to be the wrong bandit as the right one, and this call has
+    // the token that was actually hit in its hand.
+    character: wireName(target.sheet, target.token.name),
     label: 'takes damage',
     expression: `${entry.total}`,
     explained: outcome.description,

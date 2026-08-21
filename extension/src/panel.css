@@ -401,6 +401,7 @@ tr.shot-outcome td { padding-top: 3px; border-top: 1px solid var(--rule); }
    says what to look at. Coloured like a wound because that is what it is. */
 .shot-note { display: flex; margin-top: 5px; }
 .pill.stray {
+  padding: 0 5px;
   border-color: var(--wound-ink);
   color: var(--wound-ink);
   background: color-mix(in srgb, var(--wound-ink) 10%, transparent);
@@ -1103,7 +1104,11 @@ button.targets-toggle:hover { color: var(--accent); border-color: var(--accent);
 /* A target's own conditions, one letter each — the cell has room for nothing
    more, and the full name and effect are in the tooltip. */
 .targets td.state { white-space: nowrap; }
-.targets .pill {
+/* Unscoped on purpose. Written under `.targets` when the log's targeting table
+   was the only thing that had them; the shot panel builds the same chips and was
+   rendering them as bare letters, because the class was there and the rule was
+   not. */
+.pill {
   display: inline-block;
   min-width: 12px;
   margin-right: 2px;
@@ -1118,7 +1123,7 @@ button.targets-toggle:hover { color: var(--accent); border-color: var(--accent);
 }
 /* Solid when the number actually reached the roll, outline when it is a state
    the app draws but leaves the Marshal to judge. */
-.targets .pill.applied { background: #8c2f22; border-color: #8c2f22; color: #fff; }
+.pill.applied { background: #8c2f22; border-color: #8c2f22; color: #fff; }
 .targets td.hit { color: #2f7a3f; font-weight: 700; }
 .targets td.miss { color: var(--muted); }
 @media (prefers-color-scheme: dark) { .targets td.hit { color: #67c27c; } }
