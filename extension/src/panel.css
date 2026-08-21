@@ -108,6 +108,19 @@ h2 {
 .derived { display: flex; gap: 14px; flex-wrap: wrap; margin: 8px 0; }
 .derived b { font-weight: 700; }
 .derived span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+/* The Running die, beside the Pace it gets added to. A button among three flat
+   numbers, so it is drawn as one — the rest of this row is not clickable and
+   this is. */
+.derived button.run {
+  margin-left: 5px;
+  padding: 0 5px;
+  height: 16px;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
 
 /* Traits are buttons: the whole point of the panel is that a trait rolls itself. */
 .traits { display: grid; grid-template-columns: repeat(auto-fill, minmax(122px, 1fr)); gap: 4px; }
@@ -299,11 +312,22 @@ table.weapons tr.shot-row > td { padding: 0 0 6px; }
 }
 .shot-controls { display: flex; flex-direction: column; gap: 3px; }
 .shot-choice { display: flex; align-items: center; gap: 4px; min-height: 19px; }
+/* Only the folded conditions wrap, and only as a fallback. The called-shot row
+   is eight buttons wide — "No" plus the book's seven sizes (p161) — and fits a
+   420px popover at the same metrics as every other row, which is the point: an
+   earlier version bought a few pixels by narrowing that row's caption column and
+   button padding, and the uneven padding beside Aim and Cover read as a mistake
+   long before anyone noticed what it had bought. If a browser measures the text
+   wider than this fits, a button drops to a second line rather than clipping. */
+.shot-conditions .shot-choice { flex-wrap: wrap; }
 /* Fixed width so every label's buttons start at the same x — a row of controls
-   that jogs left and right is much harder to scan than one that does not. */
+   that jogs left and right is much harder to scan than one that does not.
+   Sized to the longest caption there is (CALLED, VITALS — six characters at this
+   size and letter spacing) and no wider: the called-shot row is eight buttons
+   long, and every pixel this column does not need is one that row does. */
 .shot-label {
   flex: none;
-  width: 64px;
+  width: 46px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: .05em;
@@ -328,12 +352,24 @@ table.shot-table td { padding: 2px 4px 2px 0; vertical-align: middle; }
 table.shot-table td.who { font-weight: 700; }
 table.shot-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.shot-table tr.out-of-range { opacity: .45; }
+/* The `.targets` rule of the same name does not reach here, and the melee chip
+   is wide enough to wrap the V/P pills onto a second line without it. */
+table.shot-table td.state { white-space: nowrap; }
 /* Extreme range is legal but conditional — it wants the shooter to have aimed.
    Marked rather than refused, so the Marshal makes the call and the app does
    not make it for them. */
 table.shot-table .extreme { color: var(--accent); }
-.shot-cover { display: flex; gap: 1px; padding-top: 2px; }
-.shot-cover button.shot-opt { min-width: 15px; padding: 0 2px; text-align: center; }
+/* The target number, and the one control on the row. A shot inside two cells is
+   assumed to be into melee and resolved against Parry (p160); the button is how
+   the Marshal says it is not. Plain text when the question does not arise. */
+.shot-tn button.shot-opt { padding: 0 5px; }
+/* The expander gets a line of its own, under the dial. It was sharing one, but
+   seventeen pips and a button is a row with no slack in it — and the button is
+   the thing you go looking for, so it should not be the thing squeezed. */
+.shot-expand { display: flex; margin: 2px 0 1px; }
+/* Folded conditions, when there are none set to keep on screen. An empty flex
+   column still costs its gap. */
+.shot-conditions:empty { display: none; }
 button.shot-roll {
   padding: 1px 9px;
   font-weight: 700;
@@ -422,7 +458,6 @@ tr.shot-outcome td { padding-top: 3px; border-top: 1px solid var(--rule); }
 }
 tr.shot-outcome .hit { color: var(--accent); }
 tr.shot-outcome .miss { color: var(--muted); }
-.shot-parry { margin-left: 7px; font-size: 11px; color: var(--muted); }
 /* The last step: what the damage came to, the Marshal's adjustment, and the
    button that spends it on the target the panel already declared.
 
@@ -700,6 +735,16 @@ button.cond.marker.on {
 /* The same two colours on a trait button: d6-1+2 rather than d6-5. */
 .die .mod-status { color: var(--wound-ink); }
 .die .mod-situational { color: var(--env-ink); }
+/* The same two colours on a shot's target rows, where they are the whole cell
+   rather than a suffix on a die label: red for what the shooter is carrying,
+   green for what this shot has going for it. */
+table.shot-table .mod-status { color: var(--wound-ink); font-weight: 700; }
+table.shot-table .mod-situational { color: var(--env-ink); font-weight: 700; }
+/* A shot at nothing in particular. Still drawn — "what is this shot at?" is the
+   question the row answers — but not coloured as though it were something.
+   Colour only: dropping the weight to 400 reflowed the cell the moment the
+   number stopped being +0, the same bug `.penalty` had. */
+table.shot-table .mod-situational.zero { color: var(--muted); }
 
 /* ---- roll log entries ------------------------------------------------- */
 
@@ -794,6 +839,11 @@ button.toggle.on.danger-toggle { background: #8c2f22; border-color: #8c2f22; col
 /* Only shown when there is a penalty at all — the trait buttons carry the rest. */
 .penalty {
   padding: 1px 7px;
+  /* Transparent rather than absent. `.penalty.zero` draws a real border, and a
+     chip that gains 1px on every side the moment it stops being +0 shifts
+     everything on its line — which is what it was reported doing. The box has to
+     be the same in both states; only the colours change. */
+  border: 1px solid transparent;
   border-radius: 9px;
   background: #8c2f22;
   color: #fff;

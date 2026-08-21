@@ -228,13 +228,48 @@ export function isTargeted(skill: string | undefined): boolean {
 }
 
 /**
- * How close a shot has to land before the target's Parry is worth showing.
+ * How close a shot has to be before it counts as fired *into melee*.
  *
- * A shot into melee is resolved against Parry rather than the usual 4, and
- * nothing here can know whether the target is engaged — so distance stands in for
- * it. Two cells is the Marshal's cue to make that call, not a rule from the book.
+ * ## The rule
+ *
+ * p160, *Ranged Weapons in Melee*: `"The TN is the defender's Parry instead of
+ * Short Range as they struggle, wrestle back and forth, etc."` The same
+ * paragraph bars long arms — a pistol or a power only — and makes an attacker
+ * who shoots at a *non*-adjacent target while engaged instantly Vulnerable.
+ * Neither of those is enforced: `Weapon` records no handedness, and Vulnerable
+ * is a condition on the shooter that no code on this path can set. Both are said
+ * in the tooltip, where the Marshal can act on them.
+ *
+ * ## Why a distance decides it
+ *
+ * Being *engaged* is not the same as being close, and the book never gives a
+ * number for it — two cells is this app's cue, not a rule. It used to be a
+ * question the panel asked and never answered on its own; Paul's call is that it
+ * should answer, and the shot panel now assumes melee inside this radius and
+ * lets the row say otherwise with a click.
+ *
+ * So this constant is **load-bearing for the arithmetic**, not only for the
+ * screen. It was originally a privacy line — how close before this table may
+ * print a Parry at all — and it is still that, deliberately the same number, so
+ * that the case where the TN reveals a Parry is exactly the case where showing
+ * one is already sanctioned. Retuning it moves a rule as well as a screen.
  */
 export const PARRY_VISIBLE_CELLS = 2;
+
+/**
+ * What a shot at this defender has to beat: their Parry when it is into melee,
+ * and the usual flat 4 when it is not.
+ *
+ * A real target number rather than a modifier on the attacker's total. The two
+ * are arithmetically identical — `resolveAttack` counts off `total - target` —
+ * and the modifier form was tried first, because it rides the shot panel's
+ * amendment machinery for free. It was dropped for one reason: the row has to
+ * *say* "vs 6", and a line that shows one number while resolving against another
+ * is a bug waiting to be reported as one.
+ */
+export function targetNumber(parry: number | undefined, intoMelee: boolean): number {
+  return intoMelee ? (parry ?? DEFAULT_PARRY) : FLAT_TARGET;
+}
 
 /**
  * Whether the targeting table should print this target's Parry.

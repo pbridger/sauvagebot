@@ -40,6 +40,7 @@ import {
 } from '../../src/rules/gear.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
 import { RollInterpreter } from '../../src/dice/interpreter.js';
+import { runningDie, runningExpression } from '../../src/rules/running.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
 import { parse } from '../../src/dice/parser.js';
 import { rollAttribute, rollSkill, totalsOf } from '../../src/rules/traitRoll.js';
@@ -67,6 +68,7 @@ import {
   BAND_PENALTY,
   DEFAULT_PARRY,
   showsParry,
+  targetNumber,
   FLAT_TARGET,
   isTargeted,
   parseRangeBands,
@@ -77,7 +79,8 @@ import {
   type RangeBands,
 } from '../../src/rules/targeting.js';
 import {
-  CALLED_SHOTS,
+  SCALES,
+  VITALS_DAMAGE,
   COVER,
   SLUG_DAMAGE,
   asRollMods,
@@ -761,6 +764,75 @@ function targetsWorthShowing(entry: RollEntry): boolean {
 
 /** The bonus damage die a raise on the attack earns. Aces, as damage dice do. */
 const RAISE_DIE = 'd6!';
+
+/**
+ * The Running die, beside Pace.
+ *
+ * `"A hero can choose to 'run,' increasing their Pace for the round by their
+ * Running die (a d6 by default) at the cost of a −2 penalty to all actions that
+ * turn. Running dice never Ace."` — p151.
+ *
+ * Three deliberate omissions, all the same omission really — the app rolls the
+ * die and adds the Pace, and stops.
+ *
+ * It does **not** set the −2. That is a modifier lasting the turn, it is already
+ * on the situational track as `Running`, and setting it from here would put a
+ * penalty on the character that they then have to find and clear. Named in the
+ * tooltip instead, one click away from where the tooltip is.
+ *
+ * It does not move the token, and it does not subtract the 2″ an inch of
+ * climbing or swimming costs. Both are things that happen on the map, and the
+ * number is the answer to "how far", not the doing of it.
+ *
+ * Rolled as a plain `d6`, never the savage `s6`/`e6` the rest of the sheet uses:
+ * running dice do not Ace, and an exploding one would hand out the occasional
+ * eleven-inch sprint that looked like luck.
+ */
+function runButton(sheet: Sheet, pace: number): HTMLElement {
+  const die = runningDie(sheet);
+  const expression = runningExpression(die);
+  const button = document.createElement('button');
+  button.className = 'run';
+  button.textContent = expression;
+  button.title =
+    `Run: ${expression} added to Pace ${pace} for the round, at −2 to every action ` +
+    `this turn (p151). The die never Aces.` +
+    (die.why.length ? ` ${die.why.join(', ')}.` : '');
+  button.addEventListener('click', () => {
+    const dice: DieEvent[] = [];
+    const explained = new RollInterpreter(
+      new CommandContext(new JavaRandom(), (d) => dice.push(d)),
+    )
+      .run(parse([expression]))
+      .trim();
+    // Not `totalOf`: that wants `= **N**`, and the engine only writes the `=`
+    // when there is arithmetic to show. A bare `d6` comes back as `d6: **4**`,
+    // so `totalOf` would return undefined for the *default* running die and
+    // work fine for Sir Ed's `d6-1` — which is exactly the asymmetry that
+    // survives being eyeballed once.
+    const bolded = [...explained.matchAll(/\*\*(-?\d+)\*\*/g)];
+    const last = bolded[bolded.length - 1];
+    const rolled = last ? Number(last[1]) : undefined;
+    publish(
+      {
+        ...named(sheet),
+        label: 'Running',
+        expression,
+        // The total the table needs is the distance, not the die — so the die is
+        // shown doing its job rather than on its own. `publish` reads the bolded
+        // number back out of this string when no `total` is given, so the one in
+        // bold has to be the one that means something.
+        explained:
+          rolled === undefined
+            ? explained
+            : `${expression} [${rolled}] + Pace ${pace} = **${pace + rolled}**`,
+        ...(rolled === undefined ? {} : { total: pace + rolled }),
+      },
+      dice,
+    );
+  });
+  return button;
+}
 
 /**
  * Add a raise's bonus damage to a roll already made.
@@ -3127,6 +3199,9 @@ function render(): void {
     const span = document.createElement('span');
     span.textContent = ` ${label}`;
     wrap.append(b, span);
+    // Running belongs beside Pace because it *is* Pace: the die is added to it
+    // for the round. Anywhere else and it is a die with no number to add to.
+    if (label === 'Pace' && typeof value === 'number') wrap.append(runButton(sheet, value));
     derived.append(wrap);
   }
   if (derived.childElementCount) sheetEl.append(derived);
@@ -3323,12 +3398,44 @@ interface ShotSession {
   skill: string;
   bands?: RangeBands;
   aim: Aim;
-  calledShot?: string;
+  /**
+   * A called shot, as the **Scale of what is being aimed at** — p161, `SCALES`.
+   *
+   * No list of body parts: the penalty *is* the size, and the old head/limb/hand
+   * list was that table read off a human. `undefined` is no called shot; zero is
+   * a called shot at something Normal-sized, which is free and still a called
+   * shot. Nothing here may test it for truthiness.
+   */
+  scale?: number;
+  /** Head or vital organs: +4 damage on a hit (p154). Orthogonal to the size. */
+  vitals: boolean;
   scoped: boolean;
   slugs: boolean;
   dial: number;
-  /** Cover per target, because the water trough is not a property of the shot. */
-  cover: Map<string, number>;
+  /**
+   * Cover, for the whole shot.
+   *
+   * Per *target* until Damian read the layout the other way: five sets of cover
+   * buttons down the target list said "set everybody's cover before you roll",
+   * when what he wanted to say was "he's behind the bar". The rule is per target
+   * — the water trough belongs to whoever is behind it — but the control that
+   * expressed that was asking a question nobody was answering five times.
+   *
+   * So it is one control now, in the conditions block with everything else. The
+   * thing it can no longer say is that of two targets one is in the open and the
+   * other is not; that costs a second shot, or the hand dial.
+   */
+  cover: number;
+  /**
+   * Where the Marshal has *overruled* the app about being in melee.
+   *
+   * A shot inside `PARRY_VISIBLE_CELLS` is assumed to be into melee and resolved
+   * against the defender's Parry (p160). That is an assumption, not a fact —
+   * standing a yard apart is not the same as wrestling — so the row's target
+   * number is a button, and what it writes here is the exception rather than the
+   * rule. Empty means the app's answer stands, which is the common case.
+   */
+  meleeCall: Map<string, boolean>;
   /**
    * How many Shooting dice this shot may throw.
    *
@@ -3435,6 +3542,16 @@ interface ShotSession {
     stray: number;
     /** 1, or 2 for a shot that sprays. See `straysAsFired`. */
     strayOn: number;
+    /**
+     * What each declared target had to be beaten by, frozen when the trigger was
+     * pulled — 4, or their Parry for a shot into melee.
+     *
+     * Frozen for the same reason `bands` is, and more sharply: the melee call is
+     * made from a live distance, so a target who steps back after the roll would
+     * otherwise turn a hit into a miss with nothing said. Changing it afterwards
+     * is a correction, and is published as one.
+     */
+    targets: Map<string, number>;
   };
   /**
    * The damage roll for each *shot*, once there is one.
@@ -3452,6 +3569,49 @@ interface ShotSession {
 }
 
 let openShot: ShotSession | undefined;
+
+/**
+ * How much of the target each step of `COVER` hides, as the book describes it.
+ *
+ * The values are the penalties, which is what the rules module keys on — but a
+ * penalty is the *consequence* of the judgement, not the judgement. What the
+ * Marshal is actually deciding is how much of the man is behind the water
+ * trough, and `COVER`'s own notes say it in those words: "half the target is
+ * obscured", "three quarters". So the buttons carry the fraction and the
+ * penalty is on hover, which is also the only way five of them fit on a row
+ * that already holds a name, a range and two totals.
+ */
+/** `SCALES`' seven steps, short enough for a row of buttons. */
+const SCALE_SHORT: Record<number, string> = {
+  [-6]: 'Tiny',
+  [-4]: 'V.sml',
+  [-2]: 'Small',
+  0: 'Norm',
+  2: 'Lge',
+  4: 'Huge',
+  6: 'Garg',
+};
+
+const COVER_FRACTION: Record<number, string> = {
+  0: '0',
+  [-2]: '\u00bc',
+  [-4]: '\u00bd',
+  [-6]: '\u00be',
+  [-8]: 'most',
+};
+
+/**
+ * Whether the shot's conditions are unfolded.
+ *
+ * Its own flag rather than the sheet's `showConditions`, which governs the green
+ * modifier chips at the top of the sheet: they are two expanders over two
+ * different sets of things, and sharing one would mean opening the Marshal's
+ * situational track every time somebody wanted to say "he's behind the bar".
+ *
+ * Sticky across renders and across shots, like the sheet's, because a fight tends
+ * to keep needing the same half-dozen controls.
+ */
+let showShotConditions = false;
 
 function shotKey(sheet: Sheet, weapon: Weapon): string {
   return `${sheet.id}::${weapon.name}`;
@@ -3479,7 +3639,9 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
           scoped: false,
           slugs: false,
           dial: 0,
-          cover: new Map(),
+          cover: 0,
+          vitals: false,
+          meleeCall: new Map(),
           rof: maxRateOfFire(weapon),
           steady: negatesRecoil(
             sheet.edges.map((edge) => edge.name),
@@ -3505,13 +3667,26 @@ const bulletsLeft = (session: ShotSession): number => spareBullets(session.rof, 
  * that resolves a shot goes through here, so that distinction is made once
  * rather than at each of the four places that need the number.
  */
+/**
+ * Whether this shot at this target is *into melee*, and so resolved against
+ * their Parry rather than the flat 4 — p160, and `PARRY_VISIBLE_CELLS` for why a
+ * distance is allowed to decide it.
+ *
+ * The app's answer, unless the Marshal has said otherwise. It used to be the
+ * other way round — offered and never assumed — which meant the rule only fired
+ * when somebody remembered it existed.
+ */
+function intoMelee(session: ShotSession, tokenId: string, cells: number | undefined): boolean {
+  return session.meleeCall.get(tokenId) ?? showsParry(session.skill, cells);
+}
+
 function shotAgainst(
   session: ShotSession,
   weapon: Weapon,
   tokenId: string,
 ): { mods: ShotMod[]; total: number; band: Band | undefined } {
   const band = session.rolled ? session.rolled.bands.get(tokenId) : undefined;
-  const shot = shotMods(session, band, tokenId);
+  const shot = shotMods(session, band);
   const gun = shotgunMod(weapon, session.slugs);
   return {
     mods: gun ? [...shot.mods, gun] : shot.mods,
@@ -3599,15 +3774,15 @@ function shotChoice<T>(
  * reason. Both carry the situational track, and passing both would count the
  * dark twice.
  */
-function shotMods(session: ShotSession, band: Band | undefined, tokenId?: string): ShotTotal {
+function shotMods(session: ShotSession, band: Band | undefined): ShotTotal {
   return shotTotal({
     // What is actually being fired, not what the gun could fire. A Gatling
     // declared against one target throws one die and takes no Recoil.
     rof: shotsFired(session),
     aim: session.aim,
-    calledShot: session.calledShot,
+    ...(session.scale === undefined ? {} : { scale: session.scale }),
     ...(band ? { band } : {}),
-    cover: tokenId ? session.cover.get(tokenId) : 0,
+    cover: session.cover,
     scoped: session.scoped,
     dial: session.dial,
     // Rock and Roll!, a bipod or a tripod. This was the last wire left unjoined:
@@ -3702,14 +3877,22 @@ function amendShot(
 }
 
 /**
- * The half of a shot's modifiers that belong to the shooter rather than to a
- * target: Aim taken as a bonus, Recoil, the called shot, the hand dial.
+ * The half of a shot's modifiers that are the same whoever it is aimed at: Aim,
+ * Recoil, the called shot and its size, the load, the hand dial — and now cover
+ * too, since that is declared once for the whole shot.
  *
- * Used when the shot has more than one target, where the per-target half cannot
- * be summed into one number without picking a target to be right about.
+ * Used when the shot has more than one target, where the genuinely per-target
+ * half cannot be summed into one number without picking a target to be right
+ * about. **Range** is all that half now holds, and it is enough: one rolled
+ * expression cannot carry two different range penalties, which is what
+ * `bakesModifiers` turns on.
+ *
+ * One consequence of cover moving: changing it on a multi-target shot after the
+ * dice have landed now publishes a correction, where before it changed each
+ * target's arithmetic in silence.
  */
 function shotLevel(session: ShotSession, weapon: Weapon): { mods: ShotMod[]; total: number } {
-  const shot = shotMods(session, undefined, undefined);
+  const shot = shotMods(session, undefined);
   const gun = shotgunMod(weapon, session.slugs);
   return {
     mods: gun ? [...shot.mods, gun] : shot.mods,
@@ -3739,8 +3922,30 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
 
   // --- how the shot is being taken ----------------------------------------
 
+  // How many shots is not a condition and does not fold away. It is the shot
+  // itself: it decides how many dice are thrown, it is locked the instant they
+  // are, and hiding it would hide the only control on this panel that cannot be
+  // changed afterwards.
   const controls = document.createElement('div');
   controls.className = 'shot-controls';
+
+  // Everything else, behind one expander. Six rows of buttons above a target list
+  // is the same furniture problem the sheet's own conditions had, and it folds
+  // away the same way.
+  const conditions = document.createElement('div');
+  conditions.className = 'shot-controls shot-conditions';
+
+  /**
+   * A control that folds away — unless it is *set*.
+   *
+   * A called shot or a −4 cover that vanished while its penalty stayed in the
+   * total would leave the Marshal looking at a number with no visible cause,
+   * which is the failure mode of every collapsed panel. So the fold hides the
+   * defaults and nothing else.
+   */
+  const place = (row: HTMLElement, active: boolean): void => {
+    if (showShotConditions || active) conditions.append(row);
+  };
 
   // Only for a weapon that can fire more than once. A revolver's Rate of Fire is
   // not a decision, and a row of one button is a row that says nothing.
@@ -3782,7 +3987,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
     );
   }
 
-  controls.append(
+  place(
     shotChoice(
       'Aim',
       [
@@ -3805,33 +4010,79 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
         redraw();
       },
     ),
+    session.aim !== 'off',
   );
 
-  controls.append(
+  // A called shot is a **size**, not a body part — p161: `"Use the Scale of the
+  // target when making called shots against creatures, not their Scale."` The
+  // head/limb/hand list this replaced was that same table read off a human, and
+  // it stopped being right the moment the target was a rattler. Examples on
+  // hover, because nobody can rank "very small" against "small" from the words
+  // and everybody can rank a house cat against a bobcat.
+  place(
     shotChoice(
-      'Called shot',
+      // Just "Called": the row is eight buttons wide, and the caption is the only
+      // thing on it with characters to give up. Everything else about the row is
+      // deliberately the standard metrics — the 64px caption column and the same
+      // button padding as Aim and Cover — because the three rows sit on top of
+      // each other and unequal padding reads as a mistake long before anyone
+      // notices it bought a few pixels.
+      'Called',
       [
-        { value: undefined as string | undefined, text: 'No', title: 'Shooting at the body' },
-        ...CALLED_SHOTS.map((shot) => ({
-          value: shot.key as string | undefined,
-          text: shot.label,
-          title: `${shot.value} to hit. ${shot.note}`,
+        { value: undefined as number | undefined, text: 'No', title: 'Shooting at the body' },
+        ...SCALES.map((scale) => ({
+          value: scale.value as number | undefined,
+          // Abbreviated: seven named steps and a caption do not fit a panel this
+          // narrow at full length. The whole name is on hover with the examples.
+          text: SCALE_SHORT[scale.value] ?? scale.label,
+          title:
+            `${scale.label}: ${scale.examples}. ` +
+            `${formatMod(scale.value) || 'No penalty'} to hit (p161).`,
         })),
       ],
-      session.calledShot,
+      session.scale,
       (value) => {
-        if (value === undefined) delete session.calledShot;
-        else session.calledShot = value;
+        // `undefined` and `0` are different answers here — a called shot at a
+        // Normal-sized thing is free and is still a called shot.
+        if (value === undefined) delete session.scale;
+        else session.scale = value;
         redraw();
       },
     ),
+    session.scale !== undefined,
   );
 
+  // Whether it is a *vital* spot, which the size cannot say: a rattler's head is
+  // Gargantuan and a man's is Very Small, and both are vitals. Only asked once a
+  // called shot has been declared, because you have to call it to hit it.
+  if (session.scale !== undefined) {
+    conditions.append(
+      shotChoice(
+        'Vitals',
+        [
+          { value: false, text: 'No', title: 'Not a vital spot' },
+          {
+            value: true,
+            text: `+${VITALS_DAMAGE} damage`,
+            title:
+              `Head or vital organs of a living creature: +${VITALS_DAMAGE} damage on a hit ` +
+              `(p154). Against an open-faced helmet it is −5 to hit instead of −4 and ` +
+              `bypasses the armour — use the dial.`,
+          },
+        ],
+        session.vitals,
+        (value) => {
+          session.vitals = value;
+          redraw();
+        },
+      ),
+    );
+  }
+
   // Only worth asking when the answer changes something. A scope matters at
-  // Extreme Range and nowhere else the book names; slugs matter only for a gun
-  // that would otherwise be firing buckshot.
+  // Extreme Range and nowhere else the book names.
   if (reachesExtreme(weapon, session.slugs)) {
-    controls.append(
+    place(
       shotChoice(
         'Scope',
         [
@@ -3844,13 +4095,38 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
           redraw();
         },
       ),
+      session.scoped,
     );
   }
+
+  // Cover is the target's, not the shooter's — but as one control rather than one
+  // per row. See `ShotSession.cover` for why it moved, and what moving it costs.
+  place(
+    shotChoice(
+      'Cover',
+      COVER.map((step) => ({
+        value: step.value,
+        // How much of the target is behind it, which is what the book's four
+        // steps actually measure — `COVER`'s own notes read "half the target is
+        // obscured", "three quarters". The penalty is on hover: the fraction is
+        // what the Marshal is judging, the −4 is what falls out of it.
+        text: COVER_FRACTION[step.value] ?? String(Math.abs(step.value)),
+        title: `${step.label} cover, ${formatMod(step.value) || 'no penalty'} — ${step.note}`,
+      })),
+      session.cover,
+      (value) => {
+        session.cover = value;
+        redraw();
+      },
+    ),
+    session.cover !== 0,
+  );
+
   // Buckshot only. `spraysLead` would say yes to a Gatling as well, which cannot
   // be loaded with slugs — the same conflation of "rapid" with "spread" that
   // `straysAsFired` was written to undo.
   if (firesBuckshot(weapon)) {
-    controls.append(
+    place(
       shotChoice(
         'Load',
         [
@@ -3872,6 +4148,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
           redraw();
         },
       ),
+      session.slugs,
     );
   }
 
@@ -3880,11 +4157,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
   // The hand dial, for every rule the app will never know. Deliberately outside
   // anything Aim can reach — see `shotTotal`.
   const dialRow = document.createElement('div');
-  dialRow.className = 'shot-choice';
-  const dialLabel = document.createElement('span');
-  dialLabel.className = 'shot-label';
-  dialLabel.textContent = 'Modifier';
-  dialRow.append(dialLabel);
+  dialRow.className = 'shot-choice shot-dial';
   // The same track as the token's own dial, and deliberately the same classes:
   // it is the same control doing the same job, and two that looked different
   // would read as two different kinds of number.
@@ -3904,6 +4177,23 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
   }
   dialRow.append(track);
   box.append(dialRow);
+
+  // Its own line, under the dial. Seventeen pips already fill a row edge to edge
+  // — see `.mod-track`, which had to drop its own caption to fit — and the
+  // expander is the control you go hunting for, so it is not the one to squeeze.
+  const expand = document.createElement('div');
+  expand.className = 'shot-expand';
+  const more = document.createElement('button');
+  more.className = showShotConditions ? 'toggle cond-toggle on' : 'toggle cond-toggle';
+  more.textContent = showShotConditions ? 'Conditions \u25b4' : 'Conditions \u25be';
+  more.title = 'Aim, called shot, load, and each target’s cover';
+  more.addEventListener('click', () => {
+    showShotConditions = !showShotConditions;
+    render();
+  });
+  expand.append(more);
+  box.append(expand);
+  box.append(conditions);
 
   // --- who at --------------------------------------------------------------
 
@@ -3958,9 +4248,13 @@ async function fillShotTargets(
   let missed = false;
   let pending = false;
 
+  // who · state · Dist · wounds · this shot · roll. Counted here rather than
+  // written as a literal under each outcome row, because the outcome spans the
+  // whole width and a stale number there misaligns silently.
+  const columns = 7;
+
   for (const { token, state, sheet: victim, cells } of shown) {
     const declared = (session.bullets.get(token.id) ?? 0) > 0;
-    const cover = session.cover.get(token.id) ?? 0;
     // Once the shot is taken the band is the one it was taken at, not the one the
     // target has since walked into. See `ShotSession.rolled.bands`.
     const band = session.rolled
@@ -3968,7 +4262,7 @@ async function fillShotTargets(
       : cells !== undefined && session.bands
         ? bandFor(cells, session.bands, { extreme: reachesExtreme(weapon, session.slugs) })
         : undefined;
-    const shot = shotMods(session, band, token.id);
+    const shot = shotMods(session, band);
     const shotgun = shotgunMod(weapon, session.slugs);
     const mods = shotgun ? [...shot.mods, shotgun] : shot.mods;
     const total = shot.total + (shotgun?.value ?? 0);
@@ -3994,6 +4288,7 @@ async function fillShotTargets(
         : `${pill.label} — ${pill.note}. Not applied: judge it yourself.`;
       pills.append(chip);
     }
+
     tr.append(pills);
 
     const range = document.createElement('td');
@@ -4020,30 +4315,104 @@ async function fillShotTargets(
     }
     tr.append(range);
 
-    // Cover is per target and belongs on the target's row: with more than one
-    // target a shared control could not say that one is behind a water trough
-    // and the other is standing in the open.
-    // Live after the roll as well as before it, and that is the point rather than
-    // an oversight: "hold on, he was behind the water trough" is the archetypal
-    // thing the Marshal says once the dice have already landed.
-    const coverCell = document.createElement('td');
-    coverCell.className = 'shot-cover';
-    for (const step of COVER) {
+    // The shooter's wounds and Fatigue, in the same red the sheet's own chip and
+    // every die label use. It is the same number on every row — it is the
+    // shooter's, not the target's — and it is here because this is where the
+    // shot is being decided, six inches below the strip where nobody was
+    // reading it.
+    //
+    // Drawn only when there is one, unlike the sheet's chip which shows +0.
+    // A row that printed "+0" five times over would be five copies of nothing,
+    // and the strip above is still saying it at zero.
+    const hurt = document.createElement('td');
+    hurt.className = 'num';
+    if (sheetMods.status) {
+      const red = document.createElement('span');
+      red.className = 'mod-status';
+      red.textContent = formatMod(sheetMods.status);
+      red.title = describeMods(sheetMods.parts.filter((part) => part.kind === 'status'));
+      hurt.append(red);
+    }
+    tr.append(hurt);
+
+    // Everything this shot has going for it against *this* target: range, cover,
+    // Aim, the called shot, the load, the dial, and the melee.
+    //
+    // Deliberately **not** the sheet's own green total. That one is on the strip
+    // at the top, where it applies to every roll this character makes; adding it
+    // here would print the dark twice and make the two greens on screen disagree.
+    // Shown at zero, because "what is this shot at?" is the question the row
+    // exists to answer and a blank is not an answer.
+    const sum = document.createElement('td');
+    sum.className = 'num';
+    const green = document.createElement('span');
+    green.className = total ? 'mod-situational' : 'mod-situational zero';
+    green.textContent = formatMod(total) || '+0';
+    green.title = mods.length
+      ? mods.map((m) => `${m.label} ${formatMod(m.value)}`).join(', ')
+      : 'Nothing for or against this shot';
+    sum.append(green);
+    tr.append(sum);
+
+    // What this shot has to beat. Four, or the defender's Parry for a shot fired
+    // into melee (p160) — assumed inside `PARRY_VISIBLE_CELLS` and a click to say
+    // otherwise, which is the only thing `meleeCall` records.
+    //
+    // Frozen once the dice are down: the assumption is made from a live distance,
+    // and a target who steps back afterwards must not quietly turn a hit into a
+    // miss. Changing it then is a correction and says so in the log.
+    const parry = victim.parry ?? DEFAULT_PARRY;
+    const engaged = intoMelee(session, token.id, cells);
+    const target = session.rolled?.targets.get(token.id) ?? targetNumber(parry, engaged);
+    const tn = document.createElement('td');
+    tn.className = 'num shot-tn';
+    const close = showsParry(session.skill, cells) || engaged;
+    // Read off `engaged`, never off the number it produced. A defender with
+    // Parry 4 — which is Fighting d4, and most Extras in the bestiary — resolves
+    // against 4 whether or not the shot is into melee, so a control that
+    // inferred its own state from the TN would draw itself off, refuse to toggle
+    // and publish nothing, all while the arithmetic quietly stayed correct.
+    const label = engaged ? `vs ${target} (parry)` : 'vs 4';
+    if (close) {
       const button = document.createElement('button');
-      button.className = step.value === cover ? 'shot-opt on' : 'shot-opt';
-      button.textContent = step.value === 0 ? '·' : String(Math.abs(step.value));
-      button.title = `${step.label} cover — ${step.note}`;
+      button.className = engaged ? 'shot-opt on' : 'shot-opt';
+      button.textContent = label;
+      button.title = engaged
+        ? `Fired into melee, so the TN is Parry ${parry} rather than 4 (p160). ` +
+          `Only a pistol or a power may be fired in melee — not a rifle — and shooting ` +
+          `at anybody else while engaged makes the shooter Vulnerable. Click to take it back.`
+        : `Not in melee: the usual TN of 4. Click if they are engaged — a shot into ` +
+          `melee is resolved against Parry ${parry} instead (p160).`;
       button.addEventListener('click', () => {
-        if (step.value) session.cover.set(token.id, step.value);
-        else session.cover.delete(token.id);
-        // After the roll this is a correction rather than a setting: it
-        // appends to the log instead of quietly changing the number.
-        amendFromControls(sheet, weapon, session, sheetMods);
+        const next = !engaged;
+        session.meleeCall.set(token.id, next);
+        const rolled = session.rolled;
+        if (rolled?.targets.has(token.id)) {
+          // Its own amendment rather than one through `amendFromControls`: that
+          // path compares modifier lists, and this is not a modifier. Published
+          // by hand so a target number changed after the dice still leaves a
+          // line in the log — silence here is the whole failure being avoided.
+          const was = rolled.targets.get(token.id)!;
+          const now = targetNumber(parry, next);
+          rolled.targets.set(token.id, now);
+          if (was !== now) {
+            publish({
+              ...named(sheet),
+              label: next ? 'Fired into melee' : 'Not in melee after all',
+              expression: rolled.expression,
+              explained: `TN ${was} → **${now}**`,
+              amends: rolled.entryId,
+            });
+          }
+        }
         render();
       });
-      coverCell.append(button);
+      tn.append(button);
+    } else {
+      tn.textContent = label;
+      tn.title = 'The usual Target Number for a ranged attack';
     }
-    tr.append(coverCell);
+    tr.append(tn);
 
     const action = document.createElement('td');
     action.className = 'num';
@@ -4122,7 +4491,7 @@ async function fillShotTargets(
       const outcome = document.createElement('tr');
       outcome.className = 'shot-outcome';
       const cell = document.createElement('td');
-      cell.colSpan = 5;
+      cell.colSpan = columns;
 
       // Held while the dice are still in the air, exactly as the log line is.
       // The panel used to print "hit, 2 raises" the instant the button was
@@ -4152,8 +4521,6 @@ async function fillShotTargets(
       // place, not one.
       const slots = session.bullets.get(token.id) ?? 1;
       const against = shotAgainst(session, weapon, token.id);
-      const parry = victim.parry ?? DEFAULT_PARRY;
-      const target = FLAT_TARGET;
 
       for (const index of mine) {
         const raw = session.rolled.values[index] ?? 0;
@@ -4216,14 +4583,6 @@ async function fillShotTargets(
         ];
         working.textContent = `${parts.join(' ')} = ${resolved.effective} vs ${target}`;
         line.append(working);
-
-        if (showsParry(session.skill, cells)) {
-          const p = document.createElement('span');
-          p.className = 'shot-parry';
-          p.textContent = `Parry ${parry}`;
-          p.title = 'Close enough that the shot may have been into melee — the Marshal’s call';
-          line.append(p);
-        }
 
         if (resolved.hit) {
           line.append(
@@ -4410,6 +4769,21 @@ function takeTheShot(
     );
   }
 
+  // What each declared target has to be beaten by, frozen alongside its band and
+  // for the same reason — the melee call is made from a live distance, and a
+  // target who steps back afterwards must not turn a hit into a miss in silence.
+  const targets = new Map<string, number>();
+  for (const id of named) {
+    const found = candidates.find((c) => c.token.id === id);
+    const engaged = intoMelee(session, id, found?.cells);
+    // Written back as an explicit call, so it survives the target moving. The
+    // TN below is frozen either way; this keeps the *control* frozen with it —
+    // otherwise a target who steps back leaves the row showing a plain `vs 6`
+    // the Marshal can no longer undo.
+    session.meleeCall.set(id, engaged);
+    targets.set(id, targetNumber(found?.sheet.parry, engaged));
+  }
+
   // One target's modifiers can ride in the expression; several targets' cannot,
   // because one roll cannot carry two different range penalties. So a single
   // target keeps the log line reading `s8-2 … = 13`, and a shot at several rolls
@@ -4475,6 +4849,7 @@ function takeTheShot(
     total: modsForLine.total,
     stray: strayShots(result.dice ?? [], strayOn),
     strayOn,
+    targets,
   };
   render();
 }
@@ -4493,6 +4868,7 @@ function emptyRolled(): NonNullable<ShotSession['rolled']> {
     total: 0,
     stray: 0,
     strayOn: STRAY_ON_MISS,
+    targets: new Map(),
   };
 }
 
@@ -4518,7 +4894,7 @@ function damageButton(
   /** The declared target, so the damage roll names it as the attack did. */
   targetName: string,
 ): HTMLElement {
-  const bonus = calledShotDamage(session.calledShot);
+  const bonus = calledShotDamage(session.vitals);
   // A scattergun's dice depend on the range, which the panel now knows — so it
   // picks rather than offering all three and hoping. Slugs are flat at any range.
   const options = weapon.damage ? damageDiceOptions(weapon.damage) : [];

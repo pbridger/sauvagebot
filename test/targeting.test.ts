@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MANUAL_RANGE } from '../src/rules/modifiers.js';
 import {
   BAND_PENALTY,
+  DEFAULT_PARRY,
   EXTREME_MULTIPLE,
   FLAT_TARGET,
   SCOPE_AT_EXTREME,
@@ -11,6 +12,7 @@ import {
   parseRangeBands,
   resolveAimedAttack,
   resolveAttack,
+  targetNumber,
   verdictIsMeaningless,
   withoutFlatVerdict,
 } from '../src/rules/targeting.js';
@@ -367,5 +369,27 @@ describe('whose verdict the line keeps', () => {
   it('leaves the wording alone when it is kept', () => {
     const line = 's8+2: [6; w5] + 2 = **8** (success)';
     expect(withoutFlatVerdict(line)).toBe('s8+2: [6; w5] + 2 = **8**');
+  });
+});
+
+/**
+ * p160, *Ranged Weapons in Melee*: `"The TN is the defender's Parry instead of
+ * Short Range."` A real target number rather than a modifier on the attacker —
+ * the shot panel's rows have to be able to print "vs 6".
+ */
+describe('what a shot has to beat', () => {
+  it('is the flat 4 at any normal range', () => {
+    expect(targetNumber(6, false)).toBe(FLAT_TARGET);
+    expect(targetNumber(undefined, false)).toBe(FLAT_TARGET);
+  });
+
+  it('is the defender’s Parry when it is fired into melee', () => {
+    expect(targetNumber(6, true)).toBe(6);
+    expect(targetNumber(2, true)).toBe(2);
+  });
+
+  /** A defender with no Parry on their sheet still has the book's floor of 2. */
+  it('falls back to the default Parry rather than to 4', () => {
+    expect(targetNumber(undefined, true)).toBe(DEFAULT_PARRY);
   });
 });

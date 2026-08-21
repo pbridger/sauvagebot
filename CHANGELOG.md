@@ -10,6 +10,57 @@ reload.
 
 ---
 
+## 2026-08-21 — Sizes, not body parts
+
+**Called shots are now a size.** The old list — head, hand, item — has gone, and
+that is the rule rather than a simplification. p161: *"Use the Scale of the
+target when making called shots against creatures, not their Scale. If a hero
+wants to blast the eye out of a Huge terrantula, for example, use the Scale of
+the eye, not the critter."* Every number the old list carried was a row of that
+table read off a human, and it stopped being right the moment the target was not
+one. So the control is one row of the book's seven steps, Tiny to Gargantuan,
+with the examples on hover. A wagon-wheel-sized eye is Normal Scale and free.
+
+One of the old figures was simply wrong: a human limb is Small (−2), not the −4
+it was priced at.
+
+**Vitals is its own toggle**, because size cannot answer it — a rattler's head is
+Gargantuan and a man's is Very Small, and both are worth +4 damage (p154).
+
+**Shots into melee are resolved against Parry.** p160: *"The TN is the defender's
+Parry instead of Short Range as they struggle, wrestle back and forth."* Inside
+two cells the panel now assumes it, and each target's row says what the shot has
+to beat — `vs 4`, or `vs 6 (parry)`. That cell is a button: click it when the app
+has guessed wrong. Changing it after the dice have landed appends a correction to
+the log rather than quietly moving the answer.
+
+Not enforced, and in the tooltip instead: no rifles in melee, and shooting at
+anybody *else* while engaged makes you Vulnerable.
+
+**A Running die sits beside Pace.** d6 by default, d8 with Fleet-Footed, d4−1 for
+Sir Ed's Elderly, and whatever a creature's stat block says for a creature. It
+rolls plain and never Aces (p151) and reports the distance, not the die. It does
+**not** set the −2 to all actions that turn — that is already on the modifier
+track, where you can clear it.
+
+**The shot panel folds up.** The −8…+8 dial lost its caption, and Aim, the called
+shot, Scope, Load and Cover now live behind a Conditions expander — anything set
+stays on screen so a penalty never has an invisible cause.
+
+**Cover is one control for the whole shot**, not one per target. By the book it
+belongs to whoever is behind the water trough, and a column of cover buttons down
+the target list said so — but it read as an instruction to fill in all of them
+before rolling. What it can no longer say is that one target is in the open and
+another is not; that costs a second shot, or the hand dial.
+
+**Each target's row now carries its own arithmetic**: the shooter's wounds in
+red, everything this shot has going for it in green, and the target number.
+
+Fixed: chips gained a pixel on every side the moment they stopped reading `+0`,
+which shifted the line they were on.
+
+---
+
 ## 2026-08-20 — Shoot, then roll
 
 Rolling Shooting used to throw the dice first and *then* offer a table of

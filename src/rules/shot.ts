@@ -89,10 +89,15 @@ export interface ShotMod {
   /**
    * Whose row this sits on.
    *
-   * `'shot'` is true of the whole attack — Aim, Recoil, the dial. `'target'`
-   * differs per defender, which is why cover cannot live on the shot row: with
-   * RoF 3 into three targets, one shared control cannot say that the first is
-   * behind a water trough and the second is standing in the open.
+   * `'shot'` is true of the whole attack — Aim, Recoil, the dial. `'target'` is
+   * a property of one defender: **range**, which is the one that genuinely
+   * cannot be shared, since one rolled expression cannot carry two different
+   * range penalties. That is what `bakesModifiers` turns on.
+   *
+   * Cover used to be here too, and by the book still is — the water trough
+   * belongs to whoever is behind it. The panel now asks for it once for the
+   * whole shot anyway, because five sets of cover buttons down a target list
+   * read as an instruction to fill all five in. See `ShotSession.cover`.
    */
   scope: 'shot' | 'target';
   note?: string;
@@ -401,7 +406,8 @@ export function coverMod(value: number): ShotMod | undefined {
     value,
     category: 'cover',
     kind: 'fact',
-    scope: 'target',
+    // Declared once for the shot, not per defender — see `ShotMod.scope`.
+    scope: 'shot',
     ...(found ? { note: found.note } : {}),
   };
 }
@@ -410,68 +416,94 @@ export function coverMod(value: number): ShotMod | undefined {
 // Called Shots
 // ---------------------------------------------------------------------------
 
-export interface CalledShot {
-  key: string;
-  label: string;
-  /** The penalty to hit. */
-  value: number;
-  /** Extra damage this earns on a hit, which must survive into the damage roll. */
-  damage?: number;
-  note: string;
-}
-
 /**
- * `"Targeting a particular part of the body is a Called Shot."` — p154.
+ * How big the thing you are shooting at is, and what that costs — p161's Scale
+ * Modifiers table.
  *
- * The penalties in parentheses there are for Normal-scale creatures, which is
- * every bandit and walkin' dead in Coffin Rock. Anything of a different Scale
- * changes them, and Scale is not implemented — so the manual dial stands in, and
- * `category: 'scale'` exists for when it is.
+ * This is the whole of the called-shot penalty, which is the part that was
+ * missing: `"Use the Scale of the target when making called shots against
+ * creatures, not their Scale. If a hero wants to blast the eye out of a Huge
+ * terrantula, for example, use the Scale of the eye, not the critter. If the eye
+ * is about the size of a wagon wheel, the hero adds +0 to their roll because it's
+ * Normal Scale, a +0 bonus."*
  *
- * Head or vitals is the one that matters twice: −4 to hit **and +4 damage**, so
- * it has to survive the roll and reach the damage. That is most of the reason the
- * shot panel holds state across roll → damage → apply rather than publishing and
- * forgetting.
+ * So −4 for a head was never a rule about heads. It is the Very Small row, and it
+ * is right only because the head in question was on a person. A called shot at
+ * something the size of a wagon wheel is free, and one at an armour joint is −6.
+ *
+ * The examples are the book's, and are the point: nobody can rank "very small"
+ * against "small" from the words, and everybody can rank a house cat against a
+ * bobcat.
+ *
+ * This is the whole of the called-shot control now. See `calledShotMod`.
  */
-export const CALLED_SHOTS: readonly CalledShot[] = [
-  {
-    key: 'head',
-    label: 'Head or vitals',
-    value: -4,
-    damage: 4,
-    note: 'Adds +4 damage to the attacker’s total (p154). −5 against an open-faced helmet, bypassing its armour.',
-  },
-  {
-    key: 'limb',
-    label: 'Hand',
-    value: -4,
-    note: 'The target may be Disarmed (p155).',
-  },
-  {
-    key: 'item',
-    label: 'Item',
-    value: -4,
-    note: 'Something the size of a pistol. A 3′ rifle is only −2 — use the dial (p154).',
-  },
+export const SCALES: readonly { value: number; label: string; examples: string }[] = [
+  { value: -6, label: 'Tiny', examples: 'Armour joint, baseball, mouse' },
+  { value: -4, label: 'Very Small', examples: 'Human hand or head, basketball, house cat' },
+  { value: -2, label: 'Small', examples: 'Human limb, bobcat' },
+  { value: 0, label: 'Normal', examples: 'Human, motorcycle, bull, horse' },
+  { value: 2, label: 'Large', examples: 'Hippo, most vehicles' },
+  { value: 4, label: 'Huge', examples: 'Terrantula, whale' },
+  { value: 6, label: 'Gargantuan', examples: 'Building, old rattler, ship' },
 ];
 
-export function calledShotMod(key: string | undefined): ShotMod | undefined {
-  const shot = CALLED_SHOTS.find((c) => c.key === key);
-  if (!shot) return undefined;
+/**
+ * !! The **other** Scale rule is not implemented. p161: *"When creatures of
+ * different Scales attack each other, the smaller creature adds the difference
+ * between its Scale and its target to its attacks"* — a Tiny spirit hurling a
+ * bolt at a Huge terrantula adds +10. That needs a Size on both ends and `Sheet`
+ * records none, so it is the hand dial for now. !!
+ */
+
+/**
+ * A called shot: the penalty **is** the Scale of what you are aiming at.
+ *
+ * There is no list of body parts here any more, and that is the rule rather than
+ * a simplification. Every figure the old list carried was a row of `SCALES` read
+ * off a human — head and hand Very Small (−4), a limb Small (−2), a pistol-sized
+ * item Very Small — which is right only for as long as the target is a person.
+ * p161 says what to do instead: use the Scale of the thing, whatever it is on.
+ *
+ * `undefined` means no called shot. **Zero does not**: a called shot at something
+ * Normal-sized costs nothing and is still a called shot — the book's own example
+ * is blowing the eye out of a Huge terrantula when the eye is the size of a wagon
+ * wheel. Every test of this has to be `!== undefined`.
+ */
+export function calledShotMod(scale: number | undefined): ShotMod | undefined {
+  if (scale === undefined) return undefined;
+  const named = SCALES.find((s) => s.value === scale);
   return {
-    key: `called:${shot.key}`,
-    label: shot.label,
-    value: shot.value,
+    // Stable across a change of size, so `describeAmendment` reads a re-sized
+    // called shot as "Called shot -4 → 0" rather than as one gone and one new.
+    key: 'called',
+    label: named ? `Called shot (${named.label})` : 'Called shot',
+    value: scale,
     category: 'called-shot',
     kind: 'choice',
     scope: 'shot',
-    note: shot.note,
+    note: named
+      ? `${named.label} Scale — ${named.examples}. Use the Scale of the part you are ` +
+        `aiming at, not of the creature it is on (p161).`
+      : 'Use the Scale of the part you are aiming at, not of the creature (p161).',
   };
 }
 
-/** The bonus damage a called shot earns, for the damage roll that follows. */
-export function calledShotDamage(key: string | undefined): number {
-  return CALLED_SHOTS.find((c) => c.key === key)?.damage ?? 0;
+/**
+ * `"Hitting the head or vital organs of living creatures adds +4 damage"` — p154.
+ *
+ * Deliberately **not** derived from the size. A rattler's head is Gargantuan and
+ * a man's is Very Small, and both are vitals; how big the thing is and whether it
+ * is a vital spot are two different questions, which is why the panel asks them
+ * separately. Living creatures only — the Marshal's call, as ever.
+ *
+ * A head shot against an open-faced helmet is −5 rather than −4 and bypasses its
+ * armour (p154). Not modelled: it is one point and a Marshal's judgement about
+ * headgear, which is what the hand dial is for.
+ */
+export const VITALS_DAMAGE = 4;
+
+export function calledShotDamage(vitals: boolean): number {
+  return vitals ? VITALS_DAMAGE : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -561,7 +593,16 @@ export function applyAim(mods: readonly ShotMod[], aim: Aim): AimResult {
   });
   // A penalty Aim wholly cancelled is gone rather than shown as zero: a row of
   // "0" pills reads as modifiers that did nothing, not as ones that were paid for.
-  return { mods: next.filter((mod) => mod.value !== 0), spent, unspent: budget };
+  //
+  // Only the ones Aim *paid for*, though. A called shot at a Normal-scale target
+  // is legitimately +0 — p161's wagon-wheel eye — and it has to stay on the list
+  // whether or not the shooter aimed, or the log would stop recording that a
+  // called shot was declared at all the moment somebody spent a turn aiming.
+  return {
+    mods: next.filter((mod, index) => mod.value !== 0 || !cancelled.has(index)),
+    spent,
+    unspent: budget,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -584,7 +625,13 @@ export interface ShotRequest {
   /** How many Shooting dice, already chosen — the ceiling is the weapon's. */
   rof: number;
   aim: Aim;
-  calledShot?: string | undefined;
+  /**
+   * A called shot, as the Scale of what is being aimed at — p161, `SCALES`.
+   *
+   * `undefined` is no called shot. Zero *is* one: a called shot at something
+   * Normal-sized costs nothing and is still a called shot.
+   */
+  scale?: number | undefined;
   /** Per-target, and so only meaningful once a target is named. */
   band?: Band | undefined;
   cover?: number | undefined;
@@ -628,7 +675,7 @@ export function shotTotal(request: ShotRequest): ShotTotal {
   const cover = coverMod(request.cover ?? 0);
   if (cover) base.push(cover);
 
-  const called = calledShotMod(request.calledShot);
+  const called = calledShotMod(request.scale);
   if (called) base.push(called);
 
   const recoil = recoilFor(request.rof, request.steady ?? false);

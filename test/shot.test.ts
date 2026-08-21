@@ -3,8 +3,8 @@ import {
   AIMABLE,
   AIM_BONUS,
   AIM_BUDGET,
-  CALLED_SHOTS,
   COVER,
+  SCALES,
   RECOIL,
   SHOTGUN_BONUS,
   applyAim,
@@ -162,8 +162,14 @@ describe('cover', () => {
     expect(COVER.map((c) => c.value)).toEqual([0, -2, -4, -6, -8]);
   });
 
-  it('is per target rather than per shot', () => {
-    expect(coverMod(-4)?.scope).toBe('target');
+  /**
+   * By the book it is per target — the water trough belongs to whoever is behind
+   * it. The panel asks for it once for the whole shot anyway, because a column
+   * of cover buttons down a target list read as an instruction to fill in all of
+   * them. See `ShotSession.cover`.
+   */
+  it('is declared once for the shot', () => {
+    expect(coverMod(-4)?.scope).toBe('shot');
   });
 
   it('says nothing when there is none', () => {
@@ -177,25 +183,79 @@ describe('cover', () => {
 });
 
 describe('called shots', () => {
-  it('costs four to hit', () => {
-    for (const shot of CALLED_SHOTS) expect(shot.value).toBe(-4);
+  /**
+   * The penalty **is** the Scale of what you are aiming at — p161: `"Use the
+   * Scale of the target when making called shots against creatures, not their
+   * Scale."` There is no list of body parts any more, because the old one was
+   * this table read off a human and stopped being right the moment the target
+   * was a rattler.
+   */
+  it('costs the Scale of the thing being aimed at', () => {
+    expect(calledShotMod(-4)?.value).toBe(-4);
+    expect(calledShotMod(-4)?.label).toBe('Called shot (Very Small)');
+    expect(calledShotMod(2)?.value).toBe(2);
   });
 
-  /** `"Hitting the head or vital organs of living creatures adds +4 damage"` — p154. */
-  it('earns four extra damage at the head or vitals, and nowhere else', () => {
-    expect(calledShotDamage('head')).toBe(4);
-    expect(calledShotDamage('limb')).toBe(0);
-    expect(calledShotDamage('item')).toBe(0);
-    expect(calledShotDamage(undefined)).toBe(0);
+  /** No called shot at all. */
+  it('says nothing when none was declared', () => {
+    expect(calledShotMod(undefined)).toBeUndefined();
+  });
+
+  /**
+   * The book's own example, and the case a truthiness check would silently eat:
+   * `"If the eye is about the size of a wagon wheel, the hero adds +0 to their
+   * roll because it's Normal Scale."` Free, and still a called shot.
+   */
+  it('is still a called shot when the thing is Normal-sized and free', () => {
+    const wagonWheel = calledShotMod(0);
+    expect(wagonWheel).toBeDefined();
+    expect(wagonWheel?.value).toBe(0);
+    expect(wagonWheel?.label).toBe('Called shot (Normal)');
+  });
+
+  /**
+   * `"Hitting the head or vital organs of living creatures adds +4 damage"` —
+   * p154. Its own question, because size cannot answer it: a rattler's head is
+   * Gargantuan and a man's is Very Small, and both are vitals.
+   */
+  it('earns four extra damage at a vital spot, whatever size it is', () => {
+    expect(calledShotDamage(true)).toBe(4);
+    expect(calledShotDamage(false)).toBe(0);
   });
 
   /** Clicking this after seeing the total is deciding where you aimed. */
   it('is recorded as a choice, not a fact', () => {
-    expect(calledShotMod('head')?.kind).toBe('choice');
+    expect(calledShotMod(-4)?.kind).toBe('choice');
   });
 
-  it('ignores a name it does not know', () => {
-    expect(calledShotMod('elbow')).toBeUndefined();
+  /** One key across every size, so re-sizing reads as a change and not a swap. */
+  it('keeps its key when the size changes', () => {
+    expect(calledShotMod(-6)?.key).toBe(calledShotMod(2)?.key);
+  });
+
+  /**
+   * Scale gives the app its first *positive* aimable modifier — a Gargantuan
+   * target is +6 in the `called-shot` category, which is on Aim's list. Aim
+   * cancels penalties; it must not spend its four points buying away a bonus.
+   */
+  it('is not something Aim can cancel when the target is huge', () => {
+    const huge = calledShotMod(6)!;
+    const aimed = applyAim([huge], 'cancel');
+    expect(aimed.mods.find((m) => m.key === huge.key)?.value).toBe(6);
+    expect(aimed.spent).toEqual([]);
+    expect(aimed.unspent).toBe(AIM_BUDGET);
+  });
+
+  /**
+   * A free called shot must survive Aim. `applyAim` drops modifiers that came out
+   * at zero, which is right for a penalty it *paid down* and wrong for one that
+   * was never a penalty — otherwise the log would stop recording that a called
+   * shot was declared the moment the shooter spent a turn aiming.
+   */
+  it('survives being aimed even when it costs nothing', () => {
+    const aimed = applyAim([calledShotMod(0)!], 'cancel');
+    expect(aimed.mods.map((m) => m.key)).toEqual(['called']);
+    expect(aimed.unspent).toBe(AIM_BUDGET);
   });
 });
 
@@ -271,8 +331,10 @@ describe('aim', () => {
    * say which it took.
    */
   it('says what it spent its points on', () => {
-    const result = applyAim([coverMod(-2)!, calledShotMod('head')!], 'cancel');
-    expect(result.spent).toEqual([{ key: 'called:head', label: 'Head or vitals', points: 4 }]);
+    const result = applyAim([coverMod(-2)!, calledShotMod(-4)!], 'cancel');
+    expect(result.spent).toEqual([
+      { key: 'called', label: 'Called shot (Very Small)', points: 4 },
+    ]);
     expect(result.mods.map((m) => m.label)).toEqual(['Light cover']);
     expect(result.unspent).toBe(0);
   });
@@ -297,9 +359,9 @@ describe('a whole shot', () => {
   });
 
   it('adds up range, cover and a called shot', () => {
-    const shot = shotTotal({ rof: 1, aim: 'off', band: 'medium', cover: -2, calledShot: 'head' });
+    const shot = shotTotal({ rof: 1, aim: 'off', band: 'medium', cover: -2, scale: -4 });
     expect(shot.total).toBe(-8);
-    expect(shot.mods.map((m) => m.label)).toEqual(['Medium range', 'Light cover', 'Head or vitals']);
+    expect(shot.mods.map((m) => m.label)).toEqual(['Medium range', 'Light cover', 'Called shot (Very Small)']);
   });
 
   it('brings in recoil from the declared rate of fire', () => {
