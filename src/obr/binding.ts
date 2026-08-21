@@ -114,7 +114,22 @@ export function resetSceneState(state: TokenState): TokenState {
 /** The minimum this module needs to know about an OBR item. */
 export interface TokenLike {
   id: string;
+  /**
+   * The item's name — what the Marshal sees in Owlbear's own items tray.
+   *
+   * Not what the table calls it. Used for auto-binding, where matching a token
+   * to a sheet by name is the point, and for nothing that is shown to a player:
+   * see `label`.
+   */
   name: string;
+  /**
+   * The text label drawn under the token on the map, when it has one.
+   *
+   * This is the name the table actually says out loud, and the only one that is
+   * both safe and *distinct*: five mooks share a sheet and usually share an item
+   * name too, but each carries its own label. `mapName` picks it over `name`.
+   */
+  label?: string;
   layer: string;
   metadata: Record<string, unknown>;
 }

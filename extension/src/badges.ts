@@ -50,6 +50,14 @@ const PADDING = 5;
 const LABEL_HEIGHT = FONT_SIZE * 1.2 + PADDING * 2;
 /** Breathing room between the artwork and a badge. */
 const GAP = 4;
+/**
+ * How far apart to stack the column, as a multiple of a label.
+ *
+ * `LABEL_HEIGHT` is an estimate — a label's rendered height is not knowable from
+ * here — and it was estimating low: stacked at exactly one label plus the gap,
+ * a wounded and Shaken mook's two badges overlapped. The extra is empirical.
+ */
+const ROW_PITCH = 1.15;
 
 interface Token extends TokenLike {
   /** The artwork's centre, which is not necessarily the item's `position`. */
@@ -185,7 +193,7 @@ export async function renderBadges(
           x: -(halfWidth + GAP * 14),
           // Grown downward from a little above the middle, so one or two markers
           // — the common case — sit level with the token rather than above it.
-          y: LABEL_HEIGHT * 0.75 + row * (LABEL_HEIGHT + GAP),
+          y: LABEL_HEIGHT * 0.75 + row * (LABEL_HEIGHT * ROW_PITCH + GAP),
         }),
       );
     });

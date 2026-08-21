@@ -20,6 +20,25 @@
  * the failure that actually happens.
  */
 import type { Sheet } from './sheet.js';
+import type { TokenLike } from '../obr/binding.js';
+
+/**
+ * What the table calls this token.
+ *
+ * The **map label** when it has one, and the item name only as a fallback. Those
+ * are two different strings in Owlbear and the difference matters here: the item
+ * name is what the Marshal typed into the items tray, which is usually the
+ * creature's real name and is usually identical across every copy of it. The
+ * label is what is drawn under the token for everyone to read.
+ *
+ * So the label is the only name that is both **safe** — a player reading it
+ * learns nothing they cannot already see — and **distinct**: five mooks sharing
+ * one sheet and one item name still carry five different labels, which is what
+ * makes "the one on the left" answerable.
+ */
+export function mapName(token: Pick<TokenLike, 'name' | 'label'>): string {
+  return token.label?.trim() || token.name;
+}
 
 /** The separator between what a thing is and which one of them it is. */
 const JOIN = ' · ';

@@ -130,7 +130,7 @@ import {
   traitPenalty,
   type RollBreakdown,
 } from '../../src/rules/status.js';
-import { localName, wireName } from '../../src/rules/naming.js';
+import { localName, mapName, wireName } from '../../src/rules/naming.js';
 import {
   MANUAL_RANGE,
   SITUATIONS,
@@ -498,7 +498,8 @@ function reveal(id: string): void {
  */
 function rollerName(sheet: Sheet): string | undefined {
   if (sheet.pc) return sheet.name;
-  return activeToken(sheet)?.token.name;
+  const token = activeToken(sheet)?.token;
+  return token ? mapName(token) : undefined;
 }
 
 /** `{ character }` for a published line, absent for an NPC with no token. */
@@ -665,9 +666,9 @@ function renderLog(): void {
       if (target && isApplicable(current) && current.target === undefined) {
         const apply = document.createElement('button');
         apply.className = 'apply';
-        apply.textContent = `\u2192 ${rollerName(target.sheet) ?? target.token.name}`;
+        apply.textContent = `\u2192 ${rollerName(target.sheet) ?? mapName(target.token)}`;
         apply.title =
-          `Apply ${current.total} damage to ${target.token.name}` +
+          `Apply ${current.total} damage to ${mapName(target.token)}` +
           (current.ap ? `, ignoring ${current.ap} armour` : '');
         apply.addEventListener('click', () => void applyToTarget(current, target));
         body.append(apply);
@@ -908,7 +909,7 @@ async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
 
     const row: TargetRow = {
       tokenId: token.id,
-      name: localName(sheet, token.name, isGM),
+      name: localName(sheet, mapName(token), isGM),
       pills: targetPills(state),
       ...(cells === undefined ? {} : { cells }),
       ...(band ? { band } : {}),
@@ -3929,7 +3930,7 @@ async function fillShotTargets(
     const name = document.createElement('td');
     name.className = 'who';
     // Same rule as the targeting table: an NPC's real name is the Marshal's.
-    name.textContent = localName(victim, token.name, isGM);
+    name.textContent = localName(victim, mapName(token), isGM);
     tr.append(name);
 
     const pills = document.createElement('td');
@@ -4385,7 +4386,7 @@ function takeTheShot(
   const names = named
     .map((id, i) => {
       const found = candidates.find((c) => c.token.id === id);
-      const who = found ? wireName(found.sheet, found.token.name) : named[i]!;
+      const who = found ? wireName(found.sheet, mapName(found.token)) : named[i]!;
       const count = session.bullets.get(id) ?? 1;
       return count > 1 ? `${who} ×${count}` : who;
     })
@@ -4590,7 +4591,7 @@ function shotDamageRow(
   // Just "Apply". The row it sits in is already headed by the target's name, and
   // spelling it out again ran the line off the end of the panel.
   apply.textContent = 'Apply';
-  const to = localName(victim.sheet, victim.token.name, isGM);
+  const to = localName(victim.sheet, mapName(victim.token), isGM);
   apply.title = `Apply ${describeAdjustment(entry.total, adjust) || entry.total} to ${to}`;
   apply.addEventListener('click', () => {
     void applyToTarget(entry, victim, adjustments.get(entry.id));
@@ -4949,7 +4950,7 @@ async function applyToTarget(
     // finds *a* token bound to the sheet — with five bandits sharing one, that
     // is as likely to be the wrong bandit as the right one, and this call has
     // the token that was actually hit in its hand.
-    character: wireName(target.sheet, target.token.name),
+    character: wireName(target.sheet, mapName(target.token)),
     label: 'takes damage',
     expression: `${entry.total}`,
     explained: outcome.description,

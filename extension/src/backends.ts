@@ -147,6 +147,8 @@ export async function characterTokens(): Promise<
         image?: { url?: string; width?: number; height?: number };
         grid?: { dpi?: number; offset?: { x: number; y: number } };
         scale?: { x?: number; y?: number };
+        /** The label drawn under the token on the map. See `TokenLike.label`. */
+        text?: { plainText?: string };
       };
       const image = asImage.image?.url;
       // OBR scales an image so its own grid dpi maps onto the scene's, then
@@ -169,9 +171,15 @@ export async function characterTokens(): Promise<
         x: item.position.x + (pixelsW / 2 - offset.x) * unit * scaleX,
         y: item.position.y + (pixelsH / 2 - offset.y) * unit * scaleY,
       };
+      // Owlbear keeps an empty label as an empty string rather than dropping it,
+      // so a blank one has to be treated as absent or every unlabelled token
+      // would be called "".
+      const label = asImage.text?.plainText?.trim();
+
       return {
         id: item.id,
         name: item.name,
+        ...(label ? { label } : {}),
         layer: item.layer,
         metadata: item.metadata,
         // Needed to place a badge: an attached item keeps its own position and

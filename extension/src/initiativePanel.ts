@@ -22,7 +22,7 @@ import {
 import type { Sheet } from '../../src/rules/sheet.js';
 import { readBinding, type TokenLike, type TokenState } from '../../src/obr/binding.js';
 import { describeStatus, isIncapacitated } from '../../src/rules/status.js';
-import { localName } from '../../src/rules/naming.js';
+import { localName, mapName } from '../../src/rules/naming.js';
 
 export interface Combatant {
   tokenId: string;
@@ -90,7 +90,8 @@ export function combatants(
     if (!state || !sheet) continue;
     out.push({
       tokenId: token.id,
-      name: token.name,
+      // What the table calls it, which is the map label when there is one.
+      name: mapName(token),
       sheet,
       state,
       ...(state.card ? { card: state.card } : {}),

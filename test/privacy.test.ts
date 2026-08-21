@@ -3,7 +3,7 @@ import { displayName, type Combatant } from '../extension/src/initiativePanel.js
 import { emptySheet, sheetFromJson, sheetToJson, type Sheet } from '../src/rules/sheet.js';
 import { newTokenState } from '../src/obr/binding.js';
 import { PARRY_VISIBLE_CELLS, showsParry } from '../src/rules/targeting.js';
-import { wireName } from '../src/rules/naming.js';
+import { localName, mapName, wireName } from '../src/rules/naming.js';
 
 const combatant = (tokenName: string, sheet: Sheet): Combatant => ({
   tokenId: `t-${tokenName}`,
@@ -21,6 +21,34 @@ const reggie: Sheet = { ...emptySheet('reggie', 'Reggie Kane'), pc: true };
  * What it must do is stop a name the Marshal is holding back turning up in a
  * player's UI by itself, which is the part nobody would think to check.
  */
+/**
+ * The map label, not the item name.
+ *
+ * Two different strings in Owlbear, and only one of them is safe: the item name
+ * is what the Marshal typed into the items tray — usually the creature's real
+ * name, and usually identical on every copy of it — while the label is what is
+ * drawn under the token for the whole table to read. It is also the only one
+ * that tells five mooks sharing a sheet apart.
+ */
+describe('what the table calls a token', () => {
+  it('prefers the map label to the item name', () => {
+    expect(mapName({ name: 'Rattler Cultist', label: 'Robed Figure' })).toBe('Robed Figure');
+  });
+
+  it('falls back to the item name when the token carries no label', () => {
+    expect(mapName({ name: 'Big Rock' })).toBe('Big Rock');
+    // Owlbear stores an absent label as an empty string rather than dropping it.
+    expect(mapName({ name: 'Big Rock', label: '   ' })).toBe('Big Rock');
+  });
+
+  it('is what a player is shown, and half of what the Marshal is shown', () => {
+    const token = { name: 'Landshark', label: 'Thing in the Water' };
+    expect(localName(landshark, mapName(token), false)).toBe('Thing in the Water');
+    expect(localName(landshark, mapName(token), true)).toBe('Landshark · Thing in the Water');
+    expect(wireName(landshark, mapName(token))).toBe('Thing in the Water');
+  });
+});
+
 describe("one of the Marshal's characters", () => {
   it('shows players the token name rather than the sheet name', () => {
     const all = [combatant('Big Rock', landshark), combatant('Reggie Kane', reggie)];
