@@ -54,6 +54,9 @@ and counted as a struggle at arm's length. 1.5 sits in the gap a square grid
 leaves: touching orthogonally is 1, diagonally about 1.41, and the next ring out
 is 2.
 
+**Hearts and diamonds are red in the roll log.** They always were in the turn
+order; the log is built as plain text and the symbols carried no colour at all.
+
 Still on the list, and not fixed here: the displayed distance is still rounded
 while the range band is not, so a shot at a true 2.1 cells reads `Dist 2` and is
 charged Medium range.

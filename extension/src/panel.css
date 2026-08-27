@@ -995,6 +995,14 @@ ol.initiative .drew { font-size: 10.5px; color: var(--muted); }
 
 .deck-count { margin: -4px 0 8px; font-size: 11px; color: var(--muted); }
 
+/* Suit symbols inside the roll log, whose lines are plain text — the same red as
+   the turn order uses, so a card reads the same wherever it is printed. Set on
+   `.suit-red` rather than by element so it survives being inside a bold total. */
+#log .suit-red { color: #c0392b; }
+@media (prefers-color-scheme: dark) {
+  #log .suit-red { color: #ff6b5e; }
+}
+
 /* Hearts and diamonds read red, as on a real card. One rule for both places the
    hand is drawn, so the sheet and the turn order cannot drift apart. */
 ol.initiative .card.red,

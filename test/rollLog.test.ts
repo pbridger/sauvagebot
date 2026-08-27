@@ -1,3 +1,4 @@
+import { SUITS, splitRedSuits } from '../src/game/cards.js';
 import { describe, expect, it } from 'vitest';
 import {
   RollLog,
@@ -358,5 +359,44 @@ describe('amending a roll that has already been made', () => {
   it('carries a whole entry, so a late client can read it alone', () => {
     expect(aimed.total).toBe(7);
     expect(isRollEntry(forBroadcast(aimed))).toBe(true);
+  });
+});
+
+/**
+ * Reported 2026-08-27: hearts and diamonds printed black in the roll log while
+ * the turn order showed them red. The log is assembled as text, so the glyphs
+ * carried no markup at all. The renderer is DOM assembly that nothing covers;
+ * this is the part of it worth pinning.
+ */
+describe('colouring suit symbols in a log line', () => {
+  it('marks hearts and diamonds and nothing else', () => {
+    const runs = splitRedSuits('Paige 9♥ and Reggie 4♠');
+    expect(runs.filter((r) => r.red).map((r) => r.text)).toEqual(['♥']);
+    expect(runs.map((r) => r.text).join('')).toBe('Paige 9♥ and Reggie 4♠');
+  });
+
+  it('leaves a line with no cards as a single run', () => {
+    expect(splitRedSuits('Reggie soaked 2 of 3')).toEqual([
+      { text: 'Reggie soaked 2 of 3', red: false },
+    ]);
+  });
+
+  it('keeps two red symbols next to each other together', () => {
+    const runs = splitRedSuits('♥♦');
+    expect(runs).toEqual([{ text: '♥♦', red: true }]);
+  });
+
+  it('handles a line that is only a card', () => {
+    expect(splitRedSuits('♦')).toEqual([{ text: '♦', red: true }]);
+  });
+
+  it('gives nothing back for an empty line', () => {
+    expect(splitRedSuits('')).toEqual([]);
+  });
+
+  /** The colour joker is a red card, and the glyph is an emoji outside the BMP. */
+  it('marks the colour joker, surrogate pair and all', () => {
+    const runs = splitRedSuits(`Paige ${SUITS.COLOR.name} — joker!`);
+    expect(runs.filter((r) => r.red).map((r) => r.text)).toEqual([SUITS.COLOR.name]);
   });
 });

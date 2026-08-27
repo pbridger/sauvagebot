@@ -45,6 +45,41 @@ export function isRedSuit(c: Card): boolean {
 }
 
 /**
+ * The glyphs `isRedSuit` would say yes to, as they appear in a string.
+ *
+ * Derived from `SUITS` rather than written out, so a change to a symbol cannot
+ * leave the two disagreeing — which would show up as one suit quietly going
+ * black in the roll log and nowhere else.
+ */
+const RED_GLYPHS: ReadonlySet<string> = new Set<string>(
+  (Object.keys(SUITS) as SuitName[])
+    .filter((suit) => isRedSuit({ suit, rank: 2 }))
+    .map((suit) => SUITS[suit].name),
+);
+
+/**
+ * Split a line of text into runs, marking the ones that are a red suit symbol.
+ *
+ * For the roll log, which is assembled as text and so was printing hearts and
+ * diamonds in black while the initiative list showed them red — reported
+ * 2026-08-27. Pure and string-only on purpose: the log's renderer is DOM
+ * assembly that no test covers, and this is the part of it worth pinning.
+ *
+ * Adjacent characters of the same kind stay in one run, so a line with no cards
+ * in it comes back as a single piece and costs one span.
+ */
+export function splitRedSuits(text: string): { text: string; red: boolean }[] {
+  const runs: { text: string; red: boolean }[] = [];
+  for (const ch of text) {
+    const red = RED_GLYPHS.has(ch);
+    const last = runs[runs.length - 1];
+    if (last && last.red === red) last.text += ch;
+    else runs.push({ text: ch, red });
+  }
+  return runs;
+}
+
+/**
  * A card as the VTT should display it.
  *
  * Identical to `cardToString` except for the jokers, which that function renders

@@ -173,7 +173,7 @@ import {
   type Draw,
   type InitiativeState,
 } from '../../src/rules/initiative.js';
-import { cardLabel, type Card } from '../../src/game/cards.js';
+import { cardLabel, splitRedSuits, type Card } from '../../src/game/cards.js';
 import {
   autoBind,
   bindToken,
@@ -656,10 +656,19 @@ function renderLog(): void {
       const body = document.createElement('div');
       body.className = 'body';
       for (const [i, part] of entry.explained.split('**').entries()) {
-        const span = document.createElement('span');
-        span.textContent = part;
-        if (i % 2 === 1) span.className = 'total';
-        body.append(span);
+        const bold = i % 2 === 1;
+        // Split again on the suit symbols. The log is assembled as text, so a
+        // heart in an initiative line came out the same black as the words around
+        // it while the turn order two panes up showed it red — reported
+        // 2026-08-27. A line with no cards in it is one run and costs one span,
+        // exactly as before.
+        for (const run of splitRedSuits(part)) {
+          const span = document.createElement('span');
+          span.textContent = run.text;
+          const classes = [bold ? 'total' : '', run.red ? 'suit-red' : ''].filter(Boolean);
+          if (classes.length) span.className = classes.join(' ');
+          body.append(span);
+        }
       }
 
       if (entry.ap) {
