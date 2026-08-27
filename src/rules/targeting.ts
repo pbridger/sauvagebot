@@ -269,6 +269,46 @@ export function isTargeted(skill: string | undefined): boolean {
  */
 export const PARRY_VISIBLE_CELLS = 1.5;
 
+/** How many decimal places a measured distance is kept — and shown — to. */
+const CELL_PLACES = 1;
+
+/**
+ * A raw grid distance, quantised to the precision the panel will display.
+ *
+ * **Everything downstream must use this rather than the raw figure**, and that is
+ * the whole point of it existing. The bug it fixes was reported on 2026-08-26:
+ * the row printed `Math.round(cells)` while `bandFor` compared the unrounded
+ * value, so a shot at a true 2.1 cells read `Dist 2` and was charged Medium —
+ * *"impossible to use this 2/4/8 range ability at short range"*.
+ *
+ * Showing a decimal alone would not have fixed it. `2.04` displays as `2.0` at
+ * one place and would still have been banded as over 2. Quantising at the
+ * *measurement* instead means the number on screen is the number the arithmetic
+ * used, whatever it is rounded to — a display can no longer disagree with a
+ * result, because there is only one value.
+ *
+ * One decimal place because that is what a person can read off a row at a glance,
+ * and because a tenth of a cell is four inches of tabletop: fine enough that
+ * nobody is being cheated, coarse enough to absorb the float noise a grid
+ * measurement carries.
+ */
+export function measuredCells(raw: number): number {
+  const factor = 10 ** CELL_PLACES;
+  return Math.round(raw * factor) / factor;
+}
+
+/**
+ * A measured distance as a row should print it.
+ *
+ * Whole numbers stay whole — `Dist 2`, which is what the grid gives for tokens
+ * sitting on cells and is what nearly every row shows. The decimal appears only
+ * when there really is a fraction, which is exactly when it is deciding a range
+ * band and the reader needs to see it.
+ */
+export function formatCells(cells: number): string {
+  return Number.isInteger(cells) ? String(cells) : cells.toFixed(CELL_PLACES);
+}
+
 /**
  * What a shot at this defender has to beat: their Parry when it is into melee,
  * and the usual flat 4 when it is not.

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { MANUAL_RANGE } from '../src/rules/modifiers.js';
 import {
+  showsParry,
+  formatCells,
+  measuredCells,
   BAND_PENALTY,
   DEFAULT_PARRY,
   EXTREME_MULTIPLE,
@@ -391,5 +394,65 @@ describe('what a shot has to beat', () => {
   /** A defender with no Parry on their sheet still has the book's floor of 2. */
   it('falls back to the default Parry rather than to 4', () => {
     expect(targetNumber(undefined, true)).toBe(DEFAULT_PARRY);
+  });
+});
+
+/**
+ * Reported from the table 2026-08-26, with two screenshots: a shot at a true 2.1
+ * cells printed `Dist 2` and was charged Medium range, making a `2/4/8` weapon
+ * *"impossible to use at short range"*. The row rounded for display while
+ * `bandFor` compared the raw figure.
+ */
+describe('the distance a row shows and the distance it uses', () => {
+  it('is one number, quantised where it is measured', () => {
+    expect(measuredCells(2.04)).toBe(2);
+    expect(measuredCells(2.1)).toBe(2.1);
+    expect(measuredCells(1.9999999)).toBe(2);
+  });
+
+  it('prints a whole number whole, which is nearly every row', () => {
+    expect(formatCells(2)).toBe('2');
+    expect(formatCells(12)).toBe('12');
+  });
+
+  it('shows the decimal only when there is one to show', () => {
+    expect(formatCells(2.1)).toBe('2.1');
+    expect(formatCells(1.4)).toBe('1.4');
+  });
+
+  /**
+   * The property that was broken, stated directly: whatever the row prints, the
+   * band must be the band that figure falls in. Reading the printed string back
+   * as a number is the point — it is what a player does.
+   */
+  it('bands the figure it printed, at every tenth around a boundary', () => {
+    const bands: RangeBands = [2, 4, 8];
+    for (let raw = 1.5; raw <= 2.5; raw += 0.01) {
+      const cells = measuredCells(raw);
+      const shown = Number(formatCells(cells));
+      expect(bandFor(shown, bands)).toBe(bandFor(cells, bands));
+    }
+  });
+
+  it('leaves a shot that was genuinely short at short range', () => {
+    const bands: RangeBands = [2, 4, 8];
+    // 2.04 cells: a nudge, not a step. Rounds to 2 and is charged nothing, which
+    // is the half of Damian's report that made the weapon unusable.
+    const cells = measuredCells(2.04);
+    expect(formatCells(cells)).toBe('2');
+    expect(bandFor(cells, bands)).toBe('short');
+  });
+
+  it('still charges a shot that really is past the band', () => {
+    const bands: RangeBands = [2, 4, 8];
+    const cells = measuredCells(2.1);
+    expect(formatCells(cells)).toBe('2.1');
+    expect(bandFor(cells, bands)).toBe('medium');
+  });
+
+  /** The melee radius reads the same quantised figure, so it agrees too. */
+  it('keeps a diagonal neighbour inside melee once quantised', () => {
+    expect(showsParry('Shooting', measuredCells(Math.SQRT2))).toBe(true);
+    expect(showsParry('Shooting', measuredCells(1.55))).toBe(false);
   });
 });

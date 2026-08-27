@@ -67,6 +67,8 @@ import {
   bandFor,
   BAND_PENALTY,
   DEFAULT_PARRY,
+  formatCells,
+  measuredCells,
   showsParry,
   targetNumber,
   FLAT_TARGET,
@@ -967,7 +969,9 @@ async function candidateTargets(from: string | undefined): Promise<Candidate[]> 
     candidates.map(async (token) => {
       if (!origin) return undefined;
       try {
-        return await OBR.scene.grid.getDistance(origin.centre, token.centre);
+        // Quantised here, once, so that the number a row prints and the number
+        // `bandFor` compares are the same number. See `measuredCells`.
+        return measuredCells(await OBR.scene.grid.getDistance(origin.centre, token.centre));
       } catch {
         // A scene that closed mid-measure. The row is still worth showing
         // without its range.
@@ -1223,10 +1227,10 @@ async function fillTargets(holder: HTMLElement, entry: RollEntry): Promise<void>
       const penalty = row.band ? BAND_PENALTY[row.band] : undefined;
       range.textContent =
         row.band === 'over'
-          ? `${Math.round(row.cells)} — over`
+          ? `${formatCells(row.cells)} — over`
           : penalty
-            ? `${Math.round(row.cells)} (${penalty})`
-            : String(Math.round(row.cells));
+            ? `${formatCells(row.cells)} (${penalty})`
+            : formatCells(row.cells);
       // A distance with no band is the confusing case, and it is worth spelling
       // out: the roll came from the skills list, which knows the skill but not
       // which weapon — and without a weapon there are no bands to fall in. The
@@ -4605,15 +4609,15 @@ async function fillShotTargets(
       range.textContent = 'Dist —';
       range.title = from ? 'Not on this map' : 'No token on the map to shoot from';
     } else if (band === 'over') {
-      range.textContent = `Dist ${Math.round(cells)} — over`;
+      range.textContent = `Dist ${formatCells(cells)} — over`;
       range.title = reachesExtreme(weapon, session.slugs)
         ? 'Past four times long range — the shot cannot be taken (p146)'
         : 'Past long range, and this weapon may not be fired at Extreme Range (p146, p161)';
     } else {
       const penalty = band ? BAND_PENALTY[band] : 0;
       range.textContent = penalty
-        ? `Dist ${Math.round(cells)} (${penalty})`
-        : `Dist ${Math.round(cells)}`;
+        ? `Dist ${formatCells(cells)} (${penalty})`
+        : `Dist ${formatCells(cells)}`;
       range.title =
         `${cells.toFixed(1)} cells — ${band ?? 'unbanded'} range` +
         (band === 'extreme'

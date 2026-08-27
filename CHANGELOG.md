@@ -57,9 +57,14 @@ is 2.
 **Hearts and diamonds are red in the roll log.** They always were in the turn
 order; the log is built as plain text and the symbols carried no colour at all.
 
-Still on the list, and not fixed here: the displayed distance is still rounded
-while the range band is not, so a shot at a true 2.1 cells reads `Dist 2` and is
-charged Medium range.
+**And the distance a row shows is now the distance it uses.** The other half of
+the same rounding: a shot at a true 2.1 cells printed `Dist 2` and was charged
+Medium, which made a `2/4/8` weapon impossible to use at short range. The
+distance is now rounded once, where it is measured, and everything reads that one
+number — so `Dist 2` is short range, always.
+
+A decimal appears only when there is one: `Dist 2` for tokens on the grid, and
+`Dist 2.1` exactly when that fraction is the thing costing you the band.
 
 ---
 
