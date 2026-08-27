@@ -45,6 +45,15 @@ import { findEntry } from '../../src/rules/catalogue.js';
 const PREFIX = 'com.savagebot/probe';
 const STAMP_KEY = `${PREFIX}-stamp`;
 const BLOB_KEY = `${PREFIX}-blob`;
+const SCENE_STAMP_KEY = `${PREFIX}-scene-stamp`;
+
+/** Written into scene metadata to find out whether duplicating a scene copies it. */
+interface SceneStamp {
+  nonce: string;
+  at: string;
+  /** How many items the scene held when it was stamped — the tell for a copy. */
+  items: number;
+}
 
 const logEl = document.getElementById('log')!;
 
@@ -283,6 +292,151 @@ async function sceneCap(): Promise<void> {
   );
   await OBR.scene.setMetadata({ [BLOB_KEY]: undefined });
   log('cleared scene blob');
+}
+
+/**
+ * Does scene metadata survive the scene being **duplicated**?
+ *
+ * The question that decides whether NPC sheets can live in scene metadata. Item
+ * metadata was measured travelling with a token pasted between rooms (2026-08-17)
+ * and nothing establishes the same for a scene — if it does not travel, prepping
+ * five encounter maps means importing the creatures five times.
+ *
+ * Two presses in two scenes, because there is no way to do it from here: the SDK
+ * exposes no scene id and no way to duplicate one. So this writes a nonce, and
+ * reading the *same* nonce back in the copy is the answer.
+ */
+async function sceneStamp(): Promise<void> {
+  if (!(await OBR.scene.isReady())) {
+    log('no scene open — open one first', 'bad');
+    return;
+  }
+  const existing = (await OBR.scene.getMetadata())[SCENE_STAMP_KEY] as SceneStamp | undefined;
+  const items = (await OBR.scene.items.getItems()).length;
+
+  if (existing) {
+    log('--- scene stamp: already present in this scene ---');
+    log(`  nonce ${existing.nonce}, written ${existing.at}`);
+    log(`  it was written in a scene holding ${existing.items} item(s); this one holds ${items}`);
+    log(
+      existing.items === items
+        ? '  same item count — so this is probably the original, not a copy'
+        : '  DIFFERENT item count, same nonce — scene metadata TRAVELLED with the copy',
+      existing.items === items ? undefined : 'ok',
+    );
+    log('  to test a copy: duplicate this scene in Owlbear, open the copy, press this again');
+    return;
+  }
+
+  const stamp: SceneStamp = {
+    nonce: Math.random().toString(36).slice(2, 10),
+    at: new Date().toISOString(),
+    items,
+  };
+  await OBR.scene.setMetadata({ [SCENE_STAMP_KEY]: stamp });
+  const back = (await OBR.scene.getMetadata())[SCENE_STAMP_KEY] as SceneStamp | undefined;
+  log(
+    back?.nonce === stamp.nonce
+      ? `stamped this scene with nonce ${stamp.nonce} (${items} items)`
+      : 'the stamp did not read back — dropped',
+    back?.nonce === stamp.nonce ? 'ok' : 'bad',
+  );
+  log('now: duplicate this scene in Owlbear, open the copy, and press this button again.');
+  log('  same nonce in the copy  = scene metadata travels, and prepped encounters can live there');
+  log('  no stamp in the copy    = it does not, and every prepped map needs its own import');
+}
+
+/**
+ * A scene capacity number that can be **used**, unlike `sceneCap`.
+ *
+ * Round 3 doubled to 8 MB, found no ceiling, and then could not clear the blob:
+ * `4014 Max chunk exceeded`. So "no limit below 8 MB" is not "safe at 8 MB", and
+ * the figure that matters is not the ceiling but the largest write that still
+ * behaves — round-trips, and can be deleted again afterwards.
+ *
+ * Hence: bounded at 1 MB, and every step is proven *clearable* before the next
+ * one is tried. Slower than a bisection and it leaves nothing behind.
+ */
+async function sceneSafeCap(): Promise<void> {
+  if (!(await OBR.scene.isReady())) {
+    log('no scene open — open one first', 'bad');
+    return;
+  }
+  log('--- largest scene write that also clears cleanly (bounded at 1 MB) ---');
+  let best = 0;
+  for (const size of [16_384, 65_536, 131_072, 262_144, 524_288, 1_048_576]) {
+    const started = performance.now();
+    try {
+      await OBR.scene.setMetadata({ [BLOB_KEY]: noise(size) });
+    } catch (error) {
+      log(`  ${size}: write REJECTED — ${describe(error)}`, 'bad');
+      break;
+    }
+    const wrote = performance.now() - started;
+    const back = (await OBR.scene.getMetadata())[BLOB_KEY];
+    if (typeof back !== 'string' || back.length !== size) {
+      log(`  ${size}: silently dropped after ${Math.round(wrote)} ms`, 'bad');
+      break;
+    }
+    // Shrink first, then delete — the order `deepClean` had to learn.
+    try {
+      await OBR.scene.setMetadata({ [BLOB_KEY]: 'x' });
+      await OBR.scene.setMetadata({ [BLOB_KEY]: undefined });
+    } catch (error) {
+      log(`  ${size}: WROTE FINE BUT WOULD NOT CLEAR — ${describe(error)}`, 'bad');
+      log('  that is the chunk boundary. Anything at or above this is a trap.', 'bad');
+      break;
+    }
+    if ((await OBR.scene.getMetadata())[BLOB_KEY] !== undefined) {
+      log(`  ${size}: cleared but the key is still holding data`, 'bad');
+      break;
+    }
+    best = size;
+    log(`  ${size}: wrote in ${Math.round(wrote)} ms, read back, cleared`, 'ok');
+  }
+  log(
+    best
+      ? `SCENE_CAPACITY should sit under ${best} chars (${(best / 1024).toFixed(0)} kB)`
+      : 'nothing was safely writable — that is worth knowing on its own',
+    best ? 'ok' : 'bad',
+  );
+}
+
+/**
+ * What a realistic roster write actually costs in wall-clock time, repeated.
+ *
+ * Round 3 tripped `RateLimitHit` during the item sweep, and a store the panel
+ * writes on every sheet edit cannot be discovered to be rate-limited at the
+ * table. 40 kB is roughly thirty villain sheets.
+ */
+async function sceneWriteTiming(): Promise<void> {
+  if (!(await OBR.scene.isReady())) {
+    log('no scene open — open one first', 'bad');
+    return;
+  }
+  log('--- ten consecutive 40 kB scene writes ---');
+  const times: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    const started = performance.now();
+    try {
+      await OBR.scene.setMetadata({ [BLOB_KEY]: noise(40_960) });
+    } catch (error) {
+      log(`  write ${i + 1}: REJECTED — ${describe(error)}`, 'bad');
+      break;
+    }
+    times.push(performance.now() - started);
+  }
+  await OBR.scene.setMetadata({ [BLOB_KEY]: 'x' });
+  await OBR.scene.setMetadata({ [BLOB_KEY]: undefined });
+  if (!times.length) return;
+  const rounded = times.map((t) => Math.round(t));
+  log(`  ms: ${rounded.join(', ')}`);
+  log(
+    `  median ${Math.round([...times].sort((a, b) => a - b)[Math.floor(times.length / 2)]!)} ms, ` +
+      `worst ${Math.round(Math.max(...times))} ms`,
+    Math.max(...times) > 2000 ? 'bad' : 'ok',
+  );
+  log('  a rising tail is the rate limiter; a flat line means writes are cheap enough to do often');
 }
 
 async function itemCap(): Promise<void> {
@@ -1144,6 +1298,9 @@ OBR.onReady(async () => {
   button('clear-stamps', clearProbeKeys);
   button('room-cap', roomCap);
   button('scene-cap', sceneCap);
+  button('scene-safe-cap', sceneSafeCap);
+  button('scene-stamp', sceneStamp);
+  button('scene-timing', sceneWriteTiming);
   button('item-cap', itemCap);
   button('item', writeToSelectedItem);
   button('compression', compressionCheck);

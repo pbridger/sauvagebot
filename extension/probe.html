@@ -66,10 +66,29 @@
     <button id="clear-stamps">Clear probe keys</button>
     <dl id="stamps"></dl>
 
+    <h2>Scene metadata — the 2026-08-27 questions</h2>
+    <p style="margin:0 0 8px;opacity:.7">
+      Scene metadata is ~500x the room's and dies with the scene, so it is the candidate home for
+      NPC sheets. Three things have to be true before anything moves there. Open a scene first;
+      all three clean up after themselves.
+    </p>
+    <p style="margin:0 0 8px;opacity:.7">
+      <b>Scene stamp</b> is the one that matters, and it takes two presses in two scenes: press it
+      here, then duplicate this scene in Owlbear, open the copy, and press it again. The same
+      nonce in the copy means a prepped encounter travels with its map; no stamp means every
+      prepped map needs its own import. <b>Safe cap</b> finds the largest write that also
+      <i>clears</i> again, which is the number "Scene cap" above does not give — it found no
+      ceiling below 8 MB and then could not delete the blob. <b>Write timing</b> does ten 40 kB
+      writes (about thirty villains) to see whether the rate limiter shows up.
+    </p>
+    <button id="scene-stamp"><b>Scene stamp</b></button>
+    <button id="scene-safe-cap">Safe cap</button>
+    <button id="scene-timing">Write timing</button>
+
     <h2>Capacity</h2>
     <p style="margin:0 0 8px;opacity:.7">
-      <b>Answered in round 3 — you probably want "Storage report" instead.</b> Room ≈ 16,384 chars
-      whole-document; item 512 kB each; scene ≥ 8 MB but chunked. These fill the store with
+      <b>Answered in round 3 — you probably want "Storage report" instead.</b> Room = 16,384 chars
+      whole-document; item 512 kB each; scene >= 8 MB but chunked. These fill the store with
       incompressible filler to measure a byte budget, so they trip the rate limiter and leave
       large values behind. Item and scene need a token selected / a scene open.
     </p>
