@@ -11,7 +11,7 @@
  * people fighting over the deck, which is a table problem rather than a
  * concurrency one.
  */
-import { cardLabel, isRedSuit, type Card } from '../../src/game/cards.js';
+import { cardLabel, isRedSuit, sameCard, type Card } from '../../src/game/cards.js';
 import {
   initiativeEdges,
   isJoker,
@@ -130,6 +130,31 @@ export function combatants(
     });
   }
   return out;
+}
+
+/**
+ * The card the rest of this combatant's gang is acting on, if they agree on one.
+ *
+ * For dealing in a latecomer. A round is dealt by sheet, so a mook placed or
+ * revealed after the deal should *join* the gang rather than draw against it —
+ * otherwise the Marshal drags three more bandits on, presses Deal three times,
+ * and ends up with four separate bandit turns out of one stat block.
+ *
+ * `undefined` when the gang holds nothing, or when its members disagree. They
+ * disagree only because somebody used the row's Deal surgically on one of them,
+ * and second-guessing that by picking a majority would undo the thing they just
+ * did. No answer means draw a fresh card, which is the old behaviour.
+ */
+export function gangCard(
+  combatant: Combatant,
+  everyone: readonly Combatant[],
+): Card | undefined {
+  const held = everyone
+    .filter((c) => c.tokenId !== combatant.tokenId && c.sheet.id === combatant.sheet.id)
+    .map((c) => c.card)
+    .filter((card): card is Card => card !== undefined);
+  if (!held.length) return undefined;
+  return held.every((card) => sameCard(card, held[0]!)) ? held[0] : undefined;
 }
 
 function edgeSummary(sheet: Sheet): string {

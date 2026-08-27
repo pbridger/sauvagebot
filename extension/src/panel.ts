@@ -157,7 +157,7 @@ import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
 import { soak, soakedWounds } from '../../src/rules/damage.js';
 import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.js';
 import { renderEditor } from './editor.js';
-import { combatants, displayName, renderInitiative } from './initiativePanel.js';
+import { combatants, displayName, gangCard, renderInitiative } from './initiativePanel.js';
 import {
   compareNames,
   dealRound,
@@ -2969,17 +2969,25 @@ async function redrawCard(tokenId: string, sheet: Sheet): Promise<Card | undefin
  * card that went to the wrong bandit — and asking the Marshal to spend a Benny
  * they then have to award back is bookkeeping, not a rule.
  *
- * Deliberately **one token, not the gang**, even though the round is now dealt by
- * group: this is the escape hatch, and the case it exists for is precisely the
- * one bandit who should not be on the group's card. Redrawing a whole gang means
- * pressing it once per body, which is the price of keeping the surgical version.
+ * Two different jobs behind one button, split on whether they already hold a
+ * card. A mook with none is **joining** — they take the gang's card. A mook with
+ * one is being **redrawn**, which is the escape hatch for the bandit who should
+ * not be on the gang's card, and stays one token: redrawing a whole gang is one
+ * press per body, which is the price of keeping the surgical version.
  */
 async function replaceCard(tokenId: string): Promise<void> {
   const table = combatants(tokens, sheets);
   const combatant = table.find((c) => c.tokenId === tokenId);
   if (!combatant) return;
 
-  const card = await redrawCard(tokenId, combatant.sheet);
+  // Dealing a latecomer in, which is what this button is labelled for: a mook
+  // that arrives after the round was dealt joins the gang already acting rather
+  // than drawing against it. Only when they hold nothing — pressing Deal on a
+  // mook who *has* a card is the surgical case, and still draws.
+  const joining = combatant.card ? undefined : gangCard(combatant, table);
+  if (joining) await setCards(new Map([[tokenId, joining]]));
+  const card = joining ?? (await redrawCard(tokenId, combatant.sheet));
+
   // Named per token, as the deal is: one of five bandits sharing a sheet has to
   // be identifiable in the log. The published line is named for everyone, so a
   // private character shows as its token whoever pressed the button.
@@ -2990,9 +2998,11 @@ async function replaceCard(tokenId: string): Promise<void> {
     return;
   }
   publish({
-    label: 'draws a new Action Card',
+    label: joining ? 'joins the fight' : 'draws a new Action Card',
     expression: 'initiative',
-    explained: card ? `${who} now on ${cardLabel(card)}` : `${who} — the deck is empty`,
+    explained: card
+      ? `${who} ${joining ? 'in on' : 'now on'} ${cardLabel(card)}`
+      : `${who} — the deck is empty`,
   });
   await refreshTokens();
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { JavaRandom } from '../src/dice/javaRandom.js';
-import { BLACK_JOKER, COLOR_JOKER, Deck, card, cardToString } from '../src/game/cards.js';
+import { BLACK_JOKER, COLOR_JOKER, Deck, card, cardToString, type Card } from '../src/game/cards.js';
 import { emptySheet, type Sheet } from '../src/rules/sheet.js';
+import { newTokenState } from '../src/obr/binding.js';
+import { gangCard, type Combatant } from '../extension/src/initiativePanel.js';
 import {
   NO_EDGES,
   chooseCard,
@@ -332,5 +334,66 @@ describe('dealing a round', () => {
     expect(isInitiativeState(newInitiative(new JavaRandom(1)))).toBe(true);
     expect(isInitiativeState({ round: 1, deck: 'nope', jokerDealt: false })).toBe(false);
     expect(isInitiativeState(undefined)).toBe(false);
+  });
+});
+
+/**
+ * The row's Deal button does two jobs, and which one it does turns on whether the
+ * combatant already holds a card.
+ *
+ * The one that matters here is the latecomer. The Marshal drags three more
+ * bandits onto the map mid-fight, or reveals the pair behind the barn; they are
+ * the same stat block as the gang that is already acting, so they join it. The
+ * alternative — one press, one fresh card, three times — turns one gang into
+ * four separate turns out of a single sheet.
+ */
+describe('a mook joining a gang mid-fight', () => {
+  const bandit = emptySheet('bandit', 'Bandit');
+  const preacher = emptySheet('preacher', 'Preacher');
+  const shared = card('SPADES', 9);
+
+  const body = (name: string, sheet: Sheet, held?: Card): Combatant => ({
+    tokenId: `t-${name}`,
+    name,
+    sheet,
+    state: newTokenState(sheet.id),
+    ...(held ? { card: held } : {}),
+  });
+
+  it('takes the card the rest of its gang is on', () => {
+    const table = [
+      body('Bandit 1', bandit, shared),
+      body('Bandit 2', bandit, shared),
+      body('Bandit 3', bandit),
+    ];
+    expect(gangCard(table[2]!, table)).toEqual(shared);
+  });
+
+  it('ignores a gang it does not belong to', () => {
+    const table = [body('Preacher', preacher, shared), body('Bandit 1', bandit)];
+    expect(gangCard(table[1]!, table)).toBeUndefined();
+  });
+
+  it('draws fresh when it is the first of its kind on the map', () => {
+    const table = [body('Bandit 1', bandit)];
+    expect(gangCard(table[0]!, table)).toBeUndefined();
+  });
+
+  /**
+   * They disagree only because somebody used the surgical redraw on one of them.
+   * Picking a majority would quietly undo that, so no answer means draw.
+   */
+  it('draws fresh rather than choosing when the gang has already split', () => {
+    const table = [
+      body('Bandit 1', bandit, shared),
+      body('Bandit 2', bandit, card('HEARTS', 4)),
+      body('Bandit 3', bandit),
+    ];
+    expect(gangCard(table[2]!, table)).toBeUndefined();
+  });
+
+  it('does not count the joiner’s own card', () => {
+    const table = [body('Bandit 1', bandit, shared)];
+    expect(gangCard(table[0]!, table)).toBeUndefined();
   });
 });

@@ -35,9 +35,14 @@ in, which shifted when anyone moved one.
 instead of the same king printed three times. Two gangs that happen to draw the
 same card stay on separate lines: those are different facts about the round.
 
-One thing that did **not** change: the per-row redraw is still one token. It is
-the escape hatch for the bandit who should *not* be on the gang's card, so
-redrawing a whole gang is one press per body.
+**A mook arriving mid-fight joins the gang** instead of drawing against it. Drag
+three more bandits on, press Deal on each, and they come up on the card the gang
+is already acting on — the row's Deal button does that whenever the mook holds
+no card. Press it on one who *does* hold a card and it still draws fresh: that is
+the escape hatch for the bandit who should not be on the gang's card, and it is
+deliberately one token, so redrawing a whole gang is one press per body. If the
+gang has already been split that way, a newcomer draws fresh rather than the app
+guessing which card was the real one.
 
 Deck maths follows the gang rather than the bodies — a gang of six spends one
 card, so the deck lasts a great deal longer in a big fight.
