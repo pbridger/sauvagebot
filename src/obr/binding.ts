@@ -53,8 +53,20 @@ export interface TokenState extends ModifierState {
   wounds: number;
   fatigue: number;
   shaken: boolean;
-  /** Initiative card, dealt from the action deck. */
+  /**
+   * The card they act on. Kept as the answer rather than derived at every read:
+   * the map badge, the turn order and the wire all want one card and none of them
+   * care how it was chosen. `hand.ts` rewrites it whenever `cards` changes.
+   */
   card?: Card;
+  /**
+   * Everything drawn this round, in the order dealt — Level Headed's second card,
+   * Improved's third, and anything a Benny added. Absent on a token dealt before
+   * this existed, which `handOf` reads as a hand of one.
+   */
+  cards?: Card[];
+  /** Index into `cards`. Absent means the first. */
+  chosen?: number;
   /**
    * Wounds taken from the last hit that a Soak could still undo.
    *
@@ -85,6 +97,10 @@ export function isTokenState(value: unknown): value is TokenState {
     typeof state.fatigue === 'number' &&
     typeof state.shaken === 'boolean' &&
     (state.card === undefined || isCard(state.card)) &&
+    (state.cards === undefined ||
+      (Array.isArray(state.cards) && state.cards.every((c) => isCard(c)))) &&
+    (state.chosen === undefined ||
+      (typeof state.chosen === 'number' && Number.isInteger(state.chosen))) &&
     // Both optional, and they must stay that way: every token already bound in a
     // live room predates them, and a guard that required them would fail those
     // bindings — which would look like every wound on the map vanishing.

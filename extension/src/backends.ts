@@ -27,6 +27,7 @@ import {
   type TokenState,
 } from '../../src/obr/binding.js';
 import type { Sheet } from '../../src/rules/sheet.js';
+import { clearHand, setHand } from '../../src/rules/hand.js';
 import {
   isInitiativeState,
   newInitiative,
@@ -326,15 +327,28 @@ export async function freshInitiative(): Promise<InitiativeState> {
 }
 
 /** Write dealt cards onto their tokens in one update, so the map redraws once. */
-export async function setCards(cards: ReadonlyMap<string, Card | undefined>): Promise<void> {
-  const ids = [...cards.keys()];
+/**
+ * Write a whole hand onto each token, or clear it.
+ *
+ * A hand rather than a card because Level Headed draws more than one and the
+ * player chooses between them — see `hand.ts`. `card` is written too, as the
+ * chosen one, so every reader that wants a single card is untouched.
+ */
+export async function setHands(
+  hands: ReadonlyMap<string, { cards: readonly Card[]; chosen: Card } | undefined>,
+): Promise<void> {
+  const ids = [...hands.keys()];
   if (!ids.length) return;
   await OBR.scene.items.updateItems(ids, (items) => {
     for (const item of items) {
       const existing = readBinding(item.metadata);
       if (!existing) continue;
-      const card = cards.get(item.id);
-      item.metadata[TOKEN_KEY] = card ? { ...existing, card } : { ...existing, card: undefined };
+      const hand = hands.get(item.id);
+      item.metadata[TOKEN_KEY] = hand
+        ? setHand(existing, hand.cards, hand.chosen)
+        : // Spread, because Owlbear rejects `delete` on the Immer draft and a
+          // cleared hand has to actually stop being three fields.
+          { ...clearHand(existing), card: undefined, cards: undefined, chosen: undefined };
     }
   });
 }

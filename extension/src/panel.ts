@@ -152,17 +152,25 @@ import {
   type ModifierState,
 } from '../../src/rules/modifiers.js';
 import { findEntry } from '../../src/rules/catalogue.js';
+import { addToHand, chooseFromHand, handOf, hasChoice } from '../../src/rules/hand.js';
 import { renderBadges } from './badges.js';
 import { BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
 import { soak, soakedWounds } from '../../src/rules/damage.js';
 import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.js';
 import { renderEditor } from './editor.js';
-import { combatants, displayName, gangCard, renderInitiative } from './initiativePanel.js';
+import {
+  combatants,
+  displayName,
+  gangCard,
+  renderHand,
+  renderInitiative,
+} from './initiativePanel.js';
 import {
   compareNames,
   dealRound,
   initiativeEdges,
+  NO_EDGES,
   type Draw,
   type InitiativeState,
 } from '../../src/rules/initiative.js';
@@ -176,7 +184,7 @@ import {
   resetAllTokens,
   roomStore,
   roster as characterRoster,
-  setCards,
+  setHands,
   unbindToken,
   updateTokenState,
   writeInitiative,
@@ -297,7 +305,6 @@ let tab: Tab = 'sheet';
 let isGM = false;
 let initiative: InitiativeState | undefined;
 /** What each token drew this round, so the panel can show the discarded cards. */
-let lastDraws: Map<string, Draw> = new Map();
 /** Who has taken a turn this round; cleared on each deal. */
 let acted = new Set<string>();
 /** Show every skill, or only the ones this character actually has. */
@@ -1496,6 +1503,14 @@ function entryList(entries: Sheet['edges'], notes: readonly AbilityNote[]): HTML
     const dd = document.createElement('dd');
     if (shown) dd.textContent = shown;
 
+    // The Edge that drew the extra cards is the second place the hand appears —
+    // the initiative row is where the cards are, and this is where the reason for
+    // them is written. Only on the entry that caused them, and only when there is
+    // in fact a choice to make, so a sheet with Level Headed and a one-card hand
+    // looks exactly as it did.
+    const choice = handControlFor(entry.name);
+    if (choice) dd.append(choice);
+
     if (expandable) {
       const toggle = document.createElement('button');
       toggle.className = 'entry-more';
@@ -1548,9 +1563,10 @@ function renderSheetArea(): void {
         onSelect: (tokenId) => void takeTurn(tokenId),
         onOpenSheet: (tokenId) => void openSheetFor(tokenId),
         onReplace: (tokenId) => void replaceCard(tokenId),
+        onChoose: (tokenId, index) => void chooseCardFor(tokenId, index),
         acted,
         ...(selectedTokenId ? { selectedTokenId } : {}),
-      }, lastDraws),
+      }),
     );
     return;
   }
@@ -1615,12 +1631,16 @@ async function deal(): Promise<void> {
   }
   // Anyone out of the fight loses their card as well, so the map is not showing
   // a card for a body.
-  const assignments = new Map(table.map((c) => [c.tokenId, undefined as Card | undefined]));
-  for (const [id, draw] of result.draws) assignments.set(id, draw.card);
-  await setCards(assignments);
+  // The whole hand, not just the card acted on: Level Headed's second card and
+  // Improved's third are the player's to choose between, so they have to survive
+  // the deal rather than being picked over and dropped.
+  const assignments = new Map<string, { cards: readonly Card[]; chosen: Card } | undefined>(
+    table.map((c) => [c.tokenId, undefined]),
+  );
+  for (const [id, draw] of result.draws) assignments.set(id, { cards: draw.cards, chosen: draw.card });
+  await setHands(assignments);
   await writeInitiative(result.state);
   initiative = result.state;
-  lastDraws = result.draws;
 
   // One entry per *hand*, so a gang of six reads "Bandit 1, Bandit 2, … ♠K"
   // rather than printing the same king six times. Keyed on the `Draw` object,
@@ -1696,7 +1716,7 @@ async function openSheetFor(tokenId: string): Promise<void> {
 }
 
 async function endFight(): Promise<void> {
-  await setCards(new Map(tokens.map((token) => [token.id, undefined])));
+  await setHands(new Map(tokens.map((token) => [token.id, undefined])));
   await clearInitiative();
   await refreshTokens();
 }
@@ -1705,7 +1725,6 @@ async function endFight(): Promise<void> {
 async function clearInitiative(): Promise<void> {
   await writeInitiative(undefined);
   initiative = undefined;
-  lastDraws = new Map();
   acted = new Set();
 }
 
@@ -2402,6 +2421,64 @@ Gear: Melee attack (Str+d6).`;
 }
 
 /**
+ * The hand, rendered onto the Edge responsible for it.
+ *
+ * Level Headed and its improved form only. Quick draws extra cards too, but it
+ * draws them as *replacements* until one is high enough, so its entry has nothing
+ * to choose between; the cards it produced land in the same hand and are chosen
+ * from on whichever entry does have the control.
+ *
+ * `undefined` unless there is a real choice — a hand of one, no active token, or
+ * an Edge that does not draw cards all render nothing, so the common sheet is
+ * untouched.
+ */
+function handControlFor(entryName: string): HTMLElement | undefined {
+  if (!/level[\s-]?headed/i.test(entryName)) return undefined;
+  const sheet = sheets.find((s) => s.id === selectedId);
+  const active = sheet && activeToken(sheet);
+  if (!active || !hasChoice(active.state)) return undefined;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'entry-hand';
+  const label = document.createElement('span');
+  label.className = 'entry-hand-label';
+  label.textContent = 'Acting on';
+  const hand = renderHand(active.state, (index) => void chooseCardFor(active.token.id, index));
+  if (!hand) return undefined;
+  wrap.append(label, hand);
+  return wrap;
+}
+
+/**
+ * Act on a different card from the hand.
+ *
+ * Writes only the choice — the cards themselves are untouched, so this is not a
+ * redraw and costs nothing. Anyone who can see the row can make it: the Marshal
+ * runs the villains, and a player choosing on their own character is the entire
+ * point. That is the same screen-not-lock the rest of the panel uses, because
+ * token metadata is writable by every client whatever this code does.
+ */
+async function chooseCardFor(tokenId: string, index: number): Promise<void> {
+  const before = tokens.find((t) => t.id === tokenId);
+  const state = readBinding(before?.metadata);
+  const hand = state && handOf(state);
+  if (!state || !hand || index === hand.chosen) return;
+
+  await updateTokenState(tokenId, (current) => chooseFromHand(current, index));
+  await refreshTokens();
+
+  const table = combatants(tokens, sheets);
+  const combatant = table.find((c) => c.tokenId === tokenId);
+  // Nothing for a token the players cannot see, as with the deal.
+  if (!combatant || combatant.hidden) return;
+  publish({
+    label: 'acts on a different card',
+    expression: 'initiative',
+    explained: `${displayName(combatant, table, false)} takes ${cardLabel(hand.cards[index]!)} over ${cardLabel(hand.cards[hand.chosen]!)}`,
+  });
+}
+
+/**
  * Move a character between the campaign and this scene.
  *
  * Write-then-remove inside `Roster.move`, so a failure here leaves them where
@@ -3039,7 +3116,7 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
 
     if (use === 'Draw a new Action Card' && active) {
       const card = await redrawCard(active.token.id, sheet);
-      effect = card ? ` — now on ${cardLabel(card)}` : ' — the deck is empty';
+      effect = card ? ` — drew ${cardLabel(card)}, and may act on either` : ' — the deck is empty';
     }
 
     if (use === 'Reroll a Trait') {
@@ -3096,20 +3173,30 @@ function rerollLastTrait(sheet: Sheet): string {
 }
 
 /**
- * Deal this combatant a replacement Action Card from the same deck the round was
- * dealt from, so the card cannot come out twice.
+ * Give this combatant **one more** Action Card, from the same deck the round was
+ * dealt from so it cannot be a card somebody else is holding.
+ *
+ * One card, and *added* rather than replacing what they hold. It used to call
+ * `dealRound` with the character's Edges, which re-dealt their whole hand and
+ * threw the old one away — so a Benny bought a Level Headed character two fresh
+ * cards for one chip and lost them the card they had. Reported 2026-08-26, and
+ * wrong even for a character with no Edges at all.
+ *
+ * The book is the other way round: *"You may choose your final Action Card from
+ * any of your available choices, including additional draws from Level Headed,
+ * Quick, etc."* — the draws pile up and the player picks.
+ *
+ * `NO_EDGES` rather than the character's, deliberately: this is *an* extra card,
+ * not another go at their Edge. Level Headed already paid out when the round was
+ * dealt, and paying again here would hand out two cards per Benny.
  */
-async function redrawCard(tokenId: string, sheet: Sheet): Promise<Card | undefined> {
+async function redrawCard(tokenId: string, _sheet: Sheet): Promise<Card | undefined> {
   const state = initiative ?? (await freshInitiative());
-  const result = dealRound(
-    state,
-    [{ tokenId, edges: initiativeEdges(sheet) }],
-    new JavaRandom(),
-  );
+  const result = dealRound(state, [{ tokenId, edges: NO_EDGES }], new JavaRandom());
   const draw = result.draws.get(tokenId);
   if (!draw) return undefined;
 
-  await setCards(new Map([[tokenId, draw.card]]));
+  await updateTokenState(tokenId, (current) => addToHand(current, draw.card));
   // Redrawing is not a new round; keep the round number where it was. The joker
   // flag is sticky too — a joker somebody else drew this round still owes the
   // deck a reshuffle, whatever this one card turned out to be.
@@ -3119,9 +3206,8 @@ async function redrawCard(tokenId: string, sheet: Sheet): Promise<Card | undefin
     jokerDealt: state.jokerDealt || result.state.jokerDealt,
   };
   await writeInitiative(initiative);
-  // So the row's "drew" hint describes the card they now hold rather than the
-  // one it replaced.
-  lastDraws.set(tokenId, draw);
+  // The row's hint is built from the hand on the token now, so nothing needs to
+  // be remembered here.
   return draw.card;
 }
 
@@ -3150,7 +3236,7 @@ async function replaceCard(tokenId: string): Promise<void> {
   // than drawing against it. Only when they hold nothing — pressing Deal on a
   // mook who *has* a card is the surgical case, and still draws.
   const joining = combatant.card ? undefined : gangCard(combatant, table);
-  if (joining) await setCards(new Map([[tokenId, joining]]));
+  if (joining) await setHands(new Map([[tokenId, { cards: [joining], chosen: joining }]]));
   const card = joining ?? (await redrawCard(tokenId, combatant.sheet));
 
   // Named per token, as the deal is: one of five bandits sharing a sheet has to
@@ -3163,10 +3249,15 @@ async function replaceCard(tokenId: string): Promise<void> {
     return;
   }
   publish({
-    label: joining ? 'joins the fight' : 'draws a new Action Card',
+    label: joining ? 'joins the fight' : 'draws an extra Action Card',
     expression: 'initiative',
     explained: card
-      ? `${who} ${joining ? 'in on' : 'now on'} ${cardLabel(card)}`
+      ? joining
+        ? `${who} in on ${cardLabel(card)}`
+        : // "also holds", not "now on": the new card is added to the hand and the
+          // player decides whether to act on it. Saying "now on" would announce a
+          // choice they have not made yet.
+          `${who} also holds ${cardLabel(card)}`
       : `${who} — the deck is empty`,
   });
   await refreshTokens();

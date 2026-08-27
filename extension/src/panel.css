@@ -952,16 +952,57 @@ ol.initiative li.joker .card {
   color: #fff;
 }
 ol.initiative .card.none { color: var(--muted); font-weight: 400; }
+
+/* ---- the hand ---------------------------------------------------------
+   Level Headed draws two and Improved three, and the player picks. The chosen
+   one is drawn at full size and the rest smaller beside it, so the row still
+   reads as "this combatant is on this card" at a glance and the alternatives
+   are visibly secondary rather than competing with it.
+
+   `min-width` moves to the wrapper: leaving it on each card would make a
+   three-card hand three times as wide as a one-card one and push the names out
+   of alignment down the list. */
+.hand { display: inline-flex; align-items: baseline; gap: 3px; min-width: 40px; }
+ol.initiative .hand .card { min-width: 0; }
+.hand .card.in-hand.spare {
+  font-size: 11px;
+  font-weight: 400;
+  opacity: .75;
+}
+/* Buttons, but they must not look like the panel's other buttons — a card is a
+   card. Strip the chrome and let the suit colour do the work. */
+.hand button.card {
+  background: none;
+  border: none;
+  padding: 0 1px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.hand button.card:disabled { cursor: default; opacity: 1; }
+.hand button.card.spare:hover { opacity: 1; text-decoration: underline; }
+
+/* The same control on the character sheet, under the Edge that caused it. */
+.entry-hand { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
+.entry-hand-label {
+  font-size: 10.5px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.entry-hand .card { font-size: 15px; font-weight: 700; }
 ol.initiative .who { flex: 1; min-width: 0; }
 ol.initiative .drew { font-size: 10.5px; color: var(--muted); }
 
 .deck-count { margin: -4px 0 8px; font-size: 11px; color: var(--muted); }
 
-/* Hearts and diamonds read red, as on a real card. */
+/* Hearts and diamonds read red, as on a real card. One rule for both places the
+   hand is drawn, so the sheet and the turn order cannot drift apart. */
 ol.initiative .card.red,
+.entry-hand .card.red,
 ol.initiative .drew .red { color: #c0392b; }
 @media (prefers-color-scheme: dark) {
   ol.initiative .card.red,
+  .entry-hand .card.red,
   ol.initiative .drew .red { color: #ff6b5e; }
 }
 

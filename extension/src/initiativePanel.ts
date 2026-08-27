@@ -16,11 +16,11 @@ import {
   initiativeEdges,
   isJoker,
   turnOrder,
-  type Draw,
   type InitiativeState,
 } from '../../src/rules/initiative.js';
 import type { Sheet } from '../../src/rules/sheet.js';
 import { readBinding, type TokenLike, type TokenState } from '../../src/obr/binding.js';
+import { handOf } from '../../src/rules/hand.js';
 import { describeStatus, isIncapacitated } from '../../src/rules/status.js';
 import { localName, mapName } from '../../src/rules/naming.js';
 
@@ -58,6 +58,13 @@ export interface InitiativeHooks {
    * so it is a button rather than only a cost.
    */
   onReplace: (tokenId: string) => void;
+  /**
+   * Act on a different card in the hand. Absent for a client that may not — a
+   * player choosing for somebody else's character is the one way this control
+   * can be wrong, and withholding the callback is what makes the card render as
+   * a label rather than a button.
+   */
+  onChoose?: (tokenId: string, index: number) => void;
   /** Whichever token is selected on the map, so the list can highlight it. */
   selectedTokenId?: string;
   /**
@@ -157,6 +164,57 @@ export function gangCard(
   return held.every((card) => sameCard(card, held[0]!)) ? held[0] : undefined;
 }
 
+/**
+ * A combatant's hand, with the card they act on drawn large.
+ *
+ * The same control in two places — the initiative row and the Level Headed entry
+ * on the character sheet — because those are the two places a player looks: one
+ * is where the cards are, the other is where the Edge that produced them is
+ * explained. Rendering it twice from one function is what keeps them agreeing.
+ *
+ * A hand of one renders as exactly what was there before this existed: a single
+ * card, no buttons, no affordance suggesting a choice nobody has.
+ */
+export function renderHand(
+  state: TokenState,
+  onChoose?: (index: number) => void,
+): HTMLElement | undefined {
+  const hand = handOf(state);
+  if (!hand) return undefined;
+
+  const wrap = document.createElement('span');
+  wrap.className = 'hand';
+  hand.cards.forEach((card, index) => {
+    const chosen = index === hand.chosen;
+    // A button only when it would do something. The chosen card in a hand of
+    // three is still drawn as a button so the row does not reflow when the
+    // choice moves, but it is marked and does nothing.
+    const el = document.createElement(onChoose && hand.cards.length > 1 ? 'button' : 'span');
+    el.className = [
+      'card',
+      isRedSuit(card) ? 'red' : '',
+      chosen ? 'chosen' : 'spare',
+      hand.cards.length > 1 ? 'in-hand' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+    el.textContent = cardLabel(card);
+    if (el instanceof HTMLButtonElement) {
+      el.type = 'button';
+      el.disabled = chosen;
+      el.title = chosen ? 'Acting on this one' : `Act on ${cardLabel(card)} instead`;
+      el.addEventListener('click', (event) => {
+        event.stopPropagation();
+        onChoose?.(index);
+      });
+    } else if (hand.cards.length > 1) {
+      el.title = chosen ? 'Acting on this one' : 'Also drawn';
+    }
+    wrap.append(el);
+  });
+  return wrap;
+}
+
 function edgeSummary(sheet: Sheet): string {
   const edges = initiativeEdges(sheet);
   const names: string[] = [];
@@ -171,7 +229,6 @@ export function renderInitiative(
   state: InitiativeState | undefined,
   everyone: readonly Combatant[],
   hooks: InitiativeHooks,
-  lastDraws?: ReadonlyMap<string, Draw>,
 ): DocumentFragment {
   const out = document.createDocumentFragment();
 
@@ -255,14 +312,20 @@ export function renderInitiative(
       row.append(thumb);
     }
 
-    const card = document.createElement('span');
-    card.className = combatant.card
-      ? isRedSuit(combatant.card)
-        ? 'card red'
-        : 'card'
-      : 'card none';
-    card.textContent = combatant.card ? cardLabel(combatant.card) : '—';
-    row.append(card);
+    // The whole hand. One card renders exactly as it always did; two or three
+    // give the player their choice right where the cards are.
+    const hand = renderHand(
+      combatant.state,
+      hooks.onChoose ? (index) => hooks.onChoose?.(combatant.tokenId, index) : undefined,
+    );
+    if (hand) {
+      row.append(hand);
+    } else {
+      const none = document.createElement('span');
+      none.className = 'card none';
+      none.textContent = '—';
+      row.append(none);
+    }
 
     const name = document.createElement('span');
     name.className = 'who';
@@ -284,27 +347,16 @@ export function renderInitiative(
     const status = statusChips(combatant);
     if (status) row.append(status);
 
-    // What else they drew, when an edge meant they drew more than one.
-    const drew = lastDraws?.get(combatant.tokenId);
-    if (drew && drew.cards.length > 1) {
-      const extra = document.createElement('span');
-      extra.className = 'drew';
-      extra.append('drew ');
-      for (const drawn of drew.cards) {
-        const one = document.createElement('span');
-        if (isRedSuit(drawn)) one.className = 'red';
-        one.textContent = `${cardLabel(drawn)} `;
-        extra.append(one);
-      }
-      row.append(extra);
-    } else {
-      const edges = edgeSummary(combatant.sheet);
-      if (edges) {
-        const hint = document.createElement('span');
-        hint.className = 'drew';
-        hint.textContent = edges;
-        row.append(hint);
-      }
+    // The "drew ♠K ♥3" hint used to live here, listing the cards an Edge had
+    // produced. The hand itself now shows them at the front of the row, so this
+    // is left saying only which Edge is responsible — the fact the cards do not
+    // carry on their own.
+    const edges = edgeSummary(combatant.sheet);
+    if (edges) {
+      const hint = document.createElement('span');
+      hint.className = 'drew';
+      hint.textContent = edges;
+      row.append(hint);
     }
 
     // Deals from the round's own deck, so the card cannot be one somebody else is
