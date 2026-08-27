@@ -10,6 +10,40 @@ reload.
 
 ---
 
+## 2026-08-27 — A gang acts on one card
+
+**Mooks off the same stat block now share an Action Card.** Deal a round and all
+five bandits come up on the same king, because that is how Savage Worlds runs a
+gang. The book never spells it out in the combat chapter, but Tactician and the
+Command Edge both hand a card to *"any allied Extra (or group of Extras sharing
+an Action Card)"*, which only means something if sharing is the ordinary case.
+
+The grouping is **by sheet**, and it needs nothing set up: bind six tokens to one
+Bandit sheet and they are a gang. A Wild Card has one token, so nothing changes
+for the PCs.
+
+**Each mook still gets its own row.** They share the draw, not the row — wounds,
+Shaken, the redraw button and the map are all exactly as they were, and a token
+still carries its own copy of the card rather than pointing at a shared one.
+
+**Rows with the same card now sort by map label**, counting the numbers in it, so
+`Bandit 2` comes before `Bandit 10` and the block stays put between rounds.
+Previously equal cards fell back on whatever order Owlbear returned the tokens
+in, which shifted when anyone moved one.
+
+**The round's log line collapses too** — `Bandit 1, Bandit 2, Bandit 3 ♠K`
+instead of the same king printed three times. Two gangs that happen to draw the
+same card stay on separate lines: those are different facts about the round.
+
+One thing that did **not** change: the per-row redraw is still one token. It is
+the escape hatch for the bandit who should *not* be on the gang's card, so
+redrawing a whole gang is one press per body.
+
+Deck maths follows the gang rather than the bodies — a gang of six spends one
+card, so the deck lasts a great deal longer in a big fight.
+
+---
+
 ## 2026-08-21 — Sizes, not body parts
 
 **Called shots are now a size.** The old list — head, hand, item — has gone, and

@@ -159,6 +159,7 @@ import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.
 import { renderEditor } from './editor.js';
 import { combatants, displayName, renderInitiative } from './initiativePanel.js';
 import {
+  compareNames,
   dealRound,
   initiativeEdges,
   type Draw,
@@ -1571,10 +1572,19 @@ async function deal(): Promise<void> {
 
   const result = dealRound(
     state,
+    // Grouped by sheet: a gang of Extras off one stat block acts on one Action
+    // Card. Every token still gets its own row and its own copy of the card —
+    // only the *draw* is shared.
+    //
+    // This deliberately does not care whether some of those tokens are hidden
+    // two rooms away. They share a card because they are the same mooks; when
+    // the Marshal reveals them they join a gang that is already acting on it.
+    // A Wild Card has one token, so their sheet id groups them with themselves.
     table.map((c) => ({
       tokenId: c.tokenId,
       edges: initiativeEdges(c.sheet),
       out: isIncapacitated(c.state, c.sheet),
+      group: c.sheet.id,
     })),
     new JavaRandom(),
   );
@@ -1590,21 +1600,31 @@ async function deal(): Promise<void> {
   initiative = result.state;
   lastDraws = result.draws;
 
-  const dealt = [...result.draws]
+  // One entry per *hand*, so a gang of six reads "Bandit 1, Bandit 2, … ♠K"
+  // rather than printing the same king six times. Keyed on the `Draw` object,
+  // which `dealRound` shares between group members precisely so this works;
+  // comparing cards by value would also fold together two separate gangs that
+  // happened to draw alike, and those are different facts about the round.
+  const byHand = new Map<Draw, string[]>();
+  for (const [id, draw] of result.draws) {
+    const combatant = table.find((c) => c.tokenId === id);
     // A hidden combatant is not in the players' initiative list, so it must not
     // arrive in their log either — "Something ♠K" is the ambush announcing
     // itself. The Marshal has the whole order on the initiative tab, which is
     // where they are reading it from anyway; this line is the table's copy.
-    .filter(([id]) => !table.find((c) => c.tokenId === id)?.hidden)
-    .map(([id, draw]) => {
-      // The character's name, as everywhere else — a token called
-      // "Npc Linguist 4" says nothing about who just drew a king.
-      const combatant = table.find((c) => c.tokenId === id);
-      // The published line goes to everyone, so a private character is named by
-      // its token there whoever is dealing.
-      const who = combatant ? displayName(combatant, table, false) : '?';
-      return `${who} ${cardLabel(draw.card)}`;
-    })
+    //
+    // Dropped per *member*, not per hand: a gang half of which is still behind
+    // the barn is announced by the half the players can see.
+    if (combatant?.hidden) continue;
+    // The character's name, as everywhere else — a token called
+    // "Npc Linguist 4" says nothing about who just drew a king. The published
+    // line goes to everyone, so a private character is named by its token there
+    // whoever is dealing.
+    const who = combatant ? displayName(combatant, table, false) : '?';
+    byHand.set(draw, [...(byHand.get(draw) ?? []), who]);
+  }
+  const dealt = [...byHand]
+    .map(([draw, names]) => `${[...names].sort(compareNames).join(', ')} ${cardLabel(draw.card)}`)
     .join(', ');
   publish({
     label: `Round ${result.state.round}`,
@@ -2948,6 +2968,11 @@ async function redrawCard(tokenId: string, sheet: Sheet): Promise<Card | undefin
  * the things the rules do not cover — someone joining mid-fight, a misdeal, a
  * card that went to the wrong bandit — and asking the Marshal to spend a Benny
  * they then have to award back is bookkeeping, not a rule.
+ *
+ * Deliberately **one token, not the gang**, even though the round is now dealt by
+ * group: this is the escape hatch, and the case it exists for is precisely the
+ * one bandit who should not be on the group's card. Redrawing a whole gang means
+ * pressing it once per body, which is the price of keeping the surgical version.
  */
 async function replaceCard(tokenId: string): Promise<void> {
   const table = combatants(tokens, sheets);

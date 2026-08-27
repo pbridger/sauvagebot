@@ -147,6 +147,31 @@ describe('turn order', () => {
     ]);
     expect(order.map((c) => c.name)).toEqual(['dealt', 'also waiting', 'waiting']);
   });
+
+  /**
+   * A gang shares a card, so identical cards are now the common case rather than
+   * an impossibility, and the order within one has to come from somewhere the
+   * Marshal can predict. Left to the sort's stability it would be whatever order
+   * the tokens arrived in, which changes when somebody moves one.
+   */
+  it('breaks an identical card by name, so a gang keeps its order', () => {
+    const shared = card('SPADES', 9);
+    const order = turnOrder([
+      { name: 'Bandit 3', card: shared },
+      { name: 'Bandit 1', card: shared },
+      { name: 'Bandit 2', card: shared },
+    ]);
+    expect(order.map((c) => c.name)).toEqual(['Bandit 1', 'Bandit 2', 'Bandit 3']);
+  });
+
+  it('counts the number in a mook name, so Bandit 2 precedes Bandit 10', () => {
+    const shared = card('SPADES', 9);
+    const order = turnOrder([
+      { name: 'Bandit 10', card: shared },
+      { name: 'Bandit 2', card: shared },
+    ]);
+    expect(order.map((c) => c.name)).toEqual(['Bandit 2', 'Bandit 10']);
+  });
 });
 
 describe('dealing a round', () => {
@@ -199,6 +224,96 @@ describe('dealing a round', () => {
     const result = dealRound(thin, table, new JavaRandom(8));
     expect(result.draws.size).toBe(3);
     expect(result.state.deck.length).toBeGreaterThan(40);
+  });
+
+  /**
+   * A gang of Extras acts on one Action Card. Tactician and the Command Edge
+   * both give a card to *"any allied Extra (or group of Extras sharing an Action
+   * Card)"*, which only means anything if sharing is ordinary.
+   */
+  describe('a gang sharing one card', () => {
+    const gang = [
+      { tokenId: 'b1', edges: NO_EDGES, group: 'bandit-sheet' },
+      { tokenId: 'b2', edges: NO_EDGES, group: 'bandit-sheet' },
+      { tokenId: 'b3', edges: NO_EDGES, group: 'bandit-sheet' },
+    ];
+
+    it('deals every member the same card, and each still gets a row', () => {
+      const result = dealRound(newInitiative(new JavaRandom(1)), gang, new JavaRandom(2));
+      expect([...result.draws.keys()].sort()).toEqual(['b1', 'b2', 'b3']);
+      const cards = [...result.draws.values()].map((d) => cardToString(d.card));
+      expect(new Set(cards).size).toBe(1);
+    });
+
+    /** The identity the roll log's collapse is keyed on, so it is pinned here. */
+    it('hands out one Draw object rather than three equal ones', () => {
+      const result = dealRound(newInitiative(new JavaRandom(1)), gang, new JavaRandom(2));
+      expect(new Set(result.draws.values()).size).toBe(1);
+    });
+
+    it('spends one hand from the deck, not one per body', () => {
+      const start = newInitiative(new JavaRandom(5));
+      const result = dealRound(start, gang, new JavaRandom(6));
+      expect(start.deck.length - result.state.deck.length).toBe(1);
+    });
+
+    it('keeps separate groups on separate cards', () => {
+      const twoGangs = [
+        ...gang,
+        { tokenId: 'w1', edges: NO_EDGES, group: 'walkin-dead' },
+        { tokenId: 'w2', edges: NO_EDGES, group: 'walkin-dead' },
+      ];
+      const result = dealRound(newInitiative(new JavaRandom(3)), twoGangs, new JavaRandom(4));
+      expect(cardToString(result.draws.get('b1')!.card)).not.toBe(
+        cardToString(result.draws.get('w1')!.card),
+      );
+      expect(result.draws.get('w1')).toBe(result.draws.get('w2'));
+    });
+
+    /**
+     * Members are filtered before they are grouped. The other order would let a
+     * single downed bandit take the whole gang's card away.
+     */
+    it('still acts when one of its members is down', () => {
+      const mauled = [
+        { tokenId: 'b1', edges: NO_EDGES, group: 'bandit-sheet', out: true },
+        { tokenId: 'b2', edges: NO_EDGES, group: 'bandit-sheet' },
+      ];
+      const result = dealRound(newInitiative(new JavaRandom(1)), mauled, new JavaRandom(2));
+      expect([...result.draws.keys()]).toEqual(['b2']);
+    });
+
+    it('leaves an ungrouped combatant alone with their own card', () => {
+      const mixed = [...gang, { tokenId: 'pc', edges: NO_EDGES }];
+      const result = dealRound(newInitiative(new JavaRandom(1)), mixed, new JavaRandom(2));
+      expect(result.draws.get('pc')).not.toBe(result.draws.get('b1'));
+    });
+
+    /**
+     * Two ungrouped combatants must not be folded together by the fallback key.
+     * They are keyed by token id, which cannot collide with a group id.
+     */
+    it('does not group two combatants that simply have no group', () => {
+      const loners = [
+        { tokenId: 'x', edges: NO_EDGES },
+        { tokenId: 'y', edges: NO_EDGES },
+      ];
+      const result = dealRound(newInitiative(new JavaRandom(1)), loners, new JavaRandom(2));
+      expect(cardToString(result.draws.get('x')!.card)).not.toBe(
+        cardToString(result.draws.get('y')!.card),
+      );
+    });
+
+    it('draws the group its Level Headed pair of cards, once', () => {
+      const clever = [
+        { tokenId: 'b1', edges: edges({ levelHeaded: true }), group: 'g' },
+        { tokenId: 'b2', edges: edges({ levelHeaded: true }), group: 'g' },
+      ];
+      const start = newInitiative(new JavaRandom(11));
+      const result = dealRound(start, clever, new JavaRandom(12));
+      expect(result.draws.get('b1')!.cards).toHaveLength(2);
+      expect(start.deck.length - result.state.deck.length).toBe(2);
+    });
   });
 
   it('reports a joker so the caller knows to reshuffle after the round', () => {
