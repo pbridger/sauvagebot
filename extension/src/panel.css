@@ -982,6 +982,9 @@ ol.initiative .hand .card { min-width: 0; }
 .hand button.card.spare:hover { opacity: 1; text-decoration: underline; }
 
 /* The same control on the character sheet, under the Edge that caused it. */
+/* The prose of an entry, as its own element so the More/Less toggle can rewrite
+   it without taking the hand control beside it. */
+.entry-prose { display: block; }
 .entry-hand { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; }
 .entry-hand-label {
   font-size: 10.5px;

@@ -153,7 +153,7 @@ import {
   type ModifierState,
 } from '../../src/rules/modifiers.js';
 import { findEntry } from '../../src/rules/catalogue.js';
-import { addToHand, chooseFromHand, handOf, hasChoice } from '../../src/rules/hand.js';
+import { addToHand, chooseFromHand, handOf } from '../../src/rules/hand.js';
 import { renderBadges } from './badges.js';
 import { BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
@@ -1551,7 +1551,14 @@ function entryList(
     }
 
     const dd = document.createElement('dd');
-    if (shown) dd.textContent = shown;
+    // The prose lives in its own element rather than as the `dd`'s text, because
+    // the More/Less toggle rewrites it — and `dd.textContent = ...` takes every
+    // sibling with it. That silently deleted the hand control below: appended,
+    // then destroyed by the first `paint()` before anyone ever saw it.
+    const prose = document.createElement('span');
+    prose.className = 'entry-prose';
+    if (shown) prose.textContent = shown;
+    dd.append(prose);
 
     // The Edge that drew the extra cards is the second place the hand appears —
     // the initiative row is where the cards are, and this is where the reason for
@@ -1574,7 +1581,7 @@ function entryList(
         toggle.textContent = open ? 'Less' : 'More';
         toggle.setAttribute('aria-expanded', String(open));
         toggle.title = open ? 'Show the short version' : 'Show the full rulebook entry';
-        dd.textContent = open ? full! : brief!;
+        prose.textContent = open ? full! : brief!;
         dd.classList.toggle('full', open);
       };
       toggle.addEventListener('click', () => {
@@ -1586,7 +1593,9 @@ function entryList(
     }
 
     dl.append(dt);
-    if (shown) dl.append(dd);
+    // Also when there is no prose but there *is* a control: an entry with a
+    // widget and no summary would otherwise never reach the page.
+    if (shown || choice) dl.append(dd);
   }
   return dl;
 }
@@ -2483,7 +2492,12 @@ function handControlFor(sheet: Sheet, entryName: string): HTMLElement | undefine
   // today because there is one call site, and the first time `entryList` is
   // reused they would not — silently drawing another character's cards.
   const active = activeToken(sheet);
-  if (!active || !hasChoice(active.state)) return undefined;
+  // Shown whenever they are holding anything, not only when there is a choice to
+  // make. A player with Level Headed who has been dealt one card and sees nothing
+  // here cannot tell whether the Edge is working or the app is — which is exactly
+  // the question this control exists to answer. With a single card it reads
+  // "Acting on ♠K" and offers no buttons.
+  if (!active || !handOf(active.state)) return undefined;
 
   const wrap = document.createElement('div');
   wrap.className = 'entry-hand';
