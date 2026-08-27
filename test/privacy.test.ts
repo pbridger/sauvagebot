@@ -236,7 +236,21 @@ describe('whose Parry the targeting table will print', () => {
 
   it('shows it for a shot close enough to have been into melee', () => {
     expect(showsParry('Shooting', 0)).toBe(true);
-    expect(showsParry('Shooting', 1.9)).toBe(true);
+    // An orthogonal neighbour, and a diagonal one on a square grid.
+    expect(showsParry('Shooting', 1)).toBe(true);
+    expect(showsParry('Shooting', Math.SQRT2)).toBe(true);
+  });
+
+  /**
+   * Reported from the table, 2026-08-26: two tokens with a clear cell between
+   * them were resolving against Parry. The row prints a *rounded* distance while
+   * this compares the raw one, so everything from 1.01 to 1.99 read "Dist 2" and
+   * was treated as a struggle at arm's length.
+   */
+  it('leaves a token a clear cell away out of melee', () => {
+    expect(showsParry('Shooting', 1.6)).toBe(false);
+    expect(showsParry('Shooting', 1.9)).toBe(false);
+    expect(showsParry('Shooting', 2)).toBe(false);
   });
 
   /** Withholding is the safe default, so an unmeasured range must not leak. */

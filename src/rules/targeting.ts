@@ -243,18 +243,31 @@ export function isTargeted(skill: string | undefined): boolean {
  * ## Why a distance decides it
  *
  * Being *engaged* is not the same as being close, and the book never gives a
- * number for it — two cells is this app's cue, not a rule. It used to be a
- * question the panel asked and never answered on its own; Paul's call is that it
- * should answer, and the shot panel now assumes melee inside this radius and
- * lets the row say otherwise with a click.
+ * number for it — this is the app's cue, not a rule. It used to be a question
+ * the panel asked and never answered on its own; Paul's call is that it should
+ * answer, and the shot panel now assumes melee inside this radius and lets the
+ * row say otherwise with a click.
  *
  * So this constant is **load-bearing for the arithmetic**, not only for the
  * screen. It was originally a privacy line — how close before this table may
  * print a Parry at all — and it is still that, deliberately the same number, so
  * that the case where the TN reveals a Parry is exactly the case where showing
  * one is already sanctioned. Retuning it moves a rule as well as a screen.
+ *
+ * ## Why 1.5, and not the 2 it started at
+ *
+ * Two was too wide, reported from the table on 2026-08-26: a pair of tokens with
+ * a clear cell between them were being resolved against Parry. The reason is that
+ * the comparison is against the *raw* distance while the row prints a rounded
+ * one, so everything from 1.01 to 1.99 showed as "Dist 2" and was treated as
+ * melee — Damian's own guess, and it was right.
+ *
+ * 1.5 is chosen to sit in the gap the square grid leaves: an orthogonal
+ * neighbour is 1, a diagonal one is √2 ≈ 1.414, and the next ring out starts at
+ * 2. So every token actually touching another is inside it and nothing else is,
+ * which is as close to "adjacent" as a single radius can get.
  */
-export const PARRY_VISIBLE_CELLS = 2;
+export const PARRY_VISIBLE_CELLS = 1.5;
 
 /**
  * What a shot at this defender has to beat: their Parry when it is into melee,
