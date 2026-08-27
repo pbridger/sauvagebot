@@ -54,6 +54,13 @@ and counted as a struggle at arm's length. 1.5 sits in the gap a square grid
 leaves: touching orthogonally is 1, diagonally about 1.41, and the next ring out
 is 2.
 
+**A typed roll is logged as the character on screen.** `s8` in the box used to
+show your Owlbear player name while clicking an attribute showed the character.
+Deliberately narrow, because attributing a freeform roll to whoever happens to be
+selected is easy to get wrong: it only names a character when you are on the
+sheet tab, looking at them, and acting for them. Otherwise it is your name, as
+before.
+
 **Hearts and diamonds are red in the roll log.** They always were in the turn
 order; the log is built as plain text and the symbols carried no colour at all.
 

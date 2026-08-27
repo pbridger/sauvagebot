@@ -283,6 +283,13 @@ interface LastTrait {
 const lastTraitRoll = new Map<string, LastTrait>();
 let store = roomStore();
 let sheets: Sheet[] = [];
+/**
+ * The character this client has claimed as theirs, for a player. Undefined for
+ * the Marshal, and for a player who has not settled on one yet.
+ *
+ * Cached because rendering is synchronous and `myCharacter` is a store read.
+ */
+let mineId: string | undefined;
 /** Character id -> which document holds them. Rebuilt by `reload`. */
 let scopes = new Map<string, Scope | undefined>();
 let selectedId: string | undefined;
@@ -514,6 +521,33 @@ function rollerName(sheet: Sheet): string | undefined {
   if (sheet.pc) return sheet.name;
   const token = activeToken(sheet)?.token;
   return token ? mapName(token) : undefined;
+}
+
+/**
+ * The character a *typed* roll should be logged as, if any.
+ *
+ * Damian's report: clicking an attribute logs the character, while `s8` in the
+ * box logs the Owlbear player name. Paul's own reservation about fixing it is the
+ * reason for every condition below — attributing a freeform roll to whoever
+ * happens to be selected is easy to get wrong, and a wrong name in the log is
+ * worse than a boring one.
+ *
+ * So it is deliberately narrow. The character must be **on screen** — the sheet
+ * tab, where the picker naming them is visible two inches above the box being
+ * typed into — and must be one this client is acting for. A player with somebody
+ * else's sheet open, or anyone on the initiative or table tab, gets their own
+ * name as before.
+ *
+ * `rollerName` does the wire-safe part: a PC by name, an NPC by its token's map
+ * label, and nothing at all for an NPC with no token. A Marshal's private name
+ * for a creature never reaches the log this way.
+ */
+function typedRollName(): string | undefined {
+  if (tab !== 'sheet') return undefined;
+  const sheet = sheets.find((s) => s.id === selectedId);
+  if (!sheet || !maySee(sheet)) return undefined;
+  if (!isGM && mineId !== undefined && sheet.id !== mineId) return undefined;
+  return rollerName(sheet);
 }
 
 /** `{ character }` for a published line, absent for an NPC with no token. */
@@ -1580,10 +1614,7 @@ function renderSheetArea(): void {
         onOpenSheet: (tokenId) => void openSheetFor(tokenId),
         onReplace: (tokenId) => void replaceCard(tokenId),
         onChoose: (tokenId, index) => void chooseCardFor(tokenId, index),
-        // The Marshal works any hand; a player only their own character's.
-        // `maySee` is the same test the sheet picker uses, so "mine" means one
-        // thing throughout.
-        mayChoose: (combatant) => isGM || (combatant.sheet.pc && maySee(combatant.sheet)),
+        mayChoose: (combatant) => mayChooseFor(combatant.sheet),
         acted,
         ...(selectedTokenId ? { selectedTokenId } : {}),
       }),
@@ -2459,7 +2490,14 @@ function handControlFor(sheet: Sheet, entryName: string): HTMLElement | undefine
   const label = document.createElement('span');
   label.className = 'entry-hand-label';
   label.textContent = 'Acting on';
-  const hand = renderHand(active.state, (index) => void chooseCardFor(active.token.id, index));
+  // Same gate as the initiative row, and it has to be: a player can open another
+  // player's sheet — `visibleSheets` shows every PC — so without this the sheet
+  // would hand out the choice the turn order had just refused.
+  const mayChoose = mayChooseFor(sheet);
+  const hand = renderHand(
+    active.state,
+    mayChoose ? (index) => void chooseCardFor(active.token.id, index) : undefined,
+  );
   if (!hand) return undefined;
   wrap.append(label, hand);
   return wrap;
@@ -5582,6 +5620,27 @@ function maySee(sheet: Sheet | undefined): boolean {
   return sheet !== undefined && (isGM || sheet.pc);
 }
 
+/**
+ * Whether this client may work a character's hand of Action Cards.
+ *
+ * `maySee` is not the test, which is what made the first version of this wrong in
+ * both places it was used: for a player `maySee` is *any* PC, so one player could
+ * re-choose another player's card — and it publishes a line to the table when
+ * they do.
+ *
+ * The Marshal runs the villains and everyone else besides. A player gets their
+ * own character, or — if they have not claimed one yet — any PC, because locking
+ * somebody out of their own sheet before they have picked it is the worse
+ * failure of the two. A screen rather than a lock either way: token metadata is
+ * writable by every client whatever this returns, and what this stops is the
+ * misclick, which is the failure that actually happens.
+ */
+function mayChooseFor(sheet: Sheet | undefined): boolean {
+  if (sheet === undefined) return false;
+  if (isGM) return true;
+  return mineId === undefined ? sheet.pc : sheet.id === mineId;
+}
+
 function renderRoster(): void {
   const shown = visibleSheets();
   bar.who.replaceChildren(
@@ -5641,9 +5700,10 @@ async function reload(): Promise<void> {
     );
   }
   bennies = await bank.all();
+  mineId = await myCharacter();
   const mySheets = visibleSheets();
   if (!mySheets.some((s) => s.id === selectedId)) {
-    const mine = await myCharacter();
+    const mine = mineId;
     selectedId =
       (mine && mySheets.some((s) => s.id === mine) ? mine : undefined) ?? mySheets[0]?.id;
   }
@@ -6091,7 +6151,7 @@ OBR.onReady(async () => {
   const expr = el<HTMLInputElement>('expr');
   const rollTyped = (secret: boolean): void => {
     secretRolls = secret;
-    rollFreeform(expr.value);
+    rollFreeform(expr.value, undefined, typedRollName());
     secretRolls = false;
     expr.select();
   };
