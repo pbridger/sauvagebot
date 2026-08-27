@@ -397,3 +397,45 @@ describe('a mook joining a gang mid-fight', () => {
     expect(gangCard(table[0]!, table)).toBeUndefined();
   });
 });
+
+/**
+ * Reported from the table, 2026-08-26: *"'Improved Level Headed' is listed as
+ * 'Level Headed (imp)'"* and *"Improved Level Headed doesn't deal the 3rd card"*
+ * — which are the same fact. The shipped catalogue names ten upgraded Edges
+ * `X (IMP)` and eight `IMPROVED X`; only the second form was matched, so the Edge
+ * fell through to plain Level Headed and dealt two.
+ */
+describe('the two spellings of an upgraded Edge', () => {
+  const sheetWith = (name: string): Sheet => ({
+    ...emptySheet('x', 'X'),
+    edges: [{ name }],
+  });
+
+  it.each([
+    'IMPROVED LEVEL HEADED',
+    'Improved Level-Headed',
+    'LEVEL HEADED (IMP)',
+    'Level Headed (imp)',
+    'Level-Headed (Imp.)',
+    'Level Headed (Improved)',
+  ])('reads %s as the improved Edge', (name) => {
+    const found = initiativeEdges(sheetWith(name));
+    expect(found.improvedLevelHeaded).toBe(true);
+    expect(found.levelHeaded).toBe(false);
+  });
+
+  it('deals the third card, which was the symptom', () => {
+    const result = dealRound(
+      newInitiative(new JavaRandom(1)),
+      [{ tokenId: 't1', edges: initiativeEdges(sheetWith('Level Headed (imp)')) }],
+      new JavaRandom(2),
+    );
+    expect(result.draws.get('t1')!.cards).toHaveLength(3);
+  });
+
+  it('still reads the plain Edge as plain', () => {
+    const found = initiativeEdges(sheetWith('LEVEL HEADED'));
+    expect(found.levelHeaded).toBe(true);
+    expect(found.improvedLevelHeaded).toBe(false);
+  });
+});

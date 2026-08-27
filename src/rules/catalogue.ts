@@ -56,9 +56,32 @@ export function normaliseName(name: string): string {
  */
 function aliases(name: string): string[] {
   const match = /^([A-Za-z']+)\/([A-Za-z']+)\s+(.+)$/.exec(name);
-  if (!match) return [name];
-  const [, first, second, rest] = match;
-  return [name, `${first} ${rest}`, `${second} ${rest}`];
+  const both = match
+    ? [name, `${match[1]} ${match[3]}`, `${match[2]} ${match[3]}`]
+    : [name];
+  return both.flatMap((form) => [form, ...improvedForms(form)]);
+}
+
+/**
+ * The book writes an upgraded Edge two ways and the shipped catalogue does both:
+ * ten entries read `LEVEL HEADED (IMP)` and eight read `IMPROVED RAPID RECHARGE`.
+ * A character card may use either, and until now whichever one it did not use
+ * simply failed to resolve.
+ *
+ * That was not only a missing tooltip. `initiativeEdges` matched
+ * `IMPROVED LEVEL HEADED` and the catalogue's name is `LEVEL HEADED (IMP)`, so
+ * the Edge fell through to plain Level Headed and dealt two cards instead of
+ * three — reported from the table, 2026-08-26.
+ *
+ * Registered as aliases rather than normalised into one spelling, so the entry
+ * keeps whatever name the book gave it and both forms find it.
+ */
+export function improvedForms(name: string): string[] {
+  const bracketed = /^(.*?)\s*\((?:IMP|IMPROVED)\.?\)\s*$/i.exec(name);
+  if (bracketed) return [`Improved ${bracketed[1]}`];
+  const prefixed = /^IMPROVED\s+(.+)$/i.exec(name);
+  if (prefixed) return [`${prefixed[1]} (Imp)`];
+  return [];
 }
 
 function index(entries: readonly CatalogueEntry[]): Map<string, CatalogueEntry> {

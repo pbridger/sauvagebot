@@ -345,3 +345,29 @@ describe('names that would break a gear line', () => {
     expect(broken).toEqual([]);
   });
 });
+
+/**
+ * The same two spellings, from the lookup's side. Ten shipped entries are
+ * `X (IMP)` and eight are `IMPROVED X`, and a character card may carry either —
+ * so whichever form an entry does *not* use has to resolve to it anyway, or the
+ * edge shows on the sheet with no rules text.
+ */
+describe('upgraded edges, spelled either way', () => {
+  it('finds a bracketed entry by its Improved name', () => {
+    expect(findEntry('Improved Level Headed')?.name).toBe('LEVEL HEADED (IMP)');
+    expect(findEntry('Improved Dodge')?.name).toBe('DODGE (IMP)');
+  });
+
+  it('finds an Improved entry by its bracketed name', () => {
+    expect(findEntry('Rapid Recharge (Imp)')?.name).toBe('IMPROVED RAPID RECHARGE');
+  });
+
+  it('still finds each of them by its own name', () => {
+    expect(findEntry('LEVEL HEADED (IMP)')?.name).toBe('LEVEL HEADED (IMP)');
+    expect(findEntry('IMPROVED RAPID RECHARGE')?.name).toBe('IMPROVED RAPID RECHARGE');
+  });
+
+  it('does not confuse the upgrade with the plain Edge', () => {
+    expect(findEntry('Level Headed')?.name).toBe('LEVEL HEADED');
+  });
+});

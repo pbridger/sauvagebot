@@ -66,16 +66,33 @@ export const NO_EDGES: InitiativeEdges = {
 };
 
 /**
+ * Both spellings of the upgraded Edge.
+ *
+ * The shipped catalogue names it `LEVEL HEADED (IMP)`; the book and eight other
+ * catalogue entries use the `IMPROVED X` form; a character card may carry either.
+ * Only the second was matched until 2026-08-26, so a hero with the Edge fell
+ * through to plain Level Headed and was dealt two cards rather than three — which
+ * is exactly how it was reported from the table.
+ *
+ * Matched here as well as aliased in `catalogue.ts` because these are different
+ * jobs: that one is "which entry's rules text is this", and this one is "does
+ * this character have the Edge", and a sheet can carry an Edge the book has never
+ * heard of.
+ */
+const IMPROVED_LEVEL_HEADED =
+  /improved\s+level[\s-]?headed|level[\s-]?headed\s*\((?:imp|improved)\.?\)/i;
+
+/**
  * Read the initiative edges off a sheet by name.
  *
- * Order matters: "Improved Level Headed" contains "Level Headed", so the
- * improved form is tested first and the plain one only when it is absent.
+ * Order matters: every spelling of the improved form contains "Level Headed", so
+ * the improved one is tested first and the plain one only when it is absent.
  */
 export function initiativeEdges(sheet: Sheet): InitiativeEdges {
   const names = [...sheet.edges, ...sheet.hindrances]
     .map((entry) => entry.name.toLowerCase())
     .join(' | ');
-  const improved = /improved\s+level[\s-]?headed/.test(names);
+  const improved = IMPROVED_LEVEL_HEADED.test(names);
   return {
     quick: /\bquick\b/.test(names),
     improvedLevelHeaded: improved,
