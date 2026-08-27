@@ -58,7 +58,6 @@ import {
 import {
   adjustedDamage,
   applyDamage,
-  closeSoakWindow,
   describeAdjustment,
   effectiveToughness,
   type DamageAdjustment,
@@ -1469,7 +1468,11 @@ function traitButton(
  * already says. An entry named with no text at all is the opposite case — the
  * tooltip is the only thing there is to read.
  */
-function entryList(entries: Sheet['edges'], notes: readonly AbilityNote[]): HTMLElement {
+function entryList(
+  sheet: Sheet,
+  entries: Sheet['edges'],
+  notes: readonly AbilityNote[],
+): HTMLElement {
   const dl = document.createElement('dl');
   dl.className = 'entries';
   for (const entry of entries) {
@@ -1508,7 +1511,7 @@ function entryList(entries: Sheet['edges'], notes: readonly AbilityNote[]): HTML
     // them is written. Only on the entry that caused them, and only when there is
     // in fact a choice to make, so a sheet with Level Headed and a one-card hand
     // looks exactly as it did.
-    const choice = handControlFor(entry.name);
+    const choice = handControlFor(sheet, entry.name);
     if (choice) dd.append(choice);
 
     if (expandable) {
@@ -1564,6 +1567,10 @@ function renderSheetArea(): void {
         onOpenSheet: (tokenId) => void openSheetFor(tokenId),
         onReplace: (tokenId) => void replaceCard(tokenId),
         onChoose: (tokenId, index) => void chooseCardFor(tokenId, index),
+        // The Marshal works any hand; a player only their own character's.
+        // `maySee` is the same test the sheet picker uses, so "mine" means one
+        // thing throughout.
+        mayChoose: (combatant) => isGM || (combatant.sheet.pc && maySee(combatant.sheet)),
         acted,
         ...(selectedTokenId ? { selectedTokenId } : {}),
       }),
@@ -1620,15 +1627,6 @@ async function deal(): Promise<void> {
 
   // A new round is a clean slate: everyone acts again.
   acted = new Set();
-  // And the Soak window shuts. The rules want a Soak "immediately" after the
-  // damage; a round later is not that, and without this the offer would sit on a
-  // token until somebody hit it again. Closed by the *fight* rather than on a
-  // timer, and on the token, so every client agrees about when it went.
-  for (const combatant of table) {
-    if (combatant.state.soakable !== undefined) {
-      await updateTokenState(combatant.tokenId, closeSoakWindow);
-    }
-  }
   // Anyone out of the fight loses their card as well, so the map is not showing
   // a card for a body.
   // The whole hand, not just the card acted on: Level Headed's second card and
@@ -1638,7 +1636,10 @@ async function deal(): Promise<void> {
     table.map((c) => [c.tokenId, undefined]),
   );
   for (const [id, draw] of result.draws) assignments.set(id, { cards: draw.cards, chosen: draw.card });
-  await setHands(assignments);
+  // `closeSoak` rides along: the Soak window shuts when the round turns, and
+  // this is already the one write that touches every combatant. Looping it
+  // separately would be a serial write per token in front of this one.
+  await setHands(assignments, { closeSoak: true });
   await writeInitiative(result.state);
   initiative = result.state;
 
@@ -2432,10 +2433,12 @@ Gear: Melee attack (Str+d6).`;
  * an Edge that does not draw cards all render nothing, so the common sheet is
  * untouched.
  */
-function handControlFor(entryName: string): HTMLElement | undefined {
+function handControlFor(sheet: Sheet, entryName: string): HTMLElement | undefined {
   if (!/level[\s-]?headed/i.test(entryName)) return undefined;
-  const sheet = sheets.find((s) => s.id === selectedId);
-  const active = sheet && activeToken(sheet);
+  // The sheet is passed in rather than looked up from `selectedId`. They agree
+  // today because there is one call site, and the first time `entryList` is
+  // reused they would not — silently drawing another character's cards.
+  const active = activeToken(sheet);
   if (!active || !hasChoice(active.state)) return undefined;
 
   const wrap = document.createElement('div');
@@ -3221,10 +3224,15 @@ async function redrawCard(tokenId: string, _sheet: Sheet): Promise<Card | undefi
  * they then have to award back is bookkeeping, not a rule.
  *
  * Two different jobs behind one button, split on whether they already hold a
- * card. A mook with none is **joining** — they take the gang's card. A mook with
- * one is being **redrawn**, which is the escape hatch for the bandit who should
- * not be on the gang's card, and stays one token: redrawing a whole gang is one
- * press per body, which is the price of keeping the surgical version.
+ * card. A mook with none is **joining** — they take the gang's card. A mook who
+ * has one is **dealt another**, which is still the escape hatch for the bandit
+ * who should not be on the gang's card, but now in two steps rather than one:
+ * the card arrives beside theirs and somebody picks it.
+ *
+ * Two steps on purpose. This is the same button a player presses to spend the
+ * card a Benny bought them, and it cannot both add-and-keep for them and
+ * add-and-switch for the Marshal. Adding without choosing is the honest version
+ * of both, and one press per body still applies to a gang.
  */
 async function replaceCard(tokenId: string): Promise<void> {
   const table = combatants(tokens, sheets);
@@ -3623,13 +3631,13 @@ function render(): void {
   sheetEl.append(skills);
 
   if (sheet.hindrances.length) {
-    sheetEl.append(section('Hindrances'), entryList(sheet.hindrances, notes));
+    sheetEl.append(section('Hindrances'), entryList(sheet, sheet.hindrances, notes));
   }
   if (sheet.edges.length) {
-    sheetEl.append(section('Edges'), entryList(sheet.edges, notes));
+    sheetEl.append(section('Edges'), entryList(sheet, sheet.edges, notes));
   }
   if (sheet.powers?.length) {
-    sheetEl.append(section('Powers'), entryList(sheet.powers, notes));
+    sheetEl.append(section('Powers'), entryList(sheet, sheet.powers, notes));
   }
   renderGear(sheet, mods);
 

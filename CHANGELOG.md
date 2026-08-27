@@ -10,6 +10,56 @@ reload.
 
 ---
 
+## 2026-08-27 — From the table: cards, Soak, and melee
+
+Everything here came out of Damian's thread, and three of the four had cost
+somebody something at the table.
+
+**A Benny buys one more card, and you choose.** Level Headed *"draws an
+additional Action Card and chooses which to use"*; Improved *"draws two
+additional cards and chooses which to keep"*. The app was choosing for you —
+always the highest — and binning the rest. That is not the rule, and it was
+actively expensive for **Calculating**, which gives 2 points of penalty relief
+on a Five or less: Paige has both Edges, and her good card was being thrown away
+every round.
+
+Now the whole hand stays. The initiative row shows every card you drew with the
+one you are acting on drawn large and the rest small beside it — **click one to
+switch**. The same control appears on the Level Headed entry on your sheet,
+because that is the other place you look. A hand of one card looks exactly as it
+always did.
+
+**Spending a Benny for a card now adds one card**, rather than re-dealing your
+whole hand and throwing away what you held. With Level Headed that was two fresh
+cards for one chip and your existing card gone; it was wrong even without the
+Edge. The row's `Deal` works the same way, and neither of them switches you to
+the new card — that is yours to decide.
+
+**Improved Level Headed finally deals the third card.** The catalogue names ten
+upgraded Edges `X (IMP)` and eight `IMPROVED X`, and only the second form was
+recognised — so `Level Headed (imp)` read as plain Level Headed and dealt two.
+Both spellings now work everywhere, which also means about nine other upgraded
+Edges stop showing on sheets with no rules text.
+
+**Soak is offered to the player who was hit.** It was only ever visible to
+whoever rolled the damage, so the Marshal saw "Soak 3" and the player did not,
+and spending a Benny told them they had not been damaged. The offer now lives on
+the token. It stays until you use it — pass or fail, the Benny is spent either
+way — or until the next round is dealt.
+
+**Shots into melee need 1.5 cells, not 2.** Two tokens with a clear cell between
+them were being resolved against Parry. The check used the true distance while
+the row printed a rounded one, so anything from 1.01 to 1.99 showed as "Dist 2"
+and counted as a struggle at arm's length. 1.5 sits in the gap a square grid
+leaves: touching orthogonally is 1, diagonally about 1.41, and the next ring out
+is 2.
+
+Still on the list, and not fixed here: the displayed distance is still rounded
+while the range band is not, so a shot at a true 2.1 cells reads `Dist 2` and is
+charged Medium range.
+
+---
+
 ## 2026-08-27 — Villains live with the map
 
 **Your PCs are kept for the campaign; villains are kept with the scene.** That is

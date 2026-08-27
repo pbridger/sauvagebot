@@ -52,19 +52,31 @@ export interface InitiativeHooks {
   /** Select the token *and* show its character sheet — "who is next, what can they do". */
   onOpenSheet: (tokenId: string) => void;
   /**
-   * Draw one combatant a fresh card from the running deck, replacing the one
-   * they hold. The rules reach this through a Benny, but a table needs it for
-   * everything the rules do not cover — a latecomer, a misdeal, an interrupt —
-   * so it is a button rather than only a cost.
+   * Give one combatant **another** card from the running deck, so it cannot be a
+   * card somebody else holds. The rules reach this through a Benny, but a table
+   * needs it for everything the rules do not cover — a latecomer, a misdeal, an
+   * interrupt — so it is a button rather than only a cost.
+   *
+   * Adds rather than replaces, and does not re-select: the new card lands beside
+   * the old one and the player says which they act on. Pulling somebody off a
+   * card without asking is the behaviour this whole area was changed to stop.
    */
   onReplace: (tokenId: string) => void;
-  /**
-   * Act on a different card in the hand. Absent for a client that may not — a
-   * player choosing for somebody else's character is the one way this control
-   * can be wrong, and withholding the callback is what makes the card render as
-   * a label rather than a button.
-   */
+  /** Act on a different card in the hand. See `mayChoose`. */
   onChoose?: (tokenId: string, index: number) => void;
+  /**
+   * Whether this client may work *this* combatant's hand.
+   *
+   * Per combatant rather than per client, because the answer differs down the
+   * list: the Marshal may re-choose for anyone, and a player only for their own
+   * character. Choosing for somebody else's is the one way this control can be
+   * wrong, and it publishes a line to the table when it happens.
+   *
+   * Withholding it is what makes the spare cards render as labels rather than
+   * buttons — a control that is visible and refuses is worse than one that was
+   * never offered. Defaults to **no**, so a caller that forgets grants nothing.
+   */
+  mayChoose?: (combatant: Combatant) => boolean;
   /** Whichever token is selected on the map, so the list can highlight it. */
   selectedTokenId?: string;
   /**
@@ -314,9 +326,10 @@ export function renderInitiative(
 
     // The whole hand. One card renders exactly as it always did; two or three
     // give the player their choice right where the cards are.
+    const mayChoose = hooks.onChoose !== undefined && (hooks.mayChoose?.(combatant) ?? false);
     const hand = renderHand(
       combatant.state,
-      hooks.onChoose ? (index) => hooks.onChoose?.(combatant.tokenId, index) : undefined,
+      mayChoose ? (index) => hooks.onChoose?.(combatant.tokenId, index) : undefined,
     );
     if (hand) {
       row.append(hand);

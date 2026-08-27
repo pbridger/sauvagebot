@@ -28,6 +28,7 @@ import {
 } from '../../src/obr/binding.js';
 import type { Sheet } from '../../src/rules/sheet.js';
 import { clearHand, setHand } from '../../src/rules/hand.js';
+import { closeSoakWindow } from '../../src/rules/damage.js';
 import {
   isInitiativeState,
   newInitiative,
@@ -336,6 +337,13 @@ export async function freshInitiative(): Promise<InitiativeState> {
  */
 export async function setHands(
   hands: ReadonlyMap<string, { cards: readonly Card[]; chosen: Card } | undefined>,
+  /**
+   * Also shut the Soak window on every token touched. Dealing a round does this:
+   * the rules want a Soak "immediately" after the damage, and a round later is
+   * not that. Folded in here rather than looped separately because it is the same
+   * set of tokens and this is already the one write that covers them.
+   */
+  options: { closeSoak?: boolean } = {},
 ): Promise<void> {
   const ids = [...hands.keys()];
   if (!ids.length) return;
@@ -343,12 +351,17 @@ export async function setHands(
     for (const item of items) {
       const existing = readBinding(item.metadata);
       if (!existing) continue;
+      const base = options.closeSoak ? closeSoakWindow(existing) : existing;
       const hand = hands.get(item.id);
-      item.metadata[TOKEN_KEY] = hand
-        ? setHand(existing, hand.cards, hand.chosen)
-        : // Spread, because Owlbear rejects `delete` on the Immer draft and a
-          // cleared hand has to actually stop being three fields.
-          { ...clearHand(existing), card: undefined, cards: undefined, chosen: undefined };
+      // Assigned as a plain record, because clearing a field here means writing
+      // an explicit `undefined`: Owlbear rejects `delete` on the Immer draft, and
+      // `exactOptionalPropertyTypes` rejects the same `undefined` on `TokenState`.
+      // The two constraints only coexist at the boundary, which is here.
+      const next: Record<string, unknown> = hand
+        ? { ...setHand(base, hand.cards, hand.chosen) }
+        : { ...clearHand(base), card: undefined, cards: undefined, chosen: undefined };
+      if (options.closeSoak) next.soakable = undefined;
+      item.metadata[TOKEN_KEY] = next;
     }
   });
 }
