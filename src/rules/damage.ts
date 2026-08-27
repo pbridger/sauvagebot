@@ -152,12 +152,20 @@ export function applyDamage(
     else becameShaken = true;
   }
 
-  const next: TokenState = {
+  const hit: TokenState = {
     ...state,
     // Wounds always Shake as well, and there is no un-Shaking by being hit.
     shaken: state.shaken || becameShaken || wounds > 0,
     wounds: state.wounds + wounds,
   };
+  // Only a hit that *wounds* opens the window. A Shaken-only result leaves the
+  // previous one alone rather than closing it: the character has not stopped
+  // being freshly wounded because somebody else's shot glanced off, and closing
+  // it here would take the offer away over an event that cost them nothing.
+  //
+  // What closes it instead: the Soak itself, pass or fail, and the next round —
+  // by then the moment the rules mean by "immediately" has gone.
+  const next: TokenState = wounds > 0 ? { ...hit, soakable: wounds } : hit;
 
   const limit = woundLimit(sheet);
   const incapacitated = next.wounds > limit;
@@ -187,16 +195,31 @@ export function applyDamage(
  */
 export const SOAK_TARGET = 4;
 
+/**
+ * Take the pending Soak off a token.
+ *
+ * Deletes the key rather than setting it to `undefined`: `exactOptionalPropertyTypes`
+ * forbids the assignment, and a key present-but-undefined would also cost bytes
+ * in the token metadata for the sake of saying nothing.
+ */
+export function closeSoakWindow(state: TokenState): TokenState {
+  const { soakable: _spent, ...rest } = state;
+  return rest;
+}
+
 export function soak(state: TokenState, vigorTotal: number, woundsTaken: number): TokenState {
-  if (vigorTotal < SOAK_TARGET) return state;
+  // A failed Soak still spends the Benny and still closes the window: the roll
+  // was the attempt, and leaving the button up would offer a second go at the
+  // same wound for a second chip.
+  if (vigorTotal < SOAK_TARGET) return closeSoakWindow(state);
   const removed = Math.min(1 + Math.floor((vigorTotal - SOAK_TARGET) / RAISE_STEP), woundsTaken);
   const wounds = Math.max(0, state.wounds - removed);
-  return {
+  return closeSoakWindow({
     ...state,
     wounds,
     // Soaking away every wound from the hit also clears the Shaken it caused.
     shaken: removed >= woundsTaken ? false : state.shaken,
-  };
+  });
 }
 
 /** Wounds a Soak roll of this total would remove. */

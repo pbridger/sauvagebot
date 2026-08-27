@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { newTokenState, type TokenState } from '../src/obr/binding.js';
+import { isTokenState, newTokenState, type TokenState } from '../src/obr/binding.js';
 import { parseArchetypeCards } from '../src/rules/importArchetypeCard.js';
 import {
   adjustedDamage,
@@ -214,5 +214,80 @@ describe('adjusting damage before it is applied', () => {
     const hardy = applyDamage(sheet, shaken, { damage: 8 }, { factor: 0.5, reason: 'Hardy' });
     expect(hardy.wounds).toBe(0);
     expect(hardy.description).toContain('Hardy');
+  });
+});
+
+/**
+ * The Soak window, and why it is on the token.
+ *
+ * Reported from the table 2026-08-22: *"When Greg was wounded, I (GM) could see
+ * the 'Soak 3' option, but he couldn't see it. If he tried to use a Benny to soak
+ * it said he hadn't been damaged."* The amount a Soak could undo lived in a `Map`
+ * inside `panel.ts`, written on whichever client applied the damage — the
+ * Marshal's — so the player it had happened to had no offer at all.
+ */
+describe('what a Soak may still undo', () => {
+  const target = { ...emptySheet('greg', 'Greg'), wildCard: true, attributes: { ...emptySheet('greg', 'Greg').attributes, vigor: { die: 8 } } };
+  const fresh = () => newTokenState('greg');
+
+  it('is recorded on the token when a hit wounds', () => {
+    const outcome = applyDamage(target, fresh(), { damage: 20 });
+    expect(outcome.wounds).toBeGreaterThan(0);
+    expect(outcome.state.soakable).toBe(outcome.wounds);
+  });
+
+  it('is absent when the hit did nothing', () => {
+    expect(applyDamage(target, fresh(), { damage: 1 }).state.soakable).toBeUndefined();
+  });
+
+  it('is absent when the hit only Shook them', () => {
+    const shaking = applyDamage(target, fresh(), { damage: effectiveToughness(target) });
+    expect(shaking.wounds).toBe(0);
+    expect(shaking.state.soakable).toBeUndefined();
+  });
+
+  /**
+   * A later hit that does nothing does not take the offer away. The character has
+   * not stopped being freshly wounded because somebody else's shot glanced off,
+   * and closing the window over an event that cost them nothing would be the same
+   * class of unfairness as the bug this replaced.
+   */
+  it('survives a later hit that does nothing', () => {
+    const mauled = applyDamage(target, fresh(), { damage: 20 }).state;
+    expect(applyDamage(target, mauled, { damage: 1 }).state.soakable).toBe(mauled.soakable);
+  });
+
+  it('is replaced, not added to, by a later hit that does wound', () => {
+    const first = applyDamage(target, fresh(), { damage: 20 }).state;
+    const second = applyDamage(target, first, { damage: 20 });
+    expect(second.state.soakable).toBe(second.wounds);
+  });
+
+  it('closes on a successful Soak', () => {
+    const hit = applyDamage(target, fresh(), { damage: 20 }).state;
+    const after = soak(hit, 12, hit.soakable!);
+    expect(after.wounds).toBeLessThan(hit.wounds);
+    expect(after.soakable).toBeUndefined();
+  });
+
+  /**
+   * A failed Soak spends the Benny too. Leaving the offer up would sell a second
+   * attempt at the same wound for a second chip.
+   */
+  it('closes on a failed Soak as well', () => {
+    const hit = applyDamage(target, fresh(), { damage: 20 }).state;
+    const after = soak(hit, 1, hit.soakable!);
+    expect(after.wounds).toBe(hit.wounds);
+    expect(after.soakable).toBeUndefined();
+  });
+
+  it('survives the round trip through the token guard', () => {
+    const hit = applyDamage(target, fresh(), { damage: 20 }).state;
+    expect(isTokenState(JSON.parse(JSON.stringify(hit)))).toBe(true);
+  });
+
+  /** Every token bound before this field existed has none, and must still read. */
+  it('is optional, so older bindings still validate', () => {
+    expect(isTokenState(newTokenState('greg'))).toBe(true);
   });
 });

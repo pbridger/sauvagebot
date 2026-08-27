@@ -55,6 +55,21 @@ export interface TokenState extends ModifierState {
   shaken: boolean;
   /** Initiative card, dealt from the action deck. */
   card?: Card;
+  /**
+   * Wounds taken from the last hit that a Soak could still undo.
+   *
+   * On the **token**, not on the client that rolled the damage, and that is the
+   * whole point of it being here. It used to be a `Map` in `panel.ts` written
+   * where damage was applied — which is the Marshal's machine — so the player
+   * whose character had just been hit saw no Soak button and was told they had
+   * not been damaged when they tried to spend the Benny for one. Reported from
+   * the table, 2026-08-22.
+   *
+   * Absent rather than zero when there is nothing to soak, so that every token
+   * bound before this existed reads as "nothing pending" rather than failing the
+   * guard.
+   */
+  soakable?: number;
 }
 
 export function newTokenState(sheetId: string): TokenState {
@@ -75,7 +90,9 @@ export function isTokenState(value: unknown): value is TokenState {
     // bindings — which would look like every wound on the map vanishing.
     (state.mod === undefined || (typeof state.mod === 'number' && Number.isFinite(state.mod))) &&
     (state.conditions === undefined ||
-      (Array.isArray(state.conditions) && state.conditions.every((c) => typeof c === 'string')))
+      (Array.isArray(state.conditions) && state.conditions.every((c) => typeof c === 'string'))) &&
+    (state.soakable === undefined ||
+      (typeof state.soakable === 'number' && Number.isFinite(state.soakable)))
   );
 }
 

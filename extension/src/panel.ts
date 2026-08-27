@@ -58,6 +58,7 @@ import {
 import {
   adjustedDamage,
   applyDamage,
+  closeSoakWindow,
   describeAdjustment,
   effectiveToughness,
   type DamageAdjustment,
@@ -229,8 +230,6 @@ const budgetEl = el('budget');
 let roster: Roster;
 let bank: BennyBank;
 let bennies = new Map<string, number>();
-/** The most recent damage per token, so a Soak knows how much it may undo. */
-const lastDamage = new Map<string, number>();
 /**
  * The last trait roll each character made, so a Benny can buy it again.
  *
@@ -1605,6 +1604,15 @@ async function deal(): Promise<void> {
 
   // A new round is a clean slate: everyone acts again.
   acted = new Set();
+  // And the Soak window shuts. The rules want a Soak "immediately" after the
+  // damage; a round later is not that, and without this the offer would sit on a
+  // token until somebody hit it again. Closed by the *fight* rather than on a
+  // timer, and on the token, so every client agrees about when it went.
+  for (const combatant of table) {
+    if (combatant.state.soakable !== undefined) {
+      await updateTokenState(combatant.tokenId, closeSoakWindow);
+    }
+  }
   // Anyone out of the fight loses their card as well, so the map is not showing
   // a card for a body.
   const assignments = new Map(table.map((c) => [c.tokenId, undefined as Card | undefined]));
@@ -2684,7 +2692,9 @@ function statusStrip(sheet: Sheet): HTMLElement {
   );
   half.append(down);
 
-  const soakable = lastDamage.get(token.id) ?? 0;
+  // Off the token, so the player who was hit sees the same offer the Marshal
+  // does. This used to read a Map local to whichever client rolled the damage.
+  const soakable = state.soakable ?? 0;
   if (soakable > 0 && sheet.wildCard) {
     const button = document.createElement('button');
     button.className = 'toggle soak';
@@ -2967,10 +2977,10 @@ async function attemptSoak(
     const total = totalOf(explained) ?? 0;
     const removed = Math.min(soakedWounds(total), wounds);
 
-    const next = soak(state, total, wounds);
-    await updateTokenState(tokenId, () => next);
-    if (removed >= wounds) lastDamage.delete(tokenId);
-    else lastDamage.set(tokenId, wounds - removed);
+    // `soak` closes the window whether or not it worked: the Benny is spent
+    // either way, and leaving the button up would sell a second attempt at the
+    // same wound.
+    await updateTokenState(tokenId, () => soak(state, total, wounds));
 
     publishTrait(
       sheet,
@@ -3000,7 +3010,7 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
   // Soak has its own button, because it needs to know what hit you. Route the
   // menu entry to it rather than charging twice for one Benny.
   if (use === 'Soak Rolls') {
-    const wounds = active ? (lastDamage.get(active.token.id) ?? 0) : 0;
+    const wounds = active?.state.soakable ?? 0;
     if (active && wounds > 0) return attemptSoak(sheet, active.token.id, active.state, wounds);
     notify('Nothing to Soak — apply some damage first');
     return;
@@ -5572,8 +5582,9 @@ async function applyToTarget(
     },
     adjust,
   );
+  // `outcome.state` already carries `soakable`, so the offer travels with the
+  // wound to every client rather than staying on this one.
   await updateTokenState(target.token.id, () => outcome.state);
-  if (outcome.wounds > 0) lastDamage.set(target.token.id, outcome.wounds);
   await refreshTokens();
   // No `total`: this line is the *outcome* of applying damage, and offering to
   // apply it again to whoever is selected next would only ever be a mistake.
