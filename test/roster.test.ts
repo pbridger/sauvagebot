@@ -396,3 +396,211 @@ describe('preferring the book to the stored copy', () => {
     expect((await bookless.get('reggie'))?.edges[0]?.text).toContain('full printed wording');
   });
 });
+
+/**
+ * PCs in the room, villains with the map — Paul's design of 2026-08-27.
+ *
+ * The room is the only campaign-wide store (~16 kB); a scene is measured at ≥1 MB
+ * and 4 ms a write, and it goes when the scene does. Which document holds the key
+ * *is* the scope, so there is no field to disagree with it.
+ */
+describe('a roster split across the room and the scene', () => {
+  const split = (roomCap = ROOM_CAPACITY, sceneCap = 1_000_000) => {
+    const room = new FakeBackend(roomCap);
+    const scene = new FakeBackend(sceneCap);
+    const warnings: string[] = [];
+    return {
+      room,
+      scene,
+      warnings,
+      roster: new Roster(
+        {
+          room: new VerifiedStore(room, { capacity: roomCap, onWarning: () => {} }),
+          scene: new VerifiedStore(scene, { capacity: sceneCap, onWarning: () => {} }),
+        },
+        (m) => warnings.push(m),
+      ),
+    };
+  };
+
+  const pc = (id: string): Sheet => ({ ...emptySheet(id, id), pc: true });
+  const npc = (id: string): Sheet => emptySheet(id, id);
+
+  it('files a new PC in the room and a new villain with the scene', async () => {
+    const { roster } = split();
+    await roster.save(pc('reggie'));
+    await roster.save(npc('bandit'));
+    expect(await roster.scopeOf('reggie')).toBe('room');
+    expect(await roster.scopeOf('bandit')).toBe('scene');
+  });
+
+  it('lists both as one roster', async () => {
+    const { roster } = split();
+    await roster.save(pc('reggie'));
+    await roster.save(npc('bandit'));
+    expect((await roster.list()).map((s) => s.id)).toEqual(['bandit', 'reggie']);
+  });
+
+  it('saves an existing character back where they already are', async () => {
+    const { roster, room } = split();
+    await roster.save(npc('ike'));
+    await roster.move('ike', 'room');
+    // Still an NPC, so the kind default would send them to the scene — but they
+    // have a home now, and editing a villain must not quietly demote them.
+    await roster.save({ ...npc('ike'), wounds: 1 } as Sheet);
+    expect(await roster.scopeOf('ike')).toBe('room');
+    expect(Object.keys(room.data).some((k) => k.endsWith('ike'))).toBe(true);
+  });
+
+  it('finds a scene character by id like any other', async () => {
+    const { roster } = split();
+    await roster.save({ ...npc('bandit'), name: 'Bandit' });
+    expect((await roster.get('bandit'))?.name).toBe('Bandit');
+  });
+
+  describe('moving between the two', () => {
+    it('promotes a villain to the campaign and takes them out of the scene', async () => {
+      const { roster, room, scene } = split();
+      await roster.save(npc('ike'));
+      await roster.move('ike', 'room');
+      expect(await roster.scopeOf('ike')).toBe('room');
+      expect(Object.keys(scene.data)).toHaveLength(0);
+      expect(Object.keys(room.data).length).toBeGreaterThan(0);
+    });
+
+    it('demotes the other way just as happily', async () => {
+      const { roster } = split();
+      await roster.save(pc('reggie'));
+      await roster.move('reggie', 'scene');
+      expect(await roster.scopeOf('reggie')).toBe('scene');
+    });
+
+    it('does nothing when they are already there', async () => {
+      const { roster } = split();
+      await roster.save(pc('reggie'));
+      await roster.move('reggie', 'room');
+      expect(await roster.scopeOf('reggie')).toBe('room');
+    });
+
+    it('refuses to move a character who does not exist', async () => {
+      const { roster } = split();
+      await expect(roster.move('nobody', 'room')).rejects.toThrow(/no character/);
+    });
+
+    /**
+     * Write first, then remove. The promotion is refused by the *write*, so the
+     * villain is still in the scene afterwards rather than nowhere at all.
+     */
+    it('leaves the character where they were when the room is full', async () => {
+      const { roster, scene } = split(400);
+      await roster.save({ ...npc('ike'), description: 'x'.repeat(500) });
+      await expect(roster.move('ike', 'room')).rejects.toThrow();
+      expect(await roster.scopeOf('ike')).toBe('scene');
+      expect(Object.keys(scene.data)).toHaveLength(1);
+    });
+  });
+
+  /**
+   * What a crash between the write and the remove leaves behind. Room wins, so
+   * the campaign copy — the one that outlives the scene — is the one in play.
+   */
+  describe('a character left in both documents', () => {
+    const both = async () => {
+      const s = split();
+      await s.roster.save(pc('ike'));
+      await s.scene.set({ 'com.savagebot/pc/ike': { ...pc('ike'), name: 'stale' } });
+      return s;
+    };
+
+    it('is listed once, from the room', async () => {
+      const { roster } = await both();
+      const found = (await roster.list()).filter((sheet) => sheet.id === 'ike');
+      expect(found).toHaveLength(1);
+      expect(found[0]!.name).toBe('ike');
+    });
+
+    it('is reported so it can be cleared', async () => {
+      const { roster } = await both();
+      expect(await roster.duplicates()).toEqual(['ike']);
+    });
+
+    it('is deleted from both, so it cannot come back', async () => {
+      const { roster, room, scene } = await both();
+      await roster.remove('ike');
+      expect(await roster.get('ike')).toBeUndefined();
+      expect(Object.keys(room.data)).toHaveLength(0);
+      expect(Object.keys(scene.data)).toHaveLength(0);
+    });
+  });
+
+  it('clears a deleted character’s bennies, which nothing used to', async () => {
+    const { roster, room } = split();
+    await roster.save(pc('reggie'));
+    await room.set({ 'com.savagebot/bennies/reggie': 3 });
+    await roster.remove('reggie');
+    expect(Object.keys(room.data)).not.toContain('com.savagebot/bennies/reggie');
+  });
+
+  describe('with no scene open', () => {
+    const roomOnly = () => {
+      const backend = new FakeBackend(ROOM_CAPACITY);
+      const warnings: string[] = [];
+      return {
+        warnings,
+        roster: new Roster(
+          { room: new VerifiedStore(backend, { capacity: ROOM_CAPACITY, onWarning: () => {} }) },
+          (m) => warnings.push(m),
+        ),
+      };
+    };
+
+    it('saves a villain to the room and says so out loud', async () => {
+      const { roster, warnings } = roomOnly();
+      await roster.save(npc('bandit'));
+      expect(await roster.scopeOf('bandit')).toBe('room');
+      expect(warnings.join(' ')).toMatch(/no scene open/);
+    });
+
+    it('refuses to move anyone into a scene that is not there', async () => {
+      const { roster } = roomOnly();
+      await roster.save(pc('reggie'));
+      await expect(roster.move('reggie', 'scene')).rejects.toThrow(/no scene open/);
+    });
+
+    it('reports no duplicates rather than guessing', async () => {
+      const { roster } = roomOnly();
+      expect(await roster.duplicates()).toEqual([]);
+    });
+  });
+
+  /**
+   * The old check costed every sheet against the room. A party's worth of
+   * villains bound for a 1 MB scene would be refused by a 16 kB budget they were
+   * never going to touch.
+   */
+  it('costs an import against the document each sheet is going to', async () => {
+    const { roster } = split(600);
+    const villains = Array.from({ length: 20 }, (_, i) => ({
+      ...npc(`v${i}`),
+      description: 'x'.repeat(400),
+    }));
+    const imported = await roster.import({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      sheets: villains,
+    });
+    expect(imported).toHaveLength(20);
+    expect(await roster.scopeOf('v0')).toBe('scene');
+  });
+
+  it('still refuses outright when the PCs will not fit the room', async () => {
+    const { roster } = split(600);
+    await expect(
+      roster.import({
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        sheets: [{ ...pc('a'), description: 'x'.repeat(400) }, { ...pc('b'), description: 'x'.repeat(400) }],
+      }),
+    ).rejects.toThrow(/the room/);
+  });
+});

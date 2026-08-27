@@ -35,6 +35,20 @@ export interface StoreOptions {
 export const ROOM_CAPACITY = 15_000;
 export const ITEM_CAPACITY = 500_000;
 
+/**
+ * Scene metadata, where the villains live.
+ *
+ * Measured 2026-08-27: 1 MB wrote, read back and cleared in 22 ms, and the search
+ * stopped at its own bound rather than at the store's — so this is a floor on the
+ * capacity, not the ceiling. Round 3's `4014 Max chunk exceeded` appeared only at
+ * 8 MB and nothing like it showed up below 1 MB.
+ *
+ * Set well under the measured floor for the same reason `ROOM_CAPACITY` is: a
+ * write should fail our own check rather than reach the host's silent drop. It is
+ * still ~50× the room, which is more headroom than the roster can plausibly use.
+ */
+export const SCENE_CAPACITY = 750_000;
+
 export class WriteDroppedError extends Error {
   constructor(readonly key: string) {
     super(

@@ -597,6 +597,15 @@ button.danger {
   color: #b3261e;
   border-color: #b3261e;
 }
+/* At the top of the sheet it sits in the identity block beside the name, so it
+   must not be the full-width bar the old bottom-of-page one was. */
+.danger-row { display: flex; justify-content: flex-end; margin-bottom: 4px; }
+button.danger.top {
+  margin: 0;
+  width: auto;
+  padding: 2px 8px;
+  font-size: 12px;
+}
 @media (prefers-color-scheme: dark) {
   button.danger { color: #f2b8b5; border-color: #f2b8b5; }
 }
@@ -1279,6 +1288,13 @@ button.kind:hover { color: var(--accent); border-color: var(--accent); }
    dimmed: every button in this column is already grey, so "OUT" and "IN" would
    read the same at a glance down a roster of forty. */
 button.kind.parked { text-decoration: line-through; opacity: .7; }
+/* Kept-with-the-scene is the impermanent one, so it reads lighter than Room.
+   No border change: the chips in this table all size off their border, and
+   swapping one would shift the column the moment a character was moved. */
+button.kind.scene-kept { color: var(--muted); font-style: italic; }
+/* The Undo that replaces the delete confirm. Inline in the notice bar, so it
+   inherits its colour rather than competing with it. */
+button.undo { margin-left: 4px; }
 table.roster tr.parked button.creature-name { opacity: .55; }
 .pane-block input[type='search'] {
   width: 100%;

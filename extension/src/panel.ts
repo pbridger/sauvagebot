@@ -44,7 +44,7 @@ import { runningDie, runningExpression } from '../../src/rules/running.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
 import { parse } from '../../src/dice/parser.js';
 import { rollAttribute, rollSkill, totalsOf } from '../../src/rules/traitRoll.js';
-import { Roster } from '../../src/obr/roster.js';
+import { Roster, type Scope } from '../../src/obr/roster.js';
 import {
   ROLL_CHANNEL,
   RollLog,
@@ -174,6 +174,7 @@ import {
   readInitiative,
   resetAllTokens,
   roomStore,
+  roster as characterRoster,
   setCards,
   unbindToken,
   updateTokenState,
@@ -274,6 +275,8 @@ interface LastTrait {
 const lastTraitRoll = new Map<string, LastTrait>();
 let store = roomStore();
 let sheets: Sheet[] = [];
+/** Character id -> which document holds them. Rebuilt by `reload`. */
+let scopes = new Map<string, Scope | undefined>();
 let selectedId: string | undefined;
 
 const log = new RollLog();
@@ -1376,11 +1379,22 @@ function scheduleSave(sheet: Sheet): void {
  * you stop reading before the one time it matters. The exact figure lives in the
  * GM's Table pane, where someone has gone looking for it.
  */
+/**
+ * The storage footer. Only the **room** is reported.
+ *
+ * The scene store is ~50× the size and holds the half of the roster that can be
+ * regenerated from the bundled bestiary in a minute; the room holds the PCs and
+ * is the one that has ever actually filled up. Reporting both would mean a
+ * permanent second number that is always near zero, and a percentage nobody reads
+ * is worse than no percentage — it teaches you to skip the line the one time it
+ * matters.
+ */
 async function showBudget(): Promise<void> {
   const { used, capacity, fraction } = await store.usage();
   const crowded = fraction > 0.8;
   budgetEl.textContent = crowded
-    ? `roster storage ${Math.round(fraction * 100)}% full (${used}/${capacity} chars)`
+    ? `campaign storage ${Math.round(fraction * 100)}% full (${used}/${capacity} chars) — ` +
+      `press Kept on a villain to move them to the scene`
     : '';
   budgetEl.classList.toggle('warn', crowded);
 }
@@ -1986,7 +2000,15 @@ function rosterBlock(): HTMLElement {
     ['Character', '', false],
     ['PC', "Whose character it is. An NPC stays out of the players' panels.", true],
     [
-      'Scene',
+      'Kept',
+      'How long this character lasts. Room is the campaign \u2014 they follow you ' +
+        'to every map. Scene means they live with this board and go when it does, ' +
+        'which is what tonight\u2019s mooks want. Press to move them.',
+      true,
+    ],
+    [
+      // Was "Scene", which now means something else one column to the left.
+      'Fight',
       'Whether this character is in the fight at all — parked ones are dealt no ' +
         'Action Card and offered as nobody\u2019s target, however many of them are on ' +
         'the map. Separate from Owlbear\u2019s eye, which decides who can be seen.',
@@ -2044,13 +2066,52 @@ function rosterBlock(): HTMLElement {
       : `Hand ${sheet.name} to the players`;
     kind.addEventListener('click', () => {
       void (async () => {
-        await roster.save({ ...sheet, pc: !sheet.pc });
+        const becomingPc = !sheet.pc;
+        await roster.save({ ...sheet, pc: becomingPc });
+        // Handing a character to the players promotes them to the campaign, if
+        // they were not there already. A PC that vanished when the Marshal
+        // changed map would be read as the app losing them, and nobody would
+        // think to check a storage column to find out why. The reverse is *not*
+        // automatic: a campaign-level villain is exactly what Kept exists to
+        // allow, so demoting one stays a deliberate second press.
+        if (becomingPc && scopes.get(sheet.id) === 'scene') {
+          try {
+            await roster.move(sheet.id, 'room');
+          } catch (error) {
+            notify(
+              `${sheet.name} is a PC now but could not be moved to the campaign — ` +
+                `${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        }
         await reload();
         renderSheetArea();
       })();
     });
     kindCell.append(kind);
     row.append(kindCell);
+
+    // How long they last, and the control for it. The store a sheet sits in *is*
+    // the answer, so this reads `scopes` rather than anything on the sheet — there
+    // is no field here that could disagree with where the character actually is.
+    const keptCell = document.createElement('td');
+    keptCell.className = 'num';
+    const kept = document.createElement('button');
+    const scope = scopes.get(sheet.id);
+    kept.className = scope === 'room' ? 'kind' : 'kind scene-kept';
+    kept.textContent = scope === 'room' ? 'Room' : scope === 'scene' ? 'Scene' : '—';
+    kept.disabled = scope === undefined;
+    kept.title =
+      scope === 'room'
+        ? `${sheet.name} follows you to every map. Press to leave them with this scene instead.`
+        : scope === 'scene'
+          ? `${sheet.name} lives with this scene and goes when it does. Press to keep them for the campaign.`
+          : 'Nowhere to move this character to — open a scene first';
+    kept.addEventListener('click', () => {
+      void moveCharacter(sheet, scope === 'room' ? 'scene' : 'room');
+    });
+    keptCell.append(kept);
+    row.append(keptCell);
 
     // The other half of "who is in this room". The eye on the map hides a token
     // from the players; this takes a whole creature type out of the fight, which
@@ -2332,12 +2393,103 @@ Gear: Melee attack (Str+d6).`;
   return wrap;
 }
 
+/**
+ * Move a character between the campaign and this scene.
+ *
+ * Write-then-remove inside `Roster.move`, so a failure here leaves them where
+ * they were rather than nowhere. The message says what changed *and* what that
+ * means, because "Room" and "Scene" are only obvious once.
+ */
+async function moveCharacter(sheet: Sheet, to: Scope): Promise<void> {
+  try {
+    await roster.move(sheet.id, to);
+  } catch (error) {
+    notify(`Could not move ${sheet.name} — ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+  notify(
+    to === 'room'
+      ? `${sheet.name} is now kept for the campaign, and follows you to every map`
+      : `${sheet.name} now lives with this scene, and goes when it does`,
+  );
+  await reload();
+}
+
+/**
+ * How long an Undo stays on offer. Long enough to notice the notice, short enough
+ * that it is gone before the next thing you do puts it out of your mind.
+ */
+const UNDO_MS = 12_000;
+
+/**
+ * Delete a character, with the friction matched to what losing them would cost.
+ *
+ * A **scene-stored NPC** is tonight's mook: one press, no dialog. A **PC or a
+ * campaign-level NPC** is weeks of work and still asks, because the Marshal
+ * promoted them to Room precisely to say they matter.
+ *
+ * Either way the sheet is kept in memory and offered back, which is better
+ * protection than the dialog it replaces: a confirm only helps the person who
+ * reads it, and nobody reads the fourth one. Undo restores the character to the
+ * store they came out of, not to wherever a fresh save would have put them.
+ */
 async function deleteCharacter(sheet: Sheet): Promise<void> {
-  if (!confirm(`Delete ${sheet.name}? This cannot be undone — export first if unsure.`)) return;
+  const scope = scopes.get(sheet.id);
+  if (
+    (sheet.pc || scope === 'room') &&
+    !confirm(`Delete ${sheet.name}? They are kept for the whole campaign. Export first if unsure.`)
+  ) {
+    return;
+  }
+
+  // Counted before the delete, while the binding still resolves. Losing the
+  // confirm loses the last moment anyone would notice this, so it goes in the
+  // message instead — friction replaced by information.
+  const bound = tokensForSheet(tokens, sheet.id).length;
   await roster.remove(sheet.id);
   selectedId = undefined;
   setEditing(false);
   await reload();
+
+  const orphaned = bound
+    ? ` ${bound} token(s) on the map are now unbound.`
+    : '';
+  offerUndo(`Deleted ${sheet.name}.${orphaned}`, async () => {
+    await roster.save(sheet);
+    // Back where they were, not where a new sheet of their kind would go: a
+    // campaign villain restored into the scene would quietly lose their scope.
+    if (scope && (await roster.scopeOf(sheet.id)) !== scope) await roster.move(sheet.id, scope);
+    selectedId = sheet.id;
+    await reload();
+    notify(`${sheet.name} is back.`);
+  });
+}
+
+/**
+ * A notice with an Undo beside it, for a few seconds.
+ *
+ * Deliberately not a general undo stack — there is no such thing in this app, and
+ * pretending otherwise would invite it to be relied on. It is one action, the one
+ * just taken, offered back while it is still the thing on your mind.
+ */
+function offerUndo(message: string, undo: () => Promise<void>): void {
+  notify(message);
+  const button = document.createElement('button');
+  button.className = 'sheet-link undo';
+  button.textContent = 'Undo';
+  let timer = 0;
+  button.addEventListener('click', () => {
+    window.clearTimeout(timer);
+    button.disabled = true;
+    void undo().catch((error) => notify(`Could not undo — ${describe(error)}`));
+  });
+  noticeEl.append(' ', button);
+  timer = window.setTimeout(() => {
+    // Only clears the notice if it is still *this* one. Something else may well
+    // have written to the bar in the meantime, and wiping that would make an
+    // unrelated message vanish a few seconds after it appeared.
+    if (noticeEl.contains(button)) notify(undefined);
+  }, UNDO_MS);
 }
 
 function setEditing(on: boolean): void {
@@ -5347,6 +5499,23 @@ async function myCharacter(): Promise<string | undefined> {
 
 async function reload(): Promise<void> {
   sheets = await roster.listFull();
+  // Where each character is kept, read once per reload because rendering is
+  // synchronous and `scopeOf` is not. A sheet missing from this map is one whose
+  // store went away between the two reads, which the column shows as a dash
+  // rather than guessing.
+  scopes = new Map(
+    await Promise.all(sheets.map(async (s) => [s.id, await roster.scopeOf(s.id)] as const)),
+  );
+  const clashes = await roster.duplicates();
+  if (clashes.length) {
+    // The residue of a move that wrote the copy and then failed to remove the
+    // original. Harmless — the room copy is the one in play — but it is spending
+    // scene bytes on a ghost, and nothing else would ever mention it.
+    notify(
+      `${clashes.length} character(s) are stored in both the room and the scene; ` +
+        `the room copy is the one in use. Press Kept twice to clear the other.`,
+    );
+  }
   bennies = await bank.all();
   const mySheets = visibleSheets();
   if (!mySheets.some((s) => s.id === selectedId)) {
@@ -5690,7 +5859,7 @@ OBR.onReady(async () => {
   // The book is passed in so an edge the catalogue knows is stored as a name and
   // its text comes out of the bundle — see `roster.ts`. Keeps `roster.ts` free of
   // the catalogue, the same way `rebuildRulesText` takes its lookup.
-  roster = new Roster(store, notify, (name) => findEntry(name)?.text);
+  roster = await characterRoster(notify);
   bank = new BennyBank(store);
 
   // Who I am, which the roster needs: a player sees their own sheets, the Marshal
@@ -5758,8 +5927,14 @@ OBR.onReady(async () => {
   // Bindings live in item metadata, which is per-scene — so every new map starts
   // unbound, and the party would have to be re-bound by hand without this.
   OBR.scene.onReadyChange((ready) => {
-    if (!ready) return;
     void (async () => {
+      // The roster is rebuilt first and on *both* edges, because half of it lives
+      // in the scene that just arrived or left. Opening a board brings its
+      // villains with it; closing one takes them away, and a stale Roster would
+      // go on listing characters whose store is gone and fail every save to them.
+      roster = await characterRoster(notify);
+      await reload();
+      if (!ready) return;
       const count = await autoBind(sheets);
       if (count) notify(`Bound ${count} token(s) to characters by name`);
       await refreshTokens();

@@ -10,6 +10,7 @@ import OBR from '@owlbear-rodeo/sdk';
 import {
   ITEM_CAPACITY,
   ROOM_CAPACITY,
+  SCENE_CAPACITY,
   VerifiedStore,
   type Backend,
 } from '../../src/obr/store.js';
@@ -59,6 +60,18 @@ export function itemBackend(itemId: string): Backend {
   };
 }
 
+/**
+ * Scene metadata as a `Backend`. The same two methods the room exposes.
+ *
+ * Measured 2026-08-27 (probe round 6): 1 MB round-trips in 22 ms, ten 40 kB
+ * writes ran at a median of 4 ms with no rate limiting, and a stamp survived
+ * closing and reopening the tab. It is durable storage, not a session cache.
+ */
+const sceneBackend: Backend = {
+  get: () => OBR.scene.getMetadata() as Promise<Record<string, unknown>>,
+  set: (update) => OBR.scene.setMetadata(update),
+};
+
 export function roomStore(onWarning?: (message: string) => void): VerifiedStore {
   return new VerifiedStore(roomBackend, {
     capacity: ROOM_CAPACITY,
@@ -70,6 +83,13 @@ export function itemStore(itemId: string): VerifiedStore {
   return new VerifiedStore(itemBackend(itemId), { capacity: ITEM_CAPACITY });
 }
 
+export function sceneStore(onWarning?: (message: string) => void): VerifiedStore {
+  return new VerifiedStore(sceneBackend, {
+    capacity: SCENE_CAPACITY,
+    ...(onWarning ? { onWarning } : {}),
+  });
+}
+
 /**
  * The roster, told where the rulebook is.
  *
@@ -78,8 +98,17 @@ export function itemStore(itemId: string): VerifiedStore {
  * an edge the book knows is stored as a name alone and its text is fetched from
  * the bundle on the way out.
  */
-export function roster(onWarning?: (message: string) => void): Roster {
-  return new Roster(roomStore(onWarning), onWarning ?? (() => {}), (name) => findEntry(name)?.text);
+export async function roster(onWarning?: (message: string) => void): Promise<Roster> {
+  // No scene, no scene store — and that is a real state rather than a defensive
+  // `undefined`: Owlbear opens a room without opening a board, and the roster has
+  // to keep working, showing the campaign half and saying so when a villain has
+  // nowhere scene-shaped to go.
+  const scene = (await OBR.scene.isReady()) ? sceneStore(onWarning) : undefined;
+  return new Roster(
+    { room: roomStore(onWarning), ...(scene ? { scene } : {}) },
+    onWarning ?? (() => {}),
+    (name) => findEntry(name)?.text,
+  );
 }
 
 /**

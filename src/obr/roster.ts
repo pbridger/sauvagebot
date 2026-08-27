@@ -49,10 +49,34 @@
 import type { NamedEntry, Sheet } from '../rules/sheet.js';
 import { sheetFromJson } from '../rules/sheet.js';
 import { CapacityError, VerifiedStore, WriteDroppedError } from './store.js';
+import { BENNY_PREFIX } from './bennyBank.js';
 
 export const ROSTER_PREFIX = 'com.savagebot/pc/';
 export const TEXT_KEY = 'com.savagebot/rules-text';
 export const ROSTER_VERSION = 1;
+
+/**
+ * How long a character lasts.
+ *
+ * `room` is the campaign — the invite link, ~16 kB, and the only store that
+ * survives switching scene. `scene` is one board, measured at ≥1 MB and 4 ms a
+ * write, and it goes when the scene does.
+ *
+ * Deliberately **not a field on `Sheet`**. Which document holds the key *is* the
+ * answer, and a field could disagree with where the sheet actually is. It also
+ * keeps `RosterExport` unchanged: an export is full sheets and says nothing
+ * about where they lived.
+ */
+export type Scope = 'room' | 'scene';
+
+export interface RosterStores {
+  room: VerifiedStore;
+  /**
+   * Absent when no scene is open — which is a real state, not a defensive
+   * `undefined`: Owlbear opens a room without opening a board.
+   */
+  scene?: VerifiedStore | undefined;
+}
 
 /** Entry name → rules text, shared by every character that has that edge. */
 export type RulesText = Record<string, string>;
@@ -142,12 +166,30 @@ export interface RosterExport {
 }
 
 export class Roster {
+  private readonly stores: RosterStores;
+
+  /**
+   * Takes one store or two. One is the old behaviour exactly — everything lives
+   * in that document — which is what the Discord side and most tests want.
+   */
   constructor(
-    private readonly store: VerifiedStore,
+    stores: VerifiedStore | RosterStores,
     private readonly onWarning: (message: string) => void = () => {},
     /** The shipped rulebook. Without one this behaves exactly as it did before. */
     private readonly book?: BookLookup,
-  ) {}
+  ) {
+    this.stores = stores instanceof VerifiedStore ? { room: stores } : stores;
+  }
+
+  /**
+   * The campaign store. Also the home of the rules-text dictionary, whichever
+   * store a sheet lives in: the dictionary is keyed by entry name and shared by
+   * every character that has that edge, so putting a copy in each scene would
+   * undo the deduplication that is its entire purpose.
+   */
+  private get store(): VerifiedStore {
+    return this.stores.room;
+  }
 
   private key(id: string): string {
     return `${ROSTER_PREFIX}${id}`;
@@ -157,13 +199,55 @@ export class Roster {
     return (await this.store.read<RulesText>(TEXT_KEY)) ?? {};
   }
 
+  private async idsIn(store: VerifiedStore): Promise<Map<string, Sheet>> {
+    const all = await store.readAll();
+    const found = new Map<string, Sheet>();
+    for (const [key, value] of Object.entries(all)) {
+      if (!key.startsWith(ROSTER_PREFIX) || value === undefined) continue;
+      const sheet = value as Sheet;
+      found.set(sheet.id, sheet);
+    }
+    return found;
+  }
+
+  /**
+   * Where this character is kept, or `undefined` if there is no such character.
+   *
+   * Read from the stores rather than from the sheet, because the stores are the
+   * only thing that cannot be wrong about it.
+   */
+  async scopeOf(id: string): Promise<Scope | undefined> {
+    if ((await this.store.read<Sheet>(this.key(id))) !== undefined) return 'room';
+    if (this.stores.scene && (await this.stores.scene.read<Sheet>(this.key(id))) !== undefined) {
+      return 'scene';
+    }
+    return undefined;
+  }
+
+  /**
+   * Characters that exist in **both** documents.
+   *
+   * The failure state of `move`, which writes the copy before it removes the
+   * original so that a crash between the two leaves a duplicate rather than a
+   * hole. Room wins everywhere else in this class; this is how the duplicate
+   * becomes visible enough to clear.
+   */
+  async duplicates(): Promise<string[]> {
+    if (!this.stores.scene) return [];
+    const room = await this.idsIn(this.store);
+    const scene = await this.idsIn(this.stores.scene);
+    return [...scene.keys()].filter((id) => room.has(id));
+  }
+
   /** Lean sheets, as stored. Use `listFull` when the text is wanted too. */
   async list(): Promise<Sheet[]> {
-    const all = await this.store.readAll();
-    return Object.entries(all)
-      .filter(([key, value]) => key.startsWith(ROSTER_PREFIX) && value !== undefined)
-      .map(([, value]) => value as Sheet)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const byId = new Map<string, Sheet>();
+    // Scene first so that room overwrites it: a character in both documents is
+    // shown as the campaign copy, which is the one that lasts longer, and so the
+    // failed half of a move never hides the surviving half.
+    if (this.stores.scene) for (const [id, sheet] of await this.idsIn(this.stores.scene)) byId.set(id, sheet);
+    for (const [id, sheet] of await this.idsIn(this.store)) byId.set(id, sheet);
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async listFull(): Promise<Sheet[]> {
@@ -172,8 +256,29 @@ export class Roster {
   }
 
   async get(id: string): Promise<Sheet | undefined> {
-    const lean = await this.store.read<Sheet>(this.key(id));
+    const lean =
+      (await this.store.read<Sheet>(this.key(id))) ??
+      (await this.stores.scene?.read<Sheet>(this.key(id)));
     return lean && joinSheet(lean, await this.rulesText(), this.book);
+  }
+
+  /**
+   * Where a character would be saved: back where they already are, or — for a new
+   * one — by kind. A PC belongs to the campaign; an NPC belongs to tonight.
+   */
+  private async targetFor(sheet: Sheet): Promise<VerifiedStore> {
+    const scope = await this.scopeOf(sheet.id);
+    if (scope === 'room') return this.store;
+    if (scope === 'scene' && this.stores.scene) return this.stores.scene;
+    if (!sheet.pc && this.stores.scene) return this.stores.scene;
+    if (!sheet.pc && !this.stores.scene) {
+      // Not silent. A new villain landing in the campaign store because no board
+      // was open is a surprise the Marshal would otherwise find weeks later.
+      this.onWarning(
+        `no scene open — ${sheet.name} was saved at campaign level rather than with the map`,
+      );
+    }
+    return this.store;
   }
 
   /**
@@ -182,8 +287,31 @@ export class Roster {
    */
   async save(sheet: Sheet): Promise<void> {
     const { lean, text } = splitSheet(sheet, this.book);
-    await this.store.write(this.key(sheet.id), lean);
+    await (await this.targetFor(sheet)).write(this.key(sheet.id), lean);
     await this.mergeText(text);
+  }
+
+  /**
+   * Move a character between the campaign and the current scene.
+   *
+   * **Write first, then remove.** A crash in between leaves the character in both
+   * documents, which `list` resolves and `duplicates` reports; the other order
+   * would lose them outright. Capacity is checked by the write, so a promotion
+   * into a full room fails before anything is taken away.
+   */
+  async move(id: string, to: Scope): Promise<void> {
+    const from = await this.scopeOf(id);
+    if (!from) throw new Error(`there is no character ${id} to move`);
+    if (from === to) return;
+    if (!this.stores.scene) {
+      throw new Error('no scene open — open the board this character belongs to first');
+    }
+    const source = from === 'room' ? this.store : this.stores.scene;
+    const target = to === 'room' ? this.store : this.stores.scene;
+    const lean = await source.read<Sheet>(this.key(id));
+    if (!lean) throw new Error(`there is no character ${id} to move`);
+    await target.write(this.key(id), lean);
+    await source.remove(this.key(id));
   }
 
   private async mergeText(contribution: RulesText): Promise<void> {
@@ -205,8 +333,26 @@ export class Roster {
     }
   }
 
+  /**
+   * Delete a character from **both** documents.
+   *
+   * Both rather than the one they are in, because a duplicate left by a failed
+   * `move` must not survive being deleted — the character would come back the
+   * next time the roster was read, which looks exactly like the delete having
+   * silently failed.
+   */
   async remove(id: string): Promise<void> {
-    await this.store.remove(this.key(id));
+    if ((await this.store.read<Sheet>(this.key(id))) !== undefined) {
+      await this.store.remove(this.key(id));
+    }
+    if (this.stores.scene && (await this.stores.scene.read<Sheet>(this.key(id))) !== undefined) {
+      await this.stores.scene.remove(this.key(id));
+    }
+    // Bennies are keyed by character id in the room, and nothing else ever clears
+    // them: §12.5 of the inventory found chips still banked for two characters
+    // deleted long ago. Cheap here, and a permanent leak everywhere else — under
+    // a split roster every scene's villains would leave another one behind.
+    await this.store.remove(`${BENNY_PREFIX}${id}`);
     // The dictionary is intentionally left alone: another character very likely
     // shares these edges, and a stale entry costs a few hundred bytes at worst.
   }
@@ -301,17 +447,32 @@ export class Roster {
     }
 
     const sheets = parsed.sheets.map((sheet) => sheetFromJson(JSON.stringify(sheet)));
-    const projected = sheets.reduce((total, sheet) => {
+
+    // Costed against the document each sheet is actually going to. Charging the
+    // room for a batch of villains bound for the scene would refuse an import
+    // that fits comfortably — and with the room the smaller store by two orders
+    // of magnitude, that is the common case rather than a corner.
+    const cost = (sheet: Sheet): number => {
       const { lean } = splitSheet(sheet, this.book);
       // +4 for the quotes, colon and comma JSON adds around each entry.
-      return total + JSON.stringify(lean).length + this.key(sheet.id).length + 4;
-    }, 0);
-    const { used, capacity } = await this.store.usage();
-    if (used + projected > capacity) {
-      throw new Error(
-        `importing ${sheets.length} sheets needs ${projected} chars but only ` +
-          `${capacity - used} remain — nothing was imported`,
-      );
+      return JSON.stringify(lean).length + this.key(sheet.id).length + 4;
+    };
+    const bound = new Map<VerifiedStore, { label: string; sheets: Sheet[] }>();
+    for (const sheet of sheets) {
+      const store = await this.targetFor(sheet);
+      const to = bound.get(store) ?? { label: store === this.store ? 'the room' : 'this scene', sheets: [] };
+      to.sheets.push(sheet);
+      bound.set(store, to);
+    }
+    for (const [store, { label, sheets: going }] of bound) {
+      const projected = going.reduce((total, sheet) => total + cost(sheet), 0);
+      const { used, capacity } = await store.usage();
+      if (used + projected > capacity) {
+        throw new Error(
+          `importing ${going.length} of ${sheets.length} sheets into ${label} needs ` +
+            `${projected} chars but only ${capacity - used} remain — nothing was imported`,
+        );
+      }
     }
 
     for (const sheet of sheets) await this.save(sheet);

@@ -348,7 +348,22 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
     pc.addEventListener('change', () => change({ ...sheet, pc: pc.checked }));
     identity.append(field('Player character', pc));
   }
-  out.append(identity);
+  // Deleting used to live at the very bottom, past Advances, on the reasoning
+  // that a destructive control should be hard to reach. In practice that made the
+  // *common* case — clearing out tonight's mooks — a scroll to the end of every
+  // sheet, and the protection it bought was never the distance: it was the
+  // confirm. `onDelete` decides how much of one is warranted.
+  const danger = document.createElement('button');
+  danger.className = 'danger top';
+  danger.textContent = 'Delete';
+  danger.title = `Delete ${sheet.name}`;
+  danger.addEventListener('click', hooks.onDelete);
+  const dangerRow = document.createElement('div');
+  dangerRow.className = 'danger-row';
+  dangerRow.append(danger);
+  // Above the identity block rather than inside it: inside, it lands under seven
+  // rows of fields, which is most of the scroll it was moved to avoid.
+  out.append(dangerRow, identity);
 
   // --- dice
   //
@@ -470,12 +485,6 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
   advArea.value = sheet.advances ?? '';
   advArea.addEventListener('change', () => change(setText(sheet, 'advances', advArea.value)));
   out.append(advHeading, advArea);
-
-  const danger = document.createElement('button');
-  danger.className = 'danger';
-  danger.textContent = 'Delete this character';
-  danger.addEventListener('click', hooks.onDelete);
-  out.append(danger);
 
   return out;
 }
