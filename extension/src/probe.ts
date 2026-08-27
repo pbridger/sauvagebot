@@ -295,55 +295,70 @@ async function sceneCap(): Promise<void> {
 }
 
 /**
- * Does scene metadata survive the scene being **duplicated**?
+ * Write a nonce into scene metadata. Read it back later with `sceneStampCheck`.
  *
- * The question that decides whether NPC sheets can live in scene metadata. Item
- * metadata was measured travelling with a token pasted between rooms (2026-08-17)
- * and nothing establishes the same for a scene — if it does not travel, prepping
- * five encounter maps means importing the creatures five times.
+ * Two questions, one marker:
  *
- * Two presses in two scenes, because there is no way to do it from here: the SDK
- * exposes no scene id and no way to duplicate one. So this writes a nonce, and
- * reading the *same* nonce back in the copy is the answer.
+ *  1. **Does it survive coming back?** Stamp, close the tab, return tomorrow,
+ *     check. This is the one the whole scene-storage design rests on — Paul's own
+ *     caveat, *"assuming the session storage survives refresh/reboot/come-back-
+ *     later"* — and nothing measured so far touches it. Safe-cap and the timing
+ *     run both wrote and cleared inside one session.
+ *  2. **Does duplicating a scene copy it?** Stamp, *then* duplicate, then open the
+ *     copy and check. Order matters and the first run got it backwards.
+ *
+ * Deliberately split from the check so that pressing the wrong one cannot destroy
+ * the evidence: this always overwrites, the checker never writes. The earlier
+ * single button silently stamped a scene that had none, which makes "fresh scene"
+ * and "copy that lost its metadata" produce identical logs.
  */
 async function sceneStamp(): Promise<void> {
   if (!(await OBR.scene.isReady())) {
     log('no scene open — open one first', 'bad');
     return;
   }
-  const existing = (await OBR.scene.getMetadata())[SCENE_STAMP_KEY] as SceneStamp | undefined;
-  const items = (await OBR.scene.items.getItems()).length;
-
-  if (existing) {
-    log('--- scene stamp: already present in this scene ---');
-    log(`  nonce ${existing.nonce}, written ${existing.at}`);
-    log(`  it was written in a scene holding ${existing.items} item(s); this one holds ${items}`);
-    log(
-      existing.items === items
-        ? '  same item count — so this is probably the original, not a copy'
-        : '  DIFFERENT item count, same nonce — scene metadata TRAVELLED with the copy',
-      existing.items === items ? undefined : 'ok',
-    );
-    log('  to test a copy: duplicate this scene in Owlbear, open the copy, press this again');
-    return;
-  }
+  const previous = (await OBR.scene.getMetadata())[SCENE_STAMP_KEY] as SceneStamp | undefined;
+  if (previous) log(`overwriting the stamp already here (${previous.nonce}, ${previous.at})`);
 
   const stamp: SceneStamp = {
     nonce: Math.random().toString(36).slice(2, 10),
     at: new Date().toISOString(),
-    items,
+    items: (await OBR.scene.items.getItems()).length,
   };
   await OBR.scene.setMetadata({ [SCENE_STAMP_KEY]: stamp });
   const back = (await OBR.scene.getMetadata())[SCENE_STAMP_KEY] as SceneStamp | undefined;
-  log(
-    back?.nonce === stamp.nonce
-      ? `stamped this scene with nonce ${stamp.nonce} (${items} items)`
-      : 'the stamp did not read back — dropped',
-    back?.nonce === stamp.nonce ? 'ok' : 'bad',
-  );
-  log('now: duplicate this scene in Owlbear, open the copy, and press this button again.');
-  log('  same nonce in the copy  = scene metadata travels, and prepped encounters can live there');
-  log('  no stamp in the copy    = it does not, and every prepped map needs its own import');
+  if (back?.nonce !== stamp.nonce) {
+    log('the stamp did not read back — silently dropped', 'bad');
+    return;
+  }
+  log(`stamped: nonce ${stamp.nonce}, ${stamp.items} item(s), ${stamp.at}`, 'ok');
+  log('SURVIVAL: close the tab, come back later, reopen this panel and press "Check stamp".');
+  log('COPYING:  duplicate this scene NOW, open the copy, and press "Check stamp" there.');
+}
+
+/**
+ * Read the stamp back. Writes nothing, so it can be pressed as often as you like
+ * and in any scene without disturbing the answer.
+ */
+async function sceneStampCheck(): Promise<void> {
+  if (!(await OBR.scene.isReady())) {
+    log('no scene open — open one first', 'bad');
+    return;
+  }
+  const stamp = (await OBR.scene.getMetadata())[SCENE_STAMP_KEY] as SceneStamp | undefined;
+  const items = (await OBR.scene.items.getItems()).length;
+  log('--- scene stamp check ---');
+  if (!stamp) {
+    log(`  NO STAMP in this scene (it holds ${items} item(s))`, 'bad');
+    log('  If this is the scene you stamped, scene metadata did NOT survive.');
+    log('  If this is a copy of a stamped scene, metadata does NOT travel with a duplicate.');
+    log('  If this is neither, that is the expected answer and it means nothing.');
+    return;
+  }
+  log(`  FOUND: nonce ${stamp.nonce}, written ${stamp.at}`, 'ok');
+  log(`  stamped when the scene held ${stamp.items} item(s); it now holds ${items}`);
+  log('  In the scene you stamped, this means scene metadata SURVIVED.', 'ok');
+  log('  In a duplicate of it, this means metadata TRAVELS with the copy.', 'ok');
 }
 
 /**
@@ -1300,6 +1315,7 @@ OBR.onReady(async () => {
   button('scene-cap', sceneCap);
   button('scene-safe-cap', sceneSafeCap);
   button('scene-stamp', sceneStamp);
+  button('scene-stamp-check', sceneStampCheck);
   button('scene-timing', sceneWriteTiming);
   button('item-cap', itemCap);
   button('item', writeToSelectedItem);

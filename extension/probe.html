@@ -73,15 +73,27 @@
       all three clean up after themselves.
     </p>
     <p style="margin:0 0 8px;opacity:.7">
-      <b>Scene stamp</b> is the one that matters, and it takes two presses in two scenes: press it
-      here, then duplicate this scene in Owlbear, open the copy, and press it again. The same
-      nonce in the copy means a prepped encounter travels with its map; no stamp means every
-      prepped map needs its own import. <b>Safe cap</b> finds the largest write that also
-      <i>clears</i> again, which is the number "Scene cap" above does not give — it found no
-      ceiling below 8 MB and then could not delete the blob. <b>Write timing</b> does ten 40 kB
-      writes (about thirty villains) to see whether the rate limiter shows up.
+      <b>Scene stamp</b> writes a marker; <b>Check stamp</b> reads it back and writes nothing, so
+      it is safe to press anywhere. Two questions, one marker &mdash; and the order matters, which
+      is what went wrong the first time.
     </p>
-    <button id="scene-stamp"><b>Scene stamp</b></button>
+    <p style="margin:0 0 8px;opacity:.7">
+      <b>Does it survive?</b> The one the whole design rests on. Stamp, close the tab, come back
+      later, press Check. A found stamp means scene metadata persists; nothing measured so far
+      touches this, because every other probe wrote and cleared inside one session.
+      <b>Does a duplicate carry it?</b> Stamp <i>first</i>, then duplicate the scene, open the
+      copy, press Check there. A found stamp in the copy means a prepped encounter travels with
+      its map. Nice to have rather than load-bearing.
+    </p>
+    <p style="margin:0 0 8px;opacity:.7">
+      <b>Safe cap</b> finds the largest write that also <i>clears</i> again, which is the number
+      "Scene cap" below does not give &mdash; it found no ceiling under 8 MB and then could not
+      delete the blob. <b>Write timing</b> does ten 40 kB writes, about thirty villains, to see
+      whether the rate limiter shows up. Both measured 2026-08-27: 1 MB round-trips in 22 ms and
+      ten 40 kB writes ran at a median of 4 ms with no throttling.
+    </p>
+    <button id="scene-stamp">Scene stamp</button>
+    <button id="scene-stamp-check"><b>Check stamp</b></button>
     <button id="scene-safe-cap">Safe cap</button>
     <button id="scene-timing">Write timing</button>
 
