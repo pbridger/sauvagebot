@@ -69,6 +69,14 @@ export const ROSTER_VERSION = 1;
  */
 export type Scope = 'room' | 'scene';
 
+export interface RosterSnapshot {
+  sheets: Sheet[];
+  /** Where each of them is kept. Every sheet in `sheets` has an entry. */
+  scopes: Map<string, Scope>;
+  /** Ids present in both documents — the residue of a `move` that half-finished. */
+  duplicates: string[];
+}
+
 export interface RosterStores {
   room: VerifiedStore;
   /**
@@ -233,26 +241,55 @@ export class Roster {
    * becomes visible enough to clear.
    */
   async duplicates(): Promise<string[]> {
-    if (!this.stores.scene) return [];
-    const room = await this.idsIn(this.store);
-    const scene = await this.idsIn(this.stores.scene);
-    return [...scene.keys()].filter((id) => room.has(id));
+    return (await this.snapshot()).duplicates;
+  }
+
+/**
+   * Both documents, read **once**.
+   *
+   * Everything that wants the whole roster wants the scopes and the duplicates
+   * too, and asking for them separately means `scopeOf` per sheet — each of which
+   * is a `getMetadata` across the message bus, and up to two. That is invisible
+   * against the in-memory fake the tests use and is a stall on a real import.
+   *
+   * Scene first so that room overwrites it: a character in both documents is
+   * shown as the campaign copy, which is the one that lasts longer, so the failed
+   * half of a move never hides the surviving half.
+   */
+  async snapshot(): Promise<RosterSnapshot> {
+    const roomSheets = await this.idsIn(this.store);
+    const sceneSheets = this.stores.scene ? await this.idsIn(this.stores.scene) : new Map();
+    const byId = new Map<string, Sheet>(sceneSheets);
+    for (const [id, sheet] of roomSheets) byId.set(id, sheet);
+
+    const scopes = new Map<string, Scope>();
+    for (const id of sceneSheets.keys()) scopes.set(id, 'scene');
+    for (const id of roomSheets.keys()) scopes.set(id, 'room');
+
+    return {
+      sheets: [...byId.values()].sort((a, b) => a.name.localeCompare(b.name)),
+      scopes,
+      duplicates: [...sceneSheets.keys()].filter((id) => roomSheets.has(id)),
+    };
   }
 
   /** Lean sheets, as stored. Use `listFull` when the text is wanted too. */
   async list(): Promise<Sheet[]> {
-    const byId = new Map<string, Sheet>();
-    // Scene first so that room overwrites it: a character in both documents is
-    // shown as the campaign copy, which is the one that lasts longer, and so the
-    // failed half of a move never hides the surviving half.
-    if (this.stores.scene) for (const [id, sheet] of await this.idsIn(this.stores.scene)) byId.set(id, sheet);
-    for (const [id, sheet] of await this.idsIn(this.store)) byId.set(id, sheet);
-    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return (await this.snapshot()).sheets;
   }
 
   async listFull(): Promise<Sheet[]> {
-    const text = await this.rulesText();
-    return (await this.list()).map((sheet) => joinSheet(sheet, text, this.book));
+    return (await this.snapshotFull()).sheets;
+  }
+
+  /**
+   * One read of both documents, prose reattached. What the panel wants on every
+   * reload: the sheets, where each is kept, and any left in both by a half-done
+   * move.
+   */
+  async snapshotFull(): Promise<RosterSnapshot> {
+    const [snap, text] = await Promise.all([this.snapshot(), this.rulesText()]);
+    return { ...snap, sheets: snap.sheets.map((sheet) => joinSheet(sheet, text, this.book)) };
   }
 
   async get(id: string): Promise<Sheet | undefined> {
@@ -267,7 +304,15 @@ export class Roster {
    * one — by kind. A PC belongs to the campaign; an NPC belongs to tonight.
    */
   private async targetFor(sheet: Sheet): Promise<VerifiedStore> {
-    const scope = await this.scopeOf(sheet.id);
+    return this.storeForScope(await this.scopeOf(sheet.id), sheet);
+  }
+
+  /**
+   * The routing rule itself, split out so the one-at-a-time path and the bulk
+   * import cannot drift apart — they answered the same question two ways, and
+   * only one of them was tested.
+   */
+  private storeForScope(scope: Scope | undefined, sheet: Sheet): VerifiedStore {
     if (scope === 'room') return this.store;
     if (scope === 'scene' && this.stores.scene) return this.stores.scene;
     if (!sheet.pc && this.stores.scene) return this.stores.scene;
@@ -457,9 +502,14 @@ export class Roster {
       // +4 for the quotes, colon and comma JSON adds around each entry.
       return JSON.stringify(lean).length + this.key(sheet.id).length + 4;
     };
+    // Routed against one snapshot rather than by calling `targetFor` per sheet.
+    // That is a `getMetadata` each, awaited in turn — thirty-five creatures is
+    // seventy serial round-trips across the message bus before a byte is written,
+    // and the in-memory fake the tests use cannot show it.
+    const { scopes } = await this.snapshot();
     const bound = new Map<VerifiedStore, { label: string; sheets: Sheet[] }>();
     for (const sheet of sheets) {
-      const store = await this.targetFor(sheet);
+      const store = this.storeForScope(scopes.get(sheet.id), sheet);
       const to = bound.get(store) ?? { label: store === this.store ? 'the room' : 'this scene', sheets: [] };
       to.sheets.push(sheet);
       bound.set(store, to);

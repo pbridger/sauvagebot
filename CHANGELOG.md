@@ -10,6 +10,49 @@ reload.
 
 ---
 
+## 2026-08-27 — Villains live with the map
+
+**Your PCs are kept for the campaign; villains are kept with the scene.** That is
+the whole change. The room's ~16 kB was the wall every import kept hitting — a
+scene measures at over 1 MB and writes in 4 ms, so the Marshal's half of the
+roster now has about fifty times the room to breathe in.
+
+**The roster table has a new `Kept` column, and it is the control.** It reads
+`Room` or `Scene`, and pressing it moves that character between the two. So a
+named villain you have edited — someone who should still be around in three
+sessions — gets promoted to `Room` and follows you to every map, while tonight's
+mooks stay with the board and leave when it does. New characters file themselves:
+a PC to the room, an NPC to the scene.
+
+Handing a character to the players (the `PC` column) promotes them to the room
+automatically. A PC that vanished when you changed map would look like the app
+losing them. The reverse is *not* automatic — a campaign-level villain is exactly
+what `Kept` exists to allow.
+
+**The old `Scene` column is now `Fight`.** Same IN/OUT control, same meaning; the
+name had to move because the new column's values are Room and Scene.
+
+**Deleting is easier, and safer.** The Delete button is at the top of the sheet
+rather than past Advances. A scene-stored NPC goes in one press with no dialog; a
+PC or a campaign-level NPC still asks, because you said they mattered when you
+promoted them. Either way an **Undo** sits in the notice bar for twelve seconds
+and puts them back where they were — which protects you better than a dialog,
+since nobody reads the fourth confirm. The notice also says how many tokens on
+the map it just left unbound, which nothing used to mention.
+
+Deleting a character now clears their Bennies too. Chips for characters deleted
+weeks ago had been sitting in the room the whole time.
+
+**If the panel says someone is stored in both places**, that is a move that wrote
+the copy and then failed to remove the original. The campaign copy is the one in
+use, and pressing `Kept` twice clears the other. Nothing is lost either way —
+moves always write before they remove.
+
+With no scene open the roster still works, showing the campaign half; a villain
+saved then goes to the room and says so rather than disappearing.
+
+---
+
 ## 2026-08-27 — A gang acts on one card
 
 **Mooks off the same stat block now share an Action Card.** Deal a round and all

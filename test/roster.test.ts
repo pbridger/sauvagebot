@@ -604,3 +604,54 @@ describe('a roster split across the room and the scene', () => {
     ).rejects.toThrow(/the room/);
   });
 });
+
+/**
+ * One read of both documents, for the panel's reload and for import routing.
+ *
+ * Split out because asking separately meant a `getMetadata` per character across
+ * the message bus — invisible against the in-memory fake here, and a stall on a
+ * thirty-five creature bestiary import.
+ */
+describe('the roster snapshot', () => {
+  const split = () => {
+    const room = new FakeBackend(ROOM_CAPACITY);
+    const scene = new FakeBackend(1_000_000);
+    return new Roster({
+      room: new VerifiedStore(room, { capacity: ROOM_CAPACITY, onWarning: () => {} }),
+      scene: new VerifiedStore(scene, { capacity: 1_000_000, onWarning: () => {} }),
+    });
+  };
+
+  it('reports sheets, scopes and duplicates together and agrees with the singles', async () => {
+    const roster = split();
+    await roster.save({ ...emptySheet('reggie', 'Reggie'), pc: true });
+    await roster.save(emptySheet('bandit', 'Bandit'));
+
+    const snap = await roster.snapshot();
+    expect(snap.sheets.map((s) => s.id)).toEqual(await roster.list().then((l) => l.map((s) => s.id)));
+    expect(snap.scopes.get('reggie')).toBe(await roster.scopeOf('reggie'));
+    expect(snap.scopes.get('bandit')).toBe(await roster.scopeOf('bandit'));
+    expect(snap.duplicates).toEqual(await roster.duplicates());
+  });
+
+  it('gives every listed sheet a scope', async () => {
+    const roster = split();
+    await roster.save({ ...emptySheet('reggie', 'Reggie'), pc: true });
+    await roster.save(emptySheet('bandit', 'Bandit'));
+    const snap = await roster.snapshot();
+    for (const sheet of snap.sheets) expect(snap.scopes.get(sheet.id)).toBeDefined();
+  });
+
+  it('reattaches prose in the full form', async () => {
+    const roster = new Roster(
+      {
+        room: new VerifiedStore(new FakeBackend(), { capacity: Infinity, onWarning: () => {} }),
+      },
+      () => {},
+      (name) => (name === 'GUTS' ? 'from the book' : undefined),
+    );
+    await roster.save({ ...emptySheet('x', 'X'), pc: true, edges: [{ name: 'GUTS' }] });
+    const [sheet] = (await roster.snapshotFull()).sheets;
+    expect(sheet!.edges[0]!.text).toBe('from the book');
+  });
+});

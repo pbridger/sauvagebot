@@ -2407,12 +2407,15 @@ async function moveCharacter(sheet: Sheet, to: Scope): Promise<void> {
     notify(`Could not move ${sheet.name} — ${error instanceof Error ? error.message : String(error)}`);
     return;
   }
+  // Reloaded *first*: it has its own notice for characters left in both stores,
+  // and it would land on top of this one in precisely the case where a move has
+  // just created or cleared one.
+  await reload();
   notify(
     to === 'room'
       ? `${sheet.name} is now kept for the campaign, and follows you to every map`
       : `${sheet.name} now lives with this scene, and goes when it does`,
   );
-  await reload();
 }
 
 /**
@@ -5498,15 +5501,14 @@ async function myCharacter(): Promise<string | undefined> {
 }
 
 async function reload(): Promise<void> {
-  sheets = await roster.listFull();
-  // Where each character is kept, read once per reload because rendering is
-  // synchronous and `scopeOf` is not. A sheet missing from this map is one whose
-  // store went away between the two reads, which the column shows as a dash
-  // rather than guessing.
-  scopes = new Map(
-    await Promise.all(sheets.map(async (s) => [s.id, await roster.scopeOf(s.id)] as const)),
-  );
-  const clashes = await roster.duplicates();
+  // One read of both documents for all three: the sheets, where each is kept, and
+  // anything left in both by a half-done move. Asking separately meant a
+  // `getMetadata` per character, because rendering is synchronous and `scopeOf`
+  // is not.
+  const snapshot = await roster.snapshotFull();
+  sheets = snapshot.sheets;
+  scopes = snapshot.scopes;
+  const clashes = snapshot.duplicates;
   if (clashes.length) {
     // The residue of a move that wrote the copy and then failed to remove the
     // original. Harmless — the room copy is the one in play — but it is spending
