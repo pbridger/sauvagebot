@@ -261,8 +261,14 @@ const MAX_CHIPS = 12;
  * and the Benny itself was already banked and logged before this message was sent.
  */
 function slideChip(toss: BennyToss, mine: number): void {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
+  // Deliberately **not** gated on `prefers-reduced-motion`. It was, for one deploy,
+  // and it cost the whole feature: the Marshal's Mac had Reduce Motion on, so the
+  // chip silently did nothing on every window of that machine while the dice — which
+  // have never consulted the setting — rolled as usual. A table cannot be expected to
+  // know that an accessibility switch in System Settings is what turned a feature
+  // off, and a switch that only silences half the moving things on screen is not
+  // honouring anything. Motion is what this overlay is; if it is unwanted, the dice
+  // toggle turns the overlay off, which is a control the table can actually find.
   const path = tossPath(mine, toss);
   const start = screenPoint(path.from);
   const end = screenPoint(path.to);
