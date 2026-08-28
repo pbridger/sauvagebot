@@ -1421,3 +1421,24 @@ table.roster tr.parked button.creature-name { opacity: .55; }
    border still reads as "this is what your dice look like" from across the panel. */
 select.dice-colour { border-width: 2px; }
 select.dice-colour option { color: #1a1a1a; }
+
+/* ---- who is playing whom --------------------------------------------- */
+
+dl.claims { margin: 0; }
+.claims .claim {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.claims .claim:last-child { border-bottom: none; }
+.claims dt {
+  flex: none;
+  min-width: 8.5em;
+  font-weight: 700;
+}
+.claims dd { margin: 0; }
+/* An unclaimed character is the thing this list is read to find, so it is the
+   thing the eye should land on — muted and italic, the way an absence reads. */
+.claims .unclaimed dd { color: var(--muted); font-style: italic; }

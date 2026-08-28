@@ -10,6 +10,32 @@ reload.
 
 ---
 
+## 2026-08-28 — Who is playing whom
+
+The Table tab has a new block listing every player in the room and the character
+they have claimed — and, the other way round, any player character nobody has
+claimed. That is the list to check when something addressed to a player does not
+reach them.
+
+**Binding a token is not claiming a character.** They sound alike and are
+unrelated, and this caught us properly. A *binding* lives on the token, says "this
+figure on the map is that character", and anyone can make one. A *claim* lives in
+the room under a player's id, says "that character is mine", and **only that
+player can make it, from their own screen**, by picking the character from the
+dropdown at the top of the Sheet tab. A Marshal cannot claim on a player's behalf.
+
+There is a subtlety worth knowing, and it is why this was invisible: opening the
+panel *selects* a character for a player but does not *claim* it. The app will not
+claim on your behalf, because the character it picks for you is simply the first
+in the list and it may well be somebody else's. Picking from the dropdown — even
+picking the one already showing — is what makes it yours.
+
+What a claim buys: a Benny awarded to that character slides to that player's edge
+of the screen rather than landing on the table, and the character's Action Cards
+stop being workable by anybody who happens to be looking at them.
+
+---
+
 ## 2026-08-28 — Why the chip never hit anything
 
 It was aimed at the middle of the table, every time, because **nobody was

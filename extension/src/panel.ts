@@ -1959,6 +1959,7 @@ function renderTable(): HTMLElement {
   wrap.className = 'table-pane';
 
   wrap.append(rosterBlock());
+  wrap.append(claimsBlock());
   wrap.append(sessionBlock());
   // No dice-seat block: where a player's dice come in from is derived from where
   // they sit relative to whoever is watching, so there is nothing left to choose.
@@ -1976,6 +1977,89 @@ function renderTable(): HTMLElement {
   wrap.append(storage);
 
   return wrap;
+}
+
+/**
+ * Who is playing whom.
+ *
+ * This exists because the answer was invisible and mattered, which is the worst
+ * combination. A **claim** — a player choosing their character from the dropdown —
+ * is what tells this extension whose screen a Benny should fly to, and what stops
+ * one player working another's Action Cards. Nothing showed it, so an unclaimed
+ * character looked exactly like a claimed one until a Benny went to the middle of
+ * the table instead of to a person.
+ *
+ * The trap it documents is the one that caught us: **binding a token is not
+ * claiming a character.** They sound alike and are unrelated. A binding lives on
+ * the token, says "this figure on the map is that character", and anybody can make
+ * one. A claim lives in the room under a player's id, says "that character is
+ * mine", and only that player can make it. A Marshal who binds a player's token
+ * for them has not claimed anything on their behalf, and cannot.
+ *
+ * Read when the tab is opened rather than kept in step: this is a page you look at
+ * deliberately, and one room read then is cheaper than a read on every metadata
+ * change all session.
+ */
+function claimsBlock(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  wrap.append(
+    paneHeading(
+      'Who is playing whom',
+      'A player claims their character by picking it from the dropdown at the top ' +
+        'of the Sheet tab — and it must be that player who picks it, on their own ' +
+        'screen. Binding a token does not claim anything. Until a character is ' +
+        'claimed, a Benny awarded to them lands on the table instead of sliding to ' +
+        'the player, and any player may work their Action Cards.',
+    ),
+  );
+
+  const list = document.createElement('dl');
+  list.className = 'claims';
+  list.textContent = '';
+  wrap.append(list);
+
+  void claimsByPlayer()
+    .then((claims) => {
+      const rows: HTMLElement[] = [];
+      const claimed = new Set<string>();
+      // Everyone in the room, Marshal included — a Marshal with no character is the
+      // normal case and saying so is better than leaving them off the list.
+      for (const seated of party) {
+        const sheetId = claims.get(seated.id);
+        if (sheetId) claimed.add(sheetId);
+        const who = sheets.find((sheet) => sheet.id === sheetId);
+        rows.push(
+          claimRow(
+            seated.gm ? `${seated.name} (Marshal)` : seated.name,
+            who?.name ?? (seated.gm ? 'runs everyone' : 'has not claimed a character'),
+            who === undefined,
+          ),
+        );
+      }
+      // And the other way round, because "nobody is playing Reggie" is the thing you
+      // came to this list to find out, and a list of players cannot show it.
+      for (const sheet of sheets.filter((s) => s.pc && !claimed.has(s.id))) {
+        rows.push(claimRow('—', `${sheet.name} is unclaimed`, true));
+      }
+      list.replaceChildren(...rows);
+    })
+    .catch(() => {
+      list.textContent = 'Could not read who has claimed what.';
+    });
+
+  return wrap;
+}
+
+function claimRow(who: string, what: string, unclaimed: boolean): HTMLElement {
+  const row = document.createElement('div');
+  row.className = unclaimed ? 'claim unclaimed' : 'claim';
+  const dt = document.createElement('dt');
+  dt.textContent = who;
+  const dd = document.createElement('dd');
+  dd.textContent = what;
+  row.append(dt, dd);
+  return row;
 }
 
 /**
@@ -3520,11 +3604,23 @@ async function awardBenny(sheet: Sheet): Promise<void> {
  * wrong in the one case this is for. One room read on a deliberate button press.
  */
 async function claimedPlaces(): Promise<Map<string, number>> {
-  const claims = new Map<string, number>();
+  const byPlace = new Map<string, number>();
+  for (const [playerId, sheetId] of await claimsByPlayer()) {
+    const place = places[playerId];
+    // A claim by somebody who has since left the room. The key outlives the
+    // session, deliberately — it is how a player gets their own character back
+    // next week — but there is no chair to throw a chip at tonight.
+    if (place !== undefined) byPlace.set(sheetId, place);
+  }
+  return byPlace;
+}
+
+/** Which character each player has claimed, by player id. */
+async function claimsByPlayer(): Promise<Map<string, string>> {
+  const claims = new Map<string, string>();
   for (const [key, value] of Object.entries(await store.readAll())) {
     if (!key.startsWith(MINE_PREFIX) || typeof value !== 'string') continue;
-    const place = places[key.slice(MINE_PREFIX.length)];
-    if (place !== undefined) claims.set(value, place);
+    claims.set(key.slice(MINE_PREFIX.length), value);
   }
   return claims;
 }
