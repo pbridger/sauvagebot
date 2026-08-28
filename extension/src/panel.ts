@@ -1158,7 +1158,7 @@ const adjustments = new Map<string, DamageAdjustment>();
  * arithmetic travels into the log — `11 halved = 5 vs Toughness 7`, which is
  * legible without anyone having to write down why.
  *
- * Four buttons and nothing else, deliberately. There is no "no damage" button:
+ * Six buttons and nothing else, deliberately. There is no "no damage" button:
  * not applying damage is already spelled by not pressing Apply. There is no
  * free-text reason either — it was tried and cut, because typing one mid-fight
  * costs more session time than it saves.
@@ -1209,7 +1209,14 @@ function adjustBar(entry: RollEntry, redraw: () => void): HTMLElement {
     bar.append(button);
   }
 
-  for (const delta of [-2, 2] as const) {
+  // −2 and +2 were the only two, on the reasoning that Armour and Weakness both
+  // come in twos. Damian found the gap the first time an Edge did not: "I had an
+  // NPC with grim servant o' death that gives +1 to all damage rolls". Ones are
+  // as common as twos once Edges are in play.
+  //
+  // Still one at a time. Two of these are never both true of one hit, and the
+  // alternative — a spinner — costs a drag where this costs a click.
+  for (const delta of [-2, -1, 1, 2] as const) {
     const button = document.createElement('button');
     button.className = current.delta === delta ? 'adjust on' : 'adjust';
     button.textContent = formatMod(delta);
