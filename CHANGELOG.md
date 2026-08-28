@@ -10,6 +10,40 @@ reload.
 
 ---
 
+## 2026-08-28 — A chip you can see spinning, that actually hits something
+
+Three complaints about the Benny chip, all fair, all now measured rather than
+eyeballed.
+
+**You could not see it spin, because the chip was a circle.** It had been turning
+two and a half revolutions on every single throw since the day it went in — but
+a plain red disc with a soft highlight is radially symmetric, so there was
+nothing to see it against. The chip is now a proper poker chip: six cream edge
+spots, a cream centre, and one dark index wedge running out to the rim so a full
+turn is unmistakable. Slightly larger, too, so the pattern reads at speed.
+
+**It hit nothing, and that was true 85% of the time.** The throw had been solved
+so that friction brought the chip to rest exactly where the receiver was, which
+is tidy and lifeless: a chip aimed to stop where it is going never reaches
+anything. Nobody slides a chip that way. It is now thrown *at* the player, and
+what stops it is the rail in front of them — which it now finds on **95% or more**
+of throws, on every screen size and seat arrangement tested. The rail is also
+deader than the dice's walls now, a clay chip on a padded edge rather than an
+acrylic die on a hard one, so it comes off without flying back to mid-table.
+
+**Not enough variation.** The aim now wanders ±18° rather than ±10°, and the
+pace ±15%. A die is thrown at a tray, where any direction is as good as another;
+a chip is thrown at a person, and needs a wider wobble before it reads as a flick
+of the wrist rather than a rail.
+
+One real bug fell out of measuring all this. A chip that clipped the rail could
+come to rest **still spinning** — up to nine revolutions a second, frozen
+mid-turn — because the spin was paced against the speed it launched at, and a
+wall changes the spin. Now that the chip is thrown at the rail, that was going to
+happen on nearly every throw. It is re-paced at every contact.
+
+---
+
 ## 2026-08-28 — The chip is properly simulated now
 
 The Benny chip was a scripted slide: a path somebody drew, played back the same

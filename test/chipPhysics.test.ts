@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atRest, launch, step, wallsFor, type Chip } from '../src/obr/chipPhysics.js';
+import { CHIP, STILL_SPIN, atRest, launch, step, wallsFor, type Chip } from '../src/obr/chipPhysics.js';
 
 const RADIUS = 23;
 const WALLS = wallsFor(1600, 900, RADIUS);
@@ -25,13 +25,24 @@ function speed(chip: Chip): number {
 }
 
 describe('a chip flicked at somebody', () => {
-  it('arrives where it was aimed', () => {
+  /**
+   * The launch solver, on its own, with the walls moved out of the way.
+   *
+   * `v₀ = √(2·a·d)` stops a body in exactly `d`, so a chip thrown with no jitter runs
+   * `overthrow` times the distance it was aimed. Checking the distance rather than
+   * the resting point is what keeps this a test of the solver: the chip is
+   * deliberately thrown *past* the receiver now, and asserting it stopped on them
+   * would be asserting the old behaviour back.
+   */
+  it('runs the distance it was thrown, times the overthrow', () => {
+    const from = { x: 800, y: -80 };
     const to = { x: 800, y: 780 };
-    const chip = launch({ from: { x: 800, y: -80 }, to, radius: RADIUS, random: straight() });
-    settle(chip);
-    // Within a chip's width of the mark. The solved launch speed is exact; what is
-    // left is the discretisation of a constant deceleration.
-    expect(Math.hypot(chip.x - to.x, chip.y - to.y)).toBeLessThan(RADIUS * 2);
+    const open = wallsFor(100_000, 100_000, RADIUS);
+    const chip = launch({ from, to, radius: RADIUS, random: straight() });
+    // `landed` never trips out here, which is the point: nothing to hit.
+    while (!atRest(chip)) step(chip, DT, open);
+    const wanted = Math.hypot(to.x - from.x, to.y - from.y) * CHIP.overthrow;
+    expect(Math.hypot(chip.x - from.x, chip.y - from.y)).toBeCloseTo(wanted, -1);
   });
 
   it('stops, rather than creeping on for ever', () => {
@@ -62,6 +73,23 @@ describe('a chip flicked at somebody', () => {
       // A wall may only take energy out. Nothing in here may put any in.
       expect(now).toBeLessThanOrEqual(last + 1e-9);
       last = now;
+    }
+  });
+
+  /**
+   * The regression for a bug a single tidy case could not see.
+   *
+   * `spinDecel` is paced against the launch speed, which held until a wall changed the
+   * spin — and now that the chip is thrown *at* the rail, a wall changes the spin on
+   * nearly every throw. A sweep found chips resting at up to 57 rad/s, nine turns a
+   * second, frozen mid-rotation. One unjittered throw down an empty table passed
+   * throughout, which is why this one throws hundreds and bounces them.
+   */
+  it('never comes to rest still spinning, however it bounced', () => {
+    for (let n = 0; n < 300; n++) {
+      const chip = launch({ from: { x: 800, y: -120 }, to: { x: 800, y: 1020 }, radius: RADIUS });
+      settle(chip);
+      expect(Math.abs(chip.spin)).toBeLessThan(STILL_SPIN);
     }
   });
 
@@ -176,15 +204,47 @@ describe('the variation on a throw', () => {
     expect(paths.size).toBeGreaterThan(15);
   });
 
-  it('still puts the chip near the player it was aimed at', () => {
-    const to = { x: 800, y: 780 };
-    for (let n = 0; n < 200; n++) {
-      const chip = launch({ from: { x: 800, y: -80 }, to, radius: RADIUS });
+  /**
+   * The chip is thrown *at* the player, which means past them at the rail behind
+   * them, so it is no longer aimed to stop on a spot. What has to survive the
+   * variation is the meaning: it finishes at the end of the table it was sent to.
+   */
+  it('still finishes at the end of the table it was thrown to', () => {
+    const middle = 900 / 2;
+    for (let n = 0; n < 400; n++) {
+      const chip = launch({ from: { x: 800, y: -120 }, to: { x: 800, y: 1020 }, radius: RADIUS });
       settle(chip);
-      // ±10° across an 860px throw is about 150px, and ±8% along it about 70px. A
-      // quarter of the throw is the outside of that, and it still reads as "at them".
-      expect(Math.hypot(chip.x - to.x, chip.y - to.y)).toBeLessThan(230);
+      expect(chip.y).toBeGreaterThan(middle);
     }
+  });
+
+  /**
+   * The whole point of the overthrow, and the thing that was reported missing: a
+   * chip aimed to stop politely where it was going never reaches anything to hit.
+   * Measured, because "it hits nothing" was true of the first cut at a rate of
+   * 85% and looked from the code like it should have been rare.
+   */
+  it('reaches the rail in front of the player nearly every time', () => {
+    let struck = 0;
+    const runs = 400;
+    for (let n = 0; n < runs; n++) {
+      const chip = launch({ from: { x: 800, y: -120 }, to: { x: 800, y: 1020 }, radius: RADIUS });
+      let hit = false;
+      for (let s = 0; s < 20_000 && !atRest(chip); s++) {
+        step(chip, DT, WALLS);
+        if (
+          chip.landed &&
+          (chip.x === WALLS.left ||
+            chip.x === WALLS.right ||
+            chip.y === WALLS.top ||
+            chip.y === WALLS.bottom)
+        ) {
+          hit = true;
+        }
+      }
+      if (hit) struck++;
+    }
+    expect(struck / runs).toBeGreaterThan(0.9);
   });
 
   it('turns both ways', () => {

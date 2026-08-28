@@ -46,15 +46,36 @@
         position: absolute;
         left: 0;
         top: 0;
-        width: 46px;
-        height: 46px;
+        width: 54px;
+        height: 54px;
         border-radius: 50%;
-        /* The same chip as the little ones in the sheet's Benny stack, grown up. */
-        background: radial-gradient(circle at 35% 30%, #d9573f, #8c2f22 70%);
-        border: 3px solid #f7f3e8;
+        /*
+          A chip you can see turning.
+
+          The first one was a plain radial gradient — which is *radially symmetric*,
+          so it span two and a half revolutions on every throw and there was no way
+          on earth to tell. Reported as "no evidence of spin", and quite right.
+
+          Four layers, topmost first. Between them there is a mark with 360°
+          period (the index wedge), one with 60° (the rim spots) and one with 360°
+          again (the off-centre highlight in the body), so the rotation reads at any
+          speed instead of strobing at one.
+        */
+        background:
+          /* the cream centre, which also caps the inner end of the index wedge */
+          radial-gradient(circle at 50% 50%, #f7f3e8 0 21%, transparent 22%),
+          /* one dark index wedge: a full turn is unmistakable */
+          conic-gradient(from 0deg, rgba(58, 12, 8, 0.72) 0 13deg, transparent 13deg),
+          /* the field, which clips the rim spots to the rim */
+          radial-gradient(circle at 50% 50%, transparent 0 21%, #b8402e 22% 68%, transparent 69%),
+          /* six cream edge spots, as on every chip in every casino */
+          repeating-conic-gradient(from 15deg, #f7f3e8 0 20deg, transparent 20deg 60deg),
+          /* the body, its highlight off-centre so it travels round with the chip */
+          radial-gradient(circle at 34% 28%, #e0684f, #8c2f22 72%);
         box-shadow:
-          0 3px 8px rgba(0, 0, 0, 0.45),
-          inset 0 0 0 4px rgba(247, 243, 232, 0.25);
+          0 3px 9px rgba(0, 0, 0, 0.5),
+          inset 0 0 0 2px rgba(247, 243, 232, 0.85),
+          inset 0 0 6px rgba(60, 12, 8, 0.55);
         will-change: transform, opacity;
       }
     </style>

@@ -45,7 +45,6 @@ import {
 } from './effects.js';
 import {
   BENNY_CHANNEL,
-  LANDING,
   REACH,
   isBennyToss,
   screenPoint,
@@ -381,10 +380,12 @@ function slideChip(toss: BennyToss, mine: number): void {
   const radius = radiusOf(el);
 
   const body = launch({
-    // Launched from beyond the border and aimed at a spot inside it, so it enters the
-    // window rather than appearing in it, and finishes where it can be seen.
+    // Both ends beyond the border: the chip enters the window rather than appearing
+    // in it, and it is thrown *at the player*, not at a polite spot short of them.
+    // What stops it is the rail in front of them, which is both how a chip is
+    // actually slid and the reason there is anything to hit.
     from: point(screenPoint(path.from, REACH)),
-    to: point(screenPoint(path.to, LANDING)),
+    to: point(screenPoint(path.to, REACH)),
     radius,
   });
   const chip: LiveChip = { body, el, bornAt: performance.now() };

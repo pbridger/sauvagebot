@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CENTRE, LANDING, isBennyToss, screenPoint, tossPath } from '../src/obr/bennyToss.js';
+import { CENTRE, isBennyToss, screenPoint, tossPath } from '../src/obr/bennyToss.js';
 import { BOTTOM, relativeVector } from '../src/obr/seats.js';
 
 /**
@@ -63,20 +63,6 @@ describe('putting a chip on the window', () => {
 
   it('puts an edge off the screen rather than just inside it', () => {
     expect(screenPoint({ x: 1, y: 0 }).left).toBeGreaterThan(100);
-  });
-
-  it('lands a chip inside the window, wherever it was aimed', () => {
-    // The launch reach is off the screen on purpose; the landing reach must not be,
-    // or the receiving player's own chip finishes below the bottom of their screen.
-    for (const places of [1, 2, 3, 4, 5, 6, 7, 8]) {
-      for (let seat = 0; seat < places; seat++) {
-        const { left, top } = screenPoint(relativeVector(0, seat, places), LANDING);
-        expect(left, `${seat}/${places}`).toBeGreaterThan(0);
-        expect(left, `${seat}/${places}`).toBeLessThan(100);
-        expect(top, `${seat}/${places}`).toBeGreaterThan(0);
-        expect(top, `${seat}/${places}`).toBeLessThan(100);
-      }
-    }
   });
 
   /**
