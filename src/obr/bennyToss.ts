@@ -90,9 +90,22 @@ export function tossPath(mine: number, toss: BennyToss): { from: SeatVector; to:
  *
  * `REACH` is past 50 on purpose: an edge should be *off* the screen, so a chip
  * appears from beyond the border rather than popping into being just inside it.
+ *
+ * The vector is scaled by its **larger** component rather than used as-is, and that
+ * is the whole of the arithmetic here. A unit vector traces a circle, and a circle
+ * inscribed in a rectangle only touches it at four points: a diagonal seat — three
+ * or five at the table, which is what Coffin Rock actually plays — came out at
+ * something like (16%, 3%), well inside the window, so the chip popped into being
+ * near the corner instead of sliding in from beyond it. Dividing through pushes
+ * every direction out to the *bounding box*, so whichever axis is the strong one
+ * clears its border and the chip is always off-screen to start with.
  */
 export const REACH = 58;
 
 export function screenPoint(vector: SeatVector): { left: number; top: number } {
-  return { left: 50 + vector.x * REACH, top: 50 - vector.y * REACH };
+  const strongest = Math.max(Math.abs(vector.x), Math.abs(vector.y));
+  // `CENTRE` is the middle of the felt, not a direction, and has no edge to reach.
+  if (!strongest) return { left: 50, top: 50 };
+  const scale = REACH / strongest;
+  return { left: 50 + vector.x * scale, top: 50 - vector.y * scale };
 }

@@ -304,8 +304,9 @@ function slideChip(toss: BennyToss, mine: number): void {
     {
       duration: SLIDE_MS + CHIP_LINGER_MS,
       // Fast off the hand, slowing as it slides — friction, not a motor.
+      // No `fill`: the last keyframe is already invisible and the node goes with it,
+      // so filling forwards would only leave an animation held on a detached div.
       easing: 'cubic-bezier(.16,.74,.3,1)',
-      fill: 'forwards',
     },
   );
   anim.finished.catch(() => undefined).finally(() => chip.remove());

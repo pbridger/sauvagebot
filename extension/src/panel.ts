@@ -3500,7 +3500,10 @@ async function awardBenny(sheet: Sheet): Promise<void> {
     expression: 'benny',
     explained: `now has **${total}**`,
   });
-  await tossBenny(sheet.id);
+  // Not awaited. It reads the room and opens an overlay, and the Benny is banked,
+  // rendered and logged by now — the button should not sit down while a decoration
+  // finishes.
+  void tossBenny(sheet.id);
 }
 
 /**
@@ -3542,7 +3545,13 @@ async function tossBenny(sheetId: string): Promise<void> {
   try {
     const to = (await claimedPlaces()).get(sheetId);
     const toss: BennyToss = {
-      from: myPlace,
+      // The Marshal's chair, not mine. The `+` on a sheet is not GM-only — a player
+      // can award their own character one — but a Benny still comes *from* the
+      // Marshal, and sending my own place would have the chip leave the receiver's
+      // own edge and, since giver and receiver would then match, be drawn as the
+      // Marshal picking one up for themselves. Falls back to my place only if there
+      // is no Marshal in the party list, which means there is no game on.
+      from: places[party.find((seated) => seated.gm)?.id ?? ''] ?? myPlace,
       places: ringSize({ ...places, [OBR.player.id]: myPlace }),
       ...(to === undefined ? {} : { to }),
     };

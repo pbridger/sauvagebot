@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CENTRE, isBennyToss, screenPoint, tossPath } from '../src/obr/bennyToss.js';
-import { BOTTOM } from '../src/obr/seats.js';
+import { BOTTOM, relativeVector } from '../src/obr/seats.js';
 
 /**
  * Round off, so a vector can be compared without minding the last bit.
@@ -63,6 +63,20 @@ describe('putting a chip on the window', () => {
 
   it('puts an edge off the screen rather than just inside it', () => {
     expect(screenPoint({ x: 1, y: 0 }).left).toBeGreaterThan(100);
+  });
+
+  /**
+   * The case that made `screenPoint` scale by its larger component. A ring of three
+   * or five — which is what this table actually plays — puts seats on diagonals, and
+   * a plain unit vector traces a circle inside the window rather than reaching it.
+   */
+  it('gets every seat of every ring off the screen, diagonals included', () => {
+    for (const places of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      for (let seat = 0; seat < places; seat++) {
+        const { left, top } = screenPoint(relativeVector(0, seat, places));
+        expect(left < 0 || left > 100 || top < 0 || top > 100, `${seat}/${places}`).toBe(true);
+      }
+    }
   });
 });
 
