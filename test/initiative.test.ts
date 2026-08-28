@@ -151,6 +151,36 @@ describe('turn order', () => {
   });
 
   /**
+   * Damian: "the Initiative sheet could also be in the same order as Character
+   * roster before combat begins (just as an easier visual check that everyone's
+   * there). Currently, I don't know what order it's in?"
+   *
+   * Before the first deal nobody holds a card, so the whole list is the undealt
+   * tail and this is the roster's order exactly.
+   */
+  it('orders the undealt like the roster — players first, then by name', () => {
+    const order = turnOrder([
+      { name: 'Bandit 2' },
+      { name: 'Reggie', pc: true },
+      { name: 'Bandit 10' },
+      { name: 'Doc', pc: true },
+    ]);
+    expect(order.map((c) => c.name)).toEqual(['Doc', 'Reggie', 'Bandit 2', 'Bandit 10']);
+  });
+
+  /**
+   * The card wins once there is one. Grouping players together in a *turn order*
+   * would answer a different question than the list exists to answer.
+   */
+  it('does not let being a player jump the queue once cards are out', () => {
+    const order = turnOrder([
+      { name: 'Reggie', pc: true, card: card('CLUBS', 3) },
+      { name: 'Bandit', card: card('SPADES', 12) },
+    ]);
+    expect(order.map((c) => c.name)).toEqual(['Bandit', 'Reggie']);
+  });
+
+  /**
    * A gang shares a card, so identical cards are now the common case rather than
    * an impossibility, and the order within one has to come from somewhere the
    * Marshal can predict. Left to the sort's stability it would be whatever order

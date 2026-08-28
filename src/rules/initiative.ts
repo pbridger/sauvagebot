@@ -196,10 +196,27 @@ export function compareNames(a: string, b: string): number {
  * alternative is the sort's own stability, i.e. whatever order the tokens came
  * back from Owlbear in, which changes when somebody moves one. A block of mooks
  * that reorders itself between rounds is the Marshal losing their place.
+ *
+ * ## The undealt tail
+ *
+ * Combatants with no card sort below everyone holding one, and among *themselves*
+ * they use the roster's order — players first, then by name. Damian: *"I suggest
+ * the Initiative sheet could also be in the same order as Character roster before
+ * combat begins (just as an easier visual check that everyone's there). Currently,
+ * I don't know what order it's in?"*
+ *
+ * Before the first deal nobody holds a card, so the whole list is that tail and he
+ * gets exactly the roster order he asked for. Once cards are out the card decides,
+ * because that is the entire job of a turn order — grouping players together there
+ * would be answering a different question than the one the list exists to answer.
  */
-export function turnOrder<T extends { card?: Card; name: string }>(combatants: readonly T[]): T[] {
+export function turnOrder<T extends { card?: Card; name: string; pc?: boolean }>(
+  combatants: readonly T[],
+): T[] {
+  const unDealt = (a: T, b: T): number =>
+    (a.pc === b.pc ? 0 : a.pc ? -1 : 1) || BY_NAME.compare(a.name, b.name);
   return [...combatants].sort((a, b) => {
-    if (!a.card && !b.card) return BY_NAME.compare(a.name, b.name);
+    if (!a.card && !b.card) return unDealt(a, b);
     if (!a.card) return 1;
     if (!b.card) return -1;
     return compareCards(b.card, a.card) || BY_NAME.compare(a.name, b.name);

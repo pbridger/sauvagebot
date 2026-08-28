@@ -434,11 +434,23 @@ describe('a roster split across the room and the scene', () => {
     expect(await roster.scopeOf('bandit')).toBe('scene');
   });
 
-  it('lists both as one roster', async () => {
+  it('lists both as one roster, the player first', async () => {
     const { roster } = split();
     await roster.save(pc('reggie'));
     await roster.save(npc('bandit'));
-    expect((await roster.list()).map((s) => s.id)).toEqual(['bandit', 'reggie']);
+    // Not alphabetical: `compareSheets` puts players above NPCs whichever store
+    // they came out of. Reported by Damian at forty characters.
+    expect((await roster.list()).map((s) => s.id)).toEqual(['reggie', 'bandit']);
+  });
+
+  it('orders a gang numerically rather than lexicographically', async () => {
+    const { roster } = split();
+    for (const n of [10, 2, 1]) await roster.save({ ...npc(`b${n}`), name: `Bandit ${n}` });
+    expect((await roster.list()).map((s) => s.name)).toEqual([
+      'Bandit 1',
+      'Bandit 2',
+      'Bandit 10',
+    ]);
   });
 
   it('saves an existing character back where they already are', async () => {

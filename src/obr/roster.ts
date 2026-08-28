@@ -50,6 +50,28 @@ import type { NamedEntry, Sheet } from '../rules/sheet.js';
 import { sheetFromJson } from '../rules/sheet.js';
 import { CapacityError, VerifiedStore, WriteDroppedError } from './store.js';
 import { BENNY_PREFIX } from './bennyBank.js';
+import { compareNames } from '../rules/initiative.js';
+
+/**
+ * The order every list of characters is shown in: **players first, then by name.**
+ *
+ * Damian, running around forty characters: *"I suggest the sheet menu could be in
+ * the same order as the Character roster - i.e. PCs first… only the
+ * capitalisation helps me find the PCs in a hurry!"*
+ *
+ * Here rather than at each list, because "the same order as the roster" is the
+ * whole request and two lists that sort themselves cannot stay in step. The sheet
+ * picker and the Table tab both read `snapshot`, so both get it at once.
+ *
+ * `compareNames` rather than `localeCompare`: it is numeric, so `Bandit 2` comes
+ * before `Bandit 10`. Plain lexicographic ordering puts them the other way round,
+ * which is invisible until a gang gets past nine and then reads as a shuffled
+ * list — the same fix the turn order needed.
+ */
+export function compareSheets(a: Sheet, b: Sheet): number {
+  if (a.pc !== b.pc) return a.pc ? -1 : 1;
+  return compareNames(a.name, b.name);
+}
 
 export const ROSTER_PREFIX = 'com.savagebot/pc/';
 export const TEXT_KEY = 'com.savagebot/rules-text';
@@ -267,7 +289,7 @@ export class Roster {
     for (const id of roomSheets.keys()) scopes.set(id, 'room');
 
     return {
-      sheets: [...byId.values()].sort((a, b) => a.name.localeCompare(b.name)),
+      sheets: [...byId.values()].sort(compareSheets),
       scopes,
       duplicates: [...sceneSheets.keys()].filter((id) => roomSheets.has(id)),
     };

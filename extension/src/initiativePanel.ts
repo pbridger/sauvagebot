@@ -43,6 +43,12 @@ export interface Combatant {
    * sheet and must not share a fate.
    */
   hidden?: boolean;
+  /**
+   * A player's character. Only the *undealt* part of the turn order reads it —
+   * see `turnOrder`. Denormalised off `sheet.pc` the same way `name` and `card`
+   * are denormalised off the token, so the sort stays a pure function of the row.
+   */
+  pc?: boolean;
 }
 
 export interface InitiativeHooks {
@@ -141,6 +147,7 @@ export function combatants(
       name: mapName(token),
       sheet,
       state,
+      pc: sheet.pc,
       ...(state.card ? { card: state.card } : {}),
       ...(token.imageUrl ? { imageUrl: token.imageUrl } : {}),
       // Absent rather than false when the token is on show, so `hidden` reads as
