@@ -10,6 +10,37 @@ reload.
 
 ---
 
+## 2026-08-28 — The chip is properly simulated now
+
+The Benny chip was a scripted slide: a path somebody drew, played back the same
+way every time. It now runs on actual physics.
+
+**What is simulated.** The chip is a rigid disc with a position, a velocity, an
+orientation and a spin, sliding under Coulomb friction and bouncing off the four
+walls of your window. It is thrown at the player it is meant for — the speed is
+solved so that friction brings it to rest right about where they are — and then
+given the same random variation the dice get: the ±10° of throw jitter, a little
+on the pace, and a spin that could go either way.
+
+**Watch for two things**, because they are the tell that nothing here is scripted.
+A chip that clips a wall while spinning *walks sideways* off it, because the rim
+is sliding along the wall and friction acts on that. And a chip that hits a wall
+square but spinning comes away turning slower and moving crossways — the spin is
+converted into travel. About a third of throws catch a wall, so you will see it.
+
+The numbers are real ones: a casino chip is 39 mm across, clay on baize is about
+0.2, and since the chip is drawn at its true size those two facts fix the scale
+by themselves — which makes the felt roughly a metre and a third wide on a
+laptop, which is about a table. The only invented number is the playback speed,
+for the same reason the dice have one.
+
+Two smaller things came with it. The chip now stops **inside** your window rather
+than sliding off the edge, which mattered most on the receiving player's own
+screen. And Reduce Motion in macOS no longer silently switches the whole feature
+off — that was a bug, and it is what made the chip appear to do nothing at all.
+
+---
+
 ## 2026-08-28 — A chip slid across the table
 
 **Bennies now travel.** Award one and a poker chip slides across everybody's

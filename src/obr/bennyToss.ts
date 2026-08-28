@@ -102,10 +102,20 @@ export function tossPath(mine: number, toss: BennyToss): { from: SeatVector; to:
  */
 export const REACH = 58;
 
-export function screenPoint(vector: SeatVector): { left: number; top: number } {
+/**
+ * Where a chip comes to rest, as against where it is launched from.
+ *
+ * Inside the border, and that is the point of there being two numbers. A chip aimed at
+ * `REACH` would be aimed at a spot beyond the window, so it would slide off the bottom
+ * of the receiving player's own screen and finish out of sight — which is the one
+ * screen where it most wants to be seen.
+ */
+export const LANDING = 38;
+
+export function screenPoint(vector: SeatVector, reach: number = REACH): { left: number; top: number } {
   const strongest = Math.max(Math.abs(vector.x), Math.abs(vector.y));
   // `CENTRE` is the middle of the felt, not a direction, and has no edge to reach.
   if (!strongest) return { left: 50, top: 50 };
-  const scale = REACH / strongest;
+  const scale = reach / strongest;
   return { left: 50 + vector.x * scale, top: 50 - vector.y * scale };
 }

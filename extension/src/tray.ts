@@ -45,11 +45,14 @@ import {
 } from './effects.js';
 import {
   BENNY_CHANNEL,
+  LANDING,
+  REACH,
   isBennyToss,
   screenPoint,
   tossPath,
   type BennyToss,
 } from '../../src/obr/bennyToss.js';
+import { atRest, launch, step, wallsFor, type Chip } from '../../src/obr/chipPhysics.js';
 import { assignPlaces, relativeVector, storedPlaces } from '../../src/obr/seats.js';
 import { aimThrow } from './throwing.js';
 
@@ -239,83 +242,162 @@ async function animate(thrown: DiceThrow): Promise<void> {
   }
 }
 
-/** How long a chip is in flight, and how long it lies there before fading. */
-const SLIDE_MS = 900;
-const CHIP_LINGER_MS = 700;
 /**
  * Chips on the felt at once. "Bennies all round" is six messages in a breath, and a
  * table that leaves a page open all session should not accumulate divs.
  */
 const MAX_CHIPS = 12;
+/** How long a chip lies there once it has run out, before it fades. */
+const CHIP_LINGER_MS = 900;
+/** A backstop on a chip that somehow never settles. Nothing should reach it. */
+const CHIP_LIFE_MS = 8_000;
+
+/**
+ * The step the simulation is tuned at.
+ *
+ * Fixed, and part of the tuning rather than an implementation detail — the same
+ * lesson `timestep()` records for the dice. Displays run at 60Hz, 120Hz and, on a
+ * laptop dropping frames, whatever they can manage; stepping by the frame time would
+ * make the chip behave differently on each of them.
+ */
+const CHIP_STEP = 1 / 240;
+/**
+ * The most simulation one frame may ask for. A backgrounded tab comes back with a
+ * `dt` of minutes, and an uncapped accumulator would run a quarter of a million
+ * substeps in one frame and hang the overlay. Better that the chip loses the time.
+ */
+const MAX_CATCHUP = CHIP_STEP * 12;
+
+interface LiveChip {
+  body: Chip;
+  el: HTMLDivElement;
+  /** When it stopped, so it can lie there a moment before fading. */
+  restedAt?: number;
+  bornAt: number;
+}
+
+const live = new Set<LiveChip>();
+let frame: number | undefined;
+let lastFrame = 0;
+
+/** Half the chip's drawn width, read off the element so CSS stays the one source. */
+function radiusOf(el: HTMLElement): number {
+  return (el.offsetWidth || 46) / 2;
+}
+
+function draw(chip: LiveChip): void {
+  const { x, y, angle } = chip.body;
+  // The body's `x, y` is the chip's *centre*, and an element is positioned by its
+  // corner, so the half-width comes off in the transform rather than as a margin —
+  // which keeps the size a thing only the stylesheet knows.
+  chip.el.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%)) rotate(${angle}rad)`;
+}
+
+/**
+ * One loop for every chip on the table, not one per chip.
+ *
+ * "Bennies all round" would otherwise be six `requestAnimationFrame` loops each
+ * writing a transform, which tear against each other and do six times the layout
+ * work for one frame of animation. The loop stops itself when the felt is clear.
+ */
+function tick(now: number): void {
+  frame = undefined;
+  const dt = Math.min((now - lastFrame) / 1000, MAX_CATCHUP);
+  lastFrame = now;
+
+  // Read every frame rather than captured at launch: a window resized mid-slide
+  // would otherwise leave the chip outside its own walls, colliding continuously.
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  for (const chip of live) {
+    if (chip.restedAt === undefined) {
+      const walls = wallsFor(width, height, chip.body.radius);
+      let remaining = dt;
+      while (remaining > 0) {
+        const slice = Math.min(CHIP_STEP, remaining);
+        step(chip.body, slice, walls);
+        remaining -= slice;
+      }
+      draw(chip);
+      if (atRest(chip.body) || now - chip.bornAt > CHIP_LIFE_MS) {
+        chip.restedAt = now;
+        // The fade is a CSS transition, because a fade is not motion and there is
+        // nothing to simulate about one.
+        chip.el.style.transition = `opacity 400ms ease-in ${CHIP_LINGER_MS}ms`;
+        chip.el.style.opacity = '0';
+      }
+    } else if (now - chip.restedAt > CHIP_LINGER_MS + 400) {
+      chip.el.remove();
+      live.delete(chip);
+    }
+  }
+
+  if (live.size) frame = requestAnimationFrame(tick);
+}
+
+function run(): void {
+  if (frame !== undefined) return;
+  lastFrame = performance.now();
+  frame = requestAnimationFrame(tick);
+}
 
 /**
  * Slide a Benny across the table.
  *
- * Deliberately not in the three.js scene. A chip needs no physics — it is a straight
- * slide with a spin on it, which is one `Element.animate` — and putting it in the
- * dice box would mean a new mesh, a new collider and a new body in a world the
- * library owns and does not expose. It also means a chip costs nothing on a machine
- * that has never built a renderer.
+ * The motion is simulated, not choreographed: `chipPhysics` integrates a rigid disc
+ * under friction against the four walls of the window, and this writes the result
+ * onto a transform every frame. The div is the *renderer* — nothing about the path
+ * comes from CSS, which is why a chip that clips a wall spins up and walks off it
+ * rather than replaying a curve somebody drew.
+ *
+ * Still not in the three.js scene, and for the reason that has not changed: a chip on
+ * felt has no interesting third axis, so all of the physics worth having is planar and
+ * fits in a hundred tested lines, where a mesh and a collider in a world the dice
+ * library owns and does not expose would be neither.
+ *
+ * Deliberately **not** gated on `prefers-reduced-motion`. It was, for one deploy, and
+ * it cost the whole feature: the Marshal's Mac had Reduce Motion on, so the chip
+ * silently did nothing on every window of that machine while the dice — which have
+ * never consulted the setting — rolled as usual. Honouring it in one of two moving
+ * things on screen is not honouring it, it is an undiscoverable off-switch. The dice
+ * toggle turns the whole overlay off, and that is a control the table can find.
  *
  * Nothing here may throw into the caller: a chip is decoration on top of decoration,
- * and the Benny itself was already banked and logged before this message was sent.
+ * and the Benny itself was banked and logged before this message was sent.
  */
 function slideChip(toss: BennyToss, mine: number): void {
-  // Deliberately **not** gated on `prefers-reduced-motion`. It was, for one deploy,
-  // and it cost the whole feature: the Marshal's Mac had Reduce Motion on, so the
-  // chip silently did nothing on every window of that machine while the dice — which
-  // have never consulted the setting — rolled as usual. A table cannot be expected to
-  // know that an accessibility switch in System Settings is what turned a feature
-  // off, and a switch that only silences half the moving things on screen is not
-  // honouring anything. Motion is what this overlay is; if it is unwanted, the dice
-  // toggle turns the overlay off, which is a control the table can actually find.
   const path = tossPath(mine, toss);
-  const start = screenPoint(path.from);
-  const end = screenPoint(path.to);
-  // Per-cent of each axis into pixels, because a translation has to be one or the
-  // other and a chip that stretched with the window would not be round.
-  const dx = ((end.left - start.left) / 100) * window.innerWidth;
-  const dy = ((end.top - start.top) / 100) * window.innerHeight;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  const point = (p: { left: number; top: number }): { x: number; y: number } => ({
+    x: (p.left / 100) * width,
+    y: (p.top / 100) * height,
+  });
 
-  const chip = document.createElement('div');
-  chip.className = 'chip';
-  chip.style.left = `${start.left}%`;
-  chip.style.top = `${start.top}%`;
-  chipLayer.append(chip);
-  while (chipLayer.childElementCount > MAX_CHIPS) chipLayer.firstElementChild?.remove();
+  const el = document.createElement('div');
+  el.className = 'chip';
+  chipLayer.append(el);
+  const radius = radiusOf(el);
 
-  // Spin scaled to the distance travelled, so a chip taken off the middle of the
-  // table does not whirl like one flicked the length of it.
-  const spin = 240 + Math.round(Math.hypot(dx, dy) / 2.2);
-  const anim = chip.animate(
-    [
-      { transform: 'translate(0, 0) rotate(0deg) scale(0.7)', opacity: 0, offset: 0 },
-      { opacity: 1, offset: 0.08 },
-      {
-        transform: `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(1.06)`,
-        opacity: 1,
-        offset: 0.7,
-      },
-      {
-        transform: `translate(${dx}px, ${dy}px) rotate(${spin + 6}deg) scale(1)`,
-        opacity: 1,
-        offset: 0.78,
-      },
-      {
-        transform: `translate(${dx}px, ${dy}px) rotate(${spin + 6}deg) scale(0.96)`,
-        opacity: 0,
-        offset: 1,
-      },
-    ],
-    {
-      duration: SLIDE_MS + CHIP_LINGER_MS,
-      // Fast off the hand, slowing as it slides — friction, not a motor.
-      // No `fill`: the last keyframe is already invisible and the node goes with it,
-      // so filling forwards would only leave an animation held on a detached div.
-      easing: 'cubic-bezier(.16,.74,.3,1)',
-    },
-  );
-  anim.finished.catch(() => undefined).finally(() => chip.remove());
+  const body = launch({
+    // Launched from beyond the border and aimed at a spot inside it, so it enters the
+    // window rather than appearing in it, and finishes where it can be seen.
+    from: point(screenPoint(path.from, REACH)),
+    to: point(screenPoint(path.to, LANDING)),
+    radius,
+  });
+  const chip: LiveChip = { body, el, bornAt: performance.now() };
+  draw(chip);
+  live.add(chip);
+
+  while (live.size > MAX_CHIPS) {
+    const oldest = live.values().next().value;
+    if (!oldest) break;
+    oldest.el.remove();
+    live.delete(oldest);
+  }
+  run();
 }
 
 /**

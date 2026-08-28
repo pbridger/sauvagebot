@@ -38,10 +38,16 @@
         inset: 0;
       }
       .chip {
+        /*
+          Placed at the origin and moved entirely by `transform`, because the
+          transform is written every frame by the simulation and a compositor-only
+          property is the one thing that can be. `left`/`top` would relayout.
+        */
         position: absolute;
+        left: 0;
+        top: 0;
         width: 46px;
         height: 46px;
-        margin: -23px 0 0 -23px;
         border-radius: 50%;
         /* The same chip as the little ones in the sheet's Benny stack, grown up. */
         background: radial-gradient(circle at 35% 30%, #d9573f, #8c2f22 70%);
