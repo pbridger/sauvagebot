@@ -3,7 +3,7 @@ import { JavaRandom } from '../src/dice/javaRandom.js';
 import { BLACK_JOKER, COLOR_JOKER, Deck, card, cardToString, type Card } from '../src/game/cards.js';
 import { emptySheet, type Sheet } from '../src/rules/sheet.js';
 import { newTokenState } from '../src/obr/binding.js';
-import { gangCard, type Combatant } from '../extension/src/initiativePanel.js';
+import { combatants, gangCard, type Combatant } from '../extension/src/initiativePanel.js';
 import {
   NO_EDGES,
   chooseCard,
@@ -467,5 +467,38 @@ describe('the two spellings of an upgraded Edge', () => {
     const found = initiativeEdges(sheetWith('LEVEL HEADED'));
     expect(found.levelHeaded).toBe(true);
     expect(found.improvedLevelHeaded).toBe(false);
+  });
+});
+
+describe('who is in the turn order', () => {
+  const bound = (id: string, name: string, sheetId: string, layer: string) => ({
+    id,
+    name,
+    layer,
+    metadata: { 'com.savagebot/token': { sheetId, wounds: 0, fatigue: 0, shaken: false } },
+  });
+
+  const rider = { ...emptySheet('reggie', 'Reggie'), pc: true };
+  const horse = emptySheet('nellie', 'Nellie');
+
+  /**
+   * Damian, having asked to bind mounts at all: "I kinda don't want the clutter
+   * there in the Initiative screen, so I think best just to keep the mounts 'out'
+   * of combat but can still track wounds etc through the sheet as normal."
+   *
+   * By layer rather than by `parked`, so he does not have to flag every horse.
+   */
+  it('leaves a mount out, however normal its sheet is', () => {
+    const rows = combatants(
+      [bound('t1', 'Reggie', 'reggie', 'CHARACTER'), bound('t2', 'Nellie', 'nellie', 'MOUNT')],
+      [rider, horse],
+    );
+    expect(rows.map((c) => c.tokenId)).toEqual(['t1']);
+  });
+
+  it('still keeps the character it is carrying', () => {
+    const rows = combatants([bound('t1', 'Reggie', 'reggie', 'CHARACTER')], [rider]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.pc).toBe(true);
   });
 });

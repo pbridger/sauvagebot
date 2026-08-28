@@ -193,11 +193,32 @@ function normalise(name: string): string {
  * Matching is loose on punctuation and case only, so `REGINALD "REGGIE" KANE`
  * finds a token named `Reginald Reggie Kane`, but nothing fuzzier than that.
  */
+/**
+ * The Owlbear layers a sheet can be bound to.
+ *
+ * `CHARACTER` is the obvious one. `MOUNT` is here because Damian could not bind
+ * his horses — *"I think it's the case I can't bind mounts (ie tokens that are in
+ * the mounts layer instead of the characters layer)"* — and the reason was not
+ * that binding refused them. They were never fetched: the panel's own token list
+ * filtered to `CHARACTER`, so a mount was not unbindable, it was **unseen**.
+ *
+ * A mount gets everything a character token gets — a sheet, wounds, conditions,
+ * badges, a place in the target list — except a row in the initiative order. That
+ * exception is Damian's own call and is enforced in `combatants`, not here: this
+ * list is about what may hold a sheet, and a horse plainly may.
+ *
+ * Shared so the fetch and the auto-binder cannot drift. They were two copies of
+ * the same filter, which is how one of them came to be the whole bug.
+ */
+export const BINDABLE_LAYERS: readonly string[] = ['CHARACTER', 'MOUNT'];
+
 export function autoBindings(
   tokens: readonly TokenLike[],
   sheets: readonly Sheet[],
 ): { tokenId: string; sheetId: string }[] {
-  const candidates = tokens.filter((t) => t.layer === 'CHARACTER' && !readBinding(t.metadata));
+  const candidates = tokens.filter(
+    (t) => BINDABLE_LAYERS.includes(t.layer) && !readBinding(t.metadata),
+  );
 
   const tokensByName = new Map<string, TokenLike[]>();
   for (const token of candidates) {

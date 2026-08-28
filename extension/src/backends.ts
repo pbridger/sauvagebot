@@ -18,6 +18,7 @@ import { Roster } from '../../src/obr/roster.js';
 import { findEntry } from '../../src/rules/catalogue.js';
 import { electLeader, type Peer } from '../../src/obr/leader.js';
 import {
+  BINDABLE_LAYERS,
   TOKEN_KEY,
   autoBindings,
   newTokenState,
@@ -172,7 +173,7 @@ export async function characterTokens(): Promise<
     OBR.scene.grid.getDpi(),
   ]);
   return items
-    .filter((item) => item.layer === 'CHARACTER')
+    .filter((item) => BINDABLE_LAYERS.includes(item.layer))
     .map((item) => {
       const asImage = item as {
         image?: { url?: string; width?: number; height?: number };

@@ -126,6 +126,23 @@ export interface InitiativeHooks {
   showHidden?: boolean;
 }
 
+/**
+ * Tokens that hold a sheet but do not take a turn.
+ *
+ * Mounts. Damian, having asked to be able to bind them at all: *"I think I kinda
+ * don't want the clutter there in the Initiative screen, so I think best just to
+ * keep the mounts 'out' of combat but can still track wounds etc through the
+ * sheet as normal."*
+ *
+ * By **layer**, not by `Sheet.parked`. Parked is a Marshal's decision about one
+ * encounter and has to be set and unset; this is a standing property of what a
+ * mount is, and making him flag every horse would be handing him the chore the
+ * binding was supposed to save. It also means a horse that *should* roll — a
+ * Fighting horse is a real thing — still has a sheet with buttons on it. What it
+ * does not have is a row in the turn order.
+ */
+const NOT_IN_TURN_ORDER: readonly string[] = ['MOUNT'];
+
 /** Everyone bound to a sheet in this scene, with whatever card they hold. */
 export function combatants(
   tokens: readonly (TokenLike & { imageUrl?: string; visible?: boolean })[],
@@ -141,6 +158,8 @@ export function combatants(
     // fight for everybody including the Marshal — this is not a screen, it is
     // "these forty tokens are not in this encounter". See `Sheet.parked`.
     if (sheet.parked) continue;
+    // A mount rides along with its rider; it does not act on its own card.
+    if (NOT_IN_TURN_ORDER.includes(token.layer)) continue;
     out.push({
       tokenId: token.id,
       // What the table calls it, which is the map label when there is one.

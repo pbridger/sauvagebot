@@ -65,10 +65,22 @@ describe('auto-binding by name', () => {
     ).toEqual([]);
   });
 
-  it('ignores tokens that are not on the character layer', () => {
+  it('ignores tokens on a layer that cannot hold a sheet', () => {
     expect(
       autoBindings([token('t1', 'Reggie', undefined, 'PROP')], [sheet('reggie', 'Reggie')]),
     ).toEqual([]);
+  });
+
+  /**
+   * Damian could not bind his horses. The cause was not that binding refused
+   * them — they were never fetched, because the panel's token list filtered to
+   * CHARACTER. A mount holds a sheet like anything else; what it does not get is
+   * a row in the turn order, and that is decided in `combatants`, not here.
+   */
+  it('binds a mount, which is a body with wounds like any other', () => {
+    expect(
+      autoBindings([token('t1', 'Nellie', undefined, 'MOUNT')], [sheet('nellie', 'Nellie')]),
+    ).toEqual([{ tokenId: 't1', sheetId: 'nellie' }]);
   });
 
   it('will not put a Wild Card on two tokens, which would pool their wounds', () => {
