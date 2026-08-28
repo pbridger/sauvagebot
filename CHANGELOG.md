@@ -10,6 +10,58 @@ reload.
 
 ---
 
+## 2026-08-28 — Powers, the Marshal's Bennies, and a quieter log
+
+Another round from Damian's thread, plus the two screenshots that came with it.
+
+**The Powers block works.** Three things were wrong with it and they were all one
+report. Father Jed's card says `POWER POINTS: 20`; the app was showing you the
+rules text of the *Edge* called Power Points instead, because it looked the name
+up in the book and the book won. It no longer looks up anything in the Powers
+block — a power is your character's, not the rulebook's.
+
+**And you can now edit it.** The character editor has a Powers section, on every
+sheet rather than only on player characters. Marshals: this is how you fix an
+NPC's powers, or give one some.
+
+**Power Points are tracked.** A caster's sheet shows `14 / 20` under Powers, with
+− and + to spend and recover and a **Full** button for a night's rest. It only
+appears for characters whose Powers block names a figure, so nobody else sees a
+counter they cannot use. The pool follows the character between scenes, like
+Bennies — and a character who has never spent a point reads as full, not empty.
+
+**The Marshal has a Benny stack.** Top right of the tab strip, with a − and a +.
+It is the Marshal's alone, it survives a reload, and spending one says so in the
+log. Bennies were keyed to characters, and the Marshal is not one — which is why
+there was nowhere to put them. *"Clear Bennies"* now clears this too, since it
+says every Benny in the room.
+
+**Hidden characters stay hidden in the log.** A roll for an NPC whose token is
+not on the map no longer goes out to the table. This rule already existed for
+damage — "Robed Figure takes damage" is an ambush introducing itself — and now
+covers every roll rather than that one. Your own rolls are never affected.
+
+**Players first in every list.** The character picker, the Marshal's roster and
+the initiative list before cards are dealt all put player characters at the top,
+then sort by name. Names count properly now too, so `Bandit 2` comes before
+`Bandit 10` instead of after it. Once cards are dealt the initiative list goes
+back to being a turn order, which is its job.
+
+**One spelling for the upgraded Edges.** The book writes *Improved Frenzy*; the
+app had ten of them as `FRENZY (IMP)` and eight as `IMPROVED …`, so searching for
+what is printed on your card found nothing. They are all `IMPROVED …` now, on
+sheets you already have as well as in the picker.
+
+**Damage adjustments in ones.** The Adjust row under a damage roll offers −1 and
++1 as well as −2 and +2 — for Grim Servant o' Death and anything else that moves
+damage by one.
+
+*Not changed, deliberately:* Ctrl-X on tokens is Owlbear's, not ours — Owlbear
+implements copy and paste on the map but not cut, so the key falls through to the
+browser and nothing happens.
+
+---
+
 ## 2026-08-27 — From the table: cards, Soak, and melee
 
 Everything here came out of Damian's thread, and three of the four had cost
