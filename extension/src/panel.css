@@ -904,6 +904,36 @@ button.apply {
   font-weight: 700;
 }
 
+/* The Marshal's Benny stack, riding in the tab strip. `flex: none` because the
+   tabs themselves are `flex: 1` and would otherwise stretch a +/- to a third of
+   the panel. */
+#marshal {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+  border-left: 1px solid var(--rule);
+}
+#marshal button {
+  flex: none;
+  padding: 2px 5px;
+  border-bottom: none;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+}
+#marshal button:hover { color: var(--accent); }
+#marshal-count {
+  min-width: 1.2em;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+/* Nothing to spend reads differently from having one. */
+#marshal.empty #marshal-count { color: var(--muted); font-weight: 400; }
+
 /* ---- initiative ------------------------------------------------------ */
 
 .init-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }

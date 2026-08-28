@@ -155,7 +155,7 @@ import {
 import { findEntry } from '../../src/rules/catalogue.js';
 import { addToHand, chooseFromHand, handOf } from '../../src/rules/hand.js';
 import { renderBadges } from './badges.js';
-import { BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
+import { MARSHAL_BENNIES, BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
 import { soak, soakedWounds } from '../../src/rules/damage.js';
 import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.js';
@@ -1766,6 +1766,7 @@ async function deal(): Promise<void> {
   if (result.jokerDealt) {
     const lucky = await bank.jokersWild(sheets);
     bennies = await bank.all();
+    renderMarshal();
     if (lucky.length) {
       publish({
         label: "Joker's Wild",
@@ -2046,6 +2047,7 @@ async function handOut(
   try {
     const outcome = await run();
     bennies = await bank.all();
+    renderMarshal();
     renderSheetArea();
     if (outcome.done.length) {
       publish({ label, expression: 'benny', explained: `${explained} ${outcome.done.join(', ')}` });
@@ -5693,6 +5695,49 @@ function mayChooseFor(sheet: Sheet | undefined): boolean {
   return mineId === undefined ? sheet.pc : sheet.id === mineId;
 }
 
+/**
+ * The Marshal's Benny stack in the tab strip.
+ *
+ * Reads the count out of the same `bennies` map every sheet does — `bank.all()`
+ * returns every key under the prefix, and the Marshal's is just one more — so it
+ * cannot drift from the store the way a separate cached number would.
+ */
+function renderMarshal(): void {
+  const wrap = el('marshal');
+  // A guard rail, not a permission, exactly like the Table tab: any client could
+  // write this key. What it prevents is a player finding a counter that is not
+  // theirs and moving it.
+  wrap.hidden = !isGM;
+  const count = bennies.get(MARSHAL_BENNIES) ?? 0;
+  el('marshal-count').textContent = String(count);
+  wrap.classList.toggle('empty', count === 0);
+  el<HTMLButtonElement>('marshal-spend').disabled = count === 0;
+}
+
+/** Move the Marshal's stack by one, and keep the strip in step with the store. */
+async function marshalBenny(delta: 1 | -1): Promise<void> {
+  const count = bennies.get(MARSHAL_BENNIES) ?? 0;
+  const next = Math.max(0, count + delta);
+  if (next === count) return;
+  try {
+    await bank.set(MARSHAL_BENNIES, next);
+    bennies.set(MARSHAL_BENNIES, next);
+    renderMarshal();
+    // Only the spend goes to the log. A Marshal topping their stack up is
+    // bookkeeping and would be noise; a Marshal spending one is a thing that just
+    // happened at the table, and every other Benny spend says so.
+    if (delta === -1) {
+      publish({
+        label: 'the Marshal spends a Benny',
+        expression: 'benny',
+        explained: `**${next}** left`,
+      });
+    }
+  } catch (error) {
+    notify(describe(error));
+  }
+}
+
 function renderRoster(): void {
   const shown = visibleSheets();
   bar.who.replaceChildren(
@@ -5752,6 +5797,7 @@ async function reload(): Promise<void> {
     );
   }
   bennies = await bank.all();
+  renderMarshal();
   mineId = await myCharacter();
   const mySheets = visibleSheets();
   if (!mySheets.some((s) => s.id === selectedId)) {
@@ -6217,6 +6263,9 @@ OBR.onReady(async () => {
     rollTyped(false);
   });
   el('roll-secret').addEventListener('click', () => rollTyped(true));
+
+  el('marshal-spend').addEventListener('click', () => void marshalBenny(-1));
+  el('marshal-award').addEventListener('click', () => void marshalBenny(1));
   // The animated-dice switch is in the character editor now, wired through
   // `renderEditor`'s hooks. There is deliberately no footer button to bind here.
 

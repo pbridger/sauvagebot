@@ -18,6 +18,25 @@ import type { VerifiedStore } from './store.js';
 export const BENNY_PREFIX = 'com.savagebot/bennies/';
 
 /**
+ * The Marshal's own stack, which belongs to no sheet.
+ *
+ * Damian: *"please give me a place for Marshal bennies! I need my own stack"*.
+ * Bennies are keyed by **sheet** — a Benny belongs to a Wild Card, and a Marshal
+ * running three villains needs three counts — and the consequence nobody noticed
+ * is that the Marshal, who is not a Wild Card and has no sheet, had nowhere to
+ * put theirs.
+ *
+ * A reserved key rather than a real sheet: giving the Marshal a sheet would put
+ * them in the roster, the picker, the target list and the turn order, which is
+ * four wrong places to fix one. Sheet ids are uuids, so this cannot collide —
+ * there is no `m`, `r`, `s` or `l` in hex.
+ *
+ * Per **room**, not per player. Room metadata has no per-player scoping that
+ * survives a reload (measured, §12), and a table has one Marshal.
+ */
+export const MARSHAL_BENNIES = 'marshal';
+
+/**
  * What a hand-out to the whole party actually managed.
  *
  * Partial success is a real state here: room metadata has a hard budget, and a
@@ -99,7 +118,16 @@ export class BennyBank {
    * refills is two decisions on one press.
    */
   async clearAll(sheets: readonly Sheet[]): Promise<BennyOutcome> {
-    return this.applyAll(sheets, () => 0, { includeExtras: true });
+    const outcome = await this.applyAll(sheets, () => 0, { includeExtras: true });
+    // The Marshal's stack too. The button says "every Benny in the room" and
+    // leaving one count standing would make that a lie — and it is the Marshal's
+    // own button, so there is nobody else to surprise.
+    try {
+      await this.set(MARSHAL_BENNIES, 0);
+    } catch (error) {
+      outcome.failed.push({ name: 'the Marshal', error: error as Error });
+    }
+    return outcome;
   }
 
   /**

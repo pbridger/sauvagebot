@@ -11,6 +11,17 @@
       <button id="tab-sheet" role="tab" aria-selected="true">Sheet</button>
       <button id="tab-initiative" role="tab" aria-selected="false">Initiative</button>
       <button id="tab-table" role="tab" aria-selected="false" hidden>Table</button>
+      <!--
+        The Marshal's own Bennies. In the tab strip rather than on the Table tab
+        because it is spent from whichever tab they happen to be on — mid-roll,
+        mid-fight — and a stack you have to navigate to is a stack you forget.
+        Hidden for players, who have their own on their sheet.
+      -->
+      <div id="marshal" hidden>
+        <button id="marshal-spend" title="Spend one of the Marshal's Bennies">−</button>
+        <span id="marshal-count" title="The Marshal's Bennies">0</span>
+        <button id="marshal-award" title="Take another Benny for the Marshal">+</button>
+      </div>
     </nav>
 
     <div id="notice" hidden></div>

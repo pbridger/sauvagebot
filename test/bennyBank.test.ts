@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BENNY_PREFIX, BennyBank } from '../src/obr/bennyBank.js';
+import { BENNY_PREFIX, MARSHAL_BENNIES, BennyBank } from '../src/obr/bennyBank.js';
 import { NoBenniesError } from '../src/rules/bennies.js';
 import { emptySheet, type Sheet } from '../src/rules/sheet.js';
 import { ROOM_CAPACITY, VerifiedStore, usedBytes, type Backend } from '../src/obr/store.js';
@@ -261,5 +261,31 @@ describe('clearing every Benny', () => {
     await bank.clearAll(room);
     expect(await bank.get('reggie')).toBe(0);
     expect(await bank.get('serial-killer')).toBe(0);
+  });
+
+  it("takes the Marshal's own stack too, which belongs to no sheet", async () => {
+    const { bank } = newBank();
+    const room = [wildCard('reggie')];
+    await bank.award(MARSHAL_BENNIES, 3);
+
+    await bank.clearAll(room);
+    // The button says "every Benny in the room". A stack left standing after that
+    // would make it a lie — and `clearAll` walks sheets, which the Marshal is not.
+    expect(await bank.get(MARSHAL_BENNIES)).toBe(0);
+  });
+});
+
+describe("the Marshal's own stack", () => {
+  it('is untouched by the hand-outs, which walk sheets', async () => {
+    const { bank } = newBank();
+    const room = [wildCard('reggie'), gmWildCard('serial-killer')];
+    await bank.award(MARSHAL_BENNIES, 2);
+    await bank.newSession(room);
+    await bank.awardAll(room);
+    expect(await bank.get(MARSHAL_BENNIES)).toBe(2);
+  });
+
+  it('cannot collide with a sheet id, which is a uuid', () => {
+    expect(MARSHAL_BENNIES).not.toMatch(/^[0-9a-f-]+$/i);
   });
 });
