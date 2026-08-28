@@ -54,12 +54,6 @@
    "summary": "Enemy arcane skills targeting the hero suffer a −2 penalty; magical damage is reduced by 2."
   },
   {
-   "name": "ARCANE RESISTANCE (IMP)",
-   "text": "As above, but the penalty to the arcane skill roll and damage are increased to 4.",
-   "requirements": "Novice, Arcane Resistance",
-   "summary": "As Arcane Resistance except penalty is increased to −4 and magical damage is reduced by 4."
-  },
-  {
    "name": "ARISTOCRAT",
    "text": "Some folks ride into town with dust on their boots and nary a penny to their name. Others show up in a fine coat with bank notes to some Eastern fortune or foreign title. Your cowpoke may or may not be flush with cash, but they walk the walk and talk the talk of the upper crust—be it railroad barons, foreign dignitaries, or highfalutin’ Society types with their pinky fingers raised. The character was born into privilege or came into it later in life. They may or may not have money (the Rich or Filthy Rich Edge), but still walk in the elite social circles of their locale. Aristocrats add +2 to Persuasion when Networking (see page 228) with the local elite, captains of industry, nobles, or other aristocrats. They also add +2 to Common Knowledge rolls made to know the etiquette of the upper class, recognize family trees or heraldry, or recall gossip concerning others of their station.",
    "requirements": "Novice",
@@ -117,12 +111,6 @@
    "text": "Close scrapes has taught your scrappy hero how to turn blades, ducks fists, and come out grinnin’. Their Parry increases by +1 and any Gang Up bonus against them is reduced by one.",
    "requirements": "Seasoned, Fighting d8+",
    "summary": "+1 Parry, ignore 1 point of Gang Up bonus."
-  },
-  {
-   "name": "BLOCK (IMP)",
-   "text": "The hero’s Parry bonus is now +2 and the Gang Up bonus against them is reduced by 2.",
-   "requirements": "Veteran, Block",
-   "summary": "+2 Parry, ignore 2 points of Gang Up bonus."
   },
   {
    "name": "BOLSTER",
@@ -187,11 +175,6 @@
    "name": "CAT EYES",
    "text": "The deader’s eyes glow slightly in the dark, enhancing light and negating all Dim and Dark penalties.",
    "requirements": "Novice, Harrowed"
-  },
-  {
-   "name": "CAT EYES (IMP)",
-   "text": "The hero can see perfectly in the dark and ignores all penalties for lighting.",
-   "requirements": "Seasoned, Cat Eyes, Harrowed"
   },
   {
    "name": "CELESTIAL KUNG FU",
@@ -330,12 +313,6 @@
    "summary": "−2 to be hit by ranged attacks."
   },
   {
-   "name": "DODGE (IMP)",
-   "text": "The hero adds +2 when Evading area effect attacks. See Evasion on page 156.",
-   "requirements": "Seasoned, Dodge",
-   "summary": "+2 to Evasion totals."
-  },
-  {
    "name": "DOUBLE TAP",
    "text": "Quick as a blink, and twice as deadly, this shooter can fire two shots in rapid succession without spoiling their aim. Double Tap can only be used with weapons that have a Rate of Fire of 1 and can fire two shots without needing to manually reload. It adds +1 to hit and damage at the cost of one extra bullet. This is per action, so a shooter can Double Tap more than once if they perform a Multi-Action. Double Tap cannot be combined with Rapid Fire, and doesn’t work with Single-Action revolvers. If used with a weapon capable of Three- Round Burst (rare in the Weird West, but possible; see page 115), it adds +2 to Shooting and damage instead of +1 and expends six bullets. DON'T GET 'IM RILED! REQUIREMENTS: Novice The hero with this Edge can be a real curly wolf when they get roughed up. When causing melee damage, they add their Wound levels to the roll. A hero with three Wounds, for instance, adds +3 to their melee damage rolls!",
    "requirements": "Seasoned, Shooting d6+",
@@ -445,12 +422,6 @@
    "summary": "Free Fighting attack once per round when foe moves within Reach."
   },
   {
-   "name": "FIRST STRIKE (IMP)",
-   "text": "As above but the hero may attack up to three foes each turn.",
-   "requirements": "Heroic, First Strike",
-   "summary": "Free Fighting attack against up to three foes when they move within Reach."
-  },
-  {
    "name": "FLEET-FOOTED",
    "text": "Whether they’re runnin’ from a lynch mob or racing the 4:15 to Yuma, this cowpoke moves like greased lightning. Folks swear they saw ‘em in two places at once—and they’re usually gone before the dust settles. The hero’s Pace is increased by +2 and their running die increases one step (from d6 to d8, for example).",
    "requirements": "Novice, Agility d6+",
@@ -478,12 +449,6 @@
    "text": "This scrapper swings like a Texas twister. As a limited action, a character with Frenzy may roll a second Fighting die with any one of their Fighting attacks for the turn. The extra die may be allocated to the same or different targets as the player sees fit. Resolve each separately.",
    "requirements": "Seasoned, Fighting d8+",
    "summary": "Roll a second Fighting die in one melee attack. Limited action."
-  },
-  {
-   "name": "FRENZY (IMP)",
-   "text": "As Frenzy but the fighter adds a third Fighting die to their Fighting attack made with Frenzy this turn. Example: Red uses her Colts to pistol whip a walking dead. She has Frenzy (Imp) and decides to attack three times (a Multi-Action at the usual penalty). She rolls her Fighting skill with two extra dice for her first attack, but doesn’t get the extra dice on her second or third Fighting rolls.",
-   "requirements": "Veteran, Frenzy",
-   "summary": "Roll a third Fighting die in one melee attack. Limited action."
   },
   {
    "name": "GADGETEER",
@@ -588,6 +553,23 @@
    "requirements": "Heroic, Harrowed"
   },
   {
+   "name": "IMPROVED ARCANE RESISTANCE",
+   "text": "As above, but the penalty to the arcane skill roll and damage are increased to 4.",
+   "requirements": "Novice, Arcane Resistance",
+   "summary": "As Arcane Resistance except penalty is increased to −4 and magical damage is reduced by 4."
+  },
+  {
+   "name": "IMPROVED BLOCK",
+   "text": "The hero’s Parry bonus is now +2 and the Gang Up bonus against them is reduced by 2.",
+   "requirements": "Veteran, Block",
+   "summary": "+2 Parry, ignore 2 points of Gang Up bonus."
+  },
+  {
+   "name": "IMPROVED CAT EYES",
+   "text": "The hero can see perfectly in the dark and ignores all penalties for lighting.",
+   "requirements": "Seasoned, Cat Eyes, Harrowed"
+  },
+  {
    "name": "IMPROVED CLAWS",
    "text": "The Claws now inflict Str+d8 damage, AP 2.",
    "requirements": "Veteran, Claws, Harrowed"
@@ -597,6 +579,12 @@
    "text": "This hombre is quicker than a rattler in a dogfight. As above but the hero gets a Free Attack against up to three failed attacks each round.",
    "requirements": "Veteran, Counterattack",
    "summary": "As Counterattack, but against three failed attacks per turn."
+  },
+  {
+   "name": "IMPROVED DODGE",
+   "text": "The hero adds +2 when Evading area effect attacks. See Evasion on page 156.",
+   "requirements": "Seasoned, Dodge",
+   "summary": "+2 to Evasion totals."
   },
   {
    "name": "IMPROVED EXTRACTION",
@@ -611,6 +599,29 @@
    "summary": "Reduces the penalty for fanning the hammer from –4 to –2."
   },
   {
+   "name": "IMPROVED FIRST STRIKE",
+   "text": "As above but the hero may attack up to three foes each turn.",
+   "requirements": "Heroic, First Strike",
+   "summary": "Free Fighting attack against up to three foes when they move within Reach."
+  },
+  {
+   "name": "IMPROVED FRENZY",
+   "text": "As Frenzy but the fighter adds a third Fighting die to their Fighting attack made with Frenzy this turn. Example: Red uses her Colts to pistol whip a walking dead. She has Frenzy (Imp) and decides to attack three times (a Multi-Action at the usual penalty). She rolls her Fighting skill with two extra dice for her first attack, but doesn’t get the extra dice on her second or third Fighting rolls.",
+   "requirements": "Veteran, Frenzy",
+   "summary": "Roll a third Fighting die in one melee attack. Limited action."
+  },
+  {
+   "name": "IMPROVED LEVEL HEADED",
+   "text": "As above but the hero draws two additional cards and chooses which to keep.",
+   "requirements": "Seasoned, Level Headed",
+   "summary": "Draw two additional Action Cards each round in combat and choose which one to use."
+  },
+  {
+   "name": "IMPROVED NERVES OF STEEL",
+   "text": "The hero ignores two points of Wound penalties.",
+   "requirements": "Novice, Nerves of Steel"
+  },
+  {
    "name": "IMPROVED RAPID FIRE",
    "text": "The shooter may now increase their weapon’s Rate of Fire by 1 twice in the same turn (via a Multi-Action). Example: Gabe fires a steam Gatling and has Improved Rapid Fire. The weapon has a Rate of Fire of 3 and Gabe decides to fire it on all three of his allowed actions (see Multi-Actions on page 159). He rolls an extra Shooting die with his first and second attack, raising the weapon’s Rate of Fire to 4 each time. He doesn’t get the bonus on his third attack—the machine gun’s Rate of Fire remains a 3.",
    "requirements": "Veteran, Rapid Fire",
@@ -621,6 +632,17 @@
    "text": "The character now regains 20 Power Points per hour spent resting.",
    "requirements": "Veteran, Rapid Recharge",
    "summary": "Recover 20 Power Points per hour."
+  },
+  {
+   "name": "IMPROVED STITCHIN'",
+   "text": "As above, but the deader rolls every hour.",
+   "requirements": "Veteran, Harrowed, Stitchin’"
+  },
+  {
+   "name": "IMPROVED SWEEP",
+   "text": "As above but the whirlwind of death is able to avoid allies when using Sweep.",
+   "requirements": "Veteran, Sweep",
+   "summary": "As above, but attack can avoid allies. Limited action."
   },
   {
    "name": "IMPROVED TRACKIN’ TEETH",
@@ -695,12 +717,6 @@
    "text": "Fighters who can keep their cool when every one else is running for cover make deadly combatants. A hero with this Edge draws an additional Action Card in combat and chooses which to use.",
    "requirements": "Seasoned, Smarts d8+",
    "summary": "Draw an additional Action Card each round in combat and choose which one to use."
-  },
-  {
-   "name": "LEVEL HEADED (IMP)",
-   "text": "As above but the hero draws two additional cards and chooses which to keep.",
-   "requirements": "Seasoned, Level Headed",
-   "summary": "Draw two additional Action Cards each round in combat and choose which one to use."
   },
   {
    "name": "LIKE AN OAK",
@@ -805,11 +821,6 @@
    "text": "Your hero has learned to fight on through the most intense pain. They may ignore 1 point of Wound penalties.",
    "requirements": "Novice, Vigor d8+",
    "summary": "Ignore one level of Wound penalties."
-  },
-  {
-   "name": "NERVES OF STEEL (IMP)",
-   "text": "The hero ignores two points of Wound penalties.",
-   "requirements": "Novice, Nerves of Steel"
   },
   {
    "name": "NEW POWERS",
@@ -1036,11 +1047,6 @@
    "summary": "Ignore Unstable Platform penalty; reduce running penalty to –1."
   },
   {
-   "name": "STITCHIN' (IMP)",
-   "text": "As above, but the deader rolls every hour.",
-   "requirements": "Veteran, Harrowed, Stitchin’"
-  },
-  {
    "name": "STITCHIN’",
    "text": "A dead man with Stitchin’ regenerates much faster than normal—they may make a natural healing roll every day, provided they consume a pound of meat for each attempt.",
    "requirements": "Novice, Harrowed"
@@ -1072,12 +1078,6 @@
    "text": "With a mighty swing, this warrior strikes everyone in reach—friend or foe! As a limited action, Sweep allows a character to make a single Fighting attack with a two-handed weapon and apply it against all targets in their Reach (friends and foes alike). Resolve damage separately for each enemy that’s hit. A Sweep made without a two-handed weapon suffers a −2 penalty.",
    "requirements": "Novice, Strength d8+, Fighting d8+",
    "summary": "Fighting roll with two-handed weapon (–2 without) to hit all targets in weapon’s Reach. Limited action."
-  },
-  {
-   "name": "SWEEP (IMP)",
-   "text": "As above but the whirlwind of death is able to avoid allies when using Sweep.",
-   "requirements": "Veteran, Sweep",
-   "summary": "As above, but attack can avoid allies. Limited action."
   },
   {
    "name": "TACTICIAN",

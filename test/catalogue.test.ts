@@ -75,7 +75,7 @@ describe('the extracted catalogue', () => {
     // "e    LEVEL HEADED" was a real failure when the right-hand crop caught the
     // last character of the left column.
     expect(findEdge('Level Headed')).toBeDefined();
-    expect(findEdge('LEVEL HEADED (IMP)')).toBeDefined();
+    expect(findEdge('IMPROVED LEVEL HEADED')).toBeDefined();
   });
 });
 
@@ -108,12 +108,12 @@ describe('the summaries', () => {
       .filter((e) => e.summary && e.summary.length > e.text.length)
       .map((e) => e.name);
     expect(longer).toEqual([
-      'ARCANE RESISTANCE (IMP)',
-      'FIRST STRIKE (IMP)',
-      'LEVEL HEADED (IMP)',
+      'IMPROVED ARCANE RESISTANCE',
+      'IMPROVED FIRST STRIKE',
+      'IMPROVED LEVEL HEADED',
       'THIN SKINNED',
     ]);
-    for (const name of longer.filter((n) => n.endsWith('(IMP)'))) {
+    for (const name of longer.filter((n) => n.startsWith('IMPROVED '))) {
       expect([...EDGES].find((e) => e.name === name)?.text).toMatch(/^As above/);
     }
   });
@@ -354,8 +354,8 @@ describe('names that would break a gear line', () => {
  */
 describe('upgraded edges, spelled either way', () => {
   it('finds a bracketed entry by its Improved name', () => {
-    expect(findEntry('Improved Level Headed')?.name).toBe('LEVEL HEADED (IMP)');
-    expect(findEntry('Improved Dodge')?.name).toBe('DODGE (IMP)');
+    expect(findEntry('Improved Level Headed')?.name).toBe('IMPROVED LEVEL HEADED');
+    expect(findEntry('Improved Dodge')?.name).toBe('IMPROVED DODGE');
   });
 
   it('finds an Improved entry by its bracketed name', () => {
@@ -363,7 +363,9 @@ describe('upgraded edges, spelled either way', () => {
   });
 
   it('still finds each of them by its own name', () => {
-    expect(findEntry('LEVEL HEADED (IMP)')?.name).toBe('LEVEL HEADED (IMP)');
+    // The *old* catalogue spelling, which sheets in Damian's room still carry.
+    // Renaming the data must not orphan them, and this is the line that says so.
+    expect(findEntry('LEVEL HEADED (IMP)')?.name).toBe('IMPROVED LEVEL HEADED');
     expect(findEntry('IMPROVED RAPID RECHARGE')?.name).toBe('IMPROVED RAPID RECHARGE');
   });
 
