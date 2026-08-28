@@ -203,6 +203,7 @@ import {
   revealDelay,
   type DiceThrow,
 } from '../../src/obr/diceThrow.js';
+import { BENNY_CHANNEL, type BennyToss } from '../../src/obr/bennyToss.js';
 import {
   DICE_PREFIX,
   PLACE_PREFIX,
@@ -3499,6 +3500,59 @@ async function awardBenny(sheet: Sheet): Promise<void> {
     expression: 'benny',
     explained: `now has **${total}**`,
   });
+  await tossBenny(sheet.id);
+}
+
+/**
+ * Which place at the table each sheet belongs to.
+ *
+ * Two hops: `mine/<player>` says which sheet a player has claimed, and `places` says
+ * where that player sits. A sheet nobody has claimed — every NPC, and any PC whose
+ * player is not in the room — is simply absent, which the chip reads as "onto the
+ * table" rather than "at somebody".
+ *
+ * Read fresh rather than cached alongside `places`: a player claims their character
+ * by opening it, which happens long after the party list last changed, and a chip
+ * that flew to the middle because the cache was from before they sat down would be
+ * wrong in the one case this is for. One room read on a deliberate button press.
+ */
+async function claimedPlaces(): Promise<Map<string, number>> {
+  const claims = new Map<string, number>();
+  for (const [key, value] of Object.entries(await store.readAll())) {
+    if (!key.startsWith(MINE_PREFIX) || typeof value !== 'string') continue;
+    const place = places[key.slice(MINE_PREFIX.length)];
+    if (place !== undefined) claims.set(value, place);
+  }
+  return claims;
+}
+
+/**
+ * Slide a chip across everybody's screen, from where I am sitting to wherever the
+ * receiver is.
+ *
+ * The payload names nobody — two seat numbers and a ring size — and that is load
+ * bearing rather than tidy. A Benny can go to an NPC Wild Card the table cannot see,
+ * and `named()` is careful not to put that name in their log; a chip that carried a
+ * character with it would announce exactly what the log had just withheld.
+ *
+ * Swallows everything. The Benny is banked and logged before this runs, so the worst
+ * a failure here may cost is the animation.
+ */
+async function tossBenny(sheetId: string): Promise<void> {
+  try {
+    const to = (await claimedPlaces()).get(sheetId);
+    const toss: BennyToss = {
+      from: myPlace,
+      places: ringSize({ ...places, [OBR.player.id]: myPlace }),
+      ...(to === undefined ? {} : { to }),
+    };
+    // Same as a roll: my own overlay is opened on demand, and a reader with
+    // animation switched off never loads the page that would draw this.
+    if (animate) await openTray();
+    await OBR.broadcast.sendMessage(BENNY_CHANNEL, toss, { destination: 'ALL' });
+  } catch (error) {
+    console.warn('could not slide a Benny across', error);
+  }
 }
 
 function labelled(label: string, control: HTMLElement): HTMLElement {
@@ -6165,10 +6219,15 @@ async function savePlace(id: string, place: number): Promise<void> {
  * anything, exactly the double booking that assignment had broken.
  */
 async function readMyDiceSettings(): Promise<void> {
-  // Absent means off. Animation is opt-in: it is the setting most likely to be
-  // wrong for somebody's laptop, and an unasked-for physics simulation over the map
-  // is a worse first impression than a plain log.
-  animate = (await store.read<boolean>(`${DICE_PREFIX}${OBR.player.id}`)) === true;
+  // Absent means **on**. It was opt-in while the animation was new and unproven;
+  // it has since run a season of Coffin Rock without costing anybody a result, and
+  // a player who has to find a switch before the dice appear mostly never finds it.
+  //
+  // `!== false`, not `=== true`, and the difference is the whole change: `toggleDice`
+  // writes the preference either way, so somebody who turned it *off* has a stored
+  // `false` that must keep meaning off. Only a player who has never touched it reads
+  // `undefined`, and they are the ones this is for.
+  animate = (await store.read<boolean>(`${DICE_PREFIX}${OBR.player.id}`)) !== false;
 }
 
 async function toggleDice(): Promise<void> {

@@ -13,7 +13,8 @@
       */
       html,
       body,
-      #tray {
+      #tray,
+      #chips {
         margin: 0;
         width: 100%;
         height: 100%;
@@ -24,10 +25,37 @@
       #tray canvas {
         display: block;
       }
+      /*
+        Bennies slid across the table. A sibling of `#tray`, not a child, because
+        `teardown` empties the tray with `replaceChildren` when the table goes
+        quiet — a chip parented there would vanish mid-flight.
+
+        Stacked over the felt so a chip flicked during a roll passes in front of
+        the dice rather than behind them.
+      */
+      #chips {
+        position: absolute;
+        inset: 0;
+      }
+      .chip {
+        position: absolute;
+        width: 46px;
+        height: 46px;
+        margin: -23px 0 0 -23px;
+        border-radius: 50%;
+        /* The same chip as the little ones in the sheet's Benny stack, grown up. */
+        background: radial-gradient(circle at 35% 30%, #d9573f, #8c2f22 70%);
+        border: 3px solid #f7f3e8;
+        box-shadow:
+          0 3px 8px rgba(0, 0, 0, 0.45),
+          inset 0 0 0 4px rgba(247, 243, 232, 0.25);
+        will-change: transform, opacity;
+      }
     </style>
   </head>
   <body>
     <div id="tray"></div>
+    <div id="chips"></div>
     <script type="module" src="/src/tray.ts"></script>
   </body>
 </html>

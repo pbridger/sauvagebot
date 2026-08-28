@@ -10,6 +10,31 @@ reload.
 
 ---
 
+## 2026-08-28 — A chip slid across the table
+
+**Bennies now travel.** Award one and a poker chip slides across everybody's
+screen, out from where the Marshal is sitting and in to where the player is —
+spinning as it goes, the way a chip flicked down a felt table does. Everyone at
+the table sees the same chip take the same path, because each screen works the
+direction out from the two seats rather than being told which way to draw it.
+
+Two cases it handles without being asked. A Benny to an NPC, or to a player who
+is not in the room, has nowhere to land, so the chip stops in the middle of the
+table instead. And the chip carries no name with it — only two seat numbers —
+which is what lets it be shown to everybody even when the character receiving it
+is one the players are not supposed to know about.
+
+It is drawn on the dice overlay, so it rides the same switch the dice do, which
+brings us to:
+
+**Dice animation is on by default now.** It was opt-in while it was new. It has
+since run a season without ever costing anybody a result, and a switch you have
+to find before anything happens is a switch most people never find. If you turned
+it *off*, it stays off — this only changes what happens for someone who has never
+touched it.
+
+---
+
 ## 2026-08-28 — Powers, the Marshal's Bennies, and a quieter log
 
 Another round from Damian's thread, plus the two screenshots that came with it.

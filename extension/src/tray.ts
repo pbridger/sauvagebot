@@ -43,6 +43,13 @@ import {
   flare,
   levelDice,
 } from './effects.js';
+import {
+  BENNY_CHANNEL,
+  isBennyToss,
+  screenPoint,
+  tossPath,
+  type BennyToss,
+} from '../../src/obr/bennyToss.js';
 import { assignPlaces, relativeVector, storedPlaces } from '../../src/obr/seats.js';
 import { aimThrow } from './throwing.js';
 
@@ -58,6 +65,7 @@ const IDLE_MS = 180_000;
 const LINGER_MS = 4_000;
 
 const container = document.getElementById('tray') as HTMLDivElement;
+const chipLayer = document.getElementById('chips') as HTMLDivElement;
 
 let box: DiceBox | undefined;
 let ready: Promise<DiceBox> | undefined;
@@ -231,6 +239,78 @@ async function animate(thrown: DiceThrow): Promise<void> {
   }
 }
 
+/** How long a chip is in flight, and how long it lies there before fading. */
+const SLIDE_MS = 900;
+const CHIP_LINGER_MS = 700;
+/**
+ * Chips on the felt at once. "Bennies all round" is six messages in a breath, and a
+ * table that leaves a page open all session should not accumulate divs.
+ */
+const MAX_CHIPS = 12;
+
+/**
+ * Slide a Benny across the table.
+ *
+ * Deliberately not in the three.js scene. A chip needs no physics — it is a straight
+ * slide with a spin on it, which is one `Element.animate` — and putting it in the
+ * dice box would mean a new mesh, a new collider and a new body in a world the
+ * library owns and does not expose. It also means a chip costs nothing on a machine
+ * that has never built a renderer.
+ *
+ * Nothing here may throw into the caller: a chip is decoration on top of decoration,
+ * and the Benny itself was already banked and logged before this message was sent.
+ */
+function slideChip(toss: BennyToss, mine: number): void {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const path = tossPath(mine, toss);
+  const start = screenPoint(path.from);
+  const end = screenPoint(path.to);
+  // Per-cent of each axis into pixels, because a translation has to be one or the
+  // other and a chip that stretched with the window would not be round.
+  const dx = ((end.left - start.left) / 100) * window.innerWidth;
+  const dy = ((end.top - start.top) / 100) * window.innerHeight;
+
+  const chip = document.createElement('div');
+  chip.className = 'chip';
+  chip.style.left = `${start.left}%`;
+  chip.style.top = `${start.top}%`;
+  chipLayer.append(chip);
+  while (chipLayer.childElementCount > MAX_CHIPS) chipLayer.firstElementChild?.remove();
+
+  // Spin scaled to the distance travelled, so a chip taken off the middle of the
+  // table does not whirl like one flicked the length of it.
+  const spin = 240 + Math.round(Math.hypot(dx, dy) / 2.2);
+  const anim = chip.animate(
+    [
+      { transform: 'translate(0, 0) rotate(0deg) scale(0.7)', opacity: 0, offset: 0 },
+      { opacity: 1, offset: 0.08 },
+      {
+        transform: `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(1.06)`,
+        opacity: 1,
+        offset: 0.7,
+      },
+      {
+        transform: `translate(${dx}px, ${dy}px) rotate(${spin + 6}deg) scale(1)`,
+        opacity: 1,
+        offset: 0.78,
+      },
+      {
+        transform: `translate(${dx}px, ${dy}px) rotate(${spin + 6}deg) scale(0.96)`,
+        opacity: 0,
+        offset: 1,
+      },
+    ],
+    {
+      duration: SLIDE_MS + CHIP_LINGER_MS,
+      // Fast off the hand, slowing as it slides — friction, not a motor.
+      easing: 'cubic-bezier(.16,.74,.3,1)',
+      fill: 'forwards',
+    },
+  );
+  anim.finished.catch(() => undefined).finally(() => chip.remove());
+}
+
 /**
  * Give the GPU back when nothing has been rolled for a while.
  *
@@ -271,6 +351,19 @@ OBR.onReady(() => {
   recompute();
   OBR.room.onMetadataChange(recompute);
   OBR.party.onChange(recompute);
+
+  // Not queued behind the dice. A Benny is often handed over *because* of the roll
+  // being animated, and holding the chip until the dice settle would put the reward
+  // a beat after the moment it belongs to.
+  OBR.broadcast.onMessage(BENNY_CHANNEL, (event) => {
+    if (!isBennyToss(event.data)) return;
+    const toss = event.data;
+    void readMyPlace()
+      .then((mine) => slideChip(toss, mine))
+      .catch((error: unknown) => {
+        console.warn('could not slide a Benny', error);
+      });
+  });
 
   OBR.broadcast.onMessage(DICE_CHANNEL, (event) => {
     if (!isDiceThrow(event.data)) return;
