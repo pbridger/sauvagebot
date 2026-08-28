@@ -52,6 +52,14 @@ app had ten of them as `FRENZY (IMP)` and eight as `IMPROVED …`, so searching 
 what is printed on your card found nothing. They are all `IMPROVED …` now, on
 sheets you already have as well as in the picker.
 
+**Mounts can be bound.** Horses and anything else on Owlbear's Mounts layer were
+invisible to the extension — not unbindable, *unseen*, which is why nothing you
+tried worked. They now bind like any other token: a sheet, wounds, conditions,
+badges, and a row in the target list, since a horse is a legitimate thing to
+shoot at. They do **not** appear in the initiative list. A mount rides along with
+its rider rather than acting on its own card, and nothing needs flagging to make
+that happen.
+
 **Damage adjustments in ones.** The Adjust row under a damage roll offers −1 and
 +1 as well as −2 and +2 — for Grim Servant o' Death and anything else that moves
 damage by one.
