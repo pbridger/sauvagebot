@@ -152,7 +152,7 @@ import {
   toggleCondition,
   type ModifierState,
 } from '../../src/rules/modifiers.js';
-import { findEntry } from '../../src/rules/catalogue.js';
+import { entryDisplayName, findEntry } from '../../src/rules/catalogue.js';
 import { addToHand, chooseFromHand, handOf } from '../../src/rules/hand.js';
 import { renderBadges } from './badges.js';
 import { MARSHAL_BENNIES, BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
@@ -1579,7 +1579,10 @@ function entryList(
     const expandable = Boolean(full && brief && full !== brief && full.length > brief.length);
 
     const dt = document.createElement('dt');
-    dt.textContent = entry.name;
+    // `displayName`, not the raw stored name: sheets imported before the
+    // catalogue was given one spelling still carry `X (IMP)`, and renaming the
+    // book fixed the picker without touching anything on a sheet.
+    dt.textContent = entryDisplayName(entry.name);
     if (note && note.klass !== 'text') {
       const tag = document.createElement('span');
       tag.className = `entry-tag ${note.klass}`;

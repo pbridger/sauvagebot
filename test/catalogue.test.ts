@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EDGES,
   HINDRANCES,
+  entryDisplayName,
   findEdge,
   findEntry,
   findHindrance,
@@ -371,5 +372,28 @@ describe('upgraded edges, spelled either way', () => {
 
   it('does not confuse the upgrade with the plain Edge', () => {
     expect(findEntry('Level Headed')?.name).toBe('LEVEL HEADED');
+  });
+});
+
+/**
+ * The catalogue was renamed to one spelling; sheets already in a room were not.
+ * `entryList` prints the name off the sheet, so without this the rename fixed the
+ * Edge picker and nothing Damian actually looks at.
+ */
+describe('the name shown for an entry stored on a sheet', () => {
+  it('shows the book spelling for the retired bracketed form', () => {
+    expect(entryDisplayName('LEVEL HEADED (IMP)')).toBe('IMPROVED LEVEL HEADED');
+    expect(entryDisplayName('DODGE (IMP)')).toBe('IMPROVED DODGE');
+  });
+
+  it('leaves a name the book does not know alone', () => {
+    expect(entryDisplayName('HOMEBREW THING (IMP)')).toBe('HOMEBREW THING (IMP)');
+  });
+
+  it('does not shout a hand-typed Edge, however well the book knows it', () => {
+    // The catalogue is in capitals. Substituting for every recognised entry —
+    // rather than only the retired spelling — would rewrite this to 'ALERTNESS'.
+    expect(entryDisplayName('Alertness')).toBe('Alertness');
+    expect(entryDisplayName('IMPROVED LEVEL HEADED')).toBe('IMPROVED LEVEL HEADED');
   });
 });

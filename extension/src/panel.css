@@ -931,8 +931,10 @@ button.apply {
   font-variant-numeric: tabular-nums;
   color: var(--accent);
 }
-/* Nothing to spend reads differently from having one. */
-#marshal.empty #marshal-count { color: var(--muted); font-weight: 400; }
+/* Nothing to spend reads differently from having one. Colour only — dropping the
+   weight as well left a light "0" floating in a slot sized for a bold digit, and
+   the gap either side of it was the first thing Paul noticed. */
+#marshal.empty #marshal-count { color: var(--muted); }
 
 /* ---- initiative ------------------------------------------------------ */
 

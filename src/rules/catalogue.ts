@@ -122,6 +122,30 @@ export function findEntry(name: string): CatalogueEntry | undefined {
   return findEdge(name) ?? findHindrance(name);
 }
 
+/** The old bracketed spelling of an upgraded Edge, which sheets still carry. */
+const BRACKETED_IMPROVED = /\(IMP\.?\)\s*$/i;
+
+/**
+ * The name to *show* for an entry stored on a sheet.
+ *
+ * Renaming the catalogue to one spelling fixed the Edge picker and nothing a
+ * player looks at: `entryList` prints the name off the **sheet**, and Paige's
+ * sheet still stores the literal `LEVEL HEADED (IMP)` it was imported with.
+ * Damian would have seen the old spelling and reported it a third time.
+ *
+ * Deliberately narrow. It substitutes the book's name only for the bracketed
+ * form, which is the one spelling known to have been retired — not for every
+ * entry the catalogue recognises. The catalogue is written in capitals, so the
+ * general version would shout every hand-typed Edge on every sheet.
+ *
+ * Display only: what is stored is left alone, so an export still round-trips and
+ * a room half-migrated stays readable either way.
+ */
+export function entryDisplayName(stored: string): string {
+  if (!BRACKETED_IMPROVED.test(stored)) return stored;
+  return findEntry(stored)?.name ?? stored;
+}
+
 /** Names starting with, or containing, what has been typed — for autocomplete. */
 export function suggest(
   query: string,
