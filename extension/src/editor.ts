@@ -11,6 +11,7 @@
 import {
   ALL_ATTRIBUTES,
   addEntry,
+  entriesIn,
   parseDie,
   parseMod,
   removeEntry,
@@ -43,7 +44,11 @@ function catalogueList(kind: EntryList): HTMLDataListElement {
 
   const list = document.createElement('datalist');
   list.id = id;
-  for (const entry of kind === 'edges' ? EDGES : HINDRANCES) {
+  // Powers get an empty list on purpose. The catalogue is Edges and Hindrances;
+  // offering it here would suggest "POWER POINTS, the Edge" for a Powers block
+  // line that means "20 of them", which is the bug this section exists to let
+  // Damian fix by hand.
+  for (const entry of kind === 'edges' ? EDGES : kind === 'hindrances' ? HINDRANCES : []) {
     const option = document.createElement('option');
     option.value = entry.name;
     // Requirements for an Edge, severity for a Hindrance — the thing you want
@@ -184,7 +189,7 @@ function entryEditor(
   heading.textContent = title;
   block.append(heading);
 
-  sheet[list].forEach((entry, index) => {
+  entriesIn(sheet, list).forEach((entry, index) => {
     const row = document.createElement('div');
     row.className = 'edit-entry';
 
@@ -200,7 +205,8 @@ function entryEditor(
       // Picking a name from the book fills in its rules text, but only into an
       // empty box — silently overwriting text someone had edited would be worse
       // than leaving it stale.
-      const known = list === 'edges' ? findEdge(value) : findHindrance(value);
+      const known =
+        list === 'edges' ? findEdge(value) : list === 'hindrances' ? findHindrance(value) : undefined;
       const patch: { name: string; text?: string } = { name: value };
       if (known && !text.value.trim()) patch.text = known.text;
       hooks.onChange(updateEntry(sheet, list, index, patch));
@@ -467,6 +473,9 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
 
   out.append(entryEditor(sheet, 'hindrances', 'Hindrances', hooks));
   out.append(entryEditor(sheet, 'edges', 'Edges', hooks));
+  // Always offered, even on a sheet with no Powers block: Damian's ask was "not
+  // just for PCs", and a Marshal giving an NPC a power needs somewhere to start.
+  out.append(entryEditor(sheet, 'powers', 'Powers', hooks));
 
   // --- gear: still one free-text line, with the book behind a picker
   const gearHeading = document.createElement('h2');

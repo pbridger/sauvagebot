@@ -20,7 +20,15 @@ import {
   type Sheet,
 } from './sheet.js';
 
-export type EntryList = 'edges' | 'hindrances';
+/**
+ * The three named-entry lists on a sheet.
+ *
+ * `powers` is optional where the other two are always present, which is why
+ * everything below reads `entriesIn` rather than `sheet[list]`. Damian: *"edit
+ * doesn't allow changing the Powers block"* — and it did not, because this type
+ * stopped one short.
+ */
+export type EntryList = 'edges' | 'hindrances' | 'powers';
 export type DerivedField = 'pace' | 'parry' | 'toughness' | 'armor';
 
 type Traits = Record<string, { die: DieSides; mod?: number }>;
@@ -104,8 +112,29 @@ export function setMaxWounds(sheet: Sheet, maxWounds: number | undefined): Sheet
   return { ...sheet, maxWounds: Math.max(0, Math.round(maxWounds)) };
 }
 
+/** The list, whether or not the sheet has one. Only `powers` can be absent. */
+export function entriesIn(sheet: Sheet, list: EntryList): readonly NamedEntry[] {
+  return sheet[list] ?? [];
+}
+
+/**
+ * Put a list back on the sheet, dropping `powers` entirely when it empties out.
+ *
+ * An empty array would be a sheet that *has* a Powers block with nothing in it,
+ * and `panel.ts` tests `sheet.powers?.length` to decide whether to print the
+ * heading. Under `exactOptionalPropertyTypes` the key has to be deleted rather
+ * than set to `undefined`.
+ */
+function withEntries(sheet: Sheet, list: EntryList, entries: NamedEntry[]): Sheet {
+  if (list === 'powers' && entries.length === 0) {
+    const { powers: _gone, ...rest } = sheet;
+    return rest as Sheet;
+  }
+  return { ...sheet, [list]: entries };
+}
+
 export function addEntry(sheet: Sheet, list: EntryList, entry: NamedEntry): Sheet {
-  return { ...sheet, [list]: [...sheet[list], entry] };
+  return withEntries(sheet, list, [...entriesIn(sheet, list), entry]);
 }
 
 export function updateEntry(
@@ -114,27 +143,32 @@ export function updateEntry(
   index: number,
   patch: Partial<NamedEntry>,
 ): Sheet {
-  const entries = sheet[list].map((entry, i) => {
+  const entries = entriesIn(sheet, list).map((entry, i) => {
     if (i !== index) return entry;
     const merged: NamedEntry = { ...entry, ...patch };
     if (merged.text !== undefined && !merged.text.trim()) delete merged.text;
     merged.name = merged.name.trim();
     return merged;
   });
-  return { ...sheet, [list]: entries };
+  return withEntries(sheet, list, entries);
 }
 
 export function removeEntry(sheet: Sheet, list: EntryList, index: number): Sheet {
-  return { ...sheet, [list]: sheet[list].filter((_, i) => i !== index) };
+  return withEntries(sheet, list, entriesIn(sheet, list).filter((_, i) => i !== index));
 }
 
 /** Drop entries with no name — the state an added-but-unfilled row is in. */
 export function pruneEmptyEntries(sheet: Sheet): Sheet {
-  return {
+  const pruned = {
     ...sheet,
     edges: sheet.edges.filter((e) => e.name.trim()),
     hindrances: sheet.hindrances.filter((e) => e.name.trim()),
   };
+  // Powers goes through `withEntries` so that emptying it removes the block
+  // rather than leaving a heading with nothing under it.
+  return sheet.powers
+    ? withEntries(pruned, 'powers', sheet.powers.filter((e) => e.name.trim()))
+    : pruned;
 }
 
 /**

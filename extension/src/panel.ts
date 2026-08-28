@@ -156,6 +156,8 @@ import { entryDisplayName, findEntry } from '../../src/rules/catalogue.js';
 import { addToHand, chooseFromHand, handOf } from '../../src/rules/hand.js';
 import { renderBadges } from './badges.js';
 import { MARSHAL_BENNIES, BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
+import { PowerBank } from '../../src/obr/powerBank.js';
+import { maxPowerPoints } from '../../src/rules/powers.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
 import { soak, soakedWounds } from '../../src/rules/damage.js';
 import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.js';
@@ -238,7 +240,10 @@ const budgetEl = el('budget');
 
 let roster: Roster;
 let bank: BennyBank;
+let powers: PowerBank;
 let bennies = new Map<string, number>();
+/** Current Power Points by sheet id. Absent means untouched, i.e. a full pool. */
+let powerPoints = new Map<string, number>();
 /**
  * The last trait roll each character made, so a Benny can buy it again.
  *
@@ -1493,6 +1498,90 @@ async function showBudget(): Promise<void> {
 
 // ---------------------------------------------------------------- rendering
 
+/**
+ * A caster's Power Point pool: `14 / 20`, with a spend and a recover.
+ *
+ * Damian: *"which also means we have no way of tracking power points"*. Minimal
+ * on purpose, per Paul — one player character and perhaps a couple of NPCs.
+ *
+ * Only appears for a sheet whose Powers block names a figure, so it stays off
+ * every gunslinger at the table. The maximum is read from that block rather than
+ * stored beside it: a Marshal correcting it edits the Powers section, which they
+ * can now do, and a second field would be a second place for it to be wrong.
+ *
+ * ±1 buttons rather than a box. Casting spends one at a time far more often than
+ * it spends five, and a spinner costs a drag where this costs a click. A press
+ * writes and re-renders from the store, so two clients cannot drift apart.
+ */
+function powerPointBar(sheet: Sheet): HTMLElement | undefined {
+  const max = maxPowerPoints(sheet);
+  if (max === undefined) return undefined;
+  const current = powerPoints.get(sheet.id) ?? max;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'pp-bar';
+
+  const label = document.createElement('span');
+  label.className = 'pp-label';
+  label.textContent = 'Power Points';
+  wrap.append(label);
+
+  const move = (delta: number, text: string, title: string): HTMLButtonElement => {
+    const button = document.createElement('button');
+    button.className = 'pp-step';
+    button.textContent = text;
+    button.title = title;
+    // A player may work their own pool; the Marshal may work anyone's. The same
+    // predicate the Action Card choice uses, for the same reason — token
+    // metadata is writable by every client, so this stops the misclick rather
+    // than the determined.
+    button.disabled =
+      !mayChooseFor(sheet) ||
+      (delta < 0 && current === 0) ||
+      (delta > 0 && current === max);
+    button.addEventListener('click', () => {
+      void (async () => {
+        try {
+          const next = await powers.adjust(sheet.id, delta, max);
+          powerPoints.set(sheet.id, next);
+          renderSheetArea();
+        } catch (error) {
+          notify(describe(error));
+        }
+      })();
+    });
+    return button;
+  };
+
+  wrap.append(move(-1, '−', 'Spend a Power Point'));
+
+  const count = document.createElement('span');
+  count.className = current === 0 ? 'pp-count empty' : 'pp-count';
+  count.textContent = `${current} / ${max}`;
+  wrap.append(count);
+
+  wrap.append(move(1, '+', 'Recover a Power Point'));
+
+  const rest = document.createElement('button');
+  rest.className = 'pp-rest';
+  rest.textContent = 'Full';
+  rest.title = 'Back to a full pool — a night’s rest';
+  rest.disabled = !mayChooseFor(sheet) || current === max;
+  rest.addEventListener('click', () => {
+    void (async () => {
+      try {
+        powerPoints.set(sheet.id, await powers.set(sheet.id, max, max));
+        renderSheetArea();
+      } catch (error) {
+        notify(describe(error));
+      }
+    })();
+  });
+  wrap.append(rest);
+
+  return wrap;
+}
+
 function section(title: string): HTMLElement {
   const h = document.createElement('h2');
   h.textContent = title;
@@ -1559,6 +1648,20 @@ function entryList(
   sheet: Sheet,
   entries: Sheet['edges'],
   notes: readonly AbilityNote[],
+  /**
+   * Whether these entries are *book* entries, whose name identifies a rule.
+   *
+   * True for Edges and Hindrances, false for the Powers block. Damian, with a
+   * screenshot: *"'Power points' should say the power points total, and not
+   * replicate the text of the 'Power points' edge."*
+   *
+   * Exactly that. The catalogue has an Edge named `POWER POINTS`; Jed Tuffin's
+   * card has a *powers* line also named `POWER POINTS`, whose text is the figure
+   * — `20`. `shown = brief ?? full` then preferred the Edge's summary and his
+   * actual number vanished behind the More toggle. A powers entry is character
+   * data that happens to share a name with a rule, so it looks nothing up.
+   */
+  fromBook = true,
 ): HTMLElement {
   const dl = document.createElement('dl');
   dl.className = 'entries';
@@ -1568,7 +1671,7 @@ function entryList(
     // have and far too long to sit under six of these at once, so what shows is
     // the book's own one-line summary and the full text is a click away.
     const full = entry.text?.trim();
-    const brief = findEntry(entry.name)?.summary?.trim();
+    const brief = fromBook ? findEntry(entry.name)?.summary?.trim() : undefined;
     const shown = brief ?? full;
     // Nothing to expand when the summary is all there is, or when the two say the
     // same thing — a control that reveals what is already on screen is worse than
@@ -1582,7 +1685,7 @@ function entryList(
     // `displayName`, not the raw stored name: sheets imported before the
     // catalogue was given one spelling still carry `X (IMP)`, and renaming the
     // book fixed the picker without touching anything on a sheet.
-    dt.textContent = entryDisplayName(entry.name);
+    dt.textContent = fromBook ? entryDisplayName(entry.name) : entry.name;
     if (note && note.klass !== 'text') {
       const tag = document.createElement('span');
       tag.className = `entry-tag ${note.klass}`;
@@ -3752,7 +3855,10 @@ function render(): void {
     sheetEl.append(section('Edges'), entryList(sheet, sheet.edges, notes));
   }
   if (sheet.powers?.length) {
-    sheetEl.append(section('Powers'), entryList(sheet, sheet.powers, notes));
+    sheetEl.append(section('Powers'));
+    const pool = powerPointBar(sheet);
+    if (pool) sheetEl.append(pool);
+    sheetEl.append(entryList(sheet, sheet.powers, notes, false));
   }
   renderGear(sheet, mods);
 
@@ -5808,6 +5914,7 @@ async function reload(): Promise<void> {
   }
   bennies = await bank.all();
   renderMarshal();
+  powerPoints = await powers.all();
   mineId = await myCharacter();
   const mySheets = visibleSheets();
   if (!mySheets.some((s) => s.id === selectedId)) {
@@ -6159,6 +6266,7 @@ OBR.onReady(async () => {
   // the catalogue, the same way `rebuildRulesText` takes its lookup.
   roster = await characterRoster(notify);
   bank = new BennyBank(store);
+  powers = new PowerBank(store);
 
   // Who I am, which the roster needs: a player sees their own sheets, the Marshal
   // sees all of them. Defaults stand if this fails, and a wrong default here shows
