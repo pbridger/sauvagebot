@@ -247,7 +247,10 @@ export function orphanedTokens(
  * token was duplicated and two tokens now share one wound total — see
  * `duplicateWildCard`.
  */
-export function tokensForSheet(tokens: readonly TokenLike[], sheetId: string): TokenLike[] {
+// Generic so a caller holding richer tokens gets them back whole. Declared as
+// `TokenLike[]` it silently downcast the scene's tokens to the bare interface,
+// which is how `visible` went missing at the one call site that needed it.
+export function tokensForSheet<T extends TokenLike>(tokens: readonly T[], sheetId: string): T[] {
   return tokens.filter((token) => readBinding(token.metadata)?.sheetId === sheetId);
 }
 

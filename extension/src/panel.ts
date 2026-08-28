@@ -551,9 +551,42 @@ function typedRollName(): string | undefined {
 }
 
 /** `{ character }` for a published line, absent for an NPC with no token. */
-function named(sheet: Sheet): { character?: string } {
+/**
+ * Whether a roll about this sheet should stay on this client.
+ *
+ * A token the players cannot see must not put its name in their log. This began
+ * life inside `applyDamage`, whose comment made the case well — *"'Robed Figure
+ * takes damage' is the ambush introducing itself"* — and then stayed there,
+ * applying to exactly one of the two dozen calls that name a character. Damian
+ * found the gap from the other side: *"is it deliberate that NPCs that are 'Out'
+ * of the fight and whose tokens are hidden still broadcast their rolls?"*
+ *
+ * "Out" is incidental — hidden is the part that matters, and downed NPCs are
+ * simply the ones most often hidden.
+ *
+ * Only NPCs can trip it. A PC is named by `rollerName` from the sheet whatever
+ * their token is doing, and a player whose own token is briefly off the map
+ * should still see their own rolls shared.
+ */
+function hiddenOnMap(sheet: Sheet): boolean {
+  if (sheet.pc) return false;
+  return activeToken(sheet)?.token.visible === false;
+}
+
+/**
+ * The character a roll is about, and whether saying so would give them away.
+ *
+ * Returned together on purpose. These are two answers to one question — "may the
+ * table be told about this character?" — and every call site that spreads this
+ * gets the second for free. Keeping them apart is what let the rule sit on one
+ * call site for months.
+ */
+function named(sheet: Sheet): { character?: string; secret?: true } {
   const who = rollerName(sheet);
-  return who ? { character: who } : {};
+  return {
+    ...(who ? { character: who } : {}),
+    ...(hiddenOnMap(sheet) ? { secret: true as const } : {}),
+  };
 }
 
 /**
@@ -574,7 +607,6 @@ function publishTrait(
   /** Set when this *is* a reroll, so it does not overwrite what it is redoing. */
   isReroll = false,
 ): string {
-  const who = rollerName(sheet);
   const from = activeToken(sheet)?.token.id;
   // Every trait roll off a sheet comes through here, which is what makes this the
   // one honest place to remember "the last one". A Benny reroll needs the whole
@@ -597,7 +629,8 @@ function publishTrait(
 
   return publish(
     {
-      ...(who ? { character: who } : {}),
+      // `named`, not `who` alone: it carries the "hidden on the map" screen too.
+      ...named(sheet),
       label,
       expression: result.expression,
       // A Fighting roll's verdict belongs to the targeting table, which knows
@@ -2681,7 +2714,12 @@ function portrait(sheet: Sheet): HTMLElement | undefined {
  * For an Extra many tokens share one sheet, so "the" token is whichever is
  * selected — otherwise clicking a wound would damage an arbitrary bandit.
  */
-function activeToken(sheet: Sheet): { token: TokenLike; state: TokenState } | undefined {
+// The scene's own token type, not the bare `TokenLike` this used to declare.
+// `visible` is the reason: it is on every token the panel holds and was being
+// annotated away here, so `hiddenOnMap` could not ask the question.
+type SceneToken = (typeof tokens)[number];
+
+function activeToken(sheet: Sheet): { token: SceneToken; state: TokenState } | undefined {
   const bound = tokensForSheet(tokens, sheet.id);
   const token = bound.find((t) => t.id === selectedTokenId) ?? bound[0];
   const state = token && readBinding(token.metadata);
@@ -5787,6 +5825,11 @@ async function applyToTarget(
     // through the target list — that already screens the eye — but the Marshal
     // can select one and apply by hand, and "Robed Figure takes damage" is the
     // ambush introducing itself.
+    //
+    // Kept here rather than deferred to `named`, for the same reason `character`
+    // is: this call has the token that was *actually hit*, where `named` asks
+    // `activeToken` and with five bandits on one sheet that is as likely to be a
+    // different bandit. The rule is the same; the token it is asked about is not.
     ...(target.token.visible === false ? { secret: true } : {}),
   });
 }
