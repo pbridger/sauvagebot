@@ -10,6 +10,43 @@ reload.
 
 ---
 
+## 2026-08-28 — Why the chip never hit anything
+
+It was aimed at the middle of the table, every time, because **nobody was
+receiving**.
+
+A Benny only knows where to fly if a player at the table has claimed the sheet it
+is going to. Marshal alone in the room, testing? Nobody has claimed anything, so
+every toss took the no-receiver branch — which aimed at the centre of the felt and
+was solved to stop there. A throw that stops in the middle never reaches a rail.
+Reproduced exactly: **0 rail contacts in 40 throws**, which is the number reported.
+
+A chip flung onto the table now goes right *across* it, finds the far rail and
+comes back off it, which is both what happens when you toss a chip into the pot
+and a throw with something in it. **100% of throws now strike a rail** — every seat
+arrangement, every screen size, receiver or not.
+
+**And the bounce is worth watching now.** The rail was too polite. Making it
+springier was the obvious fix and the wrong one: the rebound looked great and
+carried the chip back up the table, with only 58% finishing at the end they were
+thrown to. The answer was the other corner — hit the rail *hard* and come off it
+*dead*. The chip now arrives at nearly twice the speed, rebounds a clearly visible
+275px, and **97.6%** of throws finish in the receiver's half. It is thrown almost
+three times as hard as the distance needs, so the whole thing is played back
+slower to compensate — 0.45s to the rail, about 1.2s in all.
+
+**More spin, too**: five to eleven revolutions a second off the hand, two to five
+turns before it settles.
+
+**The Marshal's Benny counter at 0.** The gap beside the 0 was never the digit —
+it was the − button next to it. With nothing to spend it is disabled, and the
+app's general disabled style fades a button to 45% of an already-grey colour,
+which is close enough to invisible that the strip read as *gap, 0, +*. The spacing
+never changed; the glyph that fills it stopped being drawn. It now stays fully
+drawn in a faint rule colour: plainly inert, but still there.
+
+---
+
 ## 2026-08-28 — A chip you can see spinning, that actually hits something
 
 Three complaints about the Benny chip, all fair, all now measured rather than

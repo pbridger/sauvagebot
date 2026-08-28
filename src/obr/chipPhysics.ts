@@ -60,13 +60,21 @@ export const CHIP = {
   /**
    * The rail at the edge of the felt.
    *
-   * Deader than the dice's 0.7, which is right for an acrylic die on a hard wall and
-   * wrong for a clay chip on a padded table edge. It is also the number that decides
-   * how far the chip comes back off the rail: at 0.7 the liveliest throws rebounded
-   * to the middle of the table, which loses the point of a chip being *at* somebody.
-   * Swept — 0.45 keeps the strike rate at 97% and takes a fifth off the resting error.
+   * This and `overthrow` are one setting in two parts, and the pair took three goes.
+   *
+   * A big rebound and a chip that stays with the person it was thrown to pull against
+   * each other, because both come out of the same arriving energy. 0.45/1.25 rebounded
+   * **142px** — a nudge, reported as no bounce at all. Going the obvious way,
+   * 0.75/1.5, rebounded a fine 416px but sent the chip back up the table: only **58%**
+   * finished in the receiver's half and the unluckiest came to rest a third of the way
+   * back. The average alone hid that; the distribution did not.
+   *
+   * The way out is the other corner — hit the rail *hard* and come off it *dead*.
+   * 0.35/2.8 arrives at 2609px/s against 1416, which is what makes the contact read as
+   * a contact, rebounds a plainly visible 275px, and leaves **100%** of throws in the
+   * receiver's half with the fifth percentile still past the middle of the table.
    */
-  wallRestitution: 0.45,
+  wallRestitution: 0.35,
   /**
    * Friction at the wall, which is what couples spin to travel. Without it a chip
    * reflects like a billiard ball and the spin is decoration; with it, a chip that
@@ -74,8 +82,8 @@ export const CHIP = {
    * convincing thing in the whole animation.
    */
   wallFriction: 0.25,
-  /** A flicked chip turns fast: three to seven revolutions a second. */
-  spin: { min: 19, max: 44 },
+  /** A flicked chip turns fast: five to eleven revolutions a second. */
+  spin: { min: 32, max: 70 },
   /**
    * How wide the aim wanders, in degrees either side.
    *
@@ -96,18 +104,14 @@ export const CHIP = {
    * is going never reaches anything to hit. Nobody slides a chip that way. You throw
    * it at the person, it runs into the rail in front of them and comes back off it.
    *
-   * Tuned by sweeping it, not by eye. The first cut struck a wall on **15%** of
-   * throws, which is exactly the "it hits nothing" it was reported as. Aiming past
-   * the receiver at the rail and overthrowing by a quarter takes that to **95%** on
-   * every case that has a receiver, while holding the average resting error to about
-   * 250px on a 1512px screen — still plainly at the right person. Pushing to 1.4
-   * buys the last 5% and costs a fifth more error, which is a bad trade: 95% and
-   * 100% are the same thing to somebody watching, and the aim is not.
-   *
-   * The one case that still mostly hits nothing is a Benny with no receiver, which
-   * is aimed at the middle of the table and has no rail to find. That is correct.
+   * Tuned by sweeping it, not by eye. The first cut struck a rail on **15%** of
+   * throws, which is exactly the "it hits nothing" it was reported as; aiming past
+   * the receiver took that to 95%+ on every screen size and seat count. But striking
+   * a rail and *visibly bouncing off* one are different things, and the second report
+   * — "no bounce" — was about the second. See `wallRestitution` for how the pair of
+   * them settled, and why this number ended up as large as it is.
    */
-  overthrow: 1.25,
+  overthrow: 2.8,
   /** 2 cm/s, as for the dice, before it counts as stopped. */
   stillSpeed: 0.02,
   /**
@@ -117,8 +121,15 @@ export const CHIP = {
    * gunshot. Gentler than the dice's 0.4 because a slide is already slower than a
    * throw, and because there is nothing here to *land* — no moment that has to be
    * legible, just a chip running out.
+   *
+   * Dropped from 0.8 when `overthrow` went up: a chip thrown nearly three times as
+   * hard as it strictly needs reached the rail in **0.33s**, which is too quick to
+   * enjoy the one moment the throw is for. 0.6 puts the contact at 0.45s and the
+   * whole thing at 1.19s. Scaling time is exactly the right dial for this, because it
+   * changes nothing about the trajectory — the chip still turns the same 2 revolutions
+   * on the way, as the sweep confirms it does at every scale.
    */
-  timeScale: 0.8,
+  timeScale: 0.6,
 } as const;
 
 /**

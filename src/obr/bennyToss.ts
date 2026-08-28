@@ -62,8 +62,16 @@ export function isBennyToss(value: unknown): value is BennyToss {
  *
  *   - **normally**, edge to edge: from where the Marshal sits to where the player
  *     sits, which on the player's own screen means it slides down to them.
- *   - **no receiver**, edge to middle: the chip goes onto the table. Used for an
- *     NPC, and for a player who is not in the room.
+ *   - **no receiver**, edge to the *opposite* edge: the chip is flung across the
+ *     table. Used for an NPC, and for a player who is not in the room.
+ *
+ *     Aimed at the middle at first, which is the obvious reading of "it goes on the
+ *     table" and was wrong in a way only measurement found. A throw solved to stop
+ *     in the middle never reaches a rail — 0 contacts in 40, exactly as reported from
+ *     a Marshal testing alone in an empty room, where *every* toss takes this branch
+ *     because nobody has claimed a sheet. Thrown across instead, it finds the far
+ *     rail and comes back off it, and settles about where a chip tossed into the pot
+ *     settles. Same meaning, and it is a throw rather than a placement.
  *   - **giver is the receiver** — the Marshal taking one for themselves — middle to
  *     edge. Sliding from a place to the same place is no movement at all, so the
  *     chip is taken *off* the table instead. That reads correctly for the one thing
@@ -71,7 +79,8 @@ export function isBennyToss(value: unknown): value is BennyToss {
  */
 export function tossPath(mine: number, toss: BennyToss): { from: SeatVector; to: SeatVector } {
   if (toss.to === undefined) {
-    return { from: relativeVector(mine, toss.from, toss.places), to: { ...CENTRE } };
+    const from = relativeVector(mine, toss.from, toss.places);
+    return { from, to: { x: -from.x, y: -from.y } };
   }
   if (toss.to === toss.from) {
     return { from: { ...CENTRE }, to: relativeVector(mine, toss.to, toss.places) };

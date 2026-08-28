@@ -945,9 +945,21 @@ button.apply {
   color: var(--accent);
 }
 /* Nothing to spend reads differently from having one. Colour only — dropping the
-   weight as well left a light "0" floating in a slot sized for a bold digit, and
-   the gap either side of it was the first thing Paul noticed. */
+   weight as well left a light "0" floating in a slot sized for a bold digit. */
 #marshal.empty #marshal-count { color: var(--muted); }
+
+/* The "too much space at 0" that survived the first fix, which had gone looking at
+   the digit when the hole was beside it.
+
+   With no Bennies the − is disabled, and the global `button:disabled` fades it to
+   45% of an already-muted grey. That is close enough to invisible that the strip
+   reads as a gap, then a 0, then a +, which is exactly "too much space" — the
+   spacing never changed, the glyph that fills it stopped being drawn. Kept at full
+   opacity in a rule colour instead: plainly inert, but still a mark on the page. */
+#marshal button:disabled {
+  opacity: 1;
+  color: var(--rule);
+}
 
 /* ---- initiative ------------------------------------------------------ */
 

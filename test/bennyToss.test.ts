@@ -34,11 +34,18 @@ describe('which way a chip travels', () => {
     expect(at(from)).not.toEqual(at(to));
   });
 
-  it('puts a chip on the table when nobody at the table is receiving', () => {
-    // An NPC Wild Card, or a player who is not in the room.
+  /**
+   * An NPC Wild Card, or a player who is not in the room. This used to aim at the
+   * middle of the table, which is the obvious reading of "it goes on the table" and
+   * is a throw that reaches nothing: measured at **0 rail contacts in 40**, which is
+   * exactly what a Marshal testing alone in an empty room sees, because with nobody
+   * to claim a sheet every single toss takes this branch.
+   */
+  it('flings a chip right across the table when nobody is receiving', () => {
     const { from, to } = tossPath(1, { from: 0, places: 4 });
-    expect(to).toEqual(CENTRE);
-    expect(at(from)).not.toEqual(at(CENTRE));
+    expect(to).not.toEqual(CENTRE);
+    // Straight across: the far edge, so there is a rail at the end of it.
+    expect(at(to)).toEqual(at({ x: -from.x, y: -from.y }));
   });
 
   it('takes a chip off the table when the giver is the receiver', () => {
