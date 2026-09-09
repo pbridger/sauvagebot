@@ -136,12 +136,16 @@ describe('the real Reggie Kane card', () => {
     expect(reggie.gear).toContain('armored vest (+2');
   });
 
-  it('reads all five edges and both hindrances with their rules text', () => {
+  it('reads all six edges and both hindrances with their rules text', () => {
     expect(reggie.edges.map((e) => e.name)).toEqual([
       'AGENT',
       'AGENCY PROMOTION',
       'GUTS',
       'INVESTIGATOR',
+      // The Seasoned advance taken in play. `hasMarksman` in `shot.ts` reads this
+      // name off the sheet to decide whether to offer the Edge on a shot, so the
+      // card being the thing that carries it is not incidental.
+      'MARKSMAN',
       'ROCK AND ROLL!',
     ]);
     expect(reggie.hindrances.map((h) => h.name)).toEqual(['CURIOUS (MAJOR)', 'DRIVEN (MAJOR)']);

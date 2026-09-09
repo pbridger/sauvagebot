@@ -90,8 +90,9 @@ describe('the shared rules-text dictionary', () => {
     const { backend, roster } = newRoster();
     for (let i = 0; i < 6; i++) await roster.save({ ...reggie, id: `pc-${i}`, name: `PC ${i}` });
     const dictionary = JSON.stringify(backend.data[TEXT_KEY]);
-    // Seven entries stored once, though six characters reference them.
-    expect(Object.keys(backend.data[TEXT_KEY] as object)).toHaveLength(7);
+    // Reggie's six Edges and two Hindrances: eight entries stored once, though
+    // six characters reference them.
+    expect(Object.keys(backend.data[TEXT_KEY] as object)).toHaveLength(8);
     expect(dictionary.length).toBeLessThan(sheetToJson(reggie).length * 1.5);
   });
 
@@ -314,6 +315,53 @@ describe('preferring the book to the stored copy', () => {
   it('leaves an entry bare when neither has it', () => {
     const lean = { ...emptySheet('x', 'X'), edges: [{ name: 'UNKNOWN' }] };
     expect(joinSheet(lean, {}, book).edges[0]?.text).toBeUndefined();
+  });
+
+  /**
+   * Damian, 2026-09-08: *"I have a character for whom I have edited the text of the
+   * Edge; it keeps losing these edits."* The trigger was every save, not a scene
+   * change: an edited Edge whose **name** the book knew was stripped and stored
+   * nowhere. See MECHANICS-INVENTORY.md §18.2.
+   */
+  describe('an entry somebody edited by hand', () => {
+    const edited = (): Sheet => ({
+      ...emptySheet('reggie', 'Reggie'),
+      edges: [{ name: 'QUICK', text: 'Ours only works at night.', edited: true }],
+      hindrances: [],
+    });
+
+    it('stays on the sheet instead of being dropped for the book', () => {
+      const { lean, text } = splitSheet(edited(), book);
+      expect(lean.edges[0]).toEqual({ name: 'QUICK', text: 'Ours only works at night.', edited: true });
+      // Not in the shared dictionary: that is keyed by name, so it would have
+      // handed this note to every other character with the same Edge.
+      expect(text).toEqual({});
+    });
+
+    it('is not overwritten by the book on the way back out', () => {
+      const { lean, text } = splitSheet(edited(), book);
+      expect(joinSheet(lean, text, book).edges[0]?.text).toBe('Ours only works at night.');
+    });
+
+    it('survives a save and a read, which is where it used to vanish', async () => {
+      const { roster } = booked();
+      await roster.save(edited());
+      const back = await roster.get('reggie');
+      expect(back?.edges[0]?.text).toBe('Ours only works at night.');
+    });
+
+    it('survives the button that clears stored rules text', async () => {
+      const { roster } = booked();
+      await roster.save(edited());
+      await roster.pruneRulesText();
+      expect((await roster.get('reggie'))?.edges[0]?.text).toBe('Ours only works at night.');
+    });
+
+    it('still drops an unedited card summary the book supersedes', () => {
+      // The exemption must not become a general "keep everything": the card text
+      // is AI-written and loses clauses the book has (§12.5c).
+      expect(splitSheet(sheet(), book).lean.edges[0]).toEqual({ name: 'QUICK' });
+    });
   });
 
   it('saves a whole sheet with only the homebrew stored', async () => {

@@ -512,10 +512,74 @@ export function calledShotDamage(vitals: boolean): number {
 
 export type Aim = 'off' | 'cancel' | 'bonus';
 
+/**
+ * Which of the two things is paying for the cancellation.
+ *
+ * Marksman is *"a lesser version of the Aim maneuver"* (p45) in the book's own
+ * words, and it is lesser in exactly two numbers — 1 instead of 2, 2 points
+ * instead of 4. The list of what those points may be spent on is **the same five
+ * categories, verbatim**: Aim reads `"Range, Cover, Called Shot, Scale, or
+ * Speed"` (p152) and Marksman reads `"Called Shots, Cover, Range, Scale, or
+ * Speed"` (p45). Same set, different order. That identity is what makes this a
+ * parameter rather than a second implementation, and it is checked rather than
+ * assumed because `ModCategory` exists precisely because the list is exact.
+ *
+ * They do not stack — *"This is a lesser version of the Aim maneuver and does not
+ * stack with it"* — which is why this is one field and not two, and why the panel
+ * offers them on a single row of buttons.
+ */
+export type AimSource = 'aim' | 'marksman';
+
 /** What Aim is worth when taken as a flat bonus instead. */
 export const AIM_BONUS = 2;
 /** How many points of eligible penalty Aim can cancel instead. */
 export const AIM_BUDGET = 4;
+/** Marksman's flat bonus — `"+1 to an Athletics (throwing) or Shooting roll"`, p45. */
+export const MARKSMAN_BONUS = 1;
+/** `"or ignore up to 2 points of penalties"` — p45. */
+export const MARKSMAN_BUDGET = 2;
+
+/**
+ * The Edge, on the sheet.
+ *
+ * Matched on the name alone. Unlike `negatesRecoil` there is nothing to match on
+ * the weapon: Marksman is a property of the shooter, and no gun grants it.
+ */
+const MARKSMAN = /\bmarksman\b/i;
+
+export function hasMarksman(edgeNames: readonly string[]): boolean {
+  return edgeNames.some((name) => MARKSMAN.test(name));
+}
+
+/**
+ * Whether Marksman may be used on this shot at all, from what the app can see.
+ *
+ * `"If they don't move in a turn and fire no more than a Rate of Fire of 1 as
+ * their first action"` — p45. Three conditions, and the app has honest signals
+ * for two:
+ *
+ *   - **RoF 1.** The *declared* Rate of Fire for the action, not `shotsFired` —
+ *     see the caller. This is what rules out Reggie's Gatling pistol, whose own
+ *     gear note says it must fire its full RoF 3.
+ *   - **Didn't move.** Known only as far as the Running condition on the token,
+ *     which is the case a player actually gets wrong: running and then claiming
+ *     the Edge in the same turn.
+ *   - **First action only**, and *"doesn't apply to additional attacks after the
+ *     first"*. Not knowable — a shot cannot see the other shot, the same limit
+ *     `recoilFor` already notes. Left to the tooltip and the Marshal.
+ *
+ * Returns the reason rather than a bare false, because a button that is disabled
+ * without saying why is the failure this codebase keeps calling out: `applyAim`
+ * reports its unspent points instead of banking them, for the same reason.
+ */
+export function marksmanBlockedBy(
+  request: Pick<ShotRequest, 'rof' | 'state'>,
+): string | undefined {
+  if (request.rof > 1) return 'Marksman needs a single shot — no more than RoF 1 (p45)';
+  if ((request.state?.conditions ?? []).includes('running'))
+    return 'Marksman needs a standing shot — not in a turn spent running (p45)';
+  return undefined;
+}
 
 export interface AimResult {
   /** The modifiers as they now stand, with cancelled ones reduced or removed. */
@@ -548,21 +612,31 @@ export interface AimResult {
  * elsewhere can dial the difference. Committing an answer nobody can see is the
  * failure mode §8.1 names.
  */
-export function applyAim(mods: readonly ShotMod[], aim: Aim): AimResult {
+export function applyAim(
+  mods: readonly ShotMod[],
+  aim: Aim,
+  source: AimSource = 'aim',
+): AimResult {
   if (aim === 'off') return { mods: [...mods], spent: [], unspent: 0 };
+
+  const marksman = source === 'marksman';
 
   if (aim === 'bonus') {
     return {
       mods: [
         ...mods,
         {
-          key: 'aim',
-          label: 'Aim',
-          value: AIM_BONUS,
+          // Its own key, not `'aim'`: the log would otherwise say this character
+          // spent a turn aiming when they stood still and used an Edge.
+          key: marksman ? 'marksman' : 'aim',
+          label: marksman ? 'Marksman' : 'Aim',
+          value: marksman ? MARKSMAN_BONUS : AIM_BONUS,
           category: 'other',
           kind: 'fact',
           scope: 'shot',
-          note: 'Spent the whole of last turn aiming, taken as a flat bonus (p152).',
+          note: marksman
+            ? 'Stood still and fired one shot, taken as a flat bonus (p45).'
+            : 'Spent the whole of last turn aiming, taken as a flat bonus (p152).',
         },
       ],
       spent: [],
@@ -570,7 +644,7 @@ export function applyAim(mods: readonly ShotMod[], aim: Aim): AimResult {
     };
   }
 
-  let budget = AIM_BUDGET;
+  let budget = marksman ? MARKSMAN_BUDGET : AIM_BUDGET;
   const spent: AimResult['spent'] = [];
   // Largest penalty first, so the four points buy as much as they can.
   const order = [...mods]
@@ -625,6 +699,13 @@ export interface ShotRequest {
   /** How many Shooting dice, already chosen — the ceiling is the weapon's. */
   rof: number;
   aim: Aim;
+  /**
+   * Whether the cancellation is being paid for by Aim or by the Marksman Edge.
+   *
+   * Defaults to Aim, so every existing caller keeps its meaning. They do not
+   * stack (p45), which is why this selects between them rather than adding.
+   */
+  aimSource?: AimSource | undefined;
   /**
    * A called shot, as the Scale of what is being aimed at — p161, `SCALES`.
    *
@@ -681,7 +762,7 @@ export function shotTotal(request: ShotRequest): ShotTotal {
   const recoil = recoilFor(request.rof, request.steady ?? false);
   if (recoil) base.push(recoil);
 
-  const aim = applyAim(base, request.aim);
+  const aim = applyAim(base, request.aim, request.aimSource ?? 'aim');
   const mods = [...aim.mods];
 
   // The persistent track — wounds, fatigue, the dark, an unstable platform —

@@ -47,6 +47,15 @@ import type { Seat } from './diceThrow.js';
 export const PLACE_PREFIX = 'com.savagebot/place/';
 export const DICE_PREFIX = 'com.savagebot/dice-anim/';
 
+/**
+ * Which character a player last had open. Not seating, but the third key of the
+ * same shape — per player, in the room, and resting on the same assumption that
+ * `OBR.player.id` is stable across sessions. It lives beside the other two so that
+ * anything counting per-player keys, `storageReport` included, has one place to
+ * find them rather than a string literal in the panel.
+ */
+export const MINE_PREFIX = 'com.savagebot/mine/';
+
 export interface Seated {
   id: string;
   name: string;

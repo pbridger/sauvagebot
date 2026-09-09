@@ -44,7 +44,17 @@ import { runningDie, runningExpression } from '../../src/rules/running.js';
 import { JavaRandom } from '../../src/dice/javaRandom.js';
 import { parse } from '../../src/dice/parser.js';
 import { rollAttribute, rollSkill, totalsOf } from '../../src/rules/traitRoll.js';
+import { entryBlocks, narrowEntry } from '../../src/rules/entryText.js';
 import { Roster, type Scope } from '../../src/obr/roster.js';
+import {
+  keyCost,
+  leftoverChars,
+  leftoverKeys,
+  reportDocument,
+  type DocumentReport,
+  type StorageRow,
+} from '../../src/obr/storageReport.js';
+import { ROOM_CAPACITY, SCENE_CAPACITY } from '../../src/obr/store.js';
 import {
   ROLL_CHANNEL,
   RollLog,
@@ -92,6 +102,8 @@ import {
   calledShotDamage,
   describeAmendment,
   firesBuckshot,
+  hasMarksman,
+  marksmanBlockedBy,
   maxRateOfFire,
   reachesExtreme,
   shotTotal,
@@ -100,6 +112,7 @@ import {
   shotgunMod,
   straysAsFired,
   type Aim,
+  type AimSource,
   type ShotMod,
   type ShotTotal,
 } from '../../src/rules/shot.js';
@@ -126,7 +139,9 @@ import {
   FATIGUE_NAMES,
   MAX_FATIGUE,
   describeStatus,
+  effectivePace,
   isIncapacitated,
+  pacePenalty,
   woundLimit,
   rollBreakdown,
   setFatigue,
@@ -187,6 +202,7 @@ import {
   resetAllTokens,
   roomStore,
   roster as characterRoster,
+  sceneStore,
   setHands,
   unbindToken,
   updateTokenState,
@@ -206,6 +222,7 @@ import {
 import { BENNY_CHANNEL, type BennyToss } from '../../src/obr/bennyToss.js';
 import {
   DICE_PREFIX,
+  MINE_PREFIX,
   PLACE_PREFIX,
   assignPlaces,
   ringSize,
@@ -314,7 +331,7 @@ let me = 'someone';
 /** Set only for the duration of one roll, by the Secret button. */
 let secretRolls = false;
 let editing = false;
-type Tab = 'sheet' | 'initiative' | 'table';
+type Tab = 'sheet' | 'initiative' | 'table' | 'storage';
 let tab: Tab = 'sheet';
 let isGM = false;
 let initiative: InitiativeState | undefined;
@@ -360,9 +377,28 @@ const held = new Map<string, ReturnType<typeof setTimeout>>();
 
 // ---------------------------------------------------------------- chrome
 
-function notify(message: string | undefined): void {
-  noticeEl.textContent = message ?? '';
+/**
+ * The notice bar, optionally with one thing to do about it.
+ *
+ * The action exists for **Undo**, and it is deliberately preferred to a confirm
+ * dialog for deletions the Storage pane offers: a confirm only protects the person
+ * who reads it, and costs a press every time for the many presses that were meant.
+ * Undo costs nothing when the press was intended and recovers it when it was not.
+ */
+function notify(message: string | undefined, action?: { label: string; run: () => void }): void {
+  noticeEl.replaceChildren();
   noticeEl.hidden = !message;
+  if (!message) return;
+  noticeEl.append(message);
+  if (!action) return;
+  const button = document.createElement('button');
+  button.className = 'notice-action';
+  button.textContent = action.label;
+  button.addEventListener('click', () => {
+    notify(undefined);
+    action.run();
+  });
+  noticeEl.append(' ', button);
 }
 
 function describe(error: unknown): string {
@@ -880,17 +916,33 @@ const RAISE_DIE = 'd6!';
  * Rolled as a plain `d6`, never the savage `s6`/`e6` the rest of the sheet uses:
  * running dice do not Ace, and an exploding one would hand out the occasional
  * eleven-inch sprint that looked like luck.
+ *
+ * `pace` arrives with wounds already taken off it (`effectivePace`), and the die
+ * is left alone. That split is the rule, not a convenience: p148 puts the wound
+ * penalty on Pace and on Trait rolls, and a running die is neither — it is why
+ * this button does not go near `modsFor` like every other button on the sheet.
+ * Routing it through there would subtract the wounds a second time.
  */
 function runButton(sheet: Sheet, pace: number): HTMLElement {
   const die = runningDie(sheet);
   const expression = runningExpression(die);
   const button = document.createElement('button');
   button.className = 'run';
-  button.textContent = expression;
+  // "Run d6", not a bare "d6". Beside three flat numbers a lone die reads as
+  // another statistic rather than as the one thing on the row you can press, and
+  // it does not say what pressing it means.
+  button.textContent = `Run ${expression}`;
   button.title =
-    `Run: ${expression} added to Pace ${pace} for the round, at −2 to every action ` +
-    `this turn (p151). The die never Aces.` +
-    (die.why.length ? ` ${die.why.join(', ')}.` : '');
+    `Run: roll ${expression} and add it to Pace ${pace} for the round (p151). ` +
+    `The die never Aces, so no eleven-inch sprints.\n\n` +
+    // The answer to "does it penalise actions?" — yes, and the app does not set
+    // it for you. Said here because this button is where the question is asked.
+    `Running costs −2 to every action you take this turn. That is not applied ` +
+    `automatically: switch on Running in the modifiers below to carry it, and ` +
+    `switch it off at the end of the turn.` +
+    // "from", not "stepped by": the die may have been stated by a stat block or
+    // typed into the sheet, neither of which is a step along the ladder.
+    (die.why.length ? `\n\nRunning die from: ${die.why.join(', ')}.` : '');
   button.addEventListener('click', () => {
     const dice: DieEvent[] = [];
     const explained = new RollInterpreter(
@@ -1645,6 +1697,58 @@ function traitButton(
  * already says. An entry named with no text at all is the opposite case — the
  * tooltip is the only thing there is to read.
  */
+/**
+ * Lay rules prose out, rather than pouring it in as one string.
+ *
+ * Damian, 2026-09-08: *"this block of unformatted text is a little impractical!"*
+ * — Superior Kung Fu, 2,600 characters of it, seven styles run together into a
+ * single paragraph with the book's bullets showing as boxes. `entryBlocks` does
+ * the reading; this does the DOM.
+ *
+ * A one-paragraph entry still takes the plain-text path, which is nearly every
+ * entry in the book and every summary: the layout should appear where it is needed
+ * and be invisible everywhere else.
+ */
+function paintProse(host: HTMLElement, text: string): void {
+  const blocks = entryBlocks(text);
+  if (blocks.length <= 1) {
+    const only = blocks[0];
+    // Keep the run-in heading even here: an entry that is *all* list items shows
+    // one clause with a chosen style, and printing it without its name would be a
+    // rule floating free of what it belongs to.
+    host.textContent = only ? (only.heading ? `${only.heading}: ${only.text}` : only.text) : '';
+    return;
+  }
+
+  host.replaceChildren();
+  let list: HTMLUListElement | undefined;
+  for (const block of blocks) {
+    if (block.kind === 'paragraph') {
+      // A paragraph closes any list above it, so a trailing note does not become
+      // a nameless eighth style.
+      list = undefined;
+      const para = document.createElement('p');
+      para.className = 'entry-para';
+      para.textContent = block.text;
+      host.append(para);
+      continue;
+    }
+    if (!list) {
+      list = document.createElement('ul');
+      list.className = 'entry-items';
+      host.append(list);
+    }
+    const item = document.createElement('li');
+    if (block.heading) {
+      const name = document.createElement('b');
+      name.textContent = block.heading;
+      item.append(name, ' ');
+    }
+    item.append(block.text);
+    list.append(item);
+  }
+}
+
 function entryList(
   sheet: Sheet,
   entries: Sheet['edges'],
@@ -1671,7 +1775,9 @@ function entryList(
     // `entry.text` is the book's full entry, reattached by `joinSheet`. Good to
     // have and far too long to sit under six of these at once, so what shows is
     // the book's own one-line summary and the full text is a click away.
-    const full = entry.text?.trim();
+    // Narrowed to the chosen style *before* anything measures it — see
+    // `narrowEntry`. With a style picked, the other six are somebody else's rules.
+    const full = narrowEntry(entry.text?.trim() ?? '', entry.choice).trim() || undefined;
     const brief = fromBook ? findEntry(entry.name)?.summary?.trim() : undefined;
     const shown = brief ?? full;
     // Nothing to expand when the summary is all there is, or when the two say the
@@ -1687,6 +1793,17 @@ function entryList(
     // catalogue was given one spelling still carry `X (IMP)`, and renaming the
     // book fixed the picker without touching anything on a sheet.
     dt.textContent = fromBook ? entryDisplayName(entry.name) : entry.name;
+    // The style is part of what the Edge *is* for this character, so it belongs in
+    // the name rather than buried in the prose: "Superior Kung Fu (Eagle Claw)".
+    if (entry.choice) {
+      const picked = document.createElement('span');
+      picked.className = 'entry-choice';
+      // Left in the book's capitals, like the name it hangs off: the catalogue is
+      // in capitals throughout and case-correcting only this half would look like
+      // two different sources disagreeing on the same line.
+      picked.textContent = ` (${entry.choice})`;
+      dt.append(picked);
+    }
     if (note && note.klass !== 'text') {
       const tag = document.createElement('span');
       tag.className = `entry-tag ${note.klass}`;
@@ -1704,7 +1821,7 @@ function entryList(
     // then destroyed by the first `paint()` before anyone ever saw it.
     const prose = document.createElement('span');
     prose.className = 'entry-prose';
-    if (shown) prose.textContent = shown;
+    if (shown) paintProse(prose, shown);
     dd.append(prose);
 
     // The Edge that drew the extra cards is the second place the hand appears —
@@ -1728,7 +1845,7 @@ function entryList(
         toggle.textContent = open ? 'Less' : 'More';
         toggle.setAttribute('aria-expanded', String(open));
         toggle.title = open ? 'Show the short version' : 'Show the full rulebook entry';
-        prose.textContent = open ? full! : brief!;
+        paintProse(prose, open ? full! : brief!);
         dd.classList.toggle('full', open);
       };
       toggle.addEventListener('click', () => {
@@ -1747,13 +1864,91 @@ function entryList(
   return dl;
 }
 
+/**
+ * What was on screen last time, so a repaint can put the scroll back.
+ *
+ * Not just the tab: swapping character or opening the editor is a different page
+ * and should start at the top, the same as changing tab does.
+ */
+let paintedView: string | undefined;
+
+/**
+ * Repaint, keeping your place on the page.
+ *
+ * Damian, 2026-09-08: *"When I click 'Clear Bennies', '+1 Benny to all PCs', and
+ * 'Reset Scene' it jumps to the bottom… particularly annoying when trying to
+ * initialise the session (with 3 bennies each), having to scroll back up and find
+ * the right button again instead of 3 quick clicks."*
+ *
+ * The cause is `replaceChildren`: the scroll position belongs to the nodes being
+ * thrown away, so every repaint silently reset it. Restoring it is safe against a
+ * shorter page — the browser clamps — and is deliberately *not* done when the view
+ * itself changed, where starting at the top is what you want.
+ */
 function renderSheetArea(): void {
+  const view = `${tab}|${selectedId ?? ''}|${editing}|${pasting}`;
+  const keepAt = paintedView === view ? sheetEl.scrollTop : 0;
+  paintSheetArea();
+  paintedView = view;
+  restoreScroll(keepAt);
+}
+
+/**
+ * The last position this code wrote, and the last time the reader moved the page.
+ *
+ * The pair is what tells our own scrolling from theirs. A `scroll` event carries no
+ * flag for who caused it, and a boolean set around the assignment does not survive:
+ * the event is delivered asynchronously, by which time the flag is back off. So the
+ * position we wrote is remembered instead, and an event that reports exactly that
+ * number is ours.
+ */
+let wroteScrollTo = -1;
+let readerScrolledAt = 0;
+
+/**
+ * Put the scroll position back, and keep putting it back for a moment.
+ *
+ * Once is not enough, which is why the first attempt did not fix +1 Benny to all
+ * PCs: half the Table pane fills from promises, so at the instant the new nodes go
+ * in the pane is shorter than it will be and the browser clamps any position past
+ * the end of it. The restore "worked" against a page that was still growing.
+ *
+ * **And it must lose to the reader, instantly.** The first version cancelled on
+ * `wheel`, which was not enough either — it was the cause of the flicker while
+ * scrolling. A repaint arriving mid-scroll would schedule four restores over the
+ * next quarter second, each one yanking the page back to where it had been when the
+ * repaint started. Anything the reader does now wins outright, and every pending
+ * restore is abandoned rather than merely the next one.
+ */
+function restoreScroll(target: number): void {
+  if (target <= 0) return;
+  const startedAt = performance.now();
+
+  const apply = (): void => {
+    // They have taken over since this restore was scheduled. Their position is the
+    // right one and nothing here gets to argue with it.
+    if (readerScrolledAt > startedAt) return;
+    if (sheetEl.scrollTop >= target) return;
+    wroteScrollTo = target;
+    sheetEl.scrollTop = target;
+  };
+  apply();
+  requestAnimationFrame(apply);
+  window.setTimeout(apply, 60);
+  window.setTimeout(apply, 250);
+}
+
+function paintSheetArea(): void {
   // The bind button lives in the header, outside everything this function
   // replaces, but it depends on the same three things — selection, tokens, and
   // which sheet is up — so it is refreshed from the one hook they all reach.
   updateBindButton();
   if (tab === 'table') {
     sheetEl.replaceChildren(pasting ? renderPaste() : renderTable());
+    return;
+  }
+  if (tab === 'storage') {
+    sheetEl.replaceChildren(renderStorage());
     return;
   }
   if (tab === 'initiative') {
@@ -1936,12 +2131,18 @@ function setTab(next: Tab): void {
   // A notice is about what just happened here; leaving it up on another tab is
   // stale by definition.
   notify(undefined);
-  for (const name of ['sheet', 'initiative', 'table'] as const) {
+  for (const name of ['sheet', 'initiative', 'table', 'storage'] as const) {
     el(`tab-${name}`).setAttribute('aria-selected', String(name === next));
   }
   // The picker and Edit are character-scoped; on the other tabs they are a row
   // of controls that do nothing useful.
   el('bar').hidden = next !== 'sheet';
+  // Storage is housekeeping, not play. The roll log and the freeform dice box are
+  // both about what is happening at the table, and neither belongs on a page about
+  // how many characters a room is holding — they were also eating the vertical
+  // space the key list needs most.
+  el('freeform').hidden = next === 'storage';
+  el('log').hidden = next === 'storage';
   renderSheetArea();
 }
 
@@ -1977,6 +2178,303 @@ function renderTable(): HTMLElement {
   wrap.append(storage);
 
   return wrap;
+}
+
+/**
+ * Where the room's bytes are going, key by key.
+ *
+ * The room is ~16 kB and the only thing anybody could see about it was a
+ * percentage. A number with no attribution is not actionable — it says you are
+ * nearly full and nothing about what to do next — and the one screen that could
+ * answer it, `probe.ts`, ships as a separate extension install that nobody at a
+ * table has. This is that report, in the panel, with the two things a Marshal can
+ * actually do about it attached to the rows.
+ *
+ * **Diagnosis, not capacity.** The ceiling was fixed by scoping — villains live in
+ * the scene, measured at ≥1 MB against the room's 16 kB — and nothing here raises
+ * it. What it does is say *which* character is costing 1,400 chars and *what* that
+ * unfamiliar key belongs to, so the choice is made on evidence.
+ *
+ * Both documents, because the scope split means "where are my bytes" now has two
+ * answers and only one of them was ever reported.
+ */
+function renderStorage(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'table-pane storage-pane';
+  wrap.append(
+    paneHeading(
+      'Storage',
+      'Everything this room is keeping, and what it costs. The campaign store is ' +
+        'small and shared by every extension in the room; the scene store is far ' +
+        'larger and lasts as long as the map does.',
+    ),
+  );
+
+  const documents = document.createElement('div');
+  // Its own class, and not "the first div in the pane": `paneHeading` is also a
+  // div and is appended first, so a bare `> div` selector repainted the reports
+  // *into the heading* and left the real ones below it, stale.
+  documents.className = 'storage-documents';
+  wrap.append(documents);
+  wrap.append(storageBlock());
+  void paintStorage(documents);
+  return wrap;
+}
+
+/**
+ * Read both documents and lay them out.
+ *
+ * Read on open rather than kept in step, like `claimsBlock`: this is a page you go
+ * to deliberately, and one pair of reads then is cheaper than a re-read on every
+ * metadata change all session.
+ */
+async function paintStorage(host: HTMLElement): Promise<void> {
+  const context = { sheets, party };
+  const sceneOpen = await OBR.scene.isReady();
+
+  const documents: DocumentReport[] = [
+    reportDocument(await store.readAll(), ROOM_CAPACITY, { ...context, scope: 'room' }),
+  ];
+  if (sceneOpen) {
+    documents.push(
+      reportDocument(await sceneStore().readAll(), SCENE_CAPACITY, { ...context, scope: 'scene' }),
+    );
+  }
+
+  host.replaceChildren(...documents.map(storageDocumentBlock));
+  if (!sceneOpen) {
+    const note = document.createElement('p');
+    note.className = 'pane-note';
+    note.textContent =
+      'No scene is open, so there is no scene store to report. Villains kept with ' +
+      'the map are not counted here.';
+    host.append(note);
+  }
+}
+
+const SCOPE_TITLES: Record<'room' | 'scene', [string, string]> = {
+  room: [
+    'The campaign',
+    'Everything in the room: player characters, Bennies, seating — and any other ' +
+      'extension’s data, which shares the same budget.',
+  ],
+  scene: [
+    'This scene',
+    'Goes when the map does. Villains kept here cost the campaign nothing.',
+  ],
+};
+
+function storageDocumentBlock(report: DocumentReport): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pane-block';
+  const [title, note] = SCOPE_TITLES[report.scope];
+  wrap.append(paneHeading(title, note));
+
+  const percent = Math.round((report.total / report.capacity) * 100);
+  const summary = document.createElement('p');
+  summary.className = 'storage-total';
+  // The document total, not the sum of the rows: the separators belong to no key,
+  // and this is the figure `VerifiedStore` checks a write against.
+  summary.textContent = `${report.total.toLocaleString()} of ${report.capacity.toLocaleString()} chars (${percent}%)`;
+  if (percent >= 80) summary.classList.add('storage-tight');
+  wrap.append(summary);
+
+  const bar = document.createElement('div');
+  bar.className = 'storage-bar';
+  const fill = document.createElement('span');
+  fill.style.width = `${Math.min(100, percent)}%`;
+  if (percent >= 80) fill.classList.add('storage-tight');
+  bar.append(fill);
+  wrap.append(bar);
+
+  if (report.foreign > 0) {
+    const foreign = document.createElement('p');
+    foreign.className = 'pane-note';
+    foreign.textContent =
+      `${report.foreign.toLocaleString()} chars belong to other extensions. ` +
+      `They share this budget and we cannot remove them.`;
+    wrap.append(foreign);
+  }
+
+  wrap.append(storageGroups(report));
+  wrap.append(storageRows(report));
+
+  const spare = leftoverChars(report);
+  if (spare > 0) {
+    wrap.append(
+      paneButtons([
+        [
+          `Clear ${leftoverKeys(report).length} leftover(s) — ${spare} chars`,
+          'Remove everything nothing reads any more. You can undo it.',
+          () => void clearStorageKeys(report.scope, leftoverKeys(report)),
+        ],
+      ]),
+    );
+  }
+  return wrap;
+}
+
+/** The grouped total: six sheets over six keys read as noise until they are added up. */
+function storageGroups(report: DocumentReport): HTMLElement {
+  const list = document.createElement('dl');
+  list.className = 'storage-groups';
+  for (const group of report.groups) {
+    const dt = document.createElement('dt');
+    dt.textContent = group.keys > 1 ? `${group.label} (${group.keys})` : group.label;
+    const dd = document.createElement('dd');
+    dd.textContent = `${group.chars.toLocaleString()}`;
+    list.append(dt, dd);
+  }
+  return list;
+}
+
+function storageRows(report: DocumentReport): HTMLElement {
+  const list = document.createElement('ul');
+  list.className = 'storage-rows';
+  for (const row of report.rows) {
+    const item = document.createElement('li');
+    if (row.group === 'stale') item.classList.add('storage-stale');
+
+    const line = document.createElement('div');
+    line.className = 'storage-line';
+    const label = document.createElement('span');
+    label.className = 'storage-label';
+    label.textContent = row.label;
+    // The raw key on hover: this screen has to stay debuggable, and the label is
+    // a translation of it rather than a replacement for it.
+    label.title = row.key;
+    const cost = document.createElement('span');
+    cost.className = 'storage-cost';
+    cost.textContent = row.chars.toLocaleString();
+    line.append(label, cost);
+    item.append(line);
+
+    if (row.note) {
+      const note = document.createElement('p');
+      note.className = 'pane-note';
+      note.textContent = row.note;
+      item.append(note);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'storage-actions';
+    const extra = storageRowButton(report.scope, row);
+    if (extra) actions.append(extra);
+    actions.append(clearRowButton(report.scope, row));
+    item.append(actions);
+    list.append(item);
+  }
+  return list;
+}
+
+/**
+ * Clear, on every single row.
+ *
+ * Paul, 2026-09-09: *"the storage page should have a clear button for all
+ * entries"*. The earlier version withheld it from anything that mattered, which
+ * made the pane a report about the rows it would not let you act on. What replaces
+ * that caution is **Undo** — offered on every clear, holding the exact value that
+ * was removed — and wording that says what each one costs before you press it.
+ */
+function clearRowButton(scope: 'room' | 'scene', row: StorageRow): HTMLElement {
+  const button = document.createElement('button');
+  button.className = `storage-action clear-${row.weight}`;
+  button.textContent = row.weight === 'sheet' ? 'Delete' : 'Clear';
+  button.title = `${row.clearNote} You can undo it.`;
+  button.addEventListener('click', () => void clearStorageKeys(scope, [row.key], row));
+  return button;
+}
+
+function storageRowButton(scope: 'room' | 'scene', row: StorageRow): HTMLElement | undefined {
+  if (row.action.kind === 'none') return undefined;
+  const button = document.createElement('button');
+  button.className = 'storage-action';
+
+  if (row.action.kind === 'move') {
+    const { sheetId, to } = row.action;
+    button.textContent = to === 'scene' ? 'Move to scene' : 'Move to campaign';
+    button.title =
+      to === 'scene'
+        ? 'Keep this character with the map instead of with the campaign. The scene ' +
+          'store is far larger. They will not follow you to another map.'
+        : 'Keep this character for the whole campaign, so they survive changing map. ' +
+          'Costs room space, which is the scarce kind.';
+    button.addEventListener('click', () => {
+      void (async () => {
+        try {
+          await roster.move(sheetId, to);
+          await reload();
+          notify(
+            to === 'scene'
+              ? 'Moved to this scene — it costs the campaign nothing now'
+              : 'Moved to the campaign — it will survive changing map',
+          );
+          renderSheetArea();
+        } catch (error) {
+          notify(describe(error));
+        }
+      })();
+    });
+    return button;
+  }
+
+  // A character sheet, and deliberately not a delete: that belongs on the roster,
+  // where the sheet has a name and a confirm, not on a screen that looks like a
+  // disk cleaner.
+  const { sheetId } = row.action;
+  button.textContent = 'Open';
+  button.title = 'Open this character. Deleting is done from their sheet.';
+  button.addEventListener('click', () => {
+    selectedId = sheetId;
+    setTab('sheet');
+  });
+  return button;
+}
+
+/**
+ * Delete keys, and offer them straight back.
+ *
+ * Undo rather than a confirm, per §14.10: a confirm only protects the person who
+ * reads it and costs a press every time for the many presses that were meant. The
+ * values are held in memory, so the undo is a rewrite of exactly what was there.
+ */
+async function clearStorageKeys(
+  scope: 'room' | 'scene',
+  keys: readonly string[],
+  row?: StorageRow,
+): Promise<void> {
+  const target = scope === 'room' ? store : sceneStore();
+  try {
+    const before = await target.readAll();
+    const removed = keys.map((key) => [key, before[key]] as const).filter(([, v]) => v !== undefined);
+    if (!removed.length) return;
+
+    for (const [key] of removed) await target.remove(key);
+    // A full reload rather than just repainting the pane: a cleared key may have
+    // been a character, and every list on every tab is built from `sheets`.
+    await reload();
+
+    const chars = removed.reduce((sum, [key, value]) => sum + keyCost(key, value), 0);
+    // Named rather than counted, for the same reason the duplicate warning is:
+    // "cleared 1 key" is not something anybody can check afterwards.
+    const what = row ? `${row.label} — ${chars} chars` : `${removed.length} key(s), ${chars} chars`;
+    notify(`Cleared ${what}`, {
+      label: 'Undo',
+      run: () => {
+        void (async () => {
+          try {
+            for (const [key, value] of removed) await target.write(key, value);
+            await reload();
+            notify('Put back');
+          } catch (error) {
+            notify(`Could not put it back — ${describe(error)}`);
+          }
+        })();
+      },
+    });
+  } catch (error) {
+    notify(describe(error));
+  }
 }
 
 /**
@@ -2458,17 +2956,14 @@ function rosterBlock(): HTMLElement {
     count.textContent = sheet.wildCard ? String(bennies.get(sheet.id) ?? 0) : '—';
     row.append(count);
 
+    // `− +` rather than a bare `+1`, and the same pair the Marshal's own stack
+    // uses. Damian, 2026-09-08, pointing at this column: *"it doesn't allow you to
+    // remove bennies that you've accidentally over-awarded (you'd have to go back
+    // to the sheet to remove them). Would make more sense to use the '− 0 +' like
+    // in the GM bennies"*.
     const give = document.createElement('td');
     give.className = 'num';
-    const plus = document.createElement('button');
-    plus.className = 'creature-add';
-    plus.textContent = '+1';
-    plus.disabled = !sheet.wildCard;
-    plus.title = sheet.wildCard
-      ? `A Benny for ${sheet.name}`
-      : 'Extras do not have Bennies';
-    plus.addEventListener('click', () => void awardBenny(sheet));
-    give.append(plus);
+    give.append(bennySteppers(sheet, bennies.get(sheet.id) ?? 0));
     row.append(give);
 
     table.append(row);
@@ -3293,12 +3788,16 @@ function bennyGroup(sheet: Sheet): HTMLElement {
     stack.append(none);
   }
   for (let n = 1; n <= count; n++) {
-    const token = document.createElement('span');
+    // A button, not a span. Paul, 2026-09-09: the chips look like the thing you
+    // would press to spend one, so they should be. The Spend menu stays for the
+    // uses worth naming in the log — this is the plain "one goes in the pot".
+    const token = document.createElement('button');
     token.className = 'benny';
     // A stack past about six reads as a pile rather than a count, so they
     // overlap — the same way chips do when you have too many to lay out.
     if (count > 6) token.classList.add('tight');
-    token.title = `${count} Benny${count === 1 ? '' : 's'}`;
+    token.title = `Spend a Benny — ${count} left`;
+    token.addEventListener('click', () => void spendBenny(sheet));
     stack.append(token);
   }
   wrap.append(stack);
@@ -3325,13 +3824,42 @@ function bennyGroup(sheet: Sheet): HTMLElement {
   });
   wrap.append(spend);
 
-  const give = document.createElement('button');
-  give.className = 'toggle';
-  give.textContent = '+';
-  give.title = 'Award a Benny';
-  give.addEventListener('click', () => void awardBenny(sheet));
-  wrap.append(give);
+  // Award and un-award. The minus beside the plus is what makes awarding
+  // correctable at all; the Spend menu above stays the way a Benny is *used*,
+  // because what it was used on is the part worth logging.
+  wrap.append(bennySteppers(sheet, count));
 
+  return wrap;
+}
+
+/**
+ * The `− +` pair, wherever Bennies are handed out.
+ *
+ * One control in three places — the sheet, the roster row and (in spirit) the
+ * Marshal's own stack — because the Marshal's was the one Damian pointed at as the
+ * version that works. The minus is not a spend: see `takeBenny`.
+ */
+function bennySteppers(sheet: Sheet, held: number): HTMLElement {
+  const wrap = document.createElement('span');
+  wrap.className = 'benny-steppers';
+
+  const minus = document.createElement('button');
+  minus.className = 'toggle';
+  minus.textContent = '−';
+  minus.disabled = !sheet.wildCard || held <= 0;
+  minus.title = sheet.wildCard
+    ? 'Take one back — a miscount, not a spend. Nothing is logged.'
+    : 'Extras do not have Bennies';
+  minus.addEventListener('click', () => void takeBenny(sheet));
+
+  const plus = document.createElement('button');
+  plus.className = 'toggle';
+  plus.textContent = '+';
+  plus.disabled = !sheet.wildCard;
+  plus.title = sheet.wildCard ? `A Benny for ${sheet.name}` : 'Extras do not have Bennies';
+  plus.addEventListener('click', () => void awardBenny(sheet));
+
+  wrap.append(minus, plus);
   return wrap;
 }
 
@@ -3387,7 +3915,15 @@ async function attemptSoak(
  * character Shaken, and "Draw a new Action Card" left them on the same card.
  * Spending a resource and having nothing happen is worse than not offering it.
  */
-async function spendBenny(sheet: Sheet, use: string): Promise<void> {
+/**
+ * Spend one, optionally on something in particular.
+ *
+ * Without a `use` this is a chip pushed into the middle of the table: it still
+ * publishes, because spending is play and the table should see it, but there is
+ * nothing to say it was *for*. That is the click-a-chip path, and it is the common
+ * case at a real table where the reason is spoken aloud rather than typed.
+ */
+async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
   const active = activeToken(sheet);
 
   // Soak has its own button, because it needs to know what hit you. Route the
@@ -3407,7 +3943,7 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
   }
 
   try {
-    const left = await bank.spend(sheet.id, use);
+    const left = await bank.spend(sheet.id, use ?? 'a Benny');
     bennies.set(sheet.id, left);
 
     let effect = '';
@@ -3433,8 +3969,12 @@ async function spendBenny(sheet: Sheet, use: string): Promise<void> {
       ...named(sheet),
       label: 'spends a Benny',
       expression: 'benny',
-      explained: `${use}${effect} — **${left}** left`,
+      explained: use ? `${use}${effect} — **${left}** left` : `**${left}** left`,
     });
+    // The chip goes back where it came from. Not awaited, for the same reason the
+    // award's is not: the Benny is banked, spent and logged already, and the
+    // animation is decoration that must not hold the button down.
+    void returnBenny(sheet.id);
     await refreshTokens();
   } catch (error) {
     notify(error instanceof NoBenniesError ? `${sheet.name} has no Bennies left` : describe(error));
@@ -3584,10 +4124,51 @@ async function awardBenny(sheet: Sheet): Promise<void> {
     expression: 'benny',
     explained: `now has **${total}**`,
   });
+  // Only for a player's character. Damian, 2026-09-08: *"who does it animate the
+  // benny throw to when it's given to an NPC? this is unnecessary when it's an NPC
+  // (and annoying when I'm trying to initialise the scene and hand out bennies to
+  // all the NPCs)"*. There is nobody sitting at the table to throw it to, and
+  // handing a scene's worth of villains their chips fired one animation each.
+  //
   // Not awaited. It reads the room and opens an overlay, and the Benny is banked,
   // rendered and logged by now — the button should not sit down while a decoration
   // finishes.
-  void tossBenny(sheet.id);
+  if (sheet.pc) void tossBenny(sheet.id);
+}
+
+/**
+ * Put a Benny back, because the last one was a miscount.
+ *
+ * Damian, 2026-09-08: *"in general you can't reduce bennies, except by spending
+ * them"* — awarding was one-way, and the only route back was opening the sheet and
+ * spending one on something that never happened.
+ *
+ * **Silent in the log, visible on the table.** Spending a Benny is play and
+ * belongs in the log where everyone can see what it bought; putting a number back
+ * is bookkeeping, and logging it would put a fictional event in front of the
+ * players. The chip still slides, though — Paul, 2026-09-09 — because a player
+ * pressing `−` is handing one back to the Marshal, and that *is* something that
+ * happens at the table. It just does not need a sentence written about it.
+ */
+async function takeBenny(sheet: Sheet): Promise<void> {
+  if ((bennies.get(sheet.id) ?? 0) <= 0) return;
+  // Through the bank's own decrement, not `set(held - 1)`: `held` comes from this
+  // client's copy of the counts, and writing an absolute number computed from a
+  // stale copy would undo whatever another client had just done. `spend` is the
+  // read-modify-write, and the bank publishes nothing — the log line for a real
+  // spend is written by `spendBenny`, not here.
+  let left: number;
+  try {
+    left = await bank.spend(sheet.id, 'correction');
+  } catch (error) {
+    notify(describe(error));
+    return;
+  }
+  bennies.set(sheet.id, left);
+  renderSheetArea();
+  // Only for a claimed character, which `returnBenny` checks: the Marshal
+  // trimming an NPC's stack on the roster has no chair to send a chip from.
+  void returnBenny(sheet.id);
 }
 
 /**
@@ -3638,16 +4219,42 @@ async function claimsByPlayer(): Promise<Map<string, string>> {
  * a failure here may cost is the animation.
  */
 async function tossBenny(sheetId: string): Promise<void> {
+  // The Marshal's chair, not mine. The `+` on a sheet is not GM-only — a player
+  // can award their own character one — but a Benny still comes *from* the
+  // Marshal, and sending my own place would have the chip leave the receiver's
+  // own edge and, since giver and receiver would then match, be drawn as the
+  // Marshal picking one up for themselves.
+  await slideBenny(marshalPlace(), (await claimedPlaces()).get(sheetId));
+}
+
+/**
+ * The chip going the other way: a player spending one, or handing one back.
+ *
+ * Paul, 2026-09-09. It is the same gesture in reverse and it was missing, which
+ * made the table's most visible feedback one-directional — chips flew out of the
+ * Marshal's hands all evening and never came back.
+ *
+ * Silent when nobody at this table has claimed the character. A chip from an NPC
+ * is a chip from nowhere, and an unclaimed PC has no chair for it to leave from —
+ * both are the same absence `tossBenny` treats as "onto the table", except that
+ * here it is the *origin* that is missing, and a chip with no origin is not worth
+ * drawing.
+ */
+async function returnBenny(sheetId: string): Promise<void> {
+  const from = (await claimedPlaces()).get(sheetId);
+  if (from === undefined) return;
+  await slideBenny(from, marshalPlace());
+}
+
+/** Whoever is running the game. Falls back to my own place if nobody is — no game on. */
+function marshalPlace(): number {
+  return places[party.find((seated) => seated.gm)?.id ?? ''] ?? myPlace;
+}
+
+async function slideBenny(from: number, to: number | undefined): Promise<void> {
   try {
-    const to = (await claimedPlaces()).get(sheetId);
     const toss: BennyToss = {
-      // The Marshal's chair, not mine. The `+` on a sheet is not GM-only — a player
-      // can award their own character one — but a Benny still comes *from* the
-      // Marshal, and sending my own place would have the chip leave the receiver's
-      // own edge and, since giver and receiver would then match, be drawn as the
-      // Marshal picking one up for themselves. Falls back to my place only if there
-      // is no Marshal in the party list, which means there is no game on.
-      from: places[party.find((seated) => seated.gm)?.id ?? ''] ?? myPlace,
+      from,
       places: ringSize({ ...places, [OBR.player.id]: myPlace }),
       ...(to === undefined ? {} : { to }),
     };
@@ -3657,6 +4264,37 @@ async function tossBenny(sheetId: string): Promise<void> {
     await OBR.broadcast.sendMessage(BENNY_CHANNEL, toss, { destination: 'ALL' });
   } catch (error) {
     console.warn('could not slide a Benny across', error);
+  }
+}
+
+/**
+ * Ask for as much height as the screen will give.
+ *
+ * Paul, 2026-09-09: *"could it always be 100% vertically instead of a fixed size?"*
+ * Not literally — `OBR.action.setHeight` takes pixels, and there is no percentage
+ * anywhere in the API — but the effect is available, because Owlbear clamps a
+ * popover to the space it actually has. So we ask for the whole display and take
+ * whatever comes back.
+ *
+ * The window this code runs in is the popover itself, so it cannot measure the
+ * host page; `screen.availHeight` is the only handle on how big the browser can
+ * possibly be. The margin is for the browser's own chrome, and it is a guess —
+ * being 80px short of the ideal is invisible, where overshooting would put the foot
+ * of the panel off the bottom of the screen.
+ *
+ * Swallows everything and never awaits: the manifest's height is a perfectly good
+ * panel, and this is an improvement on it rather than a requirement.
+ */
+async function fillTheScreen(): Promise<void> {
+  try {
+    // The whole display, and let Owlbear clamp it to what the window actually has.
+    // An explicit margin for browser chrome was guesswork that could only ever cost
+    // height — it was leaving a visible strip of unused screen below the panel —
+    // where asking for too much costs nothing, because the host takes the minimum
+    // of what we ask for and what it can give.
+    await OBR.action.setHeight(window.screen.availHeight);
+  } catch (error) {
+    console.warn('could not resize the panel', error);
   }
 }
 
@@ -3765,12 +4403,23 @@ async function refreshTokens(): Promise<void> {
   await renderBadges(tokens, sheets, isGM);
 }
 
+/** The selection this panel was last drawn for. See the guard inside. */
+let paintedSelection: string | undefined;
+
 /**
  * Selecting a bound token switches the panel to that character — the reason
  * binding exists at all, once there are six PCs and a dozen mooks.
  */
 async function onSelectionChange(): Promise<void> {
   const selection = await OBR.player.getSelection();
+  // `OBR.player.onChange` fires for everything about a player, cursor position
+  // included, so on a busy map this ran many times a second — and each run rebuilt
+  // the entire sheet. That is the flicker: the panel was being thrown away and
+  // redrawn under the reader while they were looking at it. Nothing below depends
+  // on anything except the selection, so an unchanged selection is nothing to do.
+  const key = (selection ?? []).join(',');
+  if (key === paintedSelection) return;
+  paintedSelection = key;
   selectedTokenIds = selection ?? [];
   selectedTokenId = selection?.[0];
   if (!selectedTokenId) {
@@ -3862,10 +4511,20 @@ function render(): void {
 
   const derived = document.createElement('div');
   derived.className = 'derived';
+  // Wounds come off Pace as well as off Trait rolls — p148, `effectivePace`. Read
+  // from the same `activeToken` path `modsFor` uses, so a sheet with two tokens
+  // bound cannot show one token's Pace beside another token's roll penalty.
+  const wounded = { wounds: activeToken(sheet)?.state.wounds ?? 0 };
+  const walks =
+    sheet.pace === undefined ? undefined : { base: sheet.pace, now: effectivePace(sheet.pace, wounded) };
   const stats: [string, string | number | undefined][] = [
-    ['Pace', sheet.pace],
+    ['Pace', walks?.now],
     ['Parry', sheet.parry],
     ['Toughness', sheet.toughnessRaw ?? sheet.toughness],
+    // Signed, because a stat block writes it signed and because the sign is the
+    // whole meaning: `+3` is a bear, `−1` is a child. Absent on a normal-sized
+    // person, which is nearly every PC, so it costs nothing where it says nothing.
+    ['Size', sheet.size === undefined ? undefined : formatMod(sheet.size)],
   ];
   for (const [label, value] of stats) {
     if (value === undefined) continue;
@@ -3875,9 +4534,33 @@ function render(): void {
     const span = document.createElement('span');
     span.textContent = ` ${label}`;
     wrap.append(b, span);
+    if (label === 'Size') {
+      wrap.title =
+        'How big this character is (p161). When creatures of different Scales ' +
+        'fight, the smaller one adds the difference to its attacks and the larger ' +
+        'one subtracts it — a reminder, not a number this applies for you. The ' +
+        'Scale modifier for a called shot is on the shot panel.';
+    }
+    // Shown as arithmetic rather than as a swapped number, the same reason
+    // `dieLabel` keeps its three terms: "4 Pace" on a sheet that reads 6 looks
+    // like a bug, and "6−2" says which of the two it is and why. Same red as the
+    // wound pips.
+    //
+    // Compared against the base rather than against the wound count, so a wounded
+    // Pace 1 critter — already at the floor, with nothing left to lose — is not
+    // annotated "1−2" as though it were moving less than it is.
+    if (label === 'Pace' && walks && walks.now !== walks.base) {
+      const cut = document.createElement('span');
+      cut.className = 'mod-status';
+      cut.textContent = ` ${walks.base}${formatMod(pacePenalty(wounded))}`;
+      cut.title =
+        `Each wound takes 1″ off Pace, to a minimum of 1″ (p148). ` +
+        `Fatigue does not: it is a penalty to Trait rolls only (p156).`;
+      wrap.append(cut);
+    }
     // Running belongs beside Pace because it *is* Pace: the die is added to it
     // for the round. Anywhere else and it is a die with no number to add to.
-    if (label === 'Pace' && typeof value === 'number') wrap.append(runButton(sheet, value));
+    if (label === 'Pace' && walks) wrap.append(runButton(sheet, walks.now));
     derived.append(wrap);
   }
   if (derived.childElementCount) sheetEl.append(derived);
@@ -4077,6 +4760,11 @@ interface ShotSession {
   skill: string;
   bands?: RangeBands;
   aim: Aim;
+  /**
+   * Whether the cancellation on the Aim row is being paid for by Aim or by the
+   * Marksman Edge. They do not stack (p45), so one field carries both.
+   */
+  aimSource: AimSource;
   /**
    * A called shot, as the **Scale of what is being aimed at** — p161, `SCALES`.
    *
@@ -4315,6 +5003,7 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
           skill,
           ...(bands ? { bands } : {}),
           aim: 'off',
+          aimSource: 'aim',
           scoped: false,
           slugs: false,
           dial: 0,
@@ -4459,6 +5148,7 @@ function shotMods(session: ShotSession, band: Band | undefined): ShotTotal {
     // declared against one target throws one die and takes no Recoil.
     rof: shotsFired(session),
     aim: session.aim,
+    aimSource: session.aimSource,
     ...(session.scale === undefined ? {} : { scale: session.scale }),
     ...(band ? { band } : {}),
     cover: session.cover,
@@ -4647,6 +5337,13 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
           // many there were. See `lockedByTheRoll`.
           if (session.rolled) return;
           session.rof = value;
+          // Marksman is a single-shot Edge — `"fire no more than a Rate of Fire
+          // of 1"` (p45). Cleared here rather than filtered at render time, so
+          // the state and the screen cannot disagree about what is being spent.
+          if (session.aimSource === 'marksman' && value > 1) {
+            session.aim = 'off';
+            session.aimSource = 'aim';
+          }
           // Bullets already spoken for beyond the new ceiling are given back
           // rather than silently ignored, so what is on screen is what will be
           // rolled. Trimmed from the last target named, which is the one the
@@ -4666,26 +5363,72 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
     );
   }
 
+  // Aim and Marksman share one row because the book makes them exclusive —
+  // Marksman is `"a lesser version of the Aim maneuver and does not stack with
+  // it"` (p45). Two rows of buttons would invite a player to press one of each.
+  //
+  // The Marksman pair is offered only to a character who has the Edge, and only
+  // when the shot could actually use it. When it can't, the reason is on the
+  // button rather than the button being absent: a player who has just set RoF 3
+  // needs to know the Edge is what they gave up, not to watch two buttons quietly
+  // vanish. See `marksmanBlockedBy`.
+  type AimPick = 'off' | 'cancel' | 'bonus' | 'm-cancel' | 'm-bonus';
+  //
+  // `session.rof`, deliberately, and **not** `shotsFired(session)` — which is the
+  // number every other part of this panel uses. They are different questions.
+  // `shotsFired` is how many dice this shot throws at these targets, and it falls
+  // back to 1 before any bullet has been assigned; that is right for Recoil and
+  // for the stray window, and it would have let a freshly-opened Gatling offer
+  // the Edge. The Edge asks how many shots you fire *this action*, which is what
+  // was declared. It is also the number the RoF handler's reset compares, so the
+  // two cannot drift.
+  const marksmanBlock = marksmanBlockedBy({
+    rof: session.rof,
+    ...(activeToken(sheet) ? { state: activeToken(sheet)!.state } : {}),
+  });
+  const aimOptions: { value: AimPick; text: string; title: string }[] = [
+    { value: 'off', text: 'No', title: 'Not aimed' },
+    {
+      value: 'cancel',
+      text: 'Cancel 4',
+      title:
+        'Spent last turn aiming: ignore up to 4 points of range, cover, called shot, scale or speed (p152)',
+    },
+    {
+      value: 'bonus',
+      text: '+2',
+      title: 'Spent last turn aiming, taken as a flat +2 instead (p152)',
+    },
+  ];
+  if (hasMarksman(sheet.edges.map((edge) => edge.name))) {
+    const why = marksmanBlock ? ` — unavailable: ${marksmanBlock}` : '';
+    aimOptions.push(
+      {
+        value: 'm-cancel',
+        text: 'Mk 2',
+        title:
+          'Marksman: stand still, fire one shot as your first action, and ignore up to 2 points ' +
+          `of called shot, cover, range, scale or speed (p45). Does not stack with Aim${why}`,
+      },
+      {
+        value: 'm-bonus',
+        text: 'Mk +1',
+        title: `Marksman, taken as a flat +1 instead (p45). Does not stack with Aim${why}`,
+      },
+    );
+  }
   place(
     shotChoice(
       'Aim',
-      [
-        { value: 'off' as Aim, text: 'No', title: 'Not aimed' },
-        {
-          value: 'cancel' as Aim,
-          text: 'Cancel 4',
-          title:
-            'Spent last turn aiming: ignore up to 4 points of range, cover, called shot, scale or speed (p152)',
-        },
-        {
-          value: 'bonus' as Aim,
-          text: '+2',
-          title: 'Spent last turn aiming, taken as a flat +2 instead (p152)',
-        },
-      ],
-      session.aim,
+      aimOptions,
+      session.aim === 'off'
+        ? 'off'
+        : ((session.aimSource === 'marksman' ? `m-${session.aim}` : session.aim) as AimPick),
       (value) => {
-        session.aim = value;
+        const marksman = value.startsWith('m-');
+        if (marksman && marksmanBlock) return;
+        session.aim = (marksman ? value.slice(2) : value) as Aim;
+        session.aimSource = marksman ? 'marksman' : 'aim';
         redraw();
       },
     ),
@@ -5985,12 +6728,18 @@ function renderMarshal(): void {
   wrap.hidden = !isGM;
   const count = bennies.get(MARSHAL_BENNIES) ?? 0;
   el('marshal-count').textContent = String(count);
-  wrap.classList.toggle('empty', count === 0);
+  wrap.classList.toggle('no-bennies', count === 0);
   el<HTMLButtonElement>('marshal-spend').disabled = count === 0;
 }
 
 /** Move the Marshal's stack by one, and keep the strip in step with the store. */
 async function marshalBenny(delta: 1 | -1): Promise<void> {
+  // Belt as well as braces. The stack is hidden from players, but it was hidden by
+  // an attribute an author `display` had been quietly overruling — so for as long
+  // as that lasted, a player could press these. Room metadata is writable by any
+  // client, which makes this a guard rail rather than a lock; it still stops the
+  // control doing anything on the one screen it should never have been on.
+  if (!isGM) return;
   const count = bennies.get(MARSHAL_BENNIES) ?? 0;
   const next = Math.max(0, count + delta);
   if (next === count) return;
@@ -6026,8 +6775,6 @@ function renderRoster(): void {
   );
   bar.who.disabled = shown.length === 0;
 }
-
-const MINE_PREFIX = 'com.savagebot/mine/';
 
 /**
  * Remember which character a player was looking at, so the panel opens on their
@@ -6066,9 +6813,15 @@ async function reload(): Promise<void> {
     // The residue of a move that wrote the copy and then failed to remove the
     // original. Harmless — the room copy is the one in play — but it is spending
     // scene bytes on a ghost, and nothing else would ever mention it.
+    // Damian, 2026-09-09: *"is there any way to identify which character this
+    // applies to? It's not too useful otherwise"* — and he was right. `duplicates`
+    // is a list of ids and this counted them instead of naming them, which told
+    // him a problem existed and nothing about where to go and fix it.
+    const named = clashes.map((id) => sheets.find((s) => s.id === id)?.name ?? id);
     notify(
-      `${clashes.length} character(s) are stored in both the room and the scene; ` +
-        `the room copy is the one in use. Press Kept twice to clear the other.`,
+      `${named.join(', ')} ${named.length === 1 ? 'is' : 'are'} stored in both the room ` +
+        `and the scene; the room copy is the one in use. Press Kept twice on the ` +
+        `roster to clear the other.`,
     );
   }
   bennies = await bank.all();
@@ -6432,6 +7185,17 @@ OBR.onReady(async () => {
   bank = new BennyBank(store);
   powers = new PowerBank(store);
 
+  void fillTheScreen();
+
+  // Who moved the page. Registered once, passive so it can never delay a scroll.
+  sheetEl.addEventListener(
+    'scroll',
+    () => {
+      if (sheetEl.scrollTop !== wroteScrollTo) readerScrolledAt = performance.now();
+    },
+    { passive: true },
+  );
+
   // Who I am, which the roster needs: a player sees their own sheets, the Marshal
   // sees all of them. Defaults stand if this fails, and a wrong default here shows
   // the wrong sheets rather than none.
@@ -6443,6 +7207,11 @@ OBR.onReady(async () => {
   // What it prevents is a player hitting "New session" by accident and wiping
   // the party's Bennies, which has no undo.
   el('tab-table').hidden = !isGM;
+  // Same screen-not-lock as the Table tab: room metadata is readable by every
+  // client, so hiding this hides the list, not the data. It is here because the
+  // pane names every character in the room, which is the Marshal's business.
+  el('tab-storage').hidden = !isGM;
+  el('tab-storage').hidden = !isGM;
 
   // The characters, before anything else and before any listener is attached. Nothing
   // below this line can stop them appearing.
@@ -6510,7 +7279,20 @@ OBR.onReady(async () => {
       await refreshTokens();
     })();
   });
-  OBR.scene.items.onChange(() => void refreshTokens());
+  // Coalesced to one repaint per frame. Dragging a token fires this continuously,
+  // and each call rebuilds the sheet — the second half of the flicker. The refresh
+  // cannot simply be skipped when only positions moved, because position is what
+  // the range readout is made of; it can be run once per frame instead of once per
+  // event, which is the same picture with none of the thrash.
+  let refreshQueued = false;
+  OBR.scene.items.onChange(() => {
+    if (refreshQueued) return;
+    refreshQueued = true;
+    requestAnimationFrame(() => {
+      refreshQueued = false;
+      void refreshTokens();
+    });
+  });
 
   bar.who.addEventListener('change', () => {
     selectedId = bar.who.value;
@@ -6521,6 +7303,7 @@ OBR.onReady(async () => {
   el('tab-sheet').addEventListener('click', () => setTab('sheet'));
   el('tab-initiative').addEventListener('click', () => setTab('initiative'));
   el('tab-table').addEventListener('click', () => setTab('table'));
+  el('tab-storage').addEventListener('click', () => setTab('storage'));
   OBR.scene.onMetadataChange(() => {
     void readInitiative().then((state) => {
       initiative = state;

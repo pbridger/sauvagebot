@@ -17,6 +17,7 @@ import {
   removeEntry,
   setAttribute,
   setDerived,
+  setRunning,
   setSkill,
   setText,
   setMaxWounds,
@@ -27,7 +28,8 @@ import {
 } from '../../src/rules/sheetEdit.js';
 import { DICE_COLOURS, diceColourOf, skillNames, type Sheet } from '../../src/rules/sheet.js';
 import { maxWounds } from '../../src/rules/status.js';
-import { EDGES, HINDRANCES, findEdge, findHindrance } from '../../src/rules/catalogue.js';
+import { EDGES, HINDRANCES, findEdge, findEntry, findHindrance } from '../../src/rules/catalogue.js';
+import { entryOptions } from '../../src/rules/entryText.js';
 import { GEAR, findGear, gearLine } from '../../src/rules/gearCatalogue.js';
 
 const DICE = [4, 6, 8, 10, 12] as const;
@@ -198,7 +200,12 @@ function entryEditor(
     text.value = entry.text ?? '';
     text.placeholder = 'Rules text';
     text.addEventListener('change', () =>
-      hooks.onChange(updateEntry(sheet, list, index, { text: text.value })),
+      hooks.onChange(
+        // With the book's own wording passed in, retyping it verbatim is not an
+        // edit and picking an Edge from the list is not one either — only text
+        // the book cannot supply gets pinned to the sheet.
+        updateEntry(sheet, list, index, { text: text.value }, findEntry(entry.name)?.text),
+      ),
     );
 
     const name = textInput(entry.name, 'Name', (value) => {
@@ -209,10 +216,38 @@ function entryEditor(
         list === 'edges' ? findEdge(value) : list === 'hindrances' ? findHindrance(value) : undefined;
       const patch: { name: string; text?: string } = { name: value };
       if (known && !text.value.trim()) patch.text = known.text;
-      hooks.onChange(updateEntry(sheet, list, index, patch));
+      hooks.onChange(updateEntry(sheet, list, index, patch, known?.text));
     });
     name.setAttribute('list', catalogueList(list).id);
     row.append(name, text);
+
+    // An Edge that makes you pick something — a kung fu style, an Arcane
+    // Background. Offered only when the book's own entry contains a list, so
+    // ordinary Edges are untouched and nothing has to be configured to say which
+    // Edges have choices: the prose already says so.
+    const options = entryOptions(findEntry(entry.name)?.text ?? entry.text ?? '');
+    if (options.length) {
+      const choice = document.createElement('select');
+      choice.className = 'edit-choice';
+      choice.title =
+        'Which option this character took. Take the Edge twice for two of them — ' +
+        'add a second entry with the same name.';
+      const none = document.createElement('option');
+      none.value = '';
+      none.textContent = 'Choose…';
+      choice.append(none);
+      for (const option of options) {
+        const item = document.createElement('option');
+        item.value = option;
+        item.textContent = option;
+        choice.append(item);
+      }
+      choice.value = entry.choice ?? '';
+      choice.addEventListener('change', () =>
+        hooks.onChange(updateEntry(sheet, list, index, { choice: choice.value })),
+      );
+      row.append(choice);
+    }
 
     const remove = document.createElement('button');
     remove.className = 'remove';
@@ -425,10 +460,41 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
     ['Parry', 'parry'],
     ['Toughness', 'toughness'],
     ['Armor', 'armor'],
+    // The number a stat block prints as "Size +3". Blank means a person: normal
+    // Size is 0, and saying so on every human sheet would be noise.
+    ['Size', 'size'],
   ];
   for (const [label, key] of stats) {
-    derived.append(field(label, numberInput(sheet[key], (v) => change(setDerived(sheet, key, v)))));
+    const box = numberInput(sheet[key], (v) => change(setDerived(sheet, key, v)));
+    const wrapped = field(label, box);
+    if (key === 'size') {
+      wrapped.title =
+        'How big this character is, as a stat block writes it (p161). Blank means ' +
+        'a normal-sized person. Bigger things are easier to hit and harder to hurt; ' +
+        'the Scale modifier itself is picked on the shot panel, where the book’s ' +
+        'examples are.';
+    }
+    derived.append(wrapped);
   }
+
+  // The running die, and the only field on this block that is an *override*
+  // rather than a value. Left empty — which is how every sheet arrives, imported
+  // or new — `runningDie` reads Fleet-Footed, Slow, Obese, Elderly and a stat
+  // block's stated die off the sheet's own prose, which is right nearly always.
+  // Fill it in and that reading is abandoned in favour of what is typed here.
+  //
+  // A `traitRow` rather than a number box so `d4−1` can be said: there is nothing
+  // below d4 in Savage Worlds, and Slow off the bottom of the ladder produces
+  // exactly that shape already.
+  const run = traitRow('Run', sheet.running, (die, mod) =>
+    change(setRunning(sheet, parseDie(die), parseMod(mod))),
+  );
+  run.title =
+    'The die added to Pace when running (p151). Leave blank to work it out from ' +
+    'this character’s Edges, Hindrances and special abilities — Fleet-Footed, ' +
+    'Slow, Obese, Elderly and a stat block that names its own die are all read ' +
+    'automatically. Set it only to overrule that.';
+  derived.append(run);
   out.append(derived);
 
   // --- traits

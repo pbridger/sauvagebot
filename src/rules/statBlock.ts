@@ -331,6 +331,11 @@ export function parseStatBlock(text: string, fallbackName = 'New Extra'): Sheet 
   if (armour && sheet.armor === undefined) sheet.armor = Number(armour[1]);
 
   sheet.parry = parry ? Number(parry[1]) : derivedParry(sheet);
+  // Size is deliberately not fed in, even though `Sheet` now records one and
+  // `derivedToughness` takes it. A block that gives a Size nearly always gives the
+  // Toughness it already includes, so adding it here would count it twice; and a
+  // Size typed in later is the Marshal describing the creature, not asking for its
+  // Toughness to be recomputed underneath them.
   if (sheet.toughness === undefined) sheet.toughness = derivedToughness(sheet);
 
   if (!Object.keys(sheet.attributes).length && !Object.keys(sheet.skills).length) {

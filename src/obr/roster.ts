@@ -145,11 +145,21 @@ export type BookLookup = (name: string) => string | undefined;
  * that matter — Pacifist's "undeniably evil creatures are fair game", Scout's
  * alertness against Stealth, Elan not applying to damage. Preferring the book
  * shows more, and shows what the book actually says.
+ *
+ * **An entry somebody edited is exempt, and that exemption is a bug fix.** Damian,
+ * 2026-09-08: *"I have a character for whom I have edited the text of the Edge; it
+ * keeps losing these edits, I don't know what triggers this."* The trigger was this
+ * function, on every save: the test above asks whether the book has an entry by
+ * that *name*, so an edited Edge the book knows was stripped and stored nowhere.
+ * `entry.edited` says the wording is a person's, and it stays on the sheet — not in
+ * the shared dictionary, which is keyed by name and would have handed one player's
+ * note to every character with the same Edge.
  */
 export function splitSheet(sheet: Sheet, book?: BookLookup): SplitSheet {
   const text: RulesText = {};
   const strip = (entries: NamedEntry[]): NamedEntry[] =>
     entries.map((entry) => {
+      if (entry.edited && entry.text) return { ...entry };
       if (entry.text && !book?.(entry.name)) text[entry.name] = entry.text;
       return { name: entry.name };
     });
@@ -181,6 +191,10 @@ export function joinSheet(
   // did until the dictionary is pruned.
   const restore = (entries: NamedEntry[]): NamedEntry[] =>
     entries.map((entry) => {
+      // An edit already carries its own wording and outranks both sources. Without
+      // this the book would overwrite it on the way back in, which would undo the
+      // exemption `splitSheet` just made.
+      if (entry.edited && entry.text) return entry;
       const found = text?.[entry.name] ?? book?.(entry.name);
       return found ? { ...entry, text: found } : entry;
     });

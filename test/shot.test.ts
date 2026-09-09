@@ -3,6 +3,8 @@ import {
   AIMABLE,
   AIM_BONUS,
   AIM_BUDGET,
+  MARKSMAN_BONUS,
+  MARKSMAN_BUDGET,
   COVER,
   SCALES,
   RECOIL,
@@ -15,7 +17,9 @@ import {
   coverMod,
   describeAmendment,
   firesBuckshot,
+  hasMarksman,
   lockedByTheRoll,
+  marksmanBlockedBy,
   maxRateOfFire,
   negatesRecoil,
   rangeMod,
@@ -337,6 +341,95 @@ describe('aim', () => {
     ]);
     expect(result.mods.map((m) => m.label)).toEqual(['Light cover']);
     expect(result.unspent).toBe(0);
+  });
+});
+
+/**
+ * `"If they don't move in a turn and fire no more than a Rate of Fire of 1 as
+ * their first action, they may add +1 to an Athletics (throwing) or Shooting
+ * roll, or ignore up to 2 points of penalties from Called Shots, Cover, Range,
+ * Scale, or Speed. This is a lesser version of the Aim maneuver and does not
+ * stack with it."` — p45.
+ *
+ * The reason Marksman is a parameter on `applyAim` rather than its own function
+ * is that its five categories are Aim's five categories, in a different order.
+ * The first test below is that claim, checked rather than asserted in a comment.
+ */
+describe('the Marksman Edge', () => {
+  const range = rangeMod('long')!; // −4
+  const cover = coverMod(-2)!;
+
+  it('spends its points on exactly the categories Aim spends its points on', () => {
+    // If these ever diverge, the shared implementation is wrong, not just untidy.
+    expect([...AIMABLE].sort()).toEqual(
+      ['called-shot', 'cover', 'range', 'scale', 'speed'].sort(),
+    );
+  });
+
+  it('is a lesser Aim: +1 rather than +2', () => {
+    const result = applyAim([range], 'bonus', 'marksman');
+    expect(result.mods.at(-1)?.value).toBe(MARKSMAN_BONUS);
+    expect(MARKSMAN_BONUS).toBeLessThan(AIM_BONUS);
+  });
+
+  it('is labelled and keyed as itself, not as Aim', () => {
+    // Otherwise the log claims a turn was spent aiming when an Edge was used.
+    const result = applyAim([range], 'bonus', 'marksman');
+    expect(result.mods.at(-1)?.label).toBe('Marksman');
+    expect(result.mods.at(-1)?.key).toBe('marksman');
+  });
+
+  it('cancels two points rather than four', () => {
+    const result = applyAim([range], 'cancel', 'marksman');
+    expect(result.spent).toEqual([{ key: 'range', label: 'Long range', points: MARKSMAN_BUDGET }]);
+    // −4 range, 2 points paid: the shot is still at −2, where Aim would have
+    // cleared it outright.
+    expect(result.mods.at(0)?.value).toBe(-2);
+    expect(MARKSMAN_BUDGET).toBeLessThan(AIM_BUDGET);
+  });
+
+  it('leaves everything Aim leaves alone', () => {
+    const recoil = recoilFor(3)!;
+    const result = applyAim([recoil], 'cancel', 'marksman');
+    expect(result.mods).toEqual([recoil]);
+    expect(result.unspent).toBe(MARKSMAN_BUDGET);
+  });
+
+  it('defaults to Aim, so every caller that predates it is unchanged', () => {
+    expect(applyAim([cover], 'bonus').mods.at(-1)?.value).toBe(AIM_BONUS);
+    expect(shotTotal({ rof: 1, aim: 'bonus', band: 'short' }).total).toBe(AIM_BONUS);
+    expect(shotTotal({ rof: 1, aim: 'bonus', aimSource: 'marksman', band: 'short' }).total).toBe(
+      MARKSMAN_BONUS,
+    );
+  });
+
+  it('is found on the sheet by name', () => {
+    expect(hasMarksman(['MARKSMAN', 'GUTS'])).toBe(true);
+    expect(hasMarksman(['Marksman'])).toBe(true);
+    expect(hasMarksman(['Rock and Roll!', 'Investigator'])).toBe(false);
+  });
+
+  describe('when it may be used at all', () => {
+    it('allows a standing single shot', () => {
+      expect(marksmanBlockedBy({ rof: 1 })).toBeUndefined();
+    });
+
+    /**
+     * Reggie's Gatling pistol must fire its full RoF 3, so the Edge and that gun
+     * can never meet — the choice of weapon *is* the choice of whether Marksman
+     * applies, and the panel should say so rather than let it be picked.
+     */
+    it('refuses anything firing more than one shot', () => {
+      expect(marksmanBlockedBy({ rof: 3 })).toMatch(/single shot/);
+    });
+
+    it('refuses a turn spent running', () => {
+      expect(marksmanBlockedBy({ rof: 1, state: { conditions: ['running'] } })).toMatch(
+        /standing shot/,
+      );
+      // Other conditions say nothing about movement and must not block it.
+      expect(marksmanBlockedBy({ rof: 1, state: { conditions: ['dark'] } })).toBeUndefined();
+    });
   });
 });
 

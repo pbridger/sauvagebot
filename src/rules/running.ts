@@ -86,16 +86,29 @@ function step(die: number, by: number): number {
  * What this character rolls when they run.
  *
  * Read from the sheet's own prose rather than from a field, because that is where
- * the answer is: a bestiary block states its die in a special ability and a PC's
- * comes from an Edge. Nothing on `Sheet` records it, and adding a field would
- * mean every imported sheet carrying a default that silently disagreed with the
- * text printed two inches below it.
+ * the answer usually is: a bestiary block states its die in a special ability and
+ * a PC's comes from an Edge. There *is* now a `Sheet.running` field, but it is
+ * left empty by default and by import, which is the point — a field filled in for
+ * everybody would have every sheet carrying a number that silently disagreed with
+ * the text printed two inches below it. Empty means "read the prose"; filled in
+ * means somebody looked and the prose was not enough.
  *
  * Deliberately generous about what it matches and deliberately unenforcing about
  * the result: a wrong step here costs a couple of inches of movement and is
  * visible in the tooltip, which is the cheapest kind of wrong this app has.
  */
-export function runningDie(sheet: Pick<Sheet, 'edges' | 'hindrances' | 'powers'>): RunningDie {
+export function runningDie(
+  sheet: Pick<Sheet, 'edges' | 'hindrances' | 'powers' | 'running'>,
+): RunningDie {
+  // Set by hand, so it is the answer. Checked before anything else on the sheet
+  // is read — ahead even of a stat block's stated die, because a person typing a
+  // number into this field is doing it *because* the derivation got it wrong, and
+  // a rule that could overrule them would make the field useless in exactly the
+  // case it exists for.
+  if (sheet.running) {
+    return { die: sheet.running.die, mod: sheet.running.mod ?? 0, why: ['set on this sheet'] };
+  }
+
   // Edges and Hindrances are the things a *character* has. `powers` is read too,
   // but only for the stated-die match below: it holds a creature's special
   // abilities on an imported stat block — and, on a Huckster or a Blessed, their

@@ -79,7 +79,12 @@ button:disabled { opacity: .45; cursor: default; }
 }
 
 #sheet { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; }
-.empty { color: var(--muted); text-align: center; margin: 32px 10px; }
+/* `p.empty`, not `.empty`. As a bare class this reached anything that happened to
+   carry the word — and it did: the Marshal's Benny stack takes an "empty" marker at
+   zero, so hitting zero gave the tab strip a 32px margin top and bottom and pushed
+   the selected tab's underline halfway down the panel. Every placeholder that wants
+   this is a paragraph; nothing else should be able to opt in by accident. */
+p.empty { color: var(--muted); text-align: center; margin: 32px 10px; }
 
 h1 {
   font: 700 18px/1.2 Georgia, serif;
@@ -578,6 +583,11 @@ body.editing textarea { width: 100%; resize: vertical; font-size: 12px; }
 .derived-edit { grid-template-columns: 1fr 1fr; gap: 5px 10px; }
 .derived-edit .field { grid-template-columns: minmax(0, 1fr) 48px; }
 .derived-edit .field input { text-align: center; }
+/* The running die sits in this block but is not shaped like it: a die select and
+   a modifier box where its four neighbours are single numbers. `.edit-trait`'s
+   three columns do not fit in half of a two-column grid, so it takes the full
+   width and drops the row margin the block's own gap already provides. */
+.derived-edit .edit-trait { grid-column: 1 / -1; margin-bottom: 0; }
 
 .edit-trait {
   display: grid;
@@ -901,17 +911,37 @@ button.apply {
 #tabs {
   display: flex;
   flex: none;
+  /* Never wrap. With a fourth tab the strip is tight enough that a wrap would
+     drop the Marshal's stack onto a second line, which is what "the top row is
+     messed up" looks like. Tabs give way instead, by shrinking. */
+  flex-wrap: nowrap;
+  /* Every child sits on the same baseline and the strip is as tall as the tabs.
+     Explicit, so a stray margin on one child can never again decide the height of
+     the row or where the selected tab's underline is drawn. */
+  align-items: stretch;
   border-bottom: 1px solid var(--rule);
 }
-#tabs button {
-  flex: 1;
+/* `[role='tab']` rather than `button`, because the Marshal's − and + are buttons
+   in this strip too and the shrinking rules below are not for them: an ellipsis on
+   a one-glyph button can only ever clip the glyph. */
+#tabs button[role='tab'] {
+  flex: 1 1 0;
+  /* `min-width: 0` is what actually lets a flex item shrink below its text — the
+     default `auto` floors every tab at the width of its own label. */
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: none;
   border-radius: 0;
   border-bottom: 2px solid transparent;
-  padding: 6px 4px;
+  /* 7px, not 6. The tabs decide the height of the strip and the Marshal's − and +
+     are a couple of pixels taller than the text beside them, so at 6px the bottom
+     of those two buttons was being trimmed by the strip's own edge. */
+  padding: 7px 4px;
   color: var(--muted);
 }
-#tabs button[aria-selected='true'] {
+#tabs button[role='tab'][aria-selected='true'] {
   color: var(--accent);
   border-bottom-color: var(--accent);
   font-weight: 700;
@@ -919,11 +949,22 @@ button.apply {
 
 /* The Marshal's Benny stack, riding in the tab strip. `flex: none` because the
    tabs themselves are `flex: 1` and would otherwise stretch a +/- to a third of
-   the panel. */
+   the panel.
+
+   The `[hidden]` line is not optional and is the same trap `#bar` above documents:
+   an author `display` beats the browser's `[hidden] { display: none }`, so setting
+   the attribute did nothing and **every player could see the Marshal's stack and
+   press its buttons**. Room metadata is writable by any client, so those presses
+   worked. The tab buttons were never affected — they set no `display` of their
+   own, which is why Table and Storage hid correctly and this did not. */
+#marshal[hidden] { display: none; }
 #marshal {
   display: flex;
-  flex: none;
+  /* Fixed, so the tab strip is the same shape at zero Bennies as at five and
+     nothing beside it moves when the count changes. */
+  flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   padding: 0 6px;
   border-left: 1px solid var(--rule);
@@ -945,8 +986,11 @@ button.apply {
   color: var(--accent);
 }
 /* Nothing to spend reads differently from having one. Colour only — dropping the
-   weight as well left a light "0" floating in a slot sized for a bold digit. */
-#marshal.empty #marshal-count { color: var(--muted); }
+   weight as well left a light "0" floating in a slot sized for a bold digit.
+
+   Named `no-bennies` rather than `empty` so it cannot collide with a generic class
+   again — which is how this strip acquired a 32px margin at zero. */
+#marshal.no-bennies #marshal-count { color: var(--muted); }
 
 /* The "too much space at 0" that survived the first fix, which had gone looking at
    the digit when the hole was beside it.
@@ -1162,12 +1206,19 @@ button.toggle.soak {
 .benny {
   width: 14px;
   height: 14px;
+  padding: 0;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #d9573f, #8c2f22 70%);
   border: 1.5px solid #f7f3e8;
   box-shadow: 0 1px 1px rgba(0, 0, 0, .35);
   flex: none;
+  /* It is a button now — pressing one spends it — so it has to look pressable
+     without becoming a button-shaped thing. Lifting on hover is the whole cue. */
+  cursor: pointer;
+  transition: transform .1s ease;
 }
+.benny:hover { transform: translateY(-2px); }
+.benny:active { transform: translateY(0); }
 /* Past a handful they overlap, as chips do when there are too many to lay out. */
 .benny.tight { margin-left: -7px; }
 .benny.tight:first-child { margin-left: 0; }
@@ -1442,3 +1493,80 @@ dl.claims { margin: 0; }
 /* An unclaimed character is the thing this list is read to find, so it is the
    thing the eye should land on — muted and italic, the way an absence reads. */
 .claims .unclaimed dd { color: var(--muted); font-style: italic; }
+
+/* ---- the Marshal's storage pane --------------------------------------- */
+
+/* The two documents are separate reports, not one long page — "This scene" was
+   running straight on from the end of the room's key list with nothing between
+   them. Same gap the table pane puts between its blocks. */
+.storage-documents { display: flex; flex-direction: column; gap: 20px; }
+.storage-documents .pane-block + .pane-block { border-top: 1px solid var(--rule); padding-top: 14px; }
+
+/* The document's own total, which is the figure the store enforces. Bigger than
+   the rows because it is the only number that can refuse a write. */
+.storage-total { margin: 0 0 4px; font-size: 13px; font-weight: 700; }
+.storage-total.storage-tight { color: var(--wound); }
+
+.storage-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--rule) 60%, transparent);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.storage-bar span { display: block; height: 100%; background: var(--accent); }
+.storage-bar span.storage-tight { background: var(--wound); }
+
+/* The grouped total: the answer. The per-key list below it is the evidence. */
+.storage-groups {
+  margin: 0 0 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  font-size: 12px;
+}
+.storage-groups dt { color: var(--ink); }
+.storage-groups dd { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.storage-rows { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+.storage-rows li { padding: 5px 0; border-bottom: 1px solid var(--rule); }
+.storage-rows li:last-child { border-bottom: none; }
+.storage-line { display: flex; gap: 8px; align-items: baseline; }
+/* The label can be long and the number must stay readable, so the name is what
+   gives way. */
+.storage-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.storage-cost { color: var(--muted); font-variant-numeric: tabular-nums; flex: none; }
+.storage-stale .storage-label { color: var(--muted); font-style: italic; }
+.storage-actions { display: flex; gap: 4px; margin-top: 4px; }
+.storage-action { font-size: 11px; padding: 2px 8px; }
+/* Clearing is offered on every row, so the row has to say what it would cost.
+   Colour does that at a glance where the tooltip does it in words. */
+.storage-action.clear-leftover { color: var(--muted); }
+.storage-action.clear-sheet { color: var(--wound); border-color: var(--wound); }
+.storage-action.clear-foreign { color: var(--wound); }
+
+/* Undo, in the notice bar. Deliberately not a dialog: a confirm only protects the
+   person who reads it, and costs a press every time the press was meant. */
+.notice-action {
+  font-size: 11px;
+  padding: 1px 8px;
+  margin-left: 4px;
+  vertical-align: baseline;
+}
+
+/* Award and un-award, side by side. Same pair the Marshal's own stack uses. */
+.benny-steppers { display: inline-flex; gap: 2px; }
+
+/* Long rulebook entries: paragraphs and the book's own bulleted styles, rather
+   than one unreadable run. Only entries that have a list get any of this. */
+.entry-prose .entry-para { margin: 0 0 6px; }
+.entry-prose .entry-para:last-child { margin-bottom: 0; }
+.entry-items { margin: 0 0 6px; padding-left: 16px; }
+.entry-items li { margin-bottom: 4px; }
+.entry-items li:last-child { margin-bottom: 0; }
+.entry-items b { color: var(--accent); }
+
+/* The option an Edge was taken with — "SUPERIOR KUNG FU (EAGLE CLAW)". Lighter
+   than the name, because it qualifies it rather than being part of it. */
+.entry-choice { color: var(--muted); font-weight: 400; }
+.edit-choice { grid-column: 1 / -1; }

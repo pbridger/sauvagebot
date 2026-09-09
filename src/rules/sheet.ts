@@ -37,6 +37,34 @@ export const BASE_SKILLS = [
 /** A known skill name. Any string is legal; this is for autocomplete and ordering. */
 export type BaseSkill = (typeof BASE_SKILLS)[number];
 
+/**
+ * The two skills the book says must name what they are about.
+ *
+ * Language, p33: *"Languages should be listed as Language (Spanish), Language
+ * (French), etc."* Trade: *"Note the specific trade in parentheses."* Nothing else
+ * in the printed list works this way — an arcane skill's parenthetical is a
+ * different thing, and it is not on this list.
+ *
+ * Damian, 2026-09-08: *"there's no point in having 'Language' and 'Trade' in the
+ * skills list if you'd always be qualifying them"*. Right, and the consequence is
+ * only about display: a bare one is still storable, because a sheet that already
+ * has one must not lose it.
+ */
+export const SPECIALISED_SKILLS = ['Language', 'Trade'] as const;
+export type Specialised = (typeof SPECIALISED_SKILLS)[number];
+
+/**
+ * The skill a name is a specialisation of: `Trade (Journalism)` → `Trade`.
+ *
+ * Returns the name itself when there is no parenthetical, so it is safe to call on
+ * anything. Deliberately structural rather than a lookup — a homebrew
+ * `Language (Sioux)` has to group with Language without being in any list.
+ */
+export function baseSkillOf(name: string): string {
+  const open = name.indexOf('(');
+  return open > 0 ? name.slice(0, open).trim() : name.trim();
+}
+
 /** Die sides. A trait the character does not have is absent, not `0`. */
 export type DieSides = 4 | 6 | 8 | 10 | 12;
 
@@ -50,6 +78,39 @@ export interface NamedEntry {
   name: string;
   /** The card carries the rules text inline; keep it, it is what players read. */
   text?: string;
+  /**
+   * This wording was typed by a person, not imported.
+   *
+   * The distinction is load-bearing and the app lost data for want of it. Text that
+   * arrived on a card is *dropped* when the rulebook knows the entry — deliberately,
+   * because the cards were summarised by a language model and lose clauses the book
+   * has (§12.5c). Text somebody edited by hand must survive exactly that treatment,
+   * and the two are indistinguishable once they are both just `text`.
+   *
+   * Set by `updateEntry`, which is the only path a person's typing takes. It also
+   * keeps the edit **on the sheet** rather than in the shared dictionary, which is
+   * where it belongs: the dictionary is keyed by entry name and shared by every
+   * character with that Edge, so one player's note would have rewritten everyone's.
+   */
+  edited?: true;
+  /**
+   * The option chosen inside this entry — a kung fu style, an Arcane Background.
+   *
+   * Damian, 2026-09-08: *"Can Superior Kung Fu Edge (and anything similar) include
+   * sub-selection of Style (must be selected when the Edge is taken), and not
+   * replicate the full text of all the different Styles?"*
+   *
+   * A plain string rather than a list, because the book's unit of choice is the
+   * *taking*: *"Choose one of the options below the first time you take this Edge,
+   * and another each additional time you take it."* Two styles is two entries with
+   * the same name, which sheets already allow and `removeEntry` already handles.
+   *
+   * Nothing validates it against the book. Prerequisites are not enforced anywhere
+   * in this app and Damian asked for them not to be — *"I know pre-requisites
+   * aren't really enforced anyway, so no need to police this"* — so this records a
+   * decision rather than granting a permission.
+   */
+  choice?: string;
 }
 
 /** Which edition's rules a sheet is written in. `unknown` for anything typed by hand. */
@@ -157,11 +218,55 @@ export interface Sheet {
   skills: Record<string, Trait>;
 
   pace?: number;
+  /**
+   * The running die, when it is not the one the sheet's own prose implies.
+   *
+   * Everything about running is normally *derived* — `running.ts` reads
+   * Fleet-Footed, Slow, Obese and Elderly off the Edge and Hindrance names, and
+   * a bestiary block that states its die outright. That covers the cases the
+   * material actually contains and it needs no field, which is why there wasn't
+   * one.
+   *
+   * This is the escape hatch for everything else: a die granted by something the
+   * regex cannot see, a house rule, a creature whose block words it unusually.
+   * Damian asked for it, and the honest answer to "does it support other dice"
+   * was *yes, but only if it can spot the reason*.
+   *
+   * A `Trait` rather than a bare number so `d4−1` is expressible — there is
+   * nothing below d4 in Savage Worlds, and Slow off the bottom of the ladder
+   * already produces exactly that.
+   *
+   * When set it **wins outright**, the same way a stated die in a stat block
+   * wins over the Edge that names it. It is an answer, not another step on the
+   * ladder: stepping a hand-set d10 up again for Fleet-Footed would be the app
+   * arguing with the person who typed it.
+   */
+  running?: Trait;
   parry?: number;
   toughness?: number;
   armor?: number;
   /** The card writes Toughness as e.g. "7(5)". Kept verbatim so nothing is lost. */
   toughnessRaw?: string;
+  /**
+   * How big this character is — the number a stat block prints as *Size +3*.
+   *
+   * p161: *"Characters and creatures have a Size ranging from −4 for very small
+   * beings up to Size 20 and higher for massive behemoths."* Normal for a person
+   * is 0, and a sheet that says nothing is a person.
+   *
+   * Damian asked for it (2026-09-08) for adversaries, and it fills a gap that was
+   * already written down: `shot.ts` records that p161's cross-Scale rule — *"the
+   * smaller creature adds the difference between its Scale and its target to its
+   * attacks"* — could not be implemented because *"`Sheet` records none"*. It does
+   * now.
+   *
+   * **Stored, shown, and not turned into a Scale modifier automatically.** The band
+   * table that maps a Size onto one of the seven Scales is p314, which is not in
+   * the extract this project was built from, so inventing the boundaries would be
+   * exactly the kind of remembered rule §12.5c warns about. The Scale modifier is
+   * chosen from `SCALES` on the shot panel, where the book's own examples are.
+   */
+  size?: number;
   /**
    * Deadlands Reloaded's Charisma, which SWADE does not have.
    *
@@ -232,10 +337,26 @@ export interface Sheet {
  * this character has that is not on it, in the order the card gave them.
  */
 export function skillNames(sheet: Sheet): string[] {
-  const extra = Object.keys(sheet.skills).filter(
-    (name) => !(BASE_SKILLS as readonly string[]).includes(name),
-  );
-  return [...BASE_SKILLS, ...extra];
+  const known = BASE_SKILLS as readonly string[];
+  const extra = Object.keys(sheet.skills).filter((name) => !known.includes(name));
+  const out: string[] = [];
+
+  for (const base of BASE_SKILLS) {
+    const specialisations = extra.filter((name) => baseSkillOf(name) === base);
+    // A bare "Trade" beside "Trade (Journalism)" is the complaint: the book says
+    // the specialisation *is* the skill, so the generic name has nothing to say
+    // once one exists. Kept anyway if the character actually has a die in it —
+    // hiding a trait somebody set would be losing data to tidy a list.
+    const bare = sheet.skills[base] !== undefined;
+    if (!(SPECIALISED_SKILLS.includes(base as Specialised) && specialisations.length && !bare)) {
+      out.push(base);
+    }
+    // Beside its own base rather than at the end, which is where an alphabetical
+    // list would want it anyway.
+    out.push(...specialisations);
+  }
+
+  return [...out, ...extra.filter((name) => !known.includes(baseSkillOf(name)))];
 }
 
 // NB: per-token combat state lives in `obr/binding.ts`, not here — it belongs to

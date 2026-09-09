@@ -6,18 +6,19 @@
  * knows a character has two wounds, its Shooting button can roll `s8-2` on its
  * own. That penalty otherwise lives in someone's head.
  *
- * !! Thresholds are SWADE-standard and written from memory, pending the book. !!
- * They are isolated in the constants below.
+ * Thresholds below are from the Weird West core rules: wounds and their penalty
+ * p148, Fatigue p156. They were written from memory until Damian pointed out
+ * that wounds cut Pace as well as rolls, which sent someone to the book.
  */
 import type { TokenState } from '../obr/binding.js';
 import type { Sheet } from './sheet.js';
 import { situationalMods, type ModifierState, type RollMod } from './modifiers.js';
 
-/** UNVERIFIED — pending the book. */
+/** `"Wild Cards can take three Wounds and still function"` — p148. */
 export const MAX_WOUNDS_WILD_CARD = 3;
 /** An Extra is Incapacitated by the first wound rather than tracking a level. */
 export const MAX_WOUNDS_EXTRA = 0;
-/** UNVERIFIED — Fatigue runs Fatigued, Exhausted, then Incapacitated. */
+/** Fatigued, Exhausted, then Incapacitated — p156. */
 export const MAX_FATIGUE = 2;
 
 export const FATIGUE_NAMES = ['', 'Fatigued', 'Exhausted'] as const;
@@ -64,6 +65,45 @@ export function traitPenalty(state: Pick<TokenState, 'wounds' | 'fatigue'>): num
   const total = wounds + fatigue;
   // `-(0)` is -0, which formats as "−0" in a trait label. Return a plain zero.
   return total === 0 ? 0 : -total;
+}
+
+/**
+ * The floor the book puts under a wounded character's Pace.
+ *
+ * `"a −1 cumulative penalty to their Pace (minimum of 1″)"` — p148. Three wounds
+ * do not stop a Pace 2 critter moving; they leave it crawling an inch.
+ */
+export const MIN_PACE = 1;
+
+/**
+ * What wounds take off Pace. Negative or zero.
+ *
+ * **Fatigue is deliberately absent, and that is the whole content of this
+ * function.** p148 gives wounds `"a −1 cumulative penalty to their Pace
+ * (minimum of 1″) and all Trait rolls"`; p156 gives Fatigue `"subtracts 1 from
+ * all Trait rolls"` and says nothing about Pace. So an Exhausted character rolls
+ * at −2 and walks at their full Pace, and `traitPenalty` is the wrong number to
+ * reach for here even though it is one line away.
+ */
+export function pacePenalty(state: Pick<TokenState, 'wounds'>): number {
+  const wounds = clamp(state.wounds, 0, MAX_WOUNDS_WILD_CARD);
+  return wounds === 0 ? 0 : -wounds;
+}
+
+/**
+ * How far this character actually walks, wounds included.
+ *
+ * The floor is applied here, *before* anything adds a running die: a Pace 2
+ * critter with three wounds moves 1″, and runs 1″ + d6. Flooring the total
+ * afterwards would instead let the die be eaten by the clamp.
+ *
+ * The running die itself is untouched. It is not a Trait roll — which is the same
+ * reason `running.ts` rolls a plain `d6` rather than the exploding `s6` the rest
+ * of the sheet uses — so wounds come off the Pace they are added to and nowhere
+ * else. Subtracting them from both would be the same penalty twice.
+ */
+export function effectivePace(base: number, state: Pick<TokenState, 'wounds'>): number {
+  return Math.max(MIN_PACE, base + pacePenalty(state));
 }
 
 /**

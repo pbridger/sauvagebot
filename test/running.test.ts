@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { runningDie, runningExpression, DEFAULT_RUNNING_DIE } from '../src/rules/running.js';
-import type { NamedEntry } from '../src/rules/sheet.js';
+import type { NamedEntry, Trait } from '../src/rules/sheet.js';
 
-function sheet(parts: { edges?: NamedEntry[]; hindrances?: NamedEntry[]; powers?: NamedEntry[] }) {
+function sheet(parts: {
+  edges?: NamedEntry[];
+  hindrances?: NamedEntry[];
+  powers?: NamedEntry[];
+  running?: Trait;
+}) {
   return { edges: [], hindrances: [], ...parts };
 }
 
@@ -106,5 +111,64 @@ describe('a spellcaster who knows the slow power', () => {
         powers: [{ name: 'slow', text: 'Halves the target’s Pace and running die.' }],
       }).die,
     ).toBe(DEFAULT_RUNNING_DIE);
+  });
+});
+
+/**
+ * The hand-set die, for everything the prose does not say out loud.
+ *
+ * Damian: *"does it support running dice other than d6? I think so"* — it did,
+ * but only where it could spot a reason. This is the escape hatch, and the tests
+ * that matter are the ones about *precedence*: a person types here because the
+ * derivation was wrong, so nothing derived may argue with them afterwards.
+ */
+describe('a running die set on the sheet', () => {
+  it('is used as written', () => {
+    const die = runningDie(sheet({ running: { die: 10 } }));
+    expect(die.die).toBe(10);
+    expect(die.mod).toBe(0);
+    expect(die.why).toEqual(['set on this sheet']);
+  });
+
+  it('carries a modifier, so d4−1 can be said', () => {
+    expect(runningExpression(runningDie(sheet({ running: { die: 4, mod: -1 } })))).toBe('d4-1');
+  });
+
+  it('is not stepped again by an Edge that would have stepped it', () => {
+    // A hand-set d10 on a Fleet-Footed character stays a d10. Stepping it to d12
+    // would be the app overruling the person who typed it, in the one case where
+    // they are certain to be doing it deliberately.
+    const die = runningDie(sheet({ edges: [{ name: 'Fleet-Footed' }], running: { die: 10 } }));
+    expect(die.die).toBe(10);
+    expect(die.why).toEqual(['set on this sheet']);
+  });
+
+  it('is not stepped down by a Hindrance either', () => {
+    expect(
+      runningDie(sheet({ hindrances: [{ name: 'Slow (Major)' }], running: { die: 8 } })).die,
+    ).toBe(8);
+  });
+
+  /**
+   * The one that decides the order of the two checks. A stat block states its die
+   * in prose *and* somebody has typed one in — which only happens when the block
+   * was wrong, or was read wrong.
+   */
+  it('beats a die a stat block states in its own prose', () => {
+    const die = runningDie(
+      sheet({
+        powers: [
+          { name: 'Fleet Footed', text: 'Antelopes have a Pace 10 and roll a d10 for running.' },
+        ],
+        running: { die: 6 },
+      }),
+    );
+    expect(die.die).toBe(6);
+  });
+
+  it('hands the question back when it is cleared', () => {
+    // An override that left a d6 behind when emptied would be worse than no
+    // field: the sheet would stop reading its own Edges and never say so.
+    expect(runningDie(sheet({ edges: [{ name: 'Fleet-Footed' }] })).die).toBe(8);
   });
 });

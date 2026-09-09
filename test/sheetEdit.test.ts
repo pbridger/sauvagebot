@@ -12,6 +12,7 @@ import {
   removeEntry,
   setAttribute,
   setDerived,
+  setRunning,
   setSkill,
   setText,
   setWildCard,
@@ -58,6 +59,24 @@ describe('derived stats', () => {
     expect('parry' in setDerived(reggie, 'parry', NaN)).toBe(false);
   });
 
+  /**
+   * The running die is the only field on this block that overrides a derivation
+   * rather than holding a value, so clearing it has to genuinely remove the key
+   * — leaving `{ die: 6 }` behind would silently stop the sheet reading its own
+   * Edges without ever saying so. `runningDie` proves the other half.
+   */
+  it('sets and clears the running die override', () => {
+    expect(setRunning(reggie, 10).running).toEqual({ die: 10 });
+    expect(setRunning(reggie, 4, -1).running).toEqual({ die: 4, mod: -1 });
+    // Zero is no modifier, the same as everywhere else a die and a mod are typed.
+    expect(setRunning(reggie, 8, 0).running).toEqual({ die: 8 });
+    expect('running' in setRunning(setRunning(reggie, 10), undefined)).toBe(false);
+  });
+
+  it('leaves the running die alone by default, so the prose still speaks', () => {
+    expect(reggie.running).toBeUndefined();
+  });
+
   it('drops the card’s "7(5)" shorthand once the numbers are edited by hand', () => {
     expect(reggie.toughnessRaw).toBe('7(5)');
     expect(setDerived(reggie, 'toughness', 9).toughnessRaw).toBeUndefined();
@@ -95,7 +114,11 @@ describe('edges and hindrances', () => {
     expect(sheet.edges.at(-1)).toEqual({ name: 'LUCK' });
 
     sheet = updateEntry(sheet, 'edges', sheet.edges.length - 1, { text: 'Draw an extra chip.' });
-    expect(sheet.edges.at(-1)).toEqual({ name: 'LUCK', text: 'Draw an extra chip.' });
+    expect(sheet.edges.at(-1)).toEqual({
+      name: 'LUCK',
+      text: 'Draw an extra chip.',
+      edited: true,
+    });
 
     sheet = removeEntry(sheet, 'edges', sheet.edges.length - 1);
     expect(sheet.edges).toHaveLength(reggie.edges.length);
@@ -104,6 +127,56 @@ describe('edges and hindrances', () => {
   it('drops the text when it is emptied, rather than storing a blank string', () => {
     const sheet = updateEntry(reggie, 'edges', 0, { text: '  ' });
     expect('text' in sheet.edges[0]!).toBe(false);
+    // And it stops counting as an edit, so the book may fill the gap again.
+    expect('edited' in sheet.edges[0]!).toBe(false);
+  });
+
+  it('marks typed text as a person’s, so saving cannot throw it away', () => {
+    // Damian, 2026-09-08: edits to an Edge the rulebook knows kept vanishing,
+    // because `splitSheet` could not tell them from an imported card summary.
+    const sheet = updateEntry(reggie, 'edges', 0, { text: 'Only in daylight.' });
+    expect(sheet.edges[0]?.edited).toBe(true);
+  });
+
+  it('does not mark text that is the book’s own wording', () => {
+    // The editor fills the box from the catalogue when you pick an Edge by name.
+    // Marking that would pin the book's prose to the sheet — 2,600 chars for
+    // Superior Kung Fu — inside a 15,000 char room, for text that ships anyway.
+    const book = 'The full printed wording.';
+    const sheet = updateEntry(reggie, 'edges', 0, { text: book }, book);
+    expect(sheet.edges[0]?.edited).toBeUndefined();
+    expect(sheet.edges[0]?.text).toBe(book);
+  });
+
+  it('marks it once it differs from the book, however slightly', () => {
+    const book = 'The full printed wording.';
+    const sheet = updateEntry(reggie, 'edges', 0, { text: `${book} Ours: at night only.` }, book);
+    expect(sheet.edges[0]?.edited).toBe(true);
+  });
+
+  it('does not mark an entry edited when only the name changes', () => {
+    expect(updateEntry(reggie, 'edges', 0, { name: 'GUTS' }).edges[0]?.edited).toBeUndefined();
+  });
+
+  it('sets and clears Size, which is a derived field like the rest', () => {
+    // Zero is a real Size — a normal-sized person — and must survive, where blank
+    // means "nothing recorded". `setDerived` only drops `undefined` and `NaN`.
+    expect(setDerived(reggie, 'size', 3).size).toBe(3);
+    expect(setDerived(reggie, 'size', 0).size).toBe(0);
+    expect('size' in setDerived(setDerived(reggie, 'size', 3), 'size', undefined)).toBe(false);
+  });
+
+  it('records the option an Edge was taken with, and clears it when unset', () => {
+    // Superior Kung Fu: the book's unit of choice is the taking, so two styles is
+    // two entries with the same name rather than a list on one.
+    const picked = updateEntry(reggie, 'edges', 0, { choice: 'EAGLE CLAW' });
+    expect(picked.edges[0]?.choice).toBe('EAGLE CLAW');
+    expect('choice' in updateEntry(picked, 'edges', 0, { choice: '' }).edges[0]!).toBe(false);
+  });
+
+  it('does not count choosing an option as editing the text', () => {
+    // Otherwise picking a style would pin the book's own wording onto the sheet.
+    expect(updateEntry(reggie, 'edges', 0, { choice: 'MANTIS' }).edges[0]?.edited).toBeUndefined();
   });
 
   it('trims a name on the way in', () => {

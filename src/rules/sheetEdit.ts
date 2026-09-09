@@ -29,7 +29,7 @@ import {
  * stopped one short.
  */
 export type EntryList = 'edges' | 'hindrances' | 'powers';
-export type DerivedField = 'pace' | 'parry' | 'toughness' | 'armor';
+export type DerivedField = 'pace' | 'parry' | 'toughness' | 'armor' | 'size';
 
 type Traits = Record<string, { die: DieSides; mod?: number }>;
 
@@ -61,6 +61,21 @@ export function setSkill(
   mod?: number,
 ): Sheet {
   return { ...sheet, skills: withTrait(sheet.skills, skill, die, mod) };
+}
+
+/**
+ * Set or clear the hand-written running die.
+ *
+ * Clearing it is the important half and is what an empty die picker does: the
+ * field is an *override*, so removing it has to hand the question back to
+ * `runningDie`'s reading of the sheet rather than leave a d6 behind. Same
+ * reasoning as `withTrait` deleting an untrained skill instead of storing a zero.
+ */
+export function setRunning(sheet: Sheet, die: DieSides | undefined, mod?: number): Sheet {
+  const next = { ...sheet };
+  if (die === undefined) delete next.running;
+  else next.running = mod ? { die, mod } : { die };
+  return next;
 }
 
 /** Blank clears the field rather than storing NaN or 0. */
@@ -142,11 +157,38 @@ export function updateEntry(
   list: EntryList,
   index: number,
   patch: Partial<NamedEntry>,
+  /**
+   * What the rulebook says for this entry, when the caller knows.
+   *
+   * Decides whether new text counts as *typed*. Without it every write would mark
+   * the entry as hand-edited — including the editor's own convenience of filling
+   * the box from the book when you pick an Edge by name, which would then pin
+   * 2,600 characters of Superior Kung Fu onto the sheet and into a 15,000
+   * character room, permanently, for prose that ships in the bundle.
+   *
+   * Text identical to the book's is therefore not an edit, whoever typed it: the
+   * mark exists to protect wording the book cannot supply, and that wording is by
+   * definition different from the book's.
+   */
+  bookText?: string,
 ): Sheet {
   const entries = entriesIn(sheet, list).map((entry, i) => {
     if (i !== index) return entry;
     const merged: NamedEntry = { ...entry, ...patch };
+    // New wording that is not the book's is a person's, and this is the only path
+    // a person's typing takes. Without the mark it is thrown away on the next save,
+    // because `splitSheet` cannot tell it from an imported summary the rulebook
+    // supersedes.
+    if (patch.text !== undefined && patch.text.trim() !== (bookText ?? '').trim()) {
+      merged.edited = true;
+    }
+    // "Choose…" is not a choice. Cleared rather than stored blank, so an entry
+    // with no selection is the same shape as one that never had the option.
+    if (merged.choice !== undefined && !merged.choice.trim()) delete merged.choice;
     if (merged.text !== undefined && !merged.text.trim()) delete merged.text;
+    // Emptied back out, it is not an edit any more — it is an entry with no text,
+    // and the book should be free to fill it in again.
+    if (merged.text === undefined) delete merged.edited;
     merged.name = merged.name.trim();
     return merged;
   });

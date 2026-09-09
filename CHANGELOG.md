@@ -10,6 +10,173 @@ reload.
 
 ---
 
+## 2026-09-09 — A Storage pane, and a round of Damian's notes
+
+**Edits to an Edge's rules text stopped vanishing.** Damian: *"I have a character
+for whom I have edited the text of the Edge; it keeps losing these edits, I don't
+know what triggers this."* The trigger was every save, not a scene change. Saving
+strips the book's prose off a sheet — it ships inside the extension now, so storing
+a second copy wastes the room's space — but the test asked whether the rulebook has
+an entry *by that name*, not whether the wording was still the book's. Anything you
+typed over an Edge the book knows was thrown away. Typed text is now marked as
+yours, kept on the sheet rather than in the shared dictionary, and nothing
+overwrites it — including the **Clear stored rules text** button, which used to take
+it too.
+
+**A new Storage tab, for the Marshal.** Every key in the room and in the scene,
+what it is in words — *Reggie Kane — character sheet*, *Bennies for a character
+that no longer exists* — and what it costs. Grouped totals for the answer, the
+per-key list underneath for the evidence.
+
+**Clear** is on every row, with an **Undo** in the notice bar rather than a confirm
+to click through, and each button says what it would cost before you press it —
+rules text comes back from the book, a character does not. One press at the foot of
+each report sweeps up everything nothing reads any more: the old seating schema,
+chips still banked for characters you deleted long ago.
+
+Character sheets also get **Move to scene** or **Move to campaign**, whichever way
+they are not, because that is where the space actually is — the campaign store is
+about 16,000 characters and the scene store is at least a megabyte. A player's
+character can only go in the room: one that vanished when you changed map would be a
+bug, not a choice. Keys belonging to *other* extensions are listed too — they share
+the same budget — and marked as somebody else's.
+
+**The duplicate warning names the character.** It used to say "1 character(s) are
+stored in both the room and the scene", which told you a problem existed and nothing
+about where to go and fix it.
+
+**Bennies go both ways now.** Click a chip on a sheet to spend one — they look like
+the thing you would press, so now they are. There is a `− +` pair everywhere Bennies
+are handed out, including the roster table, so an over-award can be taken back
+without opening the sheet and spending one on something that never happened. Taking
+one back is not logged — it is a miscount, not play — but the chip still slides
+across the table to the Marshal, and
+so does a Benny that gets **spent**. A Benny given to an NPC no longer animates
+anything: there is nobody sitting there to throw it to.
+
+**Long rulebook entries are laid out.** Superior Kung Fu was 2,600 characters of
+seven different styles run together into one paragraph, with the book's bullets
+showing as `□` boxes. The boxes were a control character the PDF left behind. It now
+reads as a list, with each style's name in front of its own clause.
+
+**An Edge can carry the option you took it with.** Superior Kung Fu (Eagle Claw),
+picked from a menu in the editor, shown beside the name on the sheet — and with a
+style chosen, only that style's rules are printed instead of all seven. Take the
+Edge twice for two styles: add it twice. Nothing checks prerequisites, here or
+anywhere else.
+
+**Size, on the sheet.** Beside Pace, Parry and Toughness, written the way a stat
+block writes it. Mostly for adversaries. It is a reminder rather than a calculation:
+when creatures of different Scales fight, the smaller one adds the difference to its
+attacks and the larger subtracts it, and that is your call to make.
+
+**Language and Trade stop leaving a blank behind.** Add *Trade (Journalism)* and the
+empty *Trade* disappears from the list rather than sitting next to it — the book says
+to name the trade in parentheses, so the specialisation is the skill. A specialised
+skill also now sits beside its own base instead of at the bottom. A bare one you have
+actually set a die in is left alone.
+
+**Players could see — and press — the Marshal's Benny stack.** It was meant to be
+hidden and was not: an author `display` rule quietly overrules the browser's
+`hidden`, so the attribute did nothing. Room metadata is writable by any client, so
+the presses worked. Now hidden, and the control refuses to do anything for a player
+even if it is somehow on screen.
+
+**The tab strip stopped sagging when the Marshal had no Bennies.** The stack takes an
+"empty" marker at zero, and a stylesheet rule meant for *"No characters yet"*
+placeholders was matching on that word alone — so hitting zero gave the whole strip a
+32-pixel margin and dropped the selected tab's underline halfway down the panel. That
+rule now only applies to the paragraphs it was written for.
+
+**The panel uses the whole height of your screen.** It asks for the display's height
+on startup and Owlbear gives it whatever it can — so on a tall monitor there is
+considerably more sheet before you have to scroll.
+
+**The panel stopped flickering.** Two causes, both of them the sheet being thrown
+away and rebuilt while you were looking at it. Owlbear reports a player changing for
+everything about that player, cursor included, so on a busy map the panel was
+redrawing many times a second for a selection that had not moved; and dragging a
+token redrew it once per event rather than once per frame. Neither changed anything
+you could see, except that it flickered.
+
+**The Storage tab drops the roll log and the dice box.** Neither means anything on a
+page about how much a room is holding, and both were eating the space the key list
+needs.
+
+**The Marshal's pane stops jumping to the bottom.** Clear Bennies, +1 Benny to all
+PCs and Reset Scene all threw you to the end of the page, which is worst in exactly
+the case you use them: three quick presses to start a session. Half that pane fills
+from the network, so the position is held until those blocks arrive rather than
+being restored once against a page that is still growing — and abandoned the moment
+you touch the wheel.
+
+---
+
+## 2026-09-07 — Set the running die yourself
+
+**The running die can now be set by hand.** There's a *Run* row in the sheet
+editor beside Pace, Parry and Toughness. Leave it blank — which is how every
+sheet arrives — and nothing changes: the die is still worked out from the
+character's own prose, which already covers Fleet-Footed and Supernatural Speed
+(up a step, and they stack), Slow and Obese (down, and `d4−1` off the bottom),
+Elderly's flat −1, and a stat block that names its own die, like the antelope's
+*"Pace 10 and roll a d10 for running"*.
+
+Fill it in and it wins outright — no Edge steps it afterwards, and it beats a
+stated die in a block too. That's deliberate: you'd only type here because the
+automatic reading was wrong, so nothing may argue with you once you have. Clear
+it and the question goes back to the sheet. It takes a modifier as well as a die,
+so `d4−1` is sayable.
+
+---
+
+## 2026-09-05 — Wounds slow you down, and Reggie can shoot straight
+
+**Damian was right about movement.** p148: *"Each Wound a character suffers causes
+a −1 cumulative penalty to their Pace (minimum of 1″) and all Trait rolls."* The
+app was applying the second half of that sentence and not the first. It does both
+now — a Pace 6 character with two wounds shows **4 Pace**, with `6−2` beside it in
+the same red as the wound pips so you can see which number is which, and the Run
+button adds its die to the reduced Pace.
+
+Two things it deliberately does not do. **Fatigue does not touch Pace** — p156
+gives it to Trait rolls only, so an Exhausted character rolls at −2 and walks at
+full speed. And **the running die is not penalised**: the wounds come off the Pace
+the die is added to, and nowhere else. Taking them off both would be the same
+penalty twice.
+
+The floor is real: three wounds on a Pace 2 critter leaves it at Pace 1, and it
+still rolls its full running die on top.
+
+The running die beside Pace is now labelled **Run d6** rather than a bare `d6`,
+and its tooltip answers the question it kept prompting: **yes, running is −2 to
+every action you take that turn**, and no, the app does not apply it for you —
+switch on *Running* in the modifiers below to carry it, and switch it off at the
+end of the turn.
+
+**The Marksman Edge is now on the shot panel.** Reggie has taken it, so the Aim
+row on his sheet has two extra buttons: *Mk 2* and *Mk +1*. It is the book's own
+"lesser version of Aim" (p45) — ignore up to **2** points of called shot, cover,
+range, scale or speed, or take a flat **+1** — and it spends them on exactly the
+five categories Aim does. It sits on the Aim row rather than beside it because the
+two do not stack.
+
+It knows when it cannot be used. **RoF 1 only**, which means it can never apply to
+the Gatling pistol, since that gun must fire its full RoF 3 — choosing the weapon
+is choosing whether the Edge is in play. And **not in a turn spent running**, read
+off the Running condition on the token. Set RoF above 1 with Marksman selected and
+it clears itself rather than quietly staying on.
+
+What it cannot check, and leaves to you: that it is your *first* action, and that
+you did not move in some way the app never saw.
+
+The practical use is a called shot to the head of anything that shrugs off
+bullets. Walkin' dead halve firearm damage but carry *Weakness (Head)*, which
+switches the halving off and adds +2 — at −4 for the called shot. Marksman pays
+2 of that back.
+
+---
+
 ## 2026-08-28 — Who is playing whom
 
 The Table tab has a new block listing every player in the room and the character

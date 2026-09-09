@@ -4,10 +4,13 @@ import {
   MAX_FATIGUE,
   MAX_WOUNDS_EXTRA,
   MAX_WOUNDS_WILD_CARD,
+  MIN_PACE,
   damageBadge,
   describeStatus,
+  effectivePace,
   isIncapacitated,
   maxWounds,
+  pacePenalty,
   setFatigue,
   setShaken,
   setWounds,
@@ -22,6 +25,55 @@ const EXTRA = { wildCard: false };
 const state = (over: Partial<TokenState> = {}): TokenState => ({
   ...newTokenState('reggie'),
   ...over,
+});
+
+/**
+ * Damian, in the thread: wounds apply to movement. They do — `"a −1 cumulative
+ * penalty to their Pace (minimum of 1″) and all Trait rolls"`, p148 — and the app
+ * was applying only the second half of that sentence.
+ *
+ * These test the sentence rather than the code: that Fatigue is excluded, that
+ * the floor is 1″ and applied before any running die, and that four wounds (which
+ * `setWounds` lets a player click to) behave as three.
+ */
+describe('what wounds take off Pace', () => {
+  it('is −1 an inch per wound', () => {
+    expect(effectivePace(6, state())).toBe(6);
+    expect(effectivePace(6, state({ wounds: 1 }))).toBe(5);
+    expect(effectivePace(6, state({ wounds: 3 }))).toBe(3);
+    expect(pacePenalty(state({ wounds: 2 }))).toBe(-2);
+  });
+
+  it('leaves Pace alone for Fatigue, which is a Trait penalty only (p156)', () => {
+    // The whole reason `pacePenalty` exists rather than reusing `traitPenalty`.
+    expect(effectivePace(6, state({ fatigue: MAX_FATIGUE }))).toBe(6);
+    expect(pacePenalty(state({ fatigue: MAX_FATIGUE }))).toBe(0);
+    // And a character carrying both still only loses the wounds off their Pace,
+    // while their rolls lose everything.
+    expect(effectivePace(6, state({ wounds: 1, fatigue: 2 }))).toBe(5);
+    expect(traitPenalty(state({ wounds: 1, fatigue: 2 }))).toBe(-3);
+  });
+
+  it('stops at an inch rather than at nothing, or below it', () => {
+    expect(effectivePace(2, state({ wounds: 3 }))).toBe(MIN_PACE);
+    expect(effectivePace(1, state({ wounds: 3 }))).toBe(MIN_PACE);
+  });
+
+  /**
+   * The floor doing invisible work. A Pace 1 creature carries the wounds and
+   * loses nothing to them, so the sheet shows no arithmetic beside its Pace —
+   * the panel tests `now !== base`, not the wound count, and this is why.
+   */
+  it('leaves a creature already at the floor exactly where it was', () => {
+    expect(effectivePace(MIN_PACE, state({ wounds: 2 }))).toBe(MIN_PACE);
+    expect(pacePenalty(state({ wounds: 2 }))).toBe(-2);
+  });
+
+  it('treats the fourth wound as the third, as the trait penalty does', () => {
+    // `setWounds` allows one past the maximum so the track can show a character
+    // going down. The penalty must not follow it there.
+    expect(effectivePace(6, state({ wounds: 4 }))).toBe(3);
+  });
 });
 
 describe('the penalty every trait roll picks up', () => {
