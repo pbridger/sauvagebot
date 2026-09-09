@@ -65,10 +65,13 @@ style chosen, only that style's rules are printed instead of all seven. Take the
 Edge twice for two styles: add it twice. Nothing checks prerequisites, here or
 anywhere else.
 
-**Size, on the sheet.** Beside Pace, Parry and Toughness, written the way a stat
-block writes it. Mostly for adversaries. It is a reminder rather than a calculation:
-when creatures of different Scales fight, the smaller one adds the difference to its
-attacks and the larger subtracts it, and that is your call to make.
+**Size, on the sheet.** Beside Pace, Parry and Toughness, on every character, written
+the way a stat block writes it — and 0 unless you say otherwise, since 0 is a person.
+It is a picker in the editor rather than a box to type in: Size is a short list of
+whole numbers off a table, not a quantity you work out. It is a reminder rather than
+a calculation: when creatures of different Scales fight, the smaller one adds the
+difference to its attacks and the larger subtracts it, and that is your call to
+make.
 
 **Language and Trade stop leaving a blank behind.** Add *Trade (Journalism)* and the
 empty *Trade* disappears from the list rather than sitting next to it — the book says

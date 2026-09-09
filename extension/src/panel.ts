@@ -4521,10 +4521,12 @@ function render(): void {
     ['Pace', walks?.now],
     ['Parry', sheet.parry],
     ['Toughness', sheet.toughnessRaw ?? sheet.toughness],
-    // Signed, because a stat block writes it signed and because the sign is the
-    // whole meaning: `+3` is a bear, `−1` is a child. Absent on a normal-sized
-    // person, which is nearly every PC, so it costs nothing where it says nothing.
-    ['Size', sheet.size === undefined ? undefined : formatMod(sheet.size)],
+    // Always shown, and 0 when the sheet says nothing — Paul, 2026-09-09. A stat
+    // shown only when it is unusual is a stat you cannot check, and the question
+    // "how big is this thing" gets asked of player characters too. Signed when it
+    // is not zero, because that is how a stat block writes it and because the sign
+    // is the whole meaning: +3 is a bear, −1 is a child.
+    ['Size', sheet.size ? formatMod(sheet.size) : 0],
   ];
   for (const [label, value] of stats) {
     if (value === undefined) continue;

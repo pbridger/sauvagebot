@@ -114,6 +114,35 @@ function numberInput(
   return input;
 }
 
+/**
+ * Size, as a picker.
+ *
+ * The range is the book's floor — *"a Size ranging from −4 for very small beings"*
+ * (p161) — and a ceiling well past anything in the bestiary, whose largest is +9.
+ * The book says Sizes run to 20 and beyond for behemoths; a list that long would be
+ * a scrolling menu for a case nobody has, so anything already on a sheet is kept as
+ * its own option rather than being rounded into range.
+ *
+ * No Scale names on the options, deliberately. The table that maps a Size onto Tiny
+ * / Small / Huge is p314, which is not in the extract this project was built from,
+ * so labelling the boundaries would mean guessing them — exactly the remembered-rule
+ * mistake §12.5c is a record of.
+ */
+function sizePicker(current: number, onPick: (size: number) => void): HTMLSelectElement {
+  const select = document.createElement('select');
+  const sizes = [...Array(17).keys()].map((n) => n - 4);
+  if (!sizes.includes(current)) sizes.push(current);
+  for (const size of sizes.sort((a, b) => a - b)) {
+    const option = document.createElement('option');
+    option.value = String(size);
+    option.textContent = size === 0 ? '0 (normal)' : size > 0 ? `+${size}` : String(size);
+    option.selected = size === current;
+    select.append(option);
+  }
+  select.addEventListener('change', () => onPick(Number(select.value)));
+  return select;
+}
+
 /** The five ranks, in order of advancement. */
 const RANKS = ['Novice', 'Seasoned', 'Veteran', 'Heroic', 'Legendary'] as const;
 
@@ -460,22 +489,27 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
     ['Parry', 'parry'],
     ['Toughness', 'toughness'],
     ['Armor', 'armor'],
-    // The number a stat block prints as "Size +3". Blank means a person: normal
-    // Size is 0, and saying so on every human sheet would be noise.
-    ['Size', 'size'],
   ];
   for (const [label, key] of stats) {
-    const box = numberInput(sheet[key], (v) => change(setDerived(sheet, key, v)));
-    const wrapped = field(label, box);
-    if (key === 'size') {
-      wrapped.title =
-        'How big this character is, as a stat block writes it (p161). Blank means ' +
-        'a normal-sized person. Bigger things are easier to hit and harder to hurt; ' +
-        'the Scale modifier itself is picked on the shot panel, where the book’s ' +
-        'examples are.';
-    }
-    derived.append(wrapped);
+    derived.append(field(label, numberInput(sheet[key], (v) => change(setDerived(sheet, key, v)))));
   }
+
+  // A picker rather than a number box: Size is a short list of whole numbers off a
+  // table, not a quantity you compute, and typing into a spinner invites a 3.5 or a
+  // 40. It defaults to Normal, which is what a sheet saying nothing already meant.
+  const size = field(
+    'Size',
+    sizePicker(sheet.size ?? 0, (value) =>
+      // Normal clears the field rather than storing a zero. Nothing is lost — the
+      // sheet reads 0 either way — and it keeps a byte off every human in the room.
+      change(setDerived(sheet, 'size', value === 0 ? undefined : value)),
+    ),
+  );
+  size.title =
+    'How big this character is, as a stat block writes it — “Size +2” (p161). 0 is a ' +
+    'person. It feeds Scale: when creatures of different Scales fight, the smaller ' +
+    'adds the difference to its attacks and the larger subtracts it.';
+  derived.append(size);
 
   // The running die, and the only field on this block that is an *override*
   // rather than a value. Left empty — which is how every sheet arrives, imported
