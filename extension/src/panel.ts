@@ -4412,31 +4412,43 @@ async function slideBenny(from: number, to: number | undefined): Promise<void> {
 }
 
 /**
- * Ask for as much height as the screen will give.
+ * Ask for the whole screen's height, and put the width back where the manifest has it.
  *
  * Paul, 2026-09-09: *"could it always be 100% vertically instead of a fixed size?"*
- * Not literally — `OBR.action.setHeight` takes pixels, and there is no percentage
+ * Not literally — `OBR.action.setHeight` takes pixels and there is no percentage
  * anywhere in the API — but the effect is available, because Owlbear clamps a
- * popover to the space it actually has. So we ask for the whole display and take
- * whatever comes back.
+ * popover to the space it actually has.
  *
- * The window this code runs in is the popover itself, so it cannot measure the
- * host page; `screen.availHeight` is the only handle on how big the browser can
- * possibly be. The margin is for the browser's own chrome, and it is a guess —
- * being 80px short of the ideal is invisible, where overshooting would put the foot
- * of the panel off the bottom of the screen.
+ * That last sentence used to be an assumption. It was measured on 2026-09-10, by
+ * asking for a height no display could satisfy: Owlbear stored the request verbatim
+ * — `getHeight()` came back 3000 — while the window this code runs in was 661 on a
+ * 948px screen. So the clamp is real, asking for too much genuinely costs nothing,
+ * and every value the panel has ever been set to (the manifest's 1200, a leftover
+ * 900, the screen's height) landed on the same number. The panel was already at its
+ * full height throughout, which is why nobody could see any of those changes.
  *
- * Swallows everything and never awaits: the manifest's height is a perfectly good
- * panel, and this is an improvement on it rather than a requirement.
+ * The window is the popover itself, so it cannot measure the host page;
+ * `screen.availHeight` is the only handle on how big the browser can possibly be,
+ * and it is never smaller than the window. No margin for browser chrome: that was
+ * guesswork which could only ever cost height, and it was leaving a visible strip of
+ * unused screen below the panel.
+ *
+ * The width is set explicitly, to the same number the manifest carries, and that is
+ * not the redundancy it looks like. The action's size is stored per person by
+ * Owlbear and survives a reload, so once anything has called `setWidth` — the size
+ * probe did, briefly — the manifest stops being what that person sees. Setting it
+ * each time is what makes the manifest true again for anyone who ran that build.
+ *
+ * Swallows everything and never awaits: the manifest's size is a perfectly good
+ * panel, and this is a refinement of it rather than a requirement.
  */
+// Keep in step with `action.width` in `extension/public/manifest.json`.
+const PANEL_WIDTH = 420;
+
 async function fillTheScreen(): Promise<void> {
   try {
-    // The whole display, and let Owlbear clamp it to what the window actually has.
-    // An explicit margin for browser chrome was guesswork that could only ever cost
-    // height — it was leaving a visible strip of unused screen below the panel —
-    // where asking for too much costs nothing, because the host takes the minimum
-    // of what we ask for and what it can give.
     await OBR.action.setHeight(window.screen.availHeight);
+    await OBR.action.setWidth(PANEL_WIDTH);
   } catch (error) {
     console.warn('could not resize the panel', error);
   }

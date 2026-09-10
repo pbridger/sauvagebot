@@ -62,12 +62,21 @@ token and it had fully repopulated."* Nothing at startup had ever read the map: 
 different things fill that list and all three are reactions to something happening.
 Open the panel on a quiet scene with nothing selected and none of them fired.
 
-**The panel really does fill the screen now.** *"Seems the same height as ever for
-me."* It was — 900 pixels, exactly as before. The panel asked for the full screen
-height at startup and then, some forty lines later, set itself back to 900 from a
-line left over from the fixed-height version. That line is gone. Whether the whole
-screen is genuinely available is now an open question rather than a settled one, so
-say what you get.
+**The panel's height, settled.** *"Seems the same height as ever for me."* It was —
+and so was Paul's, and so had every version of it been. There was a real bug: the
+panel asked for the full screen at startup and then, forty lines later, set itself
+back to 900 from a line left over from the fixed-height version. That line is gone.
+But fixing it changed nothing anyone can see, because Owlbear clamps the panel to
+the room it has, and every value the panel has ever been given — 1200 from the
+manifest, the leftover 900, the screen's height — was larger than that. Measured
+rather than guessed this time: asked for 3000, Owlbear stored 3000, the window came
+back 661 on a 948-pixel screen.
+
+So the panel has been at its full height the whole time, and there is nothing left
+to win there. If you want more of it, the lever is your browser window — Paul's was
+805 pixels of a 948 screen, and going full-screen is worth more than any of this
+was. Width turns out to be the free dimension, honoured exactly and never once set
+in this extension's life; that is a conversation for another day.
 
 **+1 Benny to all PCs, for the third time.** Yesterday's fix restored your place on
 the page and gave up if you scrolled. The trouble was how it worked out that you had
