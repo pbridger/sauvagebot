@@ -183,16 +183,18 @@ import {
   gangCard,
   renderHand,
   renderInitiative,
+  type Combatant,
 } from './initiativePanel.js';
 import {
   compareNames,
   dealRound,
   initiativeEdges,
+  isJoker,
   NO_EDGES,
   type Draw,
   type InitiativeState,
 } from '../../src/rules/initiative.js';
-import { cardLabel, splitRedSuits, type Card } from '../../src/game/cards.js';
+import { cardLabel, sameCard, splitRedSuits, type Card } from '../../src/game/cards.js';
 import {
   autoBind,
   bindToken,
@@ -206,6 +208,7 @@ import {
   setHands,
   unbindToken,
   updateTokenState,
+  updateTokenStates,
   writeInitiative,
 } from './backends.js';
 
@@ -1894,16 +1897,28 @@ function renderSheetArea(): void {
 }
 
 /**
- * The last position this code wrote, and the last time the reader moved the page.
+ * When the reader last *asked* to move the page — a wheel, a drag, a key.
  *
- * The pair is what tells our own scrolling from theirs. A `scroll` event carries no
- * flag for who caused it, and a boolean set around the assignment does not survive:
- * the event is delivered asynchronously, by which time the flag is back off. So the
- * position we wrote is remembered instead, and an event that reports exactly that
- * number is ours.
+ * Not "when the page last moved", which was the previous version and was the bug.
+ * A `scroll` event carries no flag for who caused it, so that version inferred it:
+ * a position that was not the one this code wrote must be the reader's. It is not.
+ * `replaceChildren` empties the pane, the pane collapses to nothing, and the
+ * browser clamps the scroll to 0 and fires a `scroll` event saying so — an event
+ * this code caused, reporting a number it did not write, and therefore counted as
+ * the reader taking over. Every pending restore was then abandoned.
+ *
+ * Which is why +1 Benny to all PCs still jumped to the bottom for Damian and not
+ * for me: whether the collapse clamps at all depends on how much taller than the
+ * pane the page is when the nodes go in, and he has 42 characters on the Table tab
+ * to my handful.
+ *
+ * Input events have no such ambiguity. Nothing but a person generates a `wheel`,
+ * and a repaint cannot fake one.
  */
-let wroteScrollTo = -1;
-let readerScrolledAt = 0;
+let readerInputAt = 0;
+
+/** How long after a wheel or a key we still treat the page as theirs, in ms. */
+const READER_HOLDS_THE_PAGE = 400;
 
 /**
  * Put the scroll position back, and keep putting it back for a moment.
@@ -1913,29 +1928,73 @@ let readerScrolledAt = 0;
  * in the pane is shorter than it will be and the browser clamps any position past
  * the end of it. The restore "worked" against a page that was still growing.
  *
- * **And it must lose to the reader, instantly.** The first version cancelled on
- * `wheel`, which was not enough either — it was the cause of the flicker while
- * scrolling. A repaint arriving mid-scroll would schedule four restores over the
- * next quarter second, each one yanking the page back to where it had been when the
- * repaint started. Anything the reader does now wins outright, and every pending
- * restore is abandoned rather than merely the next one.
+ * **And it must lose to the reader.** A repaint that lands mid-scroll used to
+ * schedule four restores over the next quarter second, each one yanking the page
+ * back to where it had been when the repaint started — the flicker reported on
+ * 2026-09-08. So the reader wins twice over: a restore scheduled while they are
+ * scrolling never starts, and one already in flight is abandoned the moment they
+ * touch the wheel.
+ *
+ * A scrollbar *drag* is not detected, deliberately. `pointerdown` would catch it,
+ * and would also catch every button press in the pane — including the presses this
+ * function exists to keep your place across, which would put the bug straight back.
+ * Dragging the bar during a repaint is a quarter second of argument; pressing a
+ * button is the thing people actually do.
  */
 function restoreScroll(target: number): void {
   if (target <= 0) return;
   const startedAt = performance.now();
+  // Already scrolling when the repaint arrived. Their position is the current one
+  // and it is more recent than the one being restored.
+  if (startedAt - readerInputAt < READER_HOLDS_THE_PAGE) return;
 
   const apply = (): void => {
-    // They have taken over since this restore was scheduled. Their position is the
-    // right one and nothing here gets to argue with it.
-    if (readerScrolledAt > startedAt) return;
+    // They have taken over since this restore was scheduled.
+    if (readerInputAt > startedAt) return;
     if (sheetEl.scrollTop >= target) return;
-    wroteScrollTo = target;
     sheetEl.scrollTop = target;
   };
   apply();
   requestAnimationFrame(apply);
   window.setTimeout(apply, 60);
   window.setTimeout(apply, 250);
+}
+
+/** The keys that scroll a pane. A letter typed into a text box is not one. */
+const SCROLL_KEYS = new Set([
+  'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Spacebar',
+]);
+
+/**
+ * Watch for the reader moving the page. Registered once, all passive, so none of
+ * it can delay a scroll.
+ *
+ * `wheel` and `touchmove` only. Not `touchstart`, which was the first version and
+ * would have reintroduced the whole bug on a tablet: tapping **+1 Benny to all
+ * PCs** starts a touch, the touch bubbles to this listener, and the restore that
+ * the tap exists to trigger is abandoned before it begins. A tap that scrolls
+ * nothing produces no `touchmove`, so the narrower event is also the correct one.
+ *
+ * The same care on the keys: space and the arrows scroll a pane, and they also
+ * type into the Edge textarea, so a key inside a field is not the reader moving
+ * the page.
+ */
+function watchReaderScrolling(): void {
+  const moved = (): void => {
+    readerInputAt = performance.now();
+  };
+  for (const event of ['wheel', 'touchmove'] as const) {
+    sheetEl.addEventListener(event, moved, { passive: true });
+  }
+  sheetEl.addEventListener(
+    'keydown',
+    (event) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select')) return;
+      if (SCROLL_KEYS.has(event.key)) moved();
+    },
+    { passive: true },
+  );
 }
 
 function paintSheetArea(): void {
@@ -2070,9 +2129,23 @@ async function deal(): Promise<void> {
     explained: dealt + (result.jokerDealt ? ' — **joker!**' : ''),
   });
 
-  // Joker's Wild: one Benny to every Wild Card, once, however many Jokers came
-  // up. It follows from the deal, so it happens rather than being remembered.
-  if (result.jokerDealt) {
+  // Joker's Wild: one Benny to every player character, once, however many Jokers
+  // came up. It follows from the deal, so it happens rather than being remembered.
+  //
+  // **Only when a player drew it.** Damian, 2026-09-09: *"I think if the enemy
+  // gets a Joker it's giving bennies (incorrectly) to the PCs?"* — it was, because
+  // `result.jokerDealt` is a fact about the deck, not about who is holding the
+  // card. The book's other half (a Benny to the pool and to each enemy Wild Card
+  // on a villain's Joker) is deliberately *not* automated: it needs every NPC
+  // tagged friend or foe, which is state that can be wrong in the heat of a fight,
+  // and Paul's call was that the Marshal awards those by hand. So a villain's
+  // Joker still reshuffles the deck and still says **joker!** in the log — it just
+  // does not pay the players for it.
+  const playerJoker = [...result.draws].some(
+    ([id, draw]) =>
+      table.find((c) => c.tokenId === id)?.sheet.pc && draw.cards.some(isJoker),
+  );
+  if (playerJoker) {
     const lucky = await bank.jokersWild(sheets);
     bennies = await bank.all();
     renderMarshal();
@@ -3246,6 +3319,33 @@ function handControlFor(sheet: Sheet, entryName: string): HTMLElement | undefine
 }
 
 /**
+ * Everyone acting on this combatant's card, off the same stat block.
+ *
+ * A gang is dealt one card between them — that is what `dealRound`'s grouping
+ * means — so anything that happens to the card has to happen to the gang.
+ * Damian, 2026-09-09: *"dealing an extra card to a group doesn't seem to work —
+ * I click 'deal' on one of the NPCs it only assigns a card to that one
+ * individual, and if I change Action card it only applies to that one."*
+ *
+ * The gang is *the ones holding this card*, not simply everyone off the sheet.
+ * Room one's bandits and room two's share a stat block and were dealt separately,
+ * and a member who was Incapacitated when the round went out holds nothing at all
+ * — none of them should be dragged along by a card they are not on.
+ *
+ * A Wild Card is a gang of one and comes back as themselves, so no caller needs
+ * to know whether it is dealing with a gang.
+ */
+function actingTogether(tokenId: string, table: readonly Combatant[]): string[] {
+  const self = table.find((c) => c.tokenId === tokenId);
+  if (!self) return [];
+  if (!self.card) return [tokenId];
+  const card = self.card;
+  return table
+    .filter((c) => c.sheet.id === self.sheet.id && c.card && sameCard(c.card, card))
+    .map((c) => c.tokenId);
+}
+
+/**
  * Act on a different card from the hand.
  *
  * Writes only the choice — the cards themselves are untouched, so this is not a
@@ -3253,14 +3353,38 @@ function handControlFor(sheet: Sheet, entryName: string): HTMLElement | undefine
  * runs the villains, and a player choosing on their own character is the entire
  * point. That is the same screen-not-lock the rest of the panel uses, because
  * token metadata is writable by every client whatever this code does.
+ *
+ * Applied to the whole gang: they were dealt one card and they act on one card,
+ * so switching one mook to the other card and leaving the other five behind would
+ * split a gang that the deal treats as a single combatant.
+ *
+ * **By card, not by index.** The index belongs to the hand it was clicked in, and a
+ * gang's hands are only identical while nothing has happened to them: a mook dealt
+ * in late through `replaceCard` holds a hand of one. Passing the index straight on
+ * would move the gang to the second card and silently leave the latecomer on the
+ * first — `chooseFromHand` guards its range, so it would be a no-op with no
+ * complaint, and the log would announce a switch that half the gang did not make.
+ * So the *card* is resolved once here and each member is asked where that card sits
+ * in their own hand.
  */
 async function chooseCardFor(tokenId: string, index: number): Promise<void> {
   const before = tokens.find((t) => t.id === tokenId);
   const state = readBinding(before?.metadata);
   const hand = state && handOf(state);
   if (!state || !hand || index === hand.chosen) return;
+  const wanted = hand.cards[index];
+  if (!wanted) return;
 
-  await updateTokenState(tokenId, (current) => chooseFromHand(current, index));
+  // Read before the write, because the gang is identified by the card they are
+  // all still holding.
+  const gang = actingTogether(tokenId, combatants(tokens, sheets));
+  await updateTokenStates(gang, (current) => {
+    const theirs = handOf(current);
+    const at = theirs?.cards.findIndex((card) => sameCard(card, wanted)) ?? -1;
+    // Not holding it — a latecomer on the gang's card and nothing else. Left
+    // alone rather than moved to a card they were never dealt.
+    return at < 0 ? current : chooseFromHand(current, at);
+  });
   await refreshTokens();
 
   const table = combatants(tokens, sheets);
@@ -4035,14 +4159,34 @@ function rerollLastTrait(sheet: Sheet): string {
  * `NO_EDGES` rather than the character's, deliberately: this is *an* extra card,
  * not another go at their Edge. Level Headed already paid out when the round was
  * dealt, and paying again here would hand out two cards per Benny.
+ *
+ * ## It must not reshuffle
+ *
+ * Damian, 2026-09-09: *"After dealing, it says 27 cards left in deck. I then
+ * manually deal a card and after dealing that card it jumps up to 53 — and allows
+ * the possibility of getting a duplicate, given that the first deck and the new
+ * deck are now both in play. It shouldn't reshuffle until 'deal next round'."*
+ *
+ * `dealRound` reshuffles when the state says a joker has been dealt, which is
+ * right at the top of a round and exactly wrong here: this is one card in the
+ * middle of a round whose cards are still on the table. So the flag is cleared on
+ * the way in and put back on the way out — the deck the round was dealt from keeps
+ * dealing, and the reshuffle still happens where it belongs, at the next round.
  */
 async function redrawCard(tokenId: string, _sheet: Sheet): Promise<Card | undefined> {
   const state = initiative ?? (await freshInitiative());
-  const result = dealRound(state, [{ tokenId, edges: NO_EDGES }], new JavaRandom());
+  const result = dealRound(
+    { ...state, jokerDealt: false },
+    [{ tokenId, edges: NO_EDGES }],
+    new JavaRandom(),
+  );
   const draw = result.draws.get(tokenId);
   if (!draw) return undefined;
 
-  await updateTokenState(tokenId, (current) => addToHand(current, draw.card));
+  // The whole gang, not just the mook whose row was pressed: they are dealt one
+  // card between them and they act on one card. See `actingTogether`.
+  const gang = actingTogether(tokenId, combatants(tokens, sheets));
+  await updateTokenStates(gang, (current) => addToHand(current, draw.card));
   // Redrawing is not a new round; keep the round number where it was. The joker
   // flag is sticky too — a joker somebody else drew this round still owes the
   // deck a reshuffle, whatever this one card turned out to be.
@@ -7187,16 +7331,15 @@ OBR.onReady(async () => {
   bank = new BennyBank(store);
   powers = new PowerBank(store);
 
+  // The only `setHeight` in the panel, and it must stay that way. There used to be
+  // a second one further down this function, left over from the fixed 900px panel,
+  // and because it ran after several awaits it was the one that won — so the panel
+  // asked for the whole screen and then quietly shrank back. Damian, 2026-09-09:
+  // *"I don't get the bit about it taking the full height of the screen — seems the
+  // same height as ever for me."* It was: 900, exactly as before.
   void fillTheScreen();
 
-  // Who moved the page. Registered once, passive so it can never delay a scroll.
-  sheetEl.addEventListener(
-    'scroll',
-    () => {
-      if (sheetEl.scrollTop !== wroteScrollTo) readerScrolledAt = performance.now();
-    },
-    { passive: true },
-  );
+  watchReaderScrolling();
 
   // Who I am, which the roster needs: a player sees their own sheets, the Marshal
   // sees all of them. Defaults stand if this fails, and a wrong default here shows
@@ -7352,12 +7495,25 @@ OBR.onReady(async () => {
     const count = await autoBind(sheets);
     if (count) notify(`Bound ${count} token(s) to characters by name`);
   });
+  /**
+   * Read what is on the map, once, at startup.
+   *
+   * Damian, 2026-09-09: *"when I went into the app just now the Initiative box was
+   * empty, even though there were PCs and NPCs 'in' the fight. I clicked on a bound
+   * token and looked back and it had fully repopulated."*
+   *
+   * Nothing here had ever read the tokens. Three things do it later — selecting a
+   * token, the scene becoming ready, an item changing — and every one of them is an
+   * *event*. Open the panel on a scene that is already ready, with nothing selected
+   * and nobody moving anything, and none of them fires: `tokens` stays empty and the
+   * initiative list, which is made of it, has nothing to draw. Clicking a token
+   * "repopulated" it because that is one of the three.
+   */
+  await step('reading the tokens on the map', async () => {
+    if (!(await OBR.scene.isReady())) return;
+    await refreshTokens();
+  });
   await step('reading the selection', () => onSelectionChange());
-  await step('setting the panel height', () =>
-    // Set at runtime as well as in the manifest: OBR caches the manifest, so a
-    // height change there alone would not reach an already-installed extension.
-    OBR.action.setHeight(900),
-  );
   await step('setting up dice', async () => {
     myColour = await OBR.player.getColor();
     // Places before settings: the GM's client is what writes them, and my own place

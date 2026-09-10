@@ -333,31 +333,43 @@ export interface Sheet {
 }
 
 /**
- * Skill names to show, in a stable order: the printed list first, then anything
- * this character has that is not on it, in the order the card gave them.
+ * Skill names to show, in one alphabetical run.
+ *
+ * Damian, 2026-09-09: *"it would be good if skills could be sorted in alphabetical
+ * order; currently added skills (such as 'Faith' on a Blessed) are at the bottom."*
+ * They were: the printed list is alphabetical, and anything off it — the arcane
+ * skills, a homebrew — was appended after the lot. On a sheet with 30 skills that
+ * is the one you are looking for, filed where you would look last.
+ *
+ * Sorted on the **base** name first, so a specialisation stays with its parent —
+ * "Trade" then "Trade (Journalism)" — and the whole list still reads A to Z,
+ * because a base name and its specialisations share a prefix anyway.
  */
 export function skillNames(sheet: Sheet): string[] {
   const known = BASE_SKILLS as readonly string[];
-  const extra = Object.keys(sheet.skills).filter((name) => !known.includes(name));
-  const out: string[] = [];
+  const owned = Object.keys(sheet.skills);
+  const extra = owned.filter((name) => !known.includes(name));
 
-  for (const base of BASE_SKILLS) {
-    const specialisations = extra.filter((name) => baseSkillOf(name) === base);
+  const names = [...known, ...extra].filter((name) => {
     // A bare "Trade" beside "Trade (Journalism)" is the complaint: the book says
     // the specialisation *is* the skill, so the generic name has nothing to say
     // once one exists. Kept anyway if the character actually has a die in it —
     // hiding a trait somebody set would be losing data to tidy a list.
-    const bare = sheet.skills[base] !== undefined;
-    if (!(SPECIALISED_SKILLS.includes(base as Specialised) && specialisations.length && !bare)) {
-      out.push(base);
-    }
-    // Beside its own base rather than at the end, which is where an alphabetical
-    // list would want it anyway.
-    out.push(...specialisations);
-  }
+    if (!SPECIALISED_SKILLS.includes(name as Specialised)) return true;
+    if (sheet.skills[name] !== undefined) return true;
+    return !extra.some((other) => baseSkillOf(other) === name);
+  });
 
-  return [...out, ...extra.filter((name) => !known.includes(baseSkillOf(name)))];
+  return names.sort(
+    (a, b) => BY_SKILL.compare(baseSkillOf(a), baseSkillOf(b)) || BY_SKILL.compare(a, b),
+  );
 }
+
+/**
+ * Case- and accent-insensitive, so a homebrew skill typed in lower case files
+ * where a reader expects rather than after every capital letter in the book's list.
+ */
+const BY_SKILL = new Intl.Collator(undefined, { sensitivity: 'base' });
 
 // NB: per-token combat state lives in `obr/binding.ts`, not here — it belongs to
 // the token and the scene rather than to the character.

@@ -66,4 +66,36 @@ describe('the skills a sheet shows', () => {
     expect(new Set(names).size).toBe(names.length);
     expect(names).toContain('Fighting');
   });
+
+  /**
+   * Damian, 2026-09-09: *"it would be good if skills could be sorted in alphabetical
+   * order; currently added skills (such as 'Faith' on a Blessed) are at the bottom."*
+   */
+  describe('the order', () => {
+    it('files a skill the book does not print in its alphabetical place', () => {
+      const names = skillNames(withSkills({ Faith: { die: 8 } }));
+      expect(names.indexOf('Faith')).toBe(names.indexOf('Fighting') - 1);
+      expect(names.indexOf('Faith')).toBeGreaterThan(names.indexOf('Driving'));
+    });
+
+    it('is alphabetical throughout, base names and additions alike', () => {
+      const names = skillNames(
+        withSkills({ Faith: { die: 8 }, Weirdness: { die: 4 }, Alchemy: { die: 6 } }),
+      );
+      expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' })));
+      expect(names[0]).toBe('Academics');
+      expect(names.at(-1)).toBe('Weirdness');
+    });
+
+    it('keeps a specialisation with its base rather than sorting it away', () => {
+      // "Trade (Journalism)" must not file under J, and must not drift from Trade.
+      const names = skillNames(withSkills({ Trade: { die: 4 }, 'Trade (Journalism)': { die: 6 } }));
+      expect(names.indexOf('Trade (Journalism)')).toBe(names.indexOf('Trade') + 1);
+    });
+
+    it('files a lower-case homebrew where a reader would look for it', () => {
+      const names = skillNames(withSkills({ 'gunsmithing': { die: 6 } }));
+      expect(names.indexOf('gunsmithing')).toBe(names.indexOf('Gambling') + 1);
+    });
+  });
 });

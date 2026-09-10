@@ -357,10 +357,69 @@ describe('preferring the book to the stored copy', () => {
       expect((await roster.get('reggie'))?.edges[0]?.text).toBe('Ours only works at night.');
     });
 
+    /**
+     * The flag means "the text below is a person's". Without text it says nothing
+     * — and it is not harmless: `joinSheet` would fill the gap from the book, and
+     * the *next* save would see an edited entry with text and keep the book's own
+     * wording on the sheet permanently. That is the pin this exemption exists to
+     * prevent, reached from the other side.
+     */
+    it('drops the edited flag when there is no text under it', () => {
+      const orphan: Sheet = {
+        ...emptySheet('reggie', 'Reggie'),
+        edges: [{ name: 'QUICK', edited: true }],
+        hindrances: [],
+      };
+      const { lean } = splitSheet(orphan, book);
+      expect(lean.edges[0]).toEqual({ name: 'QUICK' });
+      // …so a round trip leaves the book supplying the text, as for any other entry.
+      const out = joinSheet(lean, {}, book);
+      expect(out.edges[0]?.edited).toBeUndefined();
+      expect(splitSheet(out, book).lean.edges[0]).toEqual({ name: 'QUICK' });
+    });
+
     it('still drops an unedited card summary the book supersedes', () => {
       // The exemption must not become a general "keep everything": the card text
       // is AI-written and loses clauses the book has (§12.5c).
       expect(splitSheet(sheet(), book).lean.edges[0]).toEqual({ name: 'QUICK' });
+    });
+  });
+
+  /**
+   * Damian, 2026-09-09: *"It forgets which style has been selected for Superior
+   * Kung Fu on reload."* Same defect as the edited text above, one field along:
+   * the strip listed what to keep rather than what to drop. See §18.3.
+   */
+  describe('the option an Edge was taken with', () => {
+    const chosen = (): Sheet => ({
+      ...emptySheet('reggie', 'Reggie'),
+      edges: [{ name: 'QUICK', choice: 'EAGLE CLAW' }],
+      hindrances: [],
+    });
+
+    it('is not stripped along with the book’s text', () => {
+      expect(splitSheet(chosen(), book).lean.edges[0]).toEqual({
+        name: 'QUICK',
+        choice: 'EAGLE CLAW',
+      });
+    });
+
+    it('survives a save and a read, which is where it used to vanish', async () => {
+      const { roster } = booked();
+      await roster.save(chosen());
+      expect((await roster.get('reggie'))?.edges[0]?.choice).toBe('EAGLE CLAW');
+    });
+
+    it('survives even when the card also carried text the book supersedes', async () => {
+      const { roster } = booked();
+      await roster.save({
+        ...chosen(),
+        edges: [{ name: 'QUICK', choice: 'MANTIS', text: 'The card’s thin summary.' }],
+      });
+      const back = await roster.get('reggie');
+      expect(back?.edges[0]?.choice).toBe('MANTIS');
+      // …and the text still comes from the book, as it did before.
+      expect(back?.edges[0]?.text).toBe('The full printed wording, which is longer and says more.');
     });
   });
 

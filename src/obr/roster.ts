@@ -161,7 +161,22 @@ export function splitSheet(sheet: Sheet, book?: BookLookup): SplitSheet {
     entries.map((entry) => {
       if (entry.edited && entry.text) return { ...entry };
       if (entry.text && !book?.(entry.name)) text[entry.name] = entry.text;
-      return { name: entry.name };
+      // Everything *but* the text survives. Written as a subtraction rather than
+      // as `{ name }` because the first version listed what to keep, and the
+      // moment a second field existed it was silently dropped: Damian, 2026-09-09,
+      // *"It forgets which style has been selected for Superior Kung Fu on
+      // reload"* — `choice` was being stripped on every save, exactly like the
+      // edited text before it. A field added to `NamedEntry` tomorrow now keeps
+      // itself.
+      // `edited` goes with it. It means "the *text* below is a person's", so
+      // without text it says nothing — and it is not inert: `joinSheet` would fill
+      // the gap from the book, and the next save would then see `edited && text`
+      // and pin the book's own wording onto the sheet for good. That is the 2,600
+      // characters of Superior Kung Fu this exemption exists to avoid, arrived at
+      // from the other direction. Reachable from any sheet carrying the flag
+      // without the text: an older export, a hand-edited import.
+      const { text: _stripped, edited: _flag, ...rest } = entry;
+      return rest;
     });
 
   return {

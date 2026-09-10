@@ -246,6 +246,28 @@ describe('dealing a round', () => {
     expect(result.state.round).toBe(5);
   });
 
+  /**
+   * The redraw's contract. Damian, 2026-09-09: *"After dealing, it says 27 cards
+   * left in deck. I then manually deal a card and after dealing that card it jumps
+   * up to 53 — and allows the possibility of getting a duplicate, given that the
+   * first deck and the new deck are now both in play."*
+   *
+   * The panel's mid-round redraw clears `jokerDealt` on the way in for exactly this
+   * reason, so what is pinned here is that a state which says no joker *keeps the
+   * deck* — one card off the top of the round's own deck, no reshuffle, nothing
+   * dealt twice.
+   */
+  it('deals one more card from the same deck when no joker is owed', () => {
+    const midRound = { round: 3, deck: newInitiative(new JavaRandom(9)).deck.slice(0, 27), jokerDealt: false };
+    const result = dealRound(midRound, [{ tokenId: 'one', edges: NO_EDGES }], new JavaRandom(10));
+    expect(result.state.deck.length).toBe(26);
+    // Every remaining card was already in the deck it came from: nothing was
+    // reshuffled back in behind the cards still on the table.
+    const before = new Set(midRound.deck.map(cardToString));
+    for (const card of result.state.deck) expect(before.has(cardToString(card))).toBe(true);
+    expect(before.has(cardToString(result.draws.get('one')!.card))).toBe(true);
+  });
+
   it('reshuffles rather than running out mid-table', () => {
     // Three cards cannot serve three combatants, one of whom draws two.
     const thin = {

@@ -10,6 +10,80 @@ reload.
 
 ---
 
+## 2026-09-10 — The deck, the gang, and a panel that finally fills the screen
+
+**Reload the extension first.** Two things reported yesterday were already fixed in
+a build that had not been loaded yet, so this is the first line rather than the last
+one from now on.
+
+All of this is Damian's, from a fight run on yesterday's build.
+
+**Your kung fu style survives a reload.** *"It forgets which style has been selected
+for Superior Kung Fu on reload."* It did. Saving a sheet strips the rulebook's prose
+off it — the text ships inside the extension, so a second copy is wasted room — and
+the code that did the stripping listed what to keep rather than what to drop. The
+moment a second field existed, saving dropped it. It is now written the other way
+round, so the next field added keeps itself: the same bug cannot happen twice.
+
+**An enemy's Joker no longer pays the players.** *"I think if the enemy gets a Joker
+it's giving bennies (incorrectly) to the PCs?"* It was. The deal knew a Joker had
+left the deck; it did not ask who was holding it. Now only a Joker in a player's hand
+pays out. A villain's Joker still reshuffles the deck and still says **joker!** in
+the log — the Marshal awards the villains' side by hand, which is the call made in
+the thread rather than tagging every NPC friend or foe.
+
+**The deck stops reshuffling in the middle of a round.** *"After dealing, it says 27
+cards left. I then manually deal a card and it jumps up to 53 — and allows the
+possibility of getting a duplicate, given that the first deck and the new deck are
+now both in play."* Dealing one extra card was going through the same path as dealing
+a whole round, which reshuffles when a Joker is owed. It now draws from the round's
+own deck, and the reshuffle happens where the rule puts it: at the next round.
+
+*(The other reshuffle — when too few cards are left to deal everyone — stays as it
+is. That is the reading you both landed on in the thread, and it is now written down
+so nobody re-reports it.)*
+
+**A gang gets its extra card as a gang.** *"I click 'deal' on one of the NPCs, it
+only assigns a card to that one individual, and if I change Action card it only
+applies to that one."* Both now apply to everyone off that stat block who is holding
+that card — which is what "they act on one Action Card" has to mean. Bandits in
+another room, dealt separately, are untouched, as is anyone who was down when the
+round went out. The cost: singling one mook out onto their own card is no longer a
+button press. Say if you miss it.
+
+**Skills read A to Z.** *"Currently added skills (such as 'Faith' on a Blessed) are
+at the bottom."* Faith now sits between Driving and Fighting, where you would look
+for it. Specialisations stay with their parent — Trade, then Trade (Journalism) —
+rather than filing under J.
+
+**The initiative list is populated when you open the panel.** *"The Initiative box
+was empty, even though there were PCs and NPCs 'in' the fight. I clicked on a bound
+token and it had fully repopulated."* Nothing at startup had ever read the map: three
+different things fill that list and all three are reactions to something happening.
+Open the panel on a quiet scene with nothing selected and none of them fired.
+
+**The panel really does fill the screen now.** *"Seems the same height as ever for
+me."* It was — 900 pixels, exactly as before. The panel asked for the full screen
+height at startup and then, some forty lines later, set itself back to 900 from a
+line left over from the fixed-height version. That line is gone. Whether the whole
+screen is genuinely available is now an open question rather than a settled one, so
+say what you get.
+
+**+1 Benny to all PCs, for the third time.** Yesterday's fix restored your place on
+the page and gave up if you scrolled. The trouble was how it worked out that you had
+scrolled: emptying the pane collapses it, the browser slides the page to the top and
+announces it, and that announcement was indistinguishable from you moving the wheel.
+So the fix cancelled itself — on your screen, with 42 characters on the Table tab,
+and not on Paul's. It now watches for the wheel, a swipe and the arrow keys, none of
+which a repaint can imitate. Dragging the scrollbar itself during a repaint is still
+undetected and will argue with you for a quarter second.
+
+**Still open, and yours to call:** taking the highest card automatically on a redraw,
+folding two takings of Superior Kung Fu into one listing, and Hold on the initiative
+tracker.
+
+---
+
 ## 2026-09-09 — A Storage pane, and a round of Damian's notes
 
 **Edits to an Edge's rules text stopped vanishing.** Damian: *"I have a character

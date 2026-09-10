@@ -253,7 +253,23 @@ export async function updateTokenState(
   tokenId: string,
   change: (state: TokenState) => TokenState,
 ): Promise<void> {
-  await OBR.scene.items.updateItems([tokenId], (items) => {
+  await updateTokenStates([tokenId], change);
+}
+
+/**
+ * The same change applied to several tokens in one write.
+ *
+ * One `updateItems` call rather than a loop of them, for the reason `setHands`
+ * gives: the map redraws once, and a gang cannot end up half-updated because a
+ * write failed in the middle. The change is computed per token from that token's
+ * own state, so this is not a broadcast of one value — it is the same *edit*.
+ */
+export async function updateTokenStates(
+  tokenIds: readonly string[],
+  change: (state: TokenState) => TokenState,
+): Promise<void> {
+  if (!tokenIds.length) return;
+  await OBR.scene.items.updateItems([...tokenIds], (items) => {
     for (const item of items) {
       const existing = readBinding(item.metadata);
       if (existing) item.metadata[TOKEN_KEY] = change(existing);
