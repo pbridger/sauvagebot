@@ -12,6 +12,7 @@ import {
   attackKind,
   bandFor,
   isTargeted,
+  ownSideLast,
   parseRangeBands,
   resolveAimedAttack,
   resolveAttack,
@@ -454,5 +455,20 @@ describe('the distance a row shows and the distance it uses', () => {
   it('keeps a diagonal neighbour inside melee once quantised', () => {
     expect(showsParry('Shooting', measuredCells(Math.SQRT2))).toBe(true);
     expect(showsParry('Shooting', measuredCells(1.55))).toBe(false);
+  });
+});
+
+/**
+ * Paul, after the first session: *"in the target list, PCs should be sorted to the
+ * bottom."* Generalised to "your own side last", so it reads the same way from the
+ * Marshal's seat without a second rule.
+ */
+describe('where a candidate sits in the target list', () => {
+  it('puts the posse below the opposition when a player shoots', () => {
+    expect(ownSideLast(true, false)).toBeLessThan(ownSideLast(true, true));
+  });
+
+  it('puts the bandits below the posse when the Marshal shoots', () => {
+    expect(ownSideLast(false, true)).toBeLessThan(ownSideLast(false, false));
   });
 });

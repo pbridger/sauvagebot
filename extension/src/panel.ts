@@ -12,6 +12,7 @@ import {
   ATTRIBUTES,
   diceColourOf,
   skillNames,
+  traitDie,
   type Attribute,
   type Sheet,
 } from '../../src/rules/sheet.js';
@@ -22,10 +23,9 @@ import {
   type AbilityNote,
 } from '../../src/rules/abilities.js';
 import {
-  skillCanStray,
+  attackCanStray,
   spraysLead,
   strayShots,
-  strayThreshold,
   strayWarning,
   STRAY_ON_MISS,
 } from '../../src/rules/bystanders.js';
@@ -38,6 +38,14 @@ import {
   weaponSkill,
   type Weapon,
 } from '../../src/rules/gear.js';
+import { weaponModes } from '../../src/rules/gearCatalogue.js';
+import {
+  GANG_UP_MAX,
+  UNARMED_DEFENDER,
+  WILD_ATTACK,
+  meleeTotal,
+  wildAttackDamage,
+} from '../../src/rules/melee.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
 import { RollInterpreter } from '../../src/dice/interpreter.js';
 import { runningDie, runningExpression } from '../../src/rules/running.js';
@@ -82,7 +90,9 @@ import {
   showsParry,
   targetNumber,
   FLAT_TARGET,
+  PARRY_VISIBLE_CELLS,
   isTargeted,
+  ownSideLast,
   parseRangeBands,
   resolveAimedAttack,
   verdictIsMeaningless,
@@ -100,6 +110,7 @@ import {
   bulletsLeft as spareBullets,
   negatesRecoil,
   calledShotDamage,
+  calledShotMod,
   describeAmendment,
   firesBuckshot,
   hasMarksman,
@@ -168,7 +179,7 @@ import {
   type ModifierState,
 } from '../../src/rules/modifiers.js';
 import { entryDisplayName, findEntry } from '../../src/rules/catalogue.js';
-import { addToHand, chooseFromHand, handOf } from '../../src/rules/hand.js';
+import { addToHand, chooseFromHand, chosenCard, clearHand, handOf } from '../../src/rules/hand.js';
 import { renderBadges } from './badges.js';
 import { MARSHAL_BENNIES, BennyBank, type BennyOutcome } from '../../src/obr/bennyBank.js';
 import { PowerBank } from '../../src/obr/powerBank.js';
@@ -188,6 +199,7 @@ import {
 import {
   compareNames,
   dealRound,
+  returnToDeck,
   initiativeEdges,
   isJoker,
   NO_EDGES,
@@ -203,6 +215,7 @@ import {
   readInitiative,
   resetAllTokens,
   roomStore,
+  roomWriteCount,
   roster as characterRoster,
   sceneStore,
   setHands,
@@ -343,14 +356,18 @@ let initiative: InitiativeState | undefined;
 let acted = new Set<string>();
 /** Show every skill, or only the ones this character actually has. */
 let showAllSkills = false;
+
+/**
+ * Whether the Marshal has the remaining deck open. Local to this client and this
+ * session: it is a diagnostic, not a setting. See the note on the Show deck button.
+ */
+let showDeck = false;
 /** True while the paste-a-stat-block form is up. */
 let pasting = false;
 let tokens: Awaited<ReturnType<typeof characterTokens>> = [];
 let selectedTokenId: string | undefined;
 /** The whole selection, so a gang of mooks can be bound to one sheet at once. */
 let selectedTokenIds: string[] = [];
-/** Set while we are saving our own change, so the resulting onChange is ignored. */
-let saving = false;
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
 // ------------------------------------------------------- animated dice
@@ -669,7 +686,7 @@ function publishTrait(
   // Counted here rather than at each call site, so a Benny reroll re-counts its
   // *own* dice against the same weapon's window — the threshold belongs to the
   // gun and rides on `aimed`, the count belongs to the dice and does not.
-  const strayOn = skillCanStray(aimed?.skill) ? (aimed?.strayOn ?? STRAY_ON_MISS) : undefined;
+  const strayOn = attackCanStray(aimed) ? (aimed?.strayOn ?? STRAY_ON_MISS) : undefined;
   const stray = strayOn === undefined ? 0 : strayShots(result.dice ?? [], strayOn);
 
   return publish(
@@ -1505,12 +1522,15 @@ function showSaved(state: 'saving' | 'saved' | ''): void {
  */
 function scheduleSave(sheet: Sheet): void {
   sheets = sheets.map((s) => (s.id === sheet.id ? sheet : s));
-  renderSheetArea();
+  // The one repaint the editor asks for itself: this is how a new Edge row appears
+  // and how a die change reaches the derived numbers. Everything else that repaints
+  // this panel is the world talking, and leaves the form alone — see
+  // `renderSheetArea`.
+  renderSheetArea('this user');
   showSaved('saving');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     void (async () => {
-      saving = true;
       try {
         await roster.save(pruneEmptyEntries(sheet));
         showSaved('saved');
@@ -1519,7 +1539,6 @@ function scheduleSave(sheet: Sheet): void {
         showSaved('');
         notify(`could not save: ${describe(error)}`);
       } finally {
-        saving = false;
         await showBudget();
       }
     })();
@@ -1876,7 +1895,8 @@ function entryList(
 let paintedView: string | undefined;
 
 /**
- * Repaint, keeping your place on the page.
+ * Repaint, keeping your place on the page — and keeping out of the way of whoever
+ * is using it.
  *
  * Damian, 2026-09-08: *"When I click 'Clear Bennies', '+1 Benny to all PCs', and
  * 'Reset Scene' it jumps to the bottom… particularly annoying when trying to
@@ -1887,13 +1907,96 @@ let paintedView: string | undefined;
  * thrown away, so every repaint silently reset it. Restoring it is safe against a
  * shorter page — the browser clamps — and is deliberately *not* done when the view
  * itself changed, where starting at the top is what you want.
+ *
+ * ## Who asked for this repaint
+ *
+ * `cause` is the difference between "somebody across the table spent a Benny" and
+ * "the person in front of this screen just changed a field", and the editor needs
+ * them treated differently. A repaint driven by the world must not rebuild a form
+ * somebody is filling in; a repaint driven by their own edit must, because that is
+ * how a new Edge row appears. friedcrumpet, 2026-09-12: *"Trying to edit sheet
+ * while others are rolling etc causes it to reset."*
  */
-function renderSheetArea(): void {
+function renderSheetArea(cause: 'the world' | 'this user' = 'the world'): void {
   const view = `${tab}|${selectedId ?? ''}|${editing}|${pasting}`;
-  const keepAt = paintedView === view ? sheetEl.scrollTop : 0;
-  paintSheetArea();
+  // The editor is not a view of the room, it is a form. Leave it alone unless the
+  // person typing into it did something, or the page itself changed underneath.
+  if (cause === 'the world' && editorOnScreen() && paintedView === view) return;
+
+  // Where they were — but not a zero this code is itself responsible for. A repaint
+  // collapses the pane and the browser clamps the position to 0; a *second* repaint
+  // arriving in that window would read the 0 as the reader's place and faithfully
+  // restore them to the top. Two repaints in quick succession is the normal case
+  // now, not a corner: a button writes, repaints at once, and the echo of the write
+  // repaints again a fifth of a second later.
+  const keepAt = paintedView === view ? sheetEl.scrollTop || restoringTo || 0 : 0;
+  if (cause === 'this user') keepingFocus(paintSheetArea);
+  else paintSheetArea();
   paintedView = view;
   restoreScroll(keepAt);
+}
+
+/**
+ * Is the editor the thing currently on the page?
+ *
+ * Not the same question as `editing`, and the difference is a bug I nearly shipped:
+ * the Edit toggle is not cleared when you change tab, so a Marshal who left it on
+ * and went to the Table tab would have had a pane that quietly stopped updating.
+ * This mirrors the condition `paintSheetArea` actually paints the editor under —
+ * they have to agree, so they are written to be read side by side.
+ */
+function editorOnScreen(): boolean {
+  if (!editing || tab !== 'sheet') return false;
+  const sheet = sheets.find((s) => s.id === selectedId);
+  return sheet !== undefined && maySee(sheet);
+}
+
+/**
+ * Repaint without dropping the cursor out of the form.
+ *
+ * Every control in the editor commits on `change`, which fires as you leave the
+ * field — so the repaint lands at the exact moment focus has just moved on to the
+ * next one, and rebuilding the DOM throws that focus on the floor. Tabbing through
+ * a sheet put the cursor nowhere on every second press.
+ *
+ * Restored by position rather than identity, because the nodes are new objects and
+ * nothing in the form carries a stable key. That is only sound when the form has
+ * the same shape as before — adding an Edge inserts controls and every index after
+ * it shifts — so the count is checked and a changed count simply forgoes the
+ * restore. Guessing would be worse than the cursor going nowhere: it would put it
+ * somewhere, and the next keystroke would land in the wrong field.
+ */
+function keepingFocus(paint: () => void): void {
+  const focusable = (): HTMLElement[] =>
+    [...sheetEl.querySelectorAll<HTMLElement>('input, textarea, select, button')];
+
+  const before = focusable();
+  const at = before.indexOf(document.activeElement as HTMLElement);
+  const text = document.activeElement;
+  const caret =
+    text instanceof HTMLInputElement || text instanceof HTMLTextAreaElement
+      ? { start: text.selectionStart, end: text.selectionEnd }
+      : undefined;
+
+  paint();
+
+  if (at < 0) return;
+  const after = focusable();
+  if (after.length !== before.length) return;
+  const target = after[at];
+  if (!target) return;
+  // `preventScroll`, or focusing the field would scroll it into view and undo the
+  // scroll restore happening either side of this call — two mechanisms for keeping
+  // your place on the page, pulling in different directions.
+  target.focus({ preventScroll: true });
+  if (caret && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+    try {
+      target.setSelectionRange(caret.start, caret.end);
+    } catch {
+      // `setSelectionRange` throws on input types that have no selection — a
+      // number or a colour. The focus is the part that mattered.
+    }
+  }
 }
 
 /**
@@ -1906,11 +2009,6 @@ function renderSheetArea(): void {
  * browser clamps the scroll to 0 and fires a `scroll` event saying so — an event
  * this code caused, reporting a number it did not write, and therefore counted as
  * the reader taking over. Every pending restore was then abandoned.
- *
- * Which is why +1 Benny to all PCs still jumped to the bottom for Damian and not
- * for me: whether the collapse clamps at all depends on how much taller than the
- * pane the page is when the nodes go in, and he has 42 characters on the Table tab
- * to my handful.
  *
  * Input events have no such ambiguity. Nothing but a person generates a `wheel`,
  * and a repaint cannot fake one.
@@ -1935,30 +2033,69 @@ const READER_HOLDS_THE_PAGE = 400;
  * scrolling never starts, and one already in flight is abandoned the moment they
  * touch the wheel.
  *
+ * ## Why it puts the page back *exactly*
+ *
+ * This used to return early when the pane was already further down than the target,
+ * on the reasoning that somebody scrolling down should not be dragged back up. The
+ * reader is already handled, above and properly, by `readerInputAt` — so all that
+ * guard actually did was make an **overshoot uncorrectable**. Which is the third
+ * time Damian reported this, and the detail that never fitted the story: every
+ * theory said the pane collapses and goes to the **top**, and he said *"jumps to
+ * bottom"* three times running. A repaint that lands past where he was is exactly
+ * what this code was written to look at and then decline to fix.
+ *
+ * Chrome's scroll anchoring is the obvious candidate for what moves it, which is
+ * why `#sheet` now also sets `overflow-anchor: none`: the browser trying to be
+ * helpful about a wholesale DOM replacement can only fight with a restore that
+ * knows where the reader actually was.
+ *
  * A scrollbar *drag* is not detected, deliberately. `pointerdown` would catch it,
  * and would also catch every button press in the pane — including the presses this
  * function exists to keep your place across, which would put the bug straight back.
- * Dragging the bar during a repaint is a quarter second of argument; pressing a
- * button is the thing people actually do.
  */
 function restoreScroll(target: number): void {
-  if (target <= 0) return;
+  // Both of these clear the target rather than just returning. A restore that is not
+  // going to happen must not leave a position advertised as in flight: the next
+  // repaint would find a genuine `scrollTop` of 0, believe a restore was mid-way
+  // through, and put the reader at a position belonging to a page they have left.
+  if (target <= 0) {
+    restoringTo = undefined;
+    return;
+  }
   const startedAt = performance.now();
   // Already scrolling when the repaint arrived. Their position is the current one
   // and it is more recent than the one being restored.
-  if (startedAt - readerInputAt < READER_HOLDS_THE_PAGE) return;
+  if (startedAt - readerInputAt < READER_HOLDS_THE_PAGE) {
+    restoringTo = undefined;
+    return;
+  }
 
+  restoringTo = target;
   const apply = (): void => {
     // They have taken over since this restore was scheduled.
-    if (readerInputAt > startedAt) return;
-    if (sheetEl.scrollTop >= target) return;
+    if (readerInputAt > startedAt) {
+      restoringTo = undefined;
+      return;
+    }
+    if (sheetEl.scrollTop === target) return;
     sheetEl.scrollTop = target;
   };
   apply();
   requestAnimationFrame(apply);
   window.setTimeout(apply, 60);
-  window.setTimeout(apply, 250);
+  window.setTimeout(() => {
+    apply();
+    // The page has settled. Anything read from now on is the reader's own.
+    if (restoringTo === target) restoringTo = undefined;
+  }, 250);
 }
+
+/**
+ * Where a restore currently in flight is aiming, so that a repaint landing in the
+ * middle of one does not mistake the collapsed pane for the reader's own position.
+ * See `renderSheetArea`.
+ */
+let restoringTo: number | undefined;
 
 /** The keys that scroll a pane. A letter typed into a text box is not one. */
 const SCROLL_KEYS = new Set([
@@ -2023,6 +2160,12 @@ function paintSheetArea(): void {
         onSelect: (tokenId) => void takeTurn(tokenId),
         onOpenSheet: (tokenId) => void openSheetFor(tokenId),
         onReplace: (tokenId) => void replaceCard(tokenId),
+        onReturnCards: (tokenId) => void returnCards(tokenId),
+        showDeck,
+        onPeekDeck: () => {
+          showDeck = !showDeck;
+          renderSheetArea();
+        },
         onChoose: (tokenId, index) => void chooseCardFor(tokenId, index),
         mayChoose: (combatant) => mayChooseFor(combatant.sheet),
         acted,
@@ -2145,18 +2288,7 @@ async function deal(): Promise<void> {
     ([id, draw]) =>
       table.find((c) => c.tokenId === id)?.sheet.pc && draw.cards.some(isJoker),
   );
-  if (playerJoker) {
-    const lucky = await bank.jokersWild(sheets);
-    bennies = await bank.all();
-    renderMarshal();
-    if (lucky.length) {
-      publish({
-        label: "Joker's Wild",
-        expression: 'benny',
-        explained: `a Benny each for ${lucky.join(', ')}`,
-      });
-    }
-  }
+  if (playerJoker) await payJokersWild();
 
   await refreshTokens();
 }
@@ -2670,7 +2802,10 @@ function sessionBlock(): HTMLElement {
       [
         '+1 Benny to all PCs',
         "One Benny to every player's Wild Card — for good play, or a scene that deserved it",
-        () => void handOut(() => bank.awardAll(sheets), 'Bennies all round', 'a Benny each for'),
+        () =>
+          void handOut(() => bank.awardAll(sheets), 'Bennies all round', 'a Benny each for', {
+            animateTo: true,
+          }),
       ],
     ]),
   );
@@ -2812,6 +2947,7 @@ async function handOut(
   run: () => Promise<BennyOutcome>,
   label: string,
   explained: string,
+  { animateTo = false }: { animateTo?: boolean } = {},
 ): Promise<void> {
   try {
     const outcome = await run();
@@ -2819,8 +2955,20 @@ async function handOut(
     renderMarshal();
     renderSheetArea();
     if (outcome.done.length) {
-      publish({ label, expression: 'benny', explained: `${explained} ${outcome.done.join(', ')}` });
+      publish({
+        label,
+        expression: 'benny',
+        explained: `${explained} ${outcome.done.map((who) => who.name).join(', ')}`,
+      });
     }
+    // Chips for the people who actually got one, which is why `done` carries ids:
+    // after a partial write, animating the whole party would show a Benny arriving
+    // for somebody the notice below is about to say missed out.
+    //
+    // Only for an award. Clearing every Benny in the room is not the Marshal taking
+    // chips back off the table one by one, and drawing it that way would say
+    // something false about what just happened.
+    if (animateTo) void tossBennies(outcome.done.map((who) => who.id));
     if (outcome.failed.length) {
       const { fraction } = await store.usage();
       notify(
@@ -4003,6 +4151,10 @@ async function attemptSoak(
   try {
     const left = await bank.spend(sheet.id, 'Soak Rolls');
     bennies.set(sheet.id, left);
+    // Paul, 2026-09-12: *"spending bennies via any means should animate."* Soak has
+    // its own path — it needs to know what hit you — and it was the one spend that
+    // took a chip off a player without one crossing the table.
+    void returnBenny(sheet.id);
 
     const before = { ...state, wounds: Math.max(0, state.wounds - wounds) };
     // Situational modifiers ride along with the wound penalty, since the
@@ -4081,12 +4233,15 @@ async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
     }
 
     if (use === 'Draw a new Action Card' && active) {
-      const card = await redrawCard(active.token.id, sheet);
-      effect = card ? ` — drew ${cardLabel(card)}, and may act on either` : ' — the deck is empty';
-    }
-
-    if (use === 'Reroll a Trait') {
-      effect = rerollLastTrait(sheet);
+      const drew = await redrawCard(active.token.id, sheet);
+      // Say what they are acting on, not what came off the deck. The new card
+      // takes over only if it beats the old one — and for a Hesitant character
+      // "beats" runs the other way — so the two can differ.
+      effect = drew
+        ? ` — drew ${cardLabel(drew.card)}${
+            sameCard(drew.acting, drew.card) ? '' : `, still on ${cardLabel(drew.acting)}`
+          }`
+        : ' — the deck is empty';
     }
 
     publish({
@@ -4095,6 +4250,22 @@ async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
       expression: 'benny',
       explained: use ? `${use}${effect} — **${left}** left` : `**${left}** left`,
     });
+
+    /**
+     * The reroll is published **after** the line that paid for it, which puts it
+     * *above* — the log runs newest-first.
+     *
+     * Damian, 2026-09-12: *"when spending a benny to reroll a trait roll, it would
+     * make logical sense — and be easier to see the roll itself — for the
+     * 'spending a benny to reroll a trait' to appear first in the log (i.e. below
+     * the reroll itself)."* It used to roll first and then announce the payment,
+     * so the dice you had just thrown were buried under the bookkeeping.
+     *
+     * Which is also why this one does not report its effect back into the line
+     * above: the result is the next line up, in full, with its own targeting
+     * table. "— rerolled Fighting" was a summary of something already on screen.
+     */
+    if (use === 'Reroll a Trait') rerollLastTrait(sheet);
     // The chip goes back where it came from. Not awaited, for the same reason the
     // award's is not: the Benny is banked, spent and logged already, and the
     // animation is decoration that must not hold the button down.
@@ -4117,10 +4288,10 @@ async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
  *
  * @returns a fragment for the Benny line, since the roll itself publishes separately.
  */
-function rerollLastTrait(sheet: Sheet): string {
+function rerollLastTrait(sheet: Sheet): void {
   const last = lastTraitRoll.get(sheet.id);
   // `spendBenny` checks this before charging; belt and braces for any other caller.
-  if (!last) return ' — nothing to reroll';
+  if (!last) return;
 
   const dice: DieEvent[] = [];
   const explained = new RollInterpreter(
@@ -4139,7 +4310,6 @@ function rerollLastTrait(sheet: Sheet): string {
     // the same trait rather than the reroll.
     true,
   );
-  return ` — rerolled ${last.label}`;
 }
 
 /**
@@ -4172,8 +4342,24 @@ function rerollLastTrait(sheet: Sheet): string {
  * middle of a round whose cards are still on the table. So the flag is cleared on
  * the way in and put back on the way out — the deck the round was dealt from keeps
  * dealing, and the reshuffle still happens where it belongs, at the next round.
+ *
+ * ## A Joker drawn here pays out
+ *
+ * Damian, 2026-09-11: *"I think if you 'deal' extra cards to a player and a Joker
+ * comes up, it doesn't award bennies — yep, confirmed."* It did not, and never
+ * had: `jokersWild` was called from the round deal and this path had no equivalent.
+ * The 09-10 changelog said Jokers pay correctly now, which made a standing omission
+ * read as a fresh bug.
+ *
+ * It matters more than the number of presses suggests. An extra card is a *second*
+ * bite at the deck — Level Headed, or a card bought with a Benny — so it is one of
+ * the likelier places for a Joker to turn up, and every one of them has been
+ * silently swallowed. Four hours of play on 09-12 produced none at all.
  */
-async function redrawCard(tokenId: string, _sheet: Sheet): Promise<Card | undefined> {
+async function redrawCard(
+  tokenId: string,
+  sheet: Sheet,
+): Promise<{ card: Card; acting: Card } | undefined> {
   const state = initiative ?? (await freshInitiative());
   const result = dealRound(
     { ...state, jokerDealt: false },
@@ -4185,8 +4371,21 @@ async function redrawCard(tokenId: string, _sheet: Sheet): Promise<Card | undefi
 
   // The whole gang, not just the mook whose row was pressed: they are dealt one
   // card between them and they act on one card. See `actingTogether`.
+  //
+  // `prefers` is the character's, not the deal's: a Hesitant character acts on
+  // their worst card, so the new card takes over only if it is lower. Everyone
+  // else takes the higher one — see `addToHand` for why that reversed.
+  const prefers = initiativeEdges(sheet).hesitant ? 'lowest' : 'highest';
   const gang = actingTogether(tokenId, combatants(tokens, sheets));
-  await updateTokenStates(gang, (current) => addToHand(current, draw.card));
+  // What they end up acting on, taken from the same call that decides it rather
+  // than worked out a second time beside it — two copies of this comparison would
+  // be two chances to disagree, and the log would be the one that was wrong.
+  let acting = draw.card;
+  await updateTokenStates(gang, (current) => {
+    const next = addToHand(current, draw.card, prefers);
+    acting = chosenCard(next) ?? draw.card;
+    return next;
+  });
   // Redrawing is not a new round; keep the round number where it was. The joker
   // flag is sticky too — a joker somebody else drew this round still owes the
   // deck a reshuffle, whatever this one card turned out to be.
@@ -4196,9 +4395,35 @@ async function redrawCard(tokenId: string, _sheet: Sheet): Promise<Card | undefi
     jokerDealt: state.jokerDealt || result.state.jokerDealt,
   };
   await writeInitiative(initiative);
+  // Same rule as the round deal: a Joker pays the players, and only when a player
+  // is holding it. One card, so `draw.cards` and `draw.card` are the same fact.
+  if (sheet.pc && isJoker(draw.card)) await payJokersWild();
   // The row's hint is built from the hand on the token now, so nothing needs to
   // be remembered here.
-  return draw.card;
+  return { card: draw.card, acting };
+}
+
+/**
+ * Joker's Wild: one Benny to every player character, once.
+ *
+ * Shared by the round deal and the single extra card, because they are the same
+ * rule and having it in one of the two places is exactly the bug Damian reported
+ * on 09-11. Whether a *player* drew it is the caller's question — a villain's
+ * Joker reshuffles the deck and says so in the log, but does not pay.
+ */
+async function payJokersWild(): Promise<void> {
+  const lucky = await bank.jokersWild(sheets);
+  bennies = await bank.all();
+  renderMarshal();
+  if (!lucky.length) return;
+  publish({
+    label: "Joker's Wild",
+    expression: 'benny',
+    explained: `a Benny each for ${lucky.map((who) => who.name).join(', ')}`,
+  });
+  // The one Benny in the game that arrives for a reason everybody can see. Not
+  // awaited: the chips are staggered, and the deal should not wait on them.
+  void tossBennies(lucky.map((who) => who.id));
 }
 
 /**
@@ -4232,7 +4457,7 @@ async function replaceCard(tokenId: string): Promise<void> {
   // mook who *has* a card is the surgical case, and still draws.
   const joining = combatant.card ? undefined : gangCard(combatant, table);
   if (joining) await setHands(new Map([[tokenId, { cards: [joining], chosen: joining }]]));
-  const card = joining ?? (await redrawCard(tokenId, combatant.sheet));
+  const drew = joining ? { card: joining, acting: joining } : await redrawCard(tokenId, combatant.sheet);
 
   // Named per token, as the deal is: one of five bandits sharing a sheet has to
   // be identifiable in the log. The published line is named for everyone, so a
@@ -4246,15 +4471,52 @@ async function replaceCard(tokenId: string): Promise<void> {
   publish({
     label: joining ? 'joins the fight' : 'draws an extra Action Card',
     expression: 'initiative',
-    explained: card
+    explained: drew
       ? joining
-        ? `${who} in on ${cardLabel(card)}`
-        : // "also holds", not "now on": the new card is added to the hand and the
-          // player decides whether to act on it. Saying "now on" would announce a
-          // choice they have not made yet.
-          `${who} also holds ${cardLabel(card)}`
+        ? `${who} in on ${cardLabel(drew.card)}`
+        : // Which card they are on is the useful half — the extra card takes over
+          // when it is the better one, so this line has to say whether it did.
+          sameCard(drew.acting, drew.card)
+          ? `${who} draws ${cardLabel(drew.card)}, and acts on it`
+          : `${who} draws ${cardLabel(drew.card)}, still on ${cardLabel(drew.acting)}`
       : `${who} — the deck is empty`,
   });
+  await refreshTokens();
+}
+
+/**
+ * Put a combatant's cards back under the deck and take them out of the round.
+ *
+ * The undo for `replaceCard`, which is one press and had no way back. Paul,
+ * 2026-09-12: *"possibly have a return-cards-to-deck (specific to a char/sheet)
+ * in case of accidental overdeal."*
+ *
+ * **Per sheet, not per token**, which is what "specific to a char/sheet" means
+ * here and is forced by the model anyway: a gang shares one card between every
+ * member, so taking it off one bandit and leaving it on the other five would put
+ * a card back in the deck that five people are still holding. Same rule as the
+ * deal and the switch — see `actingTogether`.
+ */
+async function returnCards(tokenId: string): Promise<void> {
+  const table = combatants(tokens, sheets);
+  const combatant = table.find((c) => c.tokenId === tokenId);
+  const hand = combatant && handOf(combatant.state);
+  if (!combatant || !hand || !initiative) return;
+
+  const gang = actingTogether(tokenId, table);
+  await updateTokenStates(gang, clearHand);
+  initiative = returnToDeck(initiative, hand.cards);
+  await writeInitiative(initiative);
+
+  // Nothing for a token the players cannot see, as everywhere else on this path.
+  if (!combatant.hidden) {
+    const who = displayName(combatant, table, false);
+    publish({
+      label: 'out of the round',
+      expression: 'initiative',
+      explained: `${who} — ${hand.cards.map(cardLabel).join(', ')} back under the deck`,
+    });
+  }
   await refreshTokens();
 }
 
@@ -4370,6 +4632,39 @@ async function tossBenny(sheetId: string): Promise<void> {
   // Marshal picking one up for themselves.
   await slideBenny(marshalPlace(), (await claimedPlaces()).get(sheetId));
 }
+
+/**
+ * A chip to each of several characters at once: Bennies all round, a Joker.
+ *
+ * Paul, 2026-09-12: *"spending bennies via any means should animate, equally the
+ * +1 benny to all PCs should animate."* The chip was wired to the paths that hand
+ * one character a Benny and to none of the paths that hand the room one, which is
+ * the moment it would be worth watching.
+ *
+ * **Only to a chair somebody is sitting in.** A single award to an unclaimed
+ * character throws a chip onto the table, which reads fine on its own; six of them
+ * at once would be a handful of chips flung at nobody. Damian's original complaint
+ * was about exactly that kind of volume — *"annoying when I'm trying to initialise
+ * the scene and hand out bennies to all the NPCs"* — so a bulk toss is stricter
+ * than a single one on purpose.
+ *
+ * Staggered, because they leave from the same hand: simultaneous chips would draw
+ * as one chip, and the count is the information.
+ */
+async function tossBennies(sheetIds: readonly string[]): Promise<void> {
+  const seats = await claimedPlaces();
+  const from = marshalPlace();
+  const to = sheetIds.map((id) => seats.get(id)).filter((seat) => seat !== undefined);
+  for (const [index, seat] of to.entries()) {
+    if (index) await wait(BETWEEN_CHIPS);
+    await slideBenny(from, seat);
+  }
+}
+
+/** Long enough that two chips read as two, short enough to be one gesture. */
+const BETWEEN_CHIPS = 140;
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 /**
  * The chip going the other way: a player spending one, or handing one back.
@@ -4916,6 +5211,22 @@ interface ShotSession {
   /** Sheet and weapon together, so the panel reopens on the right row. */
   key: string;
   skill: string;
+  /**
+   * A Fighting attack rather than a shot or a throw.
+   *
+   * One panel, not two. Damian and Paul, 2026-09-12: *"the best way of solving
+   * most of the melee issues was just to get the Fighting dialogue to match the
+   * Shooting dialogue."* Matching it by being it — the ranged half of the panel
+   * is switched off and the three melee modifiers are switched on. See `melee.ts`
+   * for what is absent and why.
+   */
+  melee: boolean;
+  /** Points of Gang Up, already netted against the defender's allies (p156). */
+  gangUp: number;
+  /** +2 to the attack and to damage, Vulnerable afterwards (p165). */
+  wild: boolean;
+  /** Their foe has no weapon or shield: +2 (p165). */
+  unarmedFoe: boolean;
   bands?: RangeBands;
   aim: Aim;
   /**
@@ -4937,6 +5248,15 @@ interface ShotSession {
   scoped: boolean;
   slugs: boolean;
   dial: number;
+  /**
+   * Whether the dialled penalty is one Aim or Marksman may cancel.
+   *
+   * Paul, 2026-09-12: *"no easy way for marksman (penalty removal) to work with
+   * the bonus/penalty slider."* The dial is deliberately outside everything Aim
+   * can reach, because Aim's list of five categories is exact and a hand-dialled
+   * number has no stated meaning. This is how it gets one. See `ShotMod.aimable`.
+   */
+  dialAimable: boolean;
   /**
    * Cover, for the whole shot.
    *
@@ -5138,6 +5458,21 @@ const COVER_FRACTION: Record<number, string> = {
  */
 let showShotConditions = false;
 
+/**
+ * What a button that is about to roll should have written on it: `d8−2`.
+ *
+ * The die is the character's, the number is everything the app is about to add
+ * to it — the trait's own modifier, their wounds, the Marshal's dial, the range,
+ * the cover, a Wild Attack. One term rather than the sheet's three-colour
+ * breakdown, because this appears inside a table cell a few characters wide and
+ * the breakdown is on the panel directly above it.
+ */
+function rollFace(sheet: Sheet, skill: string, situational: number): string {
+  const { die, mod } = traitDie(sheet, skill);
+  const total = mod + situational;
+  return `d${die}${total ? formatMod(total) : ''}`;
+}
+
 function shotKey(sheet: Sheet, weapon: Weapon): string {
   return `${sheet.id}::${weapon.name}`;
 }
@@ -5160,11 +5495,16 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
           key,
           skill,
           ...(bands ? { bands } : {}),
+          melee: skill === 'Fighting',
+          gangUp: 0,
+          wild: false,
+          unarmedFoe: false,
           aim: 'off',
           aimSource: 'aim',
           scoped: false,
           slugs: false,
           dial: 0,
+          dialAimable: false,
           cover: 0,
           vitals: false,
           meleeCall: new Map(),
@@ -5301,6 +5641,19 @@ function shotChoice<T>(
  * dark twice.
  */
 function shotMods(session: ShotSession, band: Band | undefined): ShotTotal {
+  // A Fighting attack is a sum, not a negotiation: there is no Aim to spend and
+  // nothing aimable to spend it on. `aim` is handed back empty so every caller
+  // that reads `.aim.spent` keeps working without asking which kind this was.
+  if (session.melee) {
+    const { mods, total } = meleeTotal({
+      gangUp: session.gangUp,
+      wild: session.wild,
+      unarmedFoe: session.unarmedFoe,
+      ...(session.scale === undefined ? {} : { calledShot: calledShotMod(session.scale) }),
+      dial: session.dial,
+    });
+    return { mods, total, aim: { mods, spent: [], unspent: 0 } };
+  }
   return shotTotal({
     // What is actually being fired, not what the gun could fire. A Gatling
     // declared against one target throws one die and takes no Recoil.
@@ -5312,6 +5665,7 @@ function shotMods(session: ShotSession, band: Band | undefined): ShotTotal {
     cover: session.cover,
     scoped: session.scoped,
     dial: session.dial,
+    dialAimable: session.dialAimable,
     // Rock and Roll!, a bipod or a tripod. This was the last wire left unjoined:
     // `negatesRecoil` was written and tested and nothing ever called it, so
     // Reggie — who has the Edge — was paying the −2 the Edge exists to remove.
@@ -5477,7 +5831,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
   // Only for a weapon that can fire more than once. A revolver's Rate of Fire is
   // not a decision, and a row of one button is a row that says nothing.
   const ceiling = maxRateOfFire(weapon);
-  if (ceiling > 1) {
+  if (ceiling > 1 && !session.melee) {
     controls.append(
       shotChoice(
         'Shots',
@@ -5575,7 +5929,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
       },
     );
   }
-  place(
+  if (!session.melee) place(
     shotChoice(
       'Aim',
       aimOptions,
@@ -5592,6 +5946,77 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
     ),
     session.aim !== 'off',
   );
+
+  // --- the three a Fighting attack has and a shot does not -----------------
+  //
+  // In `controls` rather than behind the fold for Gang Up, because it is the
+  // melee equivalent of Rate of Fire: the number that decides the attack, set
+  // fresh every time, and worth nothing if you have to go looking for it.
+  if (session.melee) {
+    controls.append(
+      shotChoice(
+        'Gang Up',
+        Array.from({ length: GANG_UP_MAX + 1 }, (_, n) => ({
+          value: n,
+          text: n === 0 ? '0' : `+${n}`,
+          title:
+            n === 0
+              ? 'No help, or as many allies around the defender as foes around them'
+              : `${n} additional adjacent ${n === 1 ? 'foe' : 'foes'}, less one for each ally ` +
+                `adjacent to the defender (p156)`,
+        })),
+        session.gangUp,
+        (value) => {
+          session.gangUp = value;
+          redraw();
+        },
+      ),
+    );
+
+    place(
+      shotChoice(
+        'Wild',
+        [
+          { value: false, text: 'No', title: 'An ordinary swing' },
+          {
+            value: true,
+            text: `+${WILD_ATTACK}`,
+            title:
+              `A Wild Attack: +${WILD_ATTACK} to this attack and to its damage, and you are ` +
+              'Vulnerable until the end of your next turn (p165). The condition is yours to set.',
+          },
+        ],
+        session.wild,
+        (value) => {
+          session.wild = value;
+          redraw();
+        },
+      ),
+      session.wild,
+    );
+
+    place(
+      shotChoice(
+        'Foe',
+        [
+          { value: false, text: 'Armed', title: 'They have a weapon or a shield' },
+          {
+            value: true,
+            text: `+${UNARMED_DEFENDER}`,
+            title:
+              `Your foe has no weapon or shield: +${UNARMED_DEFENDER} to a melee attack (p165). ` +
+              'Does not stack with the Drop, which this app does not model.',
+          },
+        ],
+        session.unarmedFoe,
+        (value) => {
+          session.unarmedFoe = value;
+          redraw();
+        },
+      ),
+      session.unarmedFoe,
+    );
+  }
 
   // A called shot is a **size**, not a body part — p161: `"Use the Scale of the
   // target when making called shots against creatures, not their Scale."` The
@@ -5661,7 +6086,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
 
   // Only worth asking when the answer changes something. A scope matters at
   // Extreme Range and nowhere else the book names.
-  if (reachesExtreme(weapon, session.slugs)) {
+  if (reachesExtreme(weapon, session.slugs) && !session.melee) {
     place(
       shotChoice(
         'Scope',
@@ -5681,7 +6106,11 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
 
   // Cover is the target's, not the shooter's — but as one control rather than one
   // per row. See `ShotSession.cover` for why it moved, and what moving it costs.
-  place(
+  //
+  // Ranged only. The book's cover table is written for something shot at from a
+  // distance; a man swinging at another man across a water trough is a Marshal's
+  // call and belongs on the dial.
+  if (!session.melee) place(
     shotChoice(
       'Cover',
       COVER.map((step) => ({
@@ -5705,7 +6134,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
   // Buckshot only. `spraysLead` would say yes to a Gatling as well, which cannot
   // be loaded with slugs — the same conflation of "rapid" with "spread" that
   // `straysAsFired` was written to undo.
-  if (firesBuckshot(weapon)) {
+  if (firesBuckshot(weapon) && !session.melee) {
     place(
       shotChoice(
         'Load',
@@ -5751,11 +6180,36 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
     pip.title = n === 0 ? 'No hand modifier' : `${formatMod(n)} by hand`;
     pip.addEventListener('click', () => {
       session.dial = session.dial === n ? 0 : n;
+      // A cleared or positive dial has nothing for Aim to cancel, and leaving the
+      // claim set would have it spring back into effect the next time a penalty
+      // is dialled — a modifier that quietly became aimable while nobody was
+      // looking at it.
+      if (session.dial >= 0) session.dialAimable = false;
       redraw();
     });
     track.append(pip);
   }
   dialRow.append(track);
+
+  // Only for a dialled *penalty*, and only while something is actually aiming.
+  // Otherwise it is a question with no consequence, on the panel that already has
+  // the most controls in the app.
+  if (session.dial < 0 && session.aim === 'cancel') {
+    const claim = document.createElement('button');
+    claim.className = session.dialAimable ? 'toggle on' : 'toggle';
+    const who = session.aimSource === 'marksman' ? 'Marksman' : 'Aim';
+    claim.textContent = session.dialAimable ? `${who} may cancel it` : `${who} cannot cancel it`;
+    claim.title =
+      `${who} cancels Range, Cover, Called Shot, Scale and Speed penalties and nothing else ` +
+      `(p152, p45). The app cannot tell which of those a hand-dialled ${formatMod(session.dial)} ` +
+      `is — say so here and the points may be spent on it.`;
+    claim.addEventListener('click', () => {
+      session.dialAimable = !session.dialAimable;
+      redraw();
+    });
+    dialRow.append(claim);
+  }
+
   box.append(dialRow);
 
   // Its own line, under the dial. Seventeen pips already fill a row edge to edge
@@ -5772,6 +6226,10 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
     render();
   });
   expand.append(more);
+  // And the same roll with nobody named. Not only when the target list is empty:
+  // a brawl can have six tokens on the map and still be a swing at the chandelier.
+  // See `untargeted` — this is the button the weapons table used to be.
+  expand.append(untargeted(sheet, weapon, session, sheetMods));
   box.append(expand);
   box.append(conditions);
 
@@ -5794,6 +6252,43 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
  * it checks it is still in the document rather than resuming blind. Same shape as
  * `fillTargets`, for the same reason.
  */
+/**
+ * Attack with nobody named — the swing at the scenery, the shot at a door.
+ *
+ * This is a capability the panel took away and had to give back. The weapons
+ * table's Fighting button used to roll on the spot: one press, the weapon's name
+ * in the log, no target needed. Routing melee through the panel (2026-09-14) made
+ * every attack require somebody bound and visible to aim at, which is a thing an
+ * unbound scene does not have and a barroom door never will.
+ *
+ * So it keeps the panel's arithmetic and drops only the target. The roll still
+ * carries `skill` and any range bands, so the log line still expands into the
+ * targeting table for anyone the Marshal decides it was aimed at after all —
+ * which is how every roll off the skills list has always worked.
+ */
+function untargeted(
+  sheet: Sheet,
+  weapon: Weapon,
+  session: ShotSession,
+  sheetMods: RollBreakdown,
+): HTMLElement {
+  const total = sheetMods.total + shotMods(session, undefined).total;
+  const button = document.createElement('button');
+  button.className = 'shot-roll';
+  button.textContent = rollFace(sheet, session.skill, total);
+  button.title = `Roll ${session.skill} with the ${weapon.name} at nothing in particular`;
+  button.addEventListener('click', () => {
+    publishTrait(
+      sheet,
+      `${weapon.name} — ${session.skill}`,
+      rollSkill(sheet, session.skill, total),
+      sheetMods,
+      { skill: session.skill, ...(session.bands ? { bands: session.bands } : {}) },
+    );
+  });
+  return button;
+}
+
 async function fillShotTargets(
   holder: HTMLElement,
   sheet: Sheet,
@@ -5812,10 +6307,21 @@ async function fillShotTargets(
   // What does *not* come back is the row of alternative outcomes this panel was
   // built to replace: an outcome is drawn only under a target the current shot
   // actually gave a die to.
-  const shown = [...candidates].sort((a, b) => (a.cells ?? Infinity) - (b.cells ?? Infinity));
+  // Nearest first, but the shooter's own side after everybody else — see
+  // `ownSideLast`. Distance is still what orders the people you might actually
+  // aim at; the posse simply stops being at the top of a list of things to shoot.
+  const shown = [...candidates].sort(
+    (a, b) =>
+      ownSideLast(sheet.pc, a.sheet.pc) - ownSideLast(sheet.pc, b.sheet.pc) ||
+      (a.cells ?? Infinity) - (b.cells ?? Infinity),
+  );
 
   if (!shown.length) {
-    holder.textContent = 'Nothing bound and visible to aim at.';
+    const none = document.createElement('p');
+    none.className = 'empty';
+    none.textContent = 'Nothing bound and visible to aim at. ';
+    none.append(untargeted(sheet, weapon, session, sheetMods));
+    holder.replaceChildren(none);
     return;
   }
 
@@ -5849,12 +6355,33 @@ async function fillShotTargets(
 
     const tr = document.createElement('tr');
     if (band === 'over') tr.className = 'out-of-range';
+    /**
+     * Out of reach for a swing.
+     *
+     * The shot panel earned the right to *assume* melee inside
+     * `PARRY_VISIBLE_CELLS`; a Fighting attack asserts it at any distance, which
+     * would resolve a knife against the Parry of somebody across the room with
+     * only the Dist column to say otherwise.
+     *
+     * Marked, not removed. Reach weapons exist, the grid is not the fiction, and
+     * a Marshal who means it should not have to argue with a list — the same
+     * treatment the out-of-range row gets rather than the treatment a rule
+     * enforced on their behalf would get.
+     */
+    const outOfReach =
+      session.melee && cells !== undefined && cells >= PARRY_VISIBLE_CELLS;
+    if (outOfReach) tr.classList.add('out-of-reach');
     if (declared && !session.rolled) tr.classList.add('declared');
 
     const name = document.createElement('td');
     name.className = 'who';
     // Same rule as the targeting table: an NPC's real name is the Marshal's.
     name.textContent = localName(victim, mapName(token), isGM);
+    if (outOfReach) {
+      name.title =
+        `Further than ${PARRY_VISIBLE_CELLS} cells away — too far to swing at, unless the ` +
+        `weapon has Reach or you have closed the distance. Still on the list.`;
+    }
     tr.append(name);
 
     const pills = document.createElement('td');
@@ -5946,13 +6473,18 @@ async function fillShotTargets(
     const target = session.rolled?.targets.get(token.id) ?? targetNumber(parry, engaged);
     const tn = document.createElement('td');
     tn.className = 'num shot-tn';
-    const close = showsParry(session.skill, cells) || engaged;
+    // A **Fighting** attack is against Parry by definition and there is nothing to
+    // take back — the whole "in melee or not" question belongs to something shot
+    // or thrown from a distance. Offering the toggle would invite a Marshal to
+    // resolve a sword swing against a flat 4.
+    const close = !session.melee && (showsParry(session.skill, cells) || engaged);
     // Read off `engaged`, never off the number it produced. A defender with
     // Parry 4 — which is Fighting d4, and most Extras in the bestiary — resolves
     // against 4 whether or not the shot is into melee, so a control that
     // inferred its own state from the TN would draw itself off, refuse to toggle
     // and publish nothing, all while the arithmetic quietly stayed correct.
     const label = engaged ? `vs ${target} (parry)` : 'vs 4';
+    if (session.melee) tn.title = `A Fighting attack is resolved against Parry ${parry} (p160)`;
     if (close) {
       const button = document.createElement('button');
       button.className = engaged ? 'shot-opt on' : 'shot-opt';
@@ -6011,7 +6543,13 @@ async function fillShotTargets(
         // which is what it did before any of this and what it should keep doing.
         const roll = document.createElement('button');
         roll.className = 'shot-roll';
-        roll.textContent = 'Roll';
+        // The dice, not the word. Paul, 2026-09-14: *"all buttons that will roll
+        // should show in their text what the roll will be, for transparency."*
+        // This is the only button on the panel that throws any, and it sat there
+        // saying "Roll" while six controls above it changed what that meant.
+        // Everything in `priced` is still on the tooltip; what goes on the face
+        // is the one thing you check before committing.
+        roll.textContent = rollFace(sheet, session.skill, sum);
         roll.disabled = band === 'over';
         roll.title = band === 'over' ? 'Out of range' : `Roll ${priced}`;
         roll.addEventListener('click', () => {
@@ -6474,7 +7012,10 @@ function damageButton(
   /** The declared target, so the damage roll names it as the attack did. */
   targetName: string,
 ): HTMLElement {
-  const bonus = calledShotDamage(session.vitals);
+  // A called shot to the vitals, and a Wild Attack, which the book gives to the
+  // damage roll as well as to the attack: `"+2 to the character's Fighting
+  // attacks and resulting damage rolls"` (p165).
+  const bonus = calledShotDamage(session.vitals) + wildAttackDamage(session.wild);
   // A scattergun's dice depend on the range, which the panel now knows — so it
   // picks rather than offering all three and hoping. Slugs are flat at any range.
   const options = weapon.damage ? damageDiceOptions(weapon.damage) : [];
@@ -6502,13 +7043,15 @@ function damageButton(
   // the die along with everything else that correction changes.
   const raiseDie = raises >= 1 ? `+${RAISE_DIE}` : '';
   const expression = `${base}${raiseDie}${bonus ? `+${bonus}` : ''}`;
-  button.textContent = `Damage ${expression}`;
+  // Without the exploding marks. Every damage die in Savage Worlds aces, so a `!`
+  // on each of them is a character of noise on a button that has to fit in a
+  // panel — and the full expression is one hover away.
+  button.textContent = `Damage ${expression.replace(/!/g, '')}`;
   button.title =
     `Roll ${expression}` +
     (raises ? ` — +${RAISE_DIE} for the raise, one die however many raises (p148)` : '') +
-    (bonus
-      ? ' — the +4 for a called shot to the head or vitals is already in it (p154)'
-      : '') +
+    (session.vitals ? ` — +${VITALS_DAMAGE} for a called shot to the head or vitals (p154)` : '') +
+    (session.wild ? ` — +${WILD_ATTACK} for the Wild Attack (p165)` : '') +
     (session.slugs ? ' — slugs do 2d10 at any range (p161)' : '') +
     (options.length && !session.slugs
       ? ` — buckshot at ${band ?? 'close'} range (p161)`
@@ -6641,7 +7184,6 @@ function amendDamage(entry: RollEntry): void {
  * after the attack that the sheet already rolls for you.
  */
 function renderGear(sheet: Sheet, mods: RollBreakdown): void {
-  const penalty = mods.total;
   const gear = parseGear(sheet.gear);
   if (!sheet.gear) return;
 
@@ -6666,7 +7208,10 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
     }
     table.append(head);
 
-    for (const weapon of gear.weapons) {
+    // The weapon, then any other way of using it: a tomahawk swung and a tomahawk
+    // thrown are two rows and two buttons off one item in the saddlebag. See
+    // `weaponModes` — the extra rows come from the catalogue, not the sheet.
+    for (const weapon of gear.weapons.flatMap((w) => [w, ...weaponModes(w)])) {
       const row = document.createElement('tr');
 
       const nameCell = document.createElement('td');
@@ -6681,34 +7226,34 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
       const attack = document.createElement('button');
       attack.className = 'atk';
       const bands = parseRangeBands(weapon.range);
-      // The stray window is the gun's, not the roll's: a scattergun endangers
-      // bystanders on a 1 *or* a 2, everything else only on a 1.
-      const strayOn = strayThreshold(weapon);
 
-      // A ranged attack opens the shot panel instead of rolling. "Shoot" rather
-      // than "Shooting", because it is the start of the sequence and not a roll
-      // yet — the roll happens further down, once there is a target to name.
-      // Fighting still rolls straight off the button: a melee panel would need
-      // Gang Up and Wild Attack, which is a different piece of work.
-      const ranged = skill === 'Shooting';
-      attack.textContent = ranged ? 'Shoot' : skill;
-      attack.title = ranged
-        ? `Line up a shot with the ${weapon.name} — pick the target, then roll`
-        : `Roll ${skill}${mods.parts.length ? ` (${describeMods(mods.parts)})` : ''}`;
-      if (ranged && openShot?.key === shotKey(sheet, weapon)) attack.classList.add('on');
-      attack.addEventListener('click', () => {
-        if (!ranged) {
-          publishTrait(
-            sheet,
-            `${weapon.name} — ${skill}`,
-            rollSkill(sheet, skill, penalty),
-            mods,
-            { skill, ...(bands ? { bands } : {}), strayOn },
-          );
-          return;
-        }
-        toggleShot(sheet, weapon, skill, bands);
-      });
+      /**
+       * Every attack opens the panel. None of these roll.
+       *
+       * Shooting always did; throwing joined it when `weaponSkill` learned the
+       * difference; and **Fighting** joins here, which is the change Damian and
+       * Paul agreed at the table: *"the best way of solving most of the melee
+       * issues was just to get the Fighting dialogue to match the Shooting
+       * dialogue."* Matching it by being it — see `ShotSession.melee`.
+       *
+       * The word is what you are doing, and the chevron is the promise that this
+       * is the start of something rather than dice. Paul, 2026-09-14: *"make the
+       * shoot/fight/throw button a little more obvious that it'll expand into a
+       * subpane rather than roll — all buttons that will roll should show in
+       * their text what the roll will be."* So these three say a verb and open a
+       * panel, and everything that actually throws dice says the dice.
+       */
+      const open = openShot?.key === shotKey(sheet, weapon);
+      const verb = skill === 'Shooting' ? 'Shoot' : skill === 'Athletics' ? 'Throw' : 'Fight';
+      attack.classList.add('expands');
+      attack.textContent = `${verb} ${open ? '\u25be' : '\u25b8'}`;
+      attack.title =
+        `Set up ${
+          skill === 'Athletics' ? 'a throw' : skill === 'Fighting' ? 'a swing' : 'a shot'
+        } with the ${weapon.name} — pick the target, then roll` +
+        (mods.parts.length ? ` (currently ${describeMods(mods.parts)})` : '');
+      if (open) attack.classList.add('on');
+      attack.addEventListener('click', () => toggleShot(sheet, weapon, skill, bands));
       attackCell.append(attack);
       row.append(attackCell);
 
@@ -6753,8 +7298,13 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
         const expression = damageExpression(weapon.damage, sheet.attributes.strength?.die);
         const button = document.createElement('button');
         button.className = 'dmg';
-        button.textContent = weapon.damage;
-        button.title = `Roll ${expression}`;
+        // The dice it will actually throw, not the book's shorthand for them.
+        // `Str+d4` is what the page says and `d6+d4` is what happens, and this
+        // button rolls — so it says the second and keeps the first on hover.
+        // The exploding marks are dropped: every trait and damage die in Savage
+        // Worlds aces, so `!` on every one of them is a character of noise.
+        button.textContent = expression.replace(/!/g, '');
+        button.title = `Roll ${expression} — the book writes it ${weapon.damage}`;
         button.addEventListener('click', () =>
           rollFreeform(
             expression,
@@ -6958,12 +7508,98 @@ async function myCharacter(): Promise<string | undefined> {
   return typeof id === 'string' ? id : undefined;
 }
 
+/**
+ * Does this version of the room's metadata differ in anything we actually read?
+ *
+ * `onMetadataChange` fires for the whole document, so another extension sharing the
+ * room — and they do share it, the Storage pane lists theirs — makes this panel
+ * re-read its entire roster for a key it will never look at. It also fires for a
+ * write that changed nothing, which a `− +` pair pressed back to its old value
+ * produces.
+ *
+ * Comparing values rather than counting keys, because the interesting change is a
+ * Benny going from 2 to 3, not a key appearing.
+ */
+const OUR_KEYS = 'com.savagebot/';
+let roomSeen: string | undefined;
+
+function roomSaysAnything(metadata: Record<string, unknown>): boolean {
+  const ours = JSON.stringify(
+    Object.keys(metadata)
+      .filter((key) => key.startsWith(OUR_KEYS))
+      .sort()
+      .map((key) => [key, metadata[key]]),
+  );
+  if (ours === roomSeen) return false;
+  roomSeen = ours;
+  return true;
+}
+
+/** Long enough to swallow a hand-out to the whole party, short enough to feel live. */
+const ROOM_SETTLES = 200;
+let reloadTimer: number | undefined;
+let reloading = false;
+
+/**
+ * Re-read the room, once, after it stops changing.
+ *
+ * A hand-out to the party is one write per character, and each one comes back as
+ * its own change event — so **+1 Benny to all PCs** used to run the heaviest
+ * function in the panel six or seven times over, each pass rebuilding the pane
+ * under a Marshal who was trying to press the button twice more. The reads are the
+ * expensive part and the last one is the only one whose answer differs, so a
+ * trailing delay collapses the burst into the pass that was going to win anyway.
+ *
+ * A reload already running is not interrupted: it is allowed to finish and another
+ * is queued behind it. Two overlapping passes would race to install two snapshots
+ * and the older could land second.
+ */
+function scheduleReload(): void {
+  window.clearTimeout(reloadTimer);
+  reloadTimer = window.setTimeout(() => {
+    if (reloading) {
+      scheduleReload();
+      return;
+    }
+    reloading = true;
+    void reload().finally(() => {
+      reloading = false;
+    });
+  }, ROOM_SETTLES);
+}
+
 async function reload(): Promise<void> {
+  // Everything is read before anything is applied, so that an overtaken read can be
+  // thrown away whole rather than half-installed.
+  const startedAfter = roomWriteCount();
   // One read of both documents for all three: the sheets, where each is kept, and
   // anything left in both by a half-done move. Asking separately meant a
   // `getMetadata` per character, because rendering is synchronous and `scopeOf`
   // is not.
   const snapshot = await roster.snapshotFull();
+  const nextBennies = await bank.all();
+  const nextPowerPoints = await powers.all();
+  const nextMine = await myCharacter();
+
+  /**
+   * Overtaken by this client's own hand.
+   *
+   * Each read above is a round trip, and a button pressed during one of them has
+   * already written, already updated the map it belongs to and already repainted.
+   * Installing figures read *before* that press puts the old number back on the
+   * screen — friedcrumpet, 2026-09-12: *"modifying power points: when clicking the
+   * −/+, one click reset unexpectedly."* The press was not lost; it was overwritten
+   * by a reload that had started before it and finished after it.
+   *
+   * Dropped rather than merged, because a partial application is the harder thing
+   * to reason about: what is on screen is already newer than what was read. Another
+   * pass is queued, and it settles as soon as the fingers stop.
+   */
+  if (roomWriteCount() !== startedAfter) {
+    scheduleReload();
+    return;
+  }
+
   sheets = snapshot.sheets;
   scopes = snapshot.scopes;
   const clashes = snapshot.duplicates;
@@ -6982,10 +7618,10 @@ async function reload(): Promise<void> {
         `roster to clear the other.`,
     );
   }
-  bennies = await bank.all();
+  bennies = nextBennies;
   renderMarshal();
-  powerPoints = await powers.all();
-  mineId = await myCharacter();
+  powerPoints = nextPowerPoints;
+  mineId = nextMine;
   const mySheets = visibleSheets();
   if (!mySheets.some((s) => s.id === selectedId)) {
     const mine = mineId;
@@ -7492,9 +8128,18 @@ OBR.onReady(async () => {
   // `renderEditor`'s hooks. There is deliberately no footer button to bind here.
 
   // Another player editing their own sheet must show up here without a reload.
-  // Our own writes are skipped: re-rendering mid-edit would blow away focus.
-  OBR.room.onMetadataChange(() => {
-    if (!saving) void reload();
+  //
+  // Nothing is skipped here any more and nothing needs to be. The old version had
+  // `if (!saving)`, a flag set around a *sheet* save — while Bennies and Power
+  // Points live in this same metadata and were never covered by it, and the flag
+  // was cleared the instant the write resolved, which is before the echo of it
+  // arrives. So it guarded one of three writers, for a window that had already
+  // closed. The guarding now happens where it can be done properly: `roomSaysAnything`
+  // drops changes to keys we do not read, `scheduleReload` collapses a burst into
+  // one pass, and `reload` refuses to install a read its own client has overtaken.
+  OBR.room.onMetadataChange((metadata) => {
+    if (!roomSaysAnything(metadata)) return;
+    scheduleReload();
   });
 
   // Everything from here is a nicety, in rough order of how much it is missed.

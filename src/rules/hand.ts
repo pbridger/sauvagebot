@@ -27,7 +27,7 @@
  * rewritten whenever the hand changes. Old tokens carrying only a `card` read
  * back as a one-card hand, and nothing had to be migrated.
  */
-import { sameCard, type Card } from '../game/cards.js';
+import { compareCards, sameCard, type Card } from '../game/cards.js';
 import type { TokenState } from '../obr/binding.js';
 
 export interface Hand {
@@ -68,18 +68,52 @@ export function setHand(state: TokenState, cards: readonly Card[], chosen: Card)
   return { ...state, cards: [...cards], chosen: index, card: cards[index]! };
 }
 
+/** Which end of the hand a new card has to beat to take over. */
+export type Prefers = 'highest' | 'lowest';
+
 /**
- * Add one card to whatever they hold, **without** changing what they act on.
+ * Add one card to whatever they hold, and act on it if it is the better one.
  *
  * This is what a Benny buys, and what the row's Deal gives a combatant who is
- * already in the fight. Deliberately not auto-selecting the new card even when it
- * is better: the whole point of the change is that the player chooses, and a
- * control that pre-empts them is the bug in a politer form.
+ * already in the fight. Every card stays in the hand either way — the choice is
+ * still the player's, and `chooseFromHand` is one click away.
+ *
+ * ## This used to do the opposite, on purpose
+ *
+ * The first version appended without ever changing what they acted on, because
+ * choosing is the player's and an app that pre-empts them is the same bug in a
+ * politer form. Damian, 2026-09-09: *"although it's important to retain the
+ * ability to choose amongst different action cards (particularly for Calculating)
+ * the default behaviour should be to pick the current highest card."* The
+ * objection raised against that was the third card — what about a player who has
+ * already picked one of the first two? His answer, 09-10, and it is the right
+ * one: *"that choice means nothing when they've then expressed interest in
+ * another card — it's redundant and should go back to defaulting to highest."*
+ * Asking for another card **is** the expression of interest. Paul confirmed it.
+ *
+ * So the common case is now no clicks instead of one, and the Calculating case —
+ * *"when their Action Card is a Five or less, they ignore up to 2 points of
+ * penalties"* — is one click instead of none. That is the right way round: the
+ * player who wants the low card is the player paying attention.
+ *
+ * ## Hesitant
+ *
+ * `prefers` exists for the Hindrance that inverts the whole question: a Hesitant
+ * character acts on their *worst* card, so a new high card taking over would be
+ * the app breaking the rule on their behalf. The round deal already knows this
+ * (`initiativeEdges`); this is how an extra card learns it too.
  */
-export function addToHand(state: TokenState, card: Card): TokenState {
+export function addToHand(state: TokenState, card: Card, prefers: Prefers = 'highest'): TokenState {
   const hand = handOf(state);
   if (!hand) return { ...state, cards: [card], chosen: 0, card };
-  return { ...state, cards: [...hand.cards, card], chosen: hand.chosen, card: hand.cards[hand.chosen]! };
+  const cards = [...hand.cards, card];
+  const against = compareCards(card, hand.cards[hand.chosen]!);
+  const takes = prefers === 'lowest' ? against < 0 : against > 0;
+  // Ties keep the card they are on. Two cards of the same rank and suit cannot
+  // both be in a legitimate deck, so this only arises after a misdeal — and
+  // leaving them where they are is the quieter of the two wrong answers.
+  const chosen = takes ? cards.length - 1 : hand.chosen;
+  return { ...state, cards, chosen, card: cards[chosen]! };
 }
 
 /** Act on a different card. Out-of-range indices are ignored rather than clamped. */

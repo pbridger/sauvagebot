@@ -63,25 +63,46 @@ describe('dealing a hand', () => {
 });
 
 /**
- * A Benny buys **one more card**, and does not choose it for you. It used to
+ * A Benny buys **one more card**, and takes it if it is better. It used to
  * re-deal the character's whole hand — two fresh cards for one chip on a Level
  * Headed character, and the old ones binned. Reported 2026-08-26.
  */
 describe('adding a card', () => {
-  it('appends without disturbing what they are acting on', () => {
+  it('appends, keeping every card in the hand', () => {
     const dealt = setHand(fresh(), [five], five);
     const after = addToHand(dealt, ace);
     expect(after.cards).toEqual([five, ace]);
-    expect(chosenCard(after)).toEqual(five);
   });
 
   /**
-   * Even when the new card is plainly better. Choosing is the player's, and an
-   * app that pre-empts them is the same bug in a politer form — Paige has
-   * Calculating, and may well want to stay on the five.
+   * Damian, 2026-09-09: *"the default behaviour should be to pick the current
+   * highest card."* Asking for another card is itself the expression of interest
+   * in it, so the common case costs no clicks. Paige, who has Calculating and may
+   * want to stay on the five, clicks once — and the five is still there to click.
    */
-  it('does not switch to the new card just because it is higher', () => {
-    expect(chosenCard(addToHand(setHand(fresh(), [five], five), ace))).toEqual(five);
+  it('acts on the new card when it beats the one they were on', () => {
+    expect(chosenCard(addToHand(setHand(fresh(), [five], five), ace))).toEqual(ace);
+  });
+
+  it('stays put when the new card is worse', () => {
+    const after = addToHand(setHand(fresh(), [ace], ace), five);
+    expect(chosenCard(after)).toEqual(ace);
+    expect(after.cards).toEqual([ace, five]);
+  });
+
+  /** A previous choice is not sacred — see the note on `addToHand`. */
+  it('overrides a card they had already picked out of a hand', () => {
+    const picked = chooseFromHand(setHand(fresh(), [five, nine], nine), 0);
+    expect(chosenCard(addToHand(picked, ace))).toEqual(ace);
+  });
+
+  /**
+   * Hesitant acts on the *worst* card, so the whole comparison inverts. Taking
+   * the high card for them would be the app breaking the rule on their behalf.
+   */
+  it('takes the low card for a Hesitant character, and only the low one', () => {
+    expect(chosenCard(addToHand(setHand(fresh(), [nine], nine), five, 'lowest'))).toEqual(five);
+    expect(chosenCard(addToHand(setHand(fresh(), [five], five), ace, 'lowest'))).toEqual(five);
   });
 
   it('starts a hand for a combatant holding nothing', () => {

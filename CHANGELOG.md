@@ -10,6 +10,194 @@ reload.
 
 ---
 
+## 2026-09-14 (later) — The Fighting dialogue, and a catalogue with more than guns in it
+
+**Reload the extension first.**
+
+**Fighting gets the same panel Shooting has.** Agreed at the table: *"the best way
+of solving most of the melee issues was just to get the Fighting dialogue to match
+the Shooting dialogue."* It matches it by **being** it — the ranged half switches off
+and three melee controls switch on.
+
+- **Gang Up**, +1 per additional adjacent foe up to +4, *"less one for each ally
+  adjacent to the defender"*. A number you set rather than one the app counts: the
+  rule needs to know who is on whose side, and this app deliberately has no notion of
+  sides.
+- **Wild Attack**, +2 to the attack *and* to the damage roll.
+- **Unarmed foe**, +2 when they have no weapon or shield.
+
+Plus everything the panel already did: the target list with each defender's Parry, a
+called shot by size, vitals for +4 damage, the hand dial, wounds and the dark carried
+in, damage rolled with the raise die already in it, and Apply. Gone from it, because
+none of them are melee: Rate of Fire, Recoil, range, cover, a scope, and Aim — the
+manoeuvre reads *"spends their entire turn Aiming a **ranged weapon**"*, and Marksman
+is its lesser version.
+
+**Two things to know.** *Vulnerable* after a Wild Attack is still yours to set — the
+app knows you declared it and does not reach across and change your token. And a
+target further than a cell and a half away is **greyed rather than removed**: Reach
+weapons exist and the grid is not the fiction, so the list says "this looks far" and
+leaves it to you.
+
+**Shoot, Throw and Fight are obviously buttons that open something.** They carry a
+chevron, they fill in when their panel is open, and they no longer pretend to roll.
+This is the **weapons table** only. **Fighting in the skills list still rolls**, exactly
+as Shooting there always has: one press, the trait die and the Wild Die, no panel —
+that button does not know which weapon you swung, and it is the right one to reach for
+when the answer is just "roll Fighting".
+**Everything that does roll now says what it will roll**: the panel's fire button
+reads `d8−2` instead of "Roll", and a damage button reads `d6+d4` instead of the
+book's `Str+d4`. Paul: *"all buttons that will roll should show in their text what the
+roll will be, for transparency."*
+
+**And a swing at nothing in particular.** Attacking used to be one press for melee,
+which meant you could roll a weapon's Fighting attack with nothing on the map. The
+panel took that away and here it is back, on the panel itself: an untargeted roll that
+keeps every modifier and drops only the target. For the barroom door, the unbound
+scene, and the thing that is not a token.
+
+**The catalogue is no longer all guns.** 56 items to **148**: clothes, food, general
+equipment, gold and silver and ghost rock by the ounce, gun accessories, hats, liquor,
+services, transport and **ammunition** — priced by the box the way the book prices it.
+So a lantern, a lockpick or fifty rounds of .45 can be added to a sheet from the
+catalogue instead of typed. Armour and minimum Strength are pulled out of the book's
+notes, so native armour and chaps now say +1 where a hat says nothing.
+
+---
+
+## 2026-09-14 — Thrown weapons, an undo for the deck, and Marksman meets the dial
+
+**Reload the extension first.**
+
+**A tomahawk is thrown, not shot.** Any weapon with a range rolled **Shooting**,
+which made throwing a knife a feat of marksmanship. The book settles it in its own
+Gear Notes — *"projectile weapons have fixed damage (such as 2d6); melee weapons have
+damage based on the wielder's Strength die"* — so a Strength-based weapon that has a
+range is a **throw**, and it rolls Athletics. A bow, at a flat 2d6, is still shot.
+A throw that goes wide can now hit a bystander, as a bullet always could.
+
+**Two lines for a weapon with two uses.** Damian: *"some weapons can be thrown or
+melee, and this should mean they have two lines with a throw and a fighting button."*
+The book files those weapons twice — once under Melee Weapons with their Reach and
+Parry, once under Other Ranged Weapons with a range — because its tables are arranged
+by how you attack rather than by what is in your hand. Knife, Bowie knife, spear,
+tomahawk, lance and war club now show both rows, with a **Throw** button beside the
+**Fighting** one, and a thrown attack opens the same panel a shot does: range bands,
+cover, called shots, firing into melee. Same for the LeMat's two barrels.
+
+It works from either end — a stat block that writes the *thrown* form of a knife gets
+its melee row back, which matters because that is how the bestiary writes them. And
+nothing is written to your sheet: the gear line still says "tomahawk", and the second
+row is the rulebook answering a question about it.
+
+**Marksman can be pointed at the modifier dial.** Paul: *"no easy way for marksman
+(penalty removal) to work with the bonus/penalty slider."* Aim and Marksman cancel
+Range, Cover, Called Shot, Scale and Speed and nothing else — that list is exact — so
+a hand-dialled number was untouchable, because the app has no idea whether your −2 is
+a water trough or a howling gale. Now you can say. Dial a penalty, and while Aim or
+Marksman is set to cancel, a button appears: **"Marksman may cancel it."** Off by
+default, which is the book-safe answer.
+
+Worth knowing: the points go to the largest penalty first, so a dialled −4 declared
+aimable will eat Marksman's two points ahead of a −2 for range. If you want them
+spent elsewhere, leave the dial out of it.
+
+**Take a card back.** Paul: *"possibly have a return-cards-to-deck in case of
+accidental overdeal."* Every combatant's row has a **↩** beside Deal that puts their
+cards back *under* the deck — the bottom, not the top, or a misdeal would become a
+way of picking your own card — and takes them out of the round. A gang hands back the
+one card they share, not six copies of it. Marshal only.
+
+**The Marshal can look at the deck.** *"Should be a way for DM to see the action card
+deck (debugging only, no jokers appeared this session)."* **Show deck** on the
+initiative tab lists what is still to come, in the order it will come out, with
+jokers marked. The deck has changed three times in a fortnight — how it reshuffles,
+who a joker pays, whether an extra card pays at all — and each of those was worked out
+from a card count and somebody's description rather than from the deck. A session
+without a joker is not evidence of anything; two in fifty-four cards is a quiet deck
+more often than not. This is so the next question about the deck can be answered by
+looking at it. The Marshal's alone — the cards still to come are the one genuinely
+secret thing in the turn order.
+
+**Your own side sits at the bottom of the target list.** Damian asked for PCs at the
+bottom, which is right from a player's seat and backwards from the Marshal's — when a
+bandit fires, the players are exactly who it is aimed at. So the rule is the general
+form: **whoever is on your side goes last**, nearest-first among the rest. Everybody
+stays on the list; shooting your own posse is still a thing that happens.
+
+**A Benny spent on a reroll reads in the right order.** Damian: *"it would make
+logical sense — and be easier to see the roll itself — for the 'spending a benny to
+reroll a trait' to appear first in the log."* The dice you just threw are now the top
+line, with the chip that paid for them underneath.
+
+---
+
+## 2026-09-13 — The panel stops rebuilding itself underneath you
+
+**Reload the extension first.**
+
+**The thing that was resetting your sheet.** friedcrumpet, after Friday's session:
+*"Trying to edit sheet while others are rolling etc causes it to reset"*, and
+*"modifying power points: when clicking the −/+, one click reset unexpectedly —
+maybe the same as the above bug."* He was right that they were the same bug, and it
+reached further than either report.
+
+Bennies, Power Points and character sheets all live in the room's shared storage, and
+this panel rebuilt its entire page every single time any of it changed — including
+when the change was its own. So somebody across the table spending a Benny threw away
+the form you were filling in, and pressing `−` on your own Power Points started a
+re-read that finished *after* your click and put the old number back. A fight is made
+of Benny-bought rerolls, which is why "while others are rolling" was exactly the right
+description.
+
+Three changes, and between them the panel now leaves you alone:
+
+- **A form nobody but you is filling in is never rebuilt by somebody else's turn.**
+  The editor repaints when *you* change something in it, and not when the room
+  changes around you.
+- **Your cursor stays where you put it.** Every field commits as you leave it, which
+  used to rebuild the page at the exact moment focus had moved on to the next one —
+  so tabbing through a sheet put the cursor nowhere every second press.
+- **A re-read that has been overtaken by your own hand is thrown away** instead of
+  installing figures that were already out of date when they arrived.
+
+And a hand-out to the whole party used to run the heaviest code in the panel once per
+character. It now runs once.
+
+**+1 Benny to all PCs, for the fourth time.** Damian has said *"jumps to bottom"*
+three times, and every fix so far has been built on the theory that the pane collapses
+and goes to the **top**. Re-reading the code with his word taken literally found it:
+the restore declined to act whenever the page had ended up *further down* than where
+you were, so an overshoot was the one case it looked straight at and left alone. It
+now puts the page back exactly, the browser's own scroll-anchoring guesswork is turned
+off for that pane, and — the real repair — the button no longer repaints seven times
+in a second for it to go wrong in.
+
+**A Joker on an extra card pays out.** Damian: *"if you 'deal' extra cards to a player
+and a Joker comes up, it doesn't award bennies — yep, confirmed."* It never had: the
+payout lived in the round deal and this path had no equivalent. It matters more than
+it sounds, because an extra card is a *second* look at the deck — Level Headed, or a
+card bought with a Benny — so it is one of the likelier places for a Joker to turn up.
+Four hours of play last Friday produced none at all.
+
+**An extra Action Card is taken if it is the better one.** Damian, and he argued Paul
+round to it: *"still player's choice, it's just making a better default choice… that
+choice means nothing when they've then expressed interest in another card."* Asking
+for another card is the expression of interest. Every card stays in the hand and the
+low one is one click away, which is the right way round — the player who wants the
+five for **Calculating** is the player paying attention. A **Hesitant** character
+takes the *worst* card instead, because that is their Hindrance and the app should not
+break it on their behalf. The log says which card they ended up on.
+
+**Chips fly for every Benny.** Paul: *"spending bennies via any means should animate,
+equally the +1 benny to all PCs should animate."* A Benny spent on a Soak roll now
+slides back across the table like every other spend, and **+1 Benny to all PCs** and a
+**Joker's Wild** deal one chip to each player, a beat apart so you can count them.
+Still nothing thrown at an NPC, and still nothing thrown to a chair nobody is sitting
+in.
+
+---
+
 ## 2026-09-10 — The deck, the gang, and a panel that finally fills the screen
 
 **Reload the extension first.** Two things reported yesterday were already fixed in

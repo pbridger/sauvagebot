@@ -83,6 +83,15 @@ export interface InitiativeHooks {
    * never offered. Defaults to **no**, so a caller that forgets grants nothing.
    */
   mayChoose?: (combatant: Combatant) => boolean;
+  /**
+   * Put a combatant's cards back on the bottom of the deck and take them out of
+   * play — the undo for a Deal nobody meant to press. See `onReturnCards`.
+   */
+  onReturnCards?: (tokenId: string) => void;
+  /** Whether the deck's remaining cards are currently listed. Marshal only. */
+  showDeck?: boolean;
+  /** Open or close that list. */
+  onPeekDeck?: () => void;
   /** Whichever token is selected on the map, so the list can highlight it. */
   selectedTokenId?: string;
   /**
@@ -312,7 +321,49 @@ export function renderInitiative(
     const count = document.createElement('div');
     count.className = 'deck-count';
     count.textContent = `${state.deck.length} cards left in the deck`;
+    /**
+     * The Marshal can open the deck and read it.
+     *
+     * Paul, 2026-09-12: *"should be a way for DM to see the action card deck
+     * (debugging only, no jokers appeared this session)."*
+     *
+     * The deck has been changed three times in a fortnight — how it reshuffles,
+     * who a Joker pays, whether an extra card pays at all — and every one of those
+     * was worked out from a card count and somebody's description rather than from
+     * the deck itself. A session without a Joker is not evidence of anything; two
+     * jokers in fifty-four cards is a quiet deck more often than not. This is here
+     * so the next question about the deck can be answered by looking at it.
+     *
+     * Marshal only: the cards still to come are the one genuinely secret thing in
+     * the initiative model, and a player who could read them would know whether
+     * their Joker is still in there.
+     */
+    if (mayDeal && state.deck.length) {
+      const peek = document.createElement('button');
+      peek.className = hooks.showDeck ? 'toggle deck-peek on' : 'toggle deck-peek';
+      peek.textContent = hooks.showDeck ? 'Hide deck' : 'Show deck';
+      peek.title = 'What is still to come, in order. The Marshal only.';
+      if (hooks.onPeekDeck) peek.addEventListener('click', hooks.onPeekDeck);
+      count.append(' ', peek);
+    }
     out.append(count);
+
+    if (mayDeal && hooks.showDeck) {
+      const cards = document.createElement('div');
+      cards.className = 'deck-list';
+      // Top of the deck first — the order they will actually come out, which is
+      // the only order in which "why has no Joker appeared" is answerable. The
+      // array is stored the other way up: `InitiativeState.deck` is *"cards still
+      // to be dealt, drawn from the end"*.
+      for (const card of [...state.deck].reverse()) {
+        const chip = document.createElement('span');
+        chip.className = isJoker(card) ? 'deck-card joker' : 'deck-card';
+        chip.textContent = cardLabel(card);
+        if (isRedSuit(card)) chip.classList.add('red');
+        cards.append(chip);
+      }
+      out.append(cards);
+    }
   }
 
   if (state?.jokerDealt) {
@@ -417,6 +468,38 @@ export function renderInitiative(
       hooks.onReplace(combatant.tokenId);
     });
     row.append(dealOne);
+
+    /**
+     * The undo for the button beside it.
+     *
+     * Paul, 2026-09-12: *"possibly have a return-cards-to-deck (specific to a
+     * char/sheet) in case of accidental overdeal."* Deal is one press and gives a
+     * card there was previously no way to take back — the only exits were ending
+     * the fight or dealing the whole round again, both of which cost everybody
+     * else their hand for one person's misclick.
+     *
+     * Marshal only, and only for somebody actually holding something.
+     */
+    const give = handOf(combatant.state);
+    if (mayDeal && give) {
+      const back = document.createElement('button');
+      // A glyph rather than the word. This row already carries a thumbnail, a
+      // name, status chips, the hand, Deal and Sheet, and it is 420px wide — the
+      // one control Damian has reported being cut off was a row that ran out of
+      // room. The name is what gets squeezed when this row overflows, and the
+      // name is the part you are reading.
+      back.className = 'sheet-link glyph';
+      back.textContent = '\u21a9';
+      back.title =
+        give.cards.length > 1
+          ? `Put ${displayName(combatant, all, hooks.revealNpcs ?? false)}'s ${give.cards.length} cards back under the deck`
+          : `Put ${displayName(combatant, all, hooks.revealNpcs ?? false)}'s card back under the deck`;
+      back.addEventListener('click', (event) => {
+        event.stopPropagation();
+        hooks.onReturnCards?.(combatant.tokenId);
+      });
+      row.append(back);
+    }
 
     const open = document.createElement('button');
     open.className = 'sheet-link';

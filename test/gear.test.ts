@@ -10,6 +10,7 @@ import {
   parseGear,
   weaponSkill,
 } from '../src/rules/gear.js';
+import { GEAR, weaponModes } from '../src/rules/gearCatalogue.js';
 
 const reggie = parseArchetypeCards(
   readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
@@ -146,6 +147,22 @@ describe('which skill swings the weapon', () => {
     expect(weaponSkill(gear.weapons[2]!)).toBe('Fighting');
   });
 
+  /**
+   * The book's own convention decides it, from its Gear Notes: *"Projectile
+   * weapons have fixed damage (such as 2d6). Melee weapons have damage based on
+   * the wielder's Strength die."* A thrown weapon keeps the Strength term,
+   * because it is your arm that throws it, and gains a range.
+   */
+  it('throws a Strength-based weapon that has a range', () => {
+    expect(weaponSkill({ name: 'tomahawk', range: '3/6/12', damage: 'Str+d6' })).toBe('Athletics');
+    expect(weaponSkill({ name: 'spear', range: '3/6/12', damage: 'Str+d6' })).toBe('Athletics');
+  });
+
+  /** A bow is drawn, not thrown — 2d6 fixed, so the Strength term is absent. */
+  it('still shoots a bow, which is the one ranged weapon in that table', () => {
+    expect(weaponSkill({ name: 'Bow', range: '12/24/48', damage: '2d6' })).toBe('Shooting');
+  });
+
   it('falls back on the name when there is neither', () => {
     expect(weaponSkill({ name: 'scattergun' })).toBe('Shooting');
     expect(weaponSkill({ name: 'cavalry sabre' })).toBe('Fighting');
@@ -271,5 +288,126 @@ describe('weapons written the way books write them', () => {
     const { weapons } = parseGear('Claws (d6+d4), Bloody Mud Blast (2/4/8, 2d6)');
     expect(weapons.map((w) => w.name)).toEqual(['Claws', 'Bloody Mud Blast']);
     expect(weapons[1]).toMatchObject({ range: '2/4/8', damage: '2d6' });
+  });
+});
+
+/**
+ * Damian, after the first session: *"some weapons can be thrown or melee, and this
+ * should mean they have two lines with a throw and a fighting button."*
+ */
+describe('the other ways a weapon can be used', () => {
+  it('offers a thrown row for a weapon the book files in both tables', () => {
+    const [thrown, ...rest] = weaponModes({ name: 'tomahawk' });
+    expect(rest).toEqual([]);
+    expect(thrown?.name).toBe('tomahawk (Thrown)');
+    expect(thrown?.range).toBe('3/6/12');
+    expect(weaponSkill(thrown!)).toBe('Athletics');
+  });
+
+  it('reconciles the two tables writing the name in different orders', () => {
+    // "Club, War" in the melee table; "War Club" in the thrown one.
+    expect(weaponModes({ name: 'war club' })[0]?.range).toBe('3/6/12');
+  });
+
+  it('offers the second barrel, which is the same mechanism', () => {
+    expect(weaponModes({ name: 'LeMat Revolver' })[0]?.name).toBe('LeMat Revolver (Shotgun (20-ga))');
+  });
+
+  it('offers nothing for a weapon with one use', () => {
+    expect(weaponModes({ name: 'Colt Peacemaker' })).toEqual([]);
+    expect(weaponModes({ name: 'something nobody has heard of' })).toEqual([]);
+  });
+
+  /** Never the form the sheet is already showing — that would be two identical rows. */
+  it('drops the form the sheet already carries', () => {
+    expect(weaponModes({ name: 'tomahawk' }).map((r) => r.range)).toEqual(['3/6/12']);
+    expect(weaponModes({ name: 'tomahawk', range: '3/6/12' }).map((r) => r.range)).toEqual([
+      undefined,
+    ]);
+  });
+});
+
+/**
+ * The bestiary writes `Knives (Range: 3/6/12, Damage Str+1d4)` — the *thrown* row,
+ * not the melee one. A join that only ever added modes left that character able to
+ * throw the knife and unable to stab anybody with it.
+ */
+describe('a sheet that carries the thrown form instead', () => {
+  it('offers the melee form back', () => {
+    const rows = weaponModes({ name: 'tomahawk', range: '3/6/12' });
+    expect(rows.map((r) => r.name)).toEqual(['tomahawk (Melee)']);
+    expect(rows[0]?.range).toBeUndefined();
+    expect(weaponSkill(rows[0]!)).toBe('Fighting');
+  });
+
+  it('still offers the thrown form to a sheet holding the melee one', () => {
+    expect(weaponModes({ name: 'tomahawk' }).map((r) => r.name)).toEqual(['tomahawk (Thrown)']);
+  });
+
+  /**
+   * Not for a gun. "The ordinary way to use this" is a name the book never writes
+   * down, and a sheet carrying the LeMat's shotgun barrel is not a thing any card
+   * produces.
+   */
+  it('does not try to name the ordinary form of a firearm', () => {
+    expect(weaponModes({ name: 'LeMat Revolver', range: '5/10/20' })).toEqual([]);
+  });
+});
+
+/**
+ * The catalogue was weapons and three pieces of armour. Paul, 2026-09-14:
+ * *"extract those non-weapon gear rows now."* The book's Common Gear chapter —
+ * clothes, food, general equipment, services, transport, ammunition, and gold by
+ * the ounce.
+ */
+describe('the goods half of the catalogue', () => {
+  const find = (name: string) => GEAR.find((item) => item.name === name);
+
+  it('has the things a posse actually buys', () => {
+    expect(find('Lantern')?.cost).toBe('$2.50');
+    expect(find('Rope (20 yards)')?.weight).toBe('8');
+    expect(find('Horse')?.cost).toBe('$150');
+    expect(find('Gold ore (1 oz.)')?.cost).toBe('$20');
+  });
+
+  it('prices ammunition by the box, as the book does', () => {
+    // "$2/50" is two dollars for fifty rounds — the notation is the book's.
+    expect(find('Pistol (Large)')).toMatchObject({ cost: '$3/50', weight: '5/50' });
+    expect(find('Shotgun shells')?.notes).toBe('Standard buckshot');
+  });
+
+  /** Lifted out of the note, because `armor` is the field a sheet reads. */
+  it('pulls the mechanics out of a note and into their own fields', () => {
+    expect(find('Native armor')).toMatchObject({ armor: '1', minStr: 'd4' });
+    expect(find('Chaps')?.armor).toBe('1');
+  });
+
+  it('keeps an item under the heading it was printed under', () => {
+    expect(find('Scope')?.category).toBe('Gun Accessories');
+    expect(find('Stetson')?.category).toBe('Hats');
+  });
+
+  /**
+   * The book prints a second CLOTHES table in the Smith & Robards catalogue. An
+   * unscoped pass filed six-hundred-dollar owl-eye goggles beside two-dollar
+   * longjohns; the extractor reads the Common Gear chapter by its own headings.
+   */
+  it('does not drag the infernal-device tables in with the clothes', () => {
+    expect(find('Owl-eye goggles')).toBeUndefined();
+    expect(GEAR.filter((item) => item.category === 'Clothes')).toHaveLength(14);
+  });
+
+  /**
+   * Prose sits directly under the last row of a table, and a name that wraps
+   * looks a lot like the first line of it. The rattler-hide paragraph used to
+   * end up as part of the name of a winter coat.
+   */
+  it('does not absorb the paragraph under the table', () => {
+    expect(find('Winter coat')).toBeDefined();
+    expect(GEAR.every((item) => item.name.length < 70)).toBe(true);
+  });
+
+  it('names a service for the thing it is, not for the sub-row', () => {
+    expect(find('Doctor visit — House call')?.cost).toBe('$5');
   });
 });

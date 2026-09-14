@@ -78,7 +78,13 @@ button:disabled { opacity: .45; cursor: default; }
   flex: none;
 }
 
-#sheet { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px; }
+/* `overflow-anchor: none` because every repaint here is a wholesale
+   `replaceChildren`, and the browser's scroll anchoring tries to keep "the same"
+   element in view across it — of a set of nodes that no longer exist. Its guess
+   then fights `restoreScroll`, which knows where the reader actually was. This is
+   the likeliest source of Damian's "jumps to bottom", reported three times and
+   never matching the collapse-to-the-top theory. */
+#sheet { flex: 1; overflow-y: auto; overflow-x: hidden; overflow-anchor: none; padding: 10px; }
 /* `p.empty`, not `.empty`. As a bare class this reached anything that happened to
    carry the word — and it did: the Marshal's Benny stack takes an "empty" marker at
    zero, so hitting zero gave the tab strip a 32px margin top and bottom and pushed
@@ -370,6 +376,9 @@ table.shot-table td { padding: 2px 4px 2px 0; vertical-align: middle; }
 table.shot-table td.who { font-weight: 700; }
 table.shot-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.shot-table tr.out-of-range { opacity: .45; }
+/* Too far away to swing at. Lighter than out-of-range, because it is a doubt
+   rather than a refusal: Reach exists and the grid is not the fiction. */
+table.shot-table tr.out-of-reach { opacity: .62; }
 /* The `.targets` rule of the same name does not reach here, and the melee chip
    is wide enough to wrap the V/P pills onto a second line without it. */
 table.shot-table td.state { white-space: nowrap; }
@@ -1098,6 +1107,28 @@ ol.initiative .who { flex: 1; min-width: 0; }
 ol.initiative .drew { font-size: 10.5px; color: var(--muted); }
 
 .deck-count { margin: -4px 0 8px; font-size: 11px; color: var(--muted); }
+.deck-count .deck-peek { font-size: 10px; padding: 0 5px; vertical-align: baseline; }
+
+/* The Marshal's look at what is still to come. Wraps rather than scrolls: it is
+   up to 54 cards and the question it answers — "is there still a joker in there"
+   — is about the whole pile, so a window onto part of it would be worse than
+   several lines. */
+.deck-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 5px;
+  margin: -4px 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.deck-list .deck-card.red { color: #c0392b; }
+.deck-list .deck-card.joker { font-weight: 700; color: var(--accent); }
+@media (prefers-color-scheme: dark) {
+  .deck-list .deck-card.red { color: #ff8a7a; }
+}
+:root[data-theme='dark'] .deck-list .deck-card.red { color: #ff8a7a; }
+:root[data-theme='light'] .deck-list .deck-card.red { color: #c0392b; }
 
 /* Suit symbols inside the roll log, whose lines are plain text — the same red as
    the turn order uses, so a card reads the same wherever it is printed. Set on
@@ -1160,12 +1191,30 @@ button.sheet-link {
   white-space: nowrap;
 }
 button.sheet-link:hover { color: var(--accent); border-color: var(--accent); }
+/* A symbol, for a control whose row has already run out of words. */
+.sheet-link.glyph { font-size: 13px; line-height: 1; padding: 0 5px; }
 
 table.weapons button.atk {
   padding: 0 6px;
   font-size: 11px;
   white-space: nowrap;
 }
+/* Shoot, Throw and Fight open a panel; they do not roll. Paul, 2026-09-14:
+   *"make the shoot/fight/throw button a little more obvious that it'll expand
+   into a subpane rather than roll"*. The chevron is in the label; this is the
+   rest of the promise — a filled, quieter button that reads as a disclosure
+   rather than as an action, and the accent when its panel is open. */
+table.weapons button.atk.expands {
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  font-weight: 600;
+}
+table.weapons button.atk.expands.on {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+/* The one button on the shot panel that throws dice, so it says which dice. */
+button.shot-roll { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ---- bennies --------------------------------------------------------- */
 

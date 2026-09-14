@@ -93,6 +93,82 @@ export function suggestGear(query: string, limit = 10): GearEntry[] {
   return [...starts, ...contains].slice(0, limit);
 }
 
+/**
+ * The other ways a weapon on a sheet can be used — thrown, or the second barrel.
+ *
+ * Damian, from the first session: *"some weapons can be thrown or melee, and this
+ * should mean they have two lines with a throw and a fighting button."* The book
+ * agrees and files them twice, under Melee Weapons and again under Other Ranged
+ * Weapons, because its tables are organised by how you attack rather than by what
+ * is in your hand. The extractor now folds the second row into `modes`, and this
+ * is what puts it in front of a player.
+ *
+ * **Display only.** Nothing is written to the sheet: the gear line still says
+ * "tomahawk", and the thrown row is the catalogue answering a question about it.
+ * Discrete items (§22) are what would make this a thing you own rather than a
+ * thing we look up, and they are a different piece of work.
+ *
+ * Whichever form the sheet already carries is dropped, and the others are offered
+ * — in both directions. See the note inside on the bestiary's thrown knives.
+ */
+export function weaponModes(weapon: { name: string; range?: string }): {
+  name: string;
+  range?: string;
+  damage?: string;
+  rof?: number;
+  ap?: number;
+  notes?: string;
+}[] {
+  const found = findGear(weapon.name);
+  if (!found?.modes?.length) return [];
+
+  // Which of the weapon's forms the sheet is already showing, matched on range —
+  // the one field that differs between a swing and a throw. A weapon written with
+  // no range is the melee form, which is how every character card writes it.
+  const sheetHasMode = found.modes.some((mode) => mode.range === weapon.range);
+
+  const rows = found.modes
+    .filter((mode) => mode.range !== weapon.range)
+    .map((mode) => asWeapon(weapon.name, mode.name, mode));
+
+  /**
+   * The melee form, when the sheet is carrying the thrown one.
+   *
+   * The filter above is one-directional on its own, and the direction it misses is
+   * real: the bestiary writes `Knives (Range: 3/6/12, Damage Str+1d4)`, which is
+   * the *thrown* row. `findGear` returns the melee primary, the thrown mode gets
+   * dropped as a duplicate of what the sheet already has, and the character is
+   * left with a Throw button and no way to swing the thing at all.
+   *
+   * Only for a melee primary — one with no range of its own. A sheet carrying the
+   * LeMat's shotgun barrel and wanting the pistol back is not a case any card
+   * produces, and offering it would mean inventing a name for "the ordinary way to
+   * use this gun" that the book never writes down.
+   */
+  if (sheetHasMode && !found.range) {
+    rows.push(asWeapon(weapon.name, 'Melee', found));
+  }
+  return rows;
+}
+
+/** One row of the weapons table, built from a catalogue entry. */
+function asWeapon(
+  weaponName: string,
+  form: string,
+  entry: GearEntry,
+): { name: string; range?: string; damage?: string; rof?: number; ap?: number; notes?: string } {
+  return {
+    // "tomahawk (Thrown)" — the weapon it is, then what this row does with it.
+    // The name is what the roll is logged under, so it has to say both.
+    name: `${weaponName} (${form})`,
+    ...(entry.range ? { range: entry.range } : {}),
+    ...(entry.damage ? { damage: entry.damage } : {}),
+    ...(entry.rof ? { rof: Number(entry.rof) } : {}),
+    ...(entry.ap ? { ap: Number(entry.ap) } : {}),
+    ...(entry.notes ? { notes: entry.notes } : {}),
+  };
+}
+
 /** The gear line a card would print for this item. */
 export function describeGear(item: GearEntry): string {
   const bits = stats(item);

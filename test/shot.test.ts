@@ -26,6 +26,7 @@ import {
   reachesExtreme,
   recoilFor,
   shotTotal,
+  type Aim,
   shotsFired,
   shotgunDamage,
   shotgunMod,
@@ -713,5 +714,47 @@ describe('Reggie', () => {
       readFileSync(fileURLToPath(new URL('./fixtures/reggie-kane.html', import.meta.url)), 'utf8'),
     )[0]!;
     expect(negatesRecoil(reggie.edges.map((edge) => edge.name))).toBe(true);
+  });
+});
+
+/**
+ * Paul, 2026-09-12: *"no easy way for marksman (penalty removal) to work with the
+ * bonus/penalty slider."* Aim's five categories are exact and a hand-dialled
+ * number is not one of them — so the shooter says whether it is.
+ */
+describe('a hand-dialled penalty that Aim is allowed to cancel', () => {
+  const dialled = (dialAimable: boolean, aim: Aim = 'cancel') =>
+    shotTotal({ rof: 1, aim, aimSource: 'marksman', dial: -2, dialAimable });
+
+  it('is left alone by default, because Aim does not touch unnamed penalties', () => {
+    const { total, aim } = dialled(false);
+    expect(total).toBe(-2);
+    expect(aim.spent).toEqual([]);
+  });
+
+  it('is cancelled once the shooter says what it is', () => {
+    const { total, aim } = dialled(true);
+    expect(total).toBe(0);
+    expect(aim.spent.map((s) => s.key)).toEqual(['dial']);
+  });
+
+  it('spends no more than the Edge has — Marksman is two points, not four', () => {
+    const { total } = shotTotal({
+      rof: 1,
+      aim: 'cancel',
+      aimSource: 'marksman',
+      dial: -5,
+      dialAimable: true,
+    });
+    expect(total).toBe(-3);
+  });
+
+  /** A dialled bonus has nothing to cancel; the flag must not turn it into one. */
+  it('never turns a dialled bonus into more of one', () => {
+    expect(shotTotal({ rof: 1, aim: 'cancel', dial: 2, dialAimable: true }).total).toBe(2);
+  });
+
+  it('does nothing at all when nobody is aiming', () => {
+    expect(dialled(true, 'off').total).toBe(-2);
   });
 });

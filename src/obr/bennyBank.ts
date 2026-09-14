@@ -44,8 +44,16 @@ export const MARSHAL_BENNIES = 'marshal';
  * fine. Reporting it beats a party where one player quietly has nothing.
  */
 export interface BennyOutcome {
-  /** Wild Cards whose count was written. */
-  done: string[];
+  /**
+   * Wild Cards whose count was written.
+   *
+   * The id travels with the name because the two answer different questions and
+   * only one of them can be reconstructed. A name is what the log prints; an id
+   * is what finds the player's chair, so a bulk award can slide a chip to each
+   * of them — and after a partial failure, only to the ones who actually got a
+   * Benny. Deriving the ids back from the names afterwards would be guessing.
+   */
+  done: { id: string; name: string }[];
   failed: { name: string; error: Error }[];
 }
 
@@ -179,7 +187,7 @@ export class BennyBank {
     const after = await this.all();
     for (const [id, { name, count }] of expected) {
       const got = after.get(id) ?? 0;
-      if (got === count) outcome.done.push(name);
+      if (got === count) outcome.done.push({ id, name });
       else {
         outcome.failed.push({
           name,
@@ -197,7 +205,7 @@ export class BennyBank {
    * Jokers were dealt. `awardAll` is what makes that "player" rather than
    * "everyone".
    */
-  async jokersWild(sheets: readonly Sheet[]): Promise<string[]> {
+  async jokersWild(sheets: readonly Sheet[]): Promise<{ id: string; name: string }[]> {
     return (await this.awardAll(sheets)).done;
   }
 

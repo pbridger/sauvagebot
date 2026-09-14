@@ -162,20 +162,20 @@ describe('when the room runs out of space part way through', () => {
 
     expect(outcome.done.length).toBeGreaterThan(0);
     expect(outcome.failed.length).toBeGreaterThan(0);
-    expect([...outcome.done, ...outcome.failed.map((f) => f.name)].sort()).toEqual([
-      'AA',
-      'BB',
-      'CC',
-      'DD',
-    ]);
-    for (const name of outcome.done) expect(await bank.get(name.toLowerCase())).toBe(3);
+    expect(
+      [...outcome.done.map((who) => who.name), ...outcome.failed.map((f) => f.name)].sort(),
+    ).toEqual(['AA', 'BB', 'CC', 'DD']);
+    // The id is there so a bulk award can find the player's chair and slide them a
+    // chip; a name cannot be turned back into one.
+    for (const who of outcome.done) expect(await bank.get(who.id)).toBe(3);
   });
 
   it('reports nothing failed when everything fits', async () => {
     const { bank } = newBank();
     const outcome = await bank.newSession(party);
     expect(outcome.failed).toEqual([]);
-    expect(outcome.done).toEqual(['AA', 'BB', 'CC', 'DD']);
+    expect(outcome.done.map((who) => who.name)).toEqual(['AA', 'BB', 'CC', 'DD']);
+    expect(outcome.done.map((who) => who.id)).toEqual(['aa', 'bb', 'cc', 'dd']);
   });
 });
 
@@ -188,7 +188,7 @@ describe('a write that passes verification and then vanishes', () => {
     const party = [wildCard('reggie'), wildCard('ed')];
 
     const outcome = await bank.newSession(party);
-    expect(outcome.done).toEqual(['REGGIE']);
+    expect(outcome.done.map((who) => who.name)).toEqual(['REGGIE']);
     expect(outcome.failed.map((f) => f.name)).toEqual(['ED']);
     expect(outcome.failed[0]!.error.message).toMatch(/did not survive/);
   });
@@ -200,14 +200,16 @@ describe('a Benny for everyone', () => {
     const party = [wildCard('reggie'), extra('bandit')];
     await bank.set('reggie', 1);
     const outcome = await bank.awardAll(party);
-    expect(outcome.done).toEqual(['REGGIE']);
+    expect(outcome.done.map((who) => who.name)).toEqual(['REGGIE']);
     expect(await bank.get('reggie')).toBe(2);
     expect(await bank.get('bandit')).toBe(0);
   });
 
   it('adds more than one when asked', async () => {
     const { bank } = newBank();
-    expect((await bank.awardAll([wildCard('reggie')], 2)).done).toEqual(['REGGIE']);
+    expect((await bank.awardAll([wildCard('reggie')], 2)).done.map((w) => w.name)).toEqual([
+      'REGGIE',
+    ]);
     expect(await bank.get('reggie')).toBe(2);
   });
 });
@@ -219,7 +221,8 @@ describe("Joker's Wild", () => {
     await bank.newSession(party);
 
     const lucky = await bank.jokersWild(party);
-    expect(lucky).toEqual(['REGGIE', 'PAIGE']);
+    expect(lucky.map((who) => who.name)).toEqual(['REGGIE', 'PAIGE']);
+    expect(lucky.map((who) => who.id)).toEqual(['reggie', 'paige']);
     expect(await bank.get('reggie')).toBe(4);
     expect(await bank.get('bandit')).toBe(0);
   });
@@ -235,7 +238,7 @@ describe("Joker's Wild", () => {
     await bank.newSession(room);
 
     const lucky = await bank.jokersWild(room);
-    expect(lucky).toEqual(['REGGIE']);
+    expect(lucky.map((who) => who.name)).toEqual(['REGGIE']);
     expect(await bank.get('serial-killer')).toBe(0);
   });
 });

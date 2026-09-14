@@ -101,6 +101,27 @@ export interface ShotMod {
    */
   scope: 'shot' | 'target';
   note?: string;
+  /**
+   * Whether Aim and Marksman may spend their points on this, when the category
+   * alone does not settle it.
+   *
+   * `undefined` means "ask the category", which is the answer for everything the
+   * app works out for itself: a range penalty is aimable because it is a range
+   * penalty. The exception is the hand dial, which is a number with no stated
+   * meaning — Paul, 2026-09-12: *"no easy way for marksman (penalty removal) to
+   * work with the bonus/penalty slider."* The app cannot know whether a dialled
+   * −2 is a water trough (which Aim cancels) or a howling gale (which it does
+   * not), so the person who dialled it says.
+   *
+   * A flag rather than letting the dial claim a category, because it is not
+   * cover and calling it cover would put a lie in the log.
+   */
+  aimable?: boolean;
+}
+
+/** Whether Aim's points may be spent on this modifier. See `ShotMod.aimable`. */
+export function isAimable(mod: ShotMod): boolean {
+  return mod.aimable ?? AIMABLE.includes(mod.category);
 }
 
 // ---------------------------------------------------------------------------
@@ -654,7 +675,7 @@ export function applyAim(
 
   for (const { mod, index } of order) {
     if (budget <= 0) break;
-    if (mod.value >= 0 || !AIMABLE.includes(mod.category)) continue;
+    if (mod.value >= 0 || !isAimable(mod)) continue;
     const points = Math.min(budget, -mod.value);
     budget -= points;
     cancelled.set(index, points);
@@ -719,6 +740,13 @@ export interface ShotRequest {
   scoped?: boolean | undefined;
   /** The manual dial, for everything the app will never know. */
   dial?: number | undefined;
+  /**
+   * Whether that dialled penalty is one of Aim's five categories.
+   *
+   * Off by default, which is the book-safe answer: Aim's list is exact and a
+   * number with no stated meaning is not on it. See `ShotMod.aimable`.
+   */
+  dialAimable?: boolean | undefined;
   /** Whether Rock and Roll!, a bipod or a tripod cancels Recoil. */
   steady?: boolean | undefined;
   /**
@@ -762,16 +790,19 @@ export function shotTotal(request: ShotRequest): ShotTotal {
   const recoil = recoilFor(request.rof, request.steady ?? false);
   if (recoil) base.push(recoil);
 
-  const aim = applyAim(base, request.aim, request.aimSource ?? 'aim');
-  const mods = [...aim.mods];
-
   // The persistent track — wounds, fatigue, the dark, an unstable platform —
   // arrives already summed and already filtered to `affects: 'self'`. It is not
-  // aimable and is added after: Aim's list names Range, Cover, Called Shot, Scale
-  // and Speed, and Illumination is conspicuously not among them.
+  // aimable: Aim's list names Range, Cover, Called Shot, Scale and Speed, and
+  // Illumination is conspicuously not among them.
+  //
+  // This and the dial below used to be added *after* `applyAim`, which is how
+  // they were kept out of its reach — position standing in for a rule. It does
+  // not any more, because `isAimable` says so per modifier and the dial needs to
+  // be able to opt in. One list, one pass, and the exclusion written down where
+  // it can be read.
   const persistent = situationalTotal(request.state);
   if (persistent) {
-    mods.push({
+    base.push({
       key: 'situation',
       label: 'Situation',
       value: persistent,
@@ -783,16 +814,26 @@ export function shotTotal(request: ShotRequest): ShotTotal {
   }
 
   if (request.dial) {
-    mods.push({
+    // Aimable only when the shooter says so, and only ever downwards: a dialled
+    // *bonus* has nothing for Aim to cancel, so the flag is meaningless there and
+    // is not set.
+    const aimable = request.dialAimable === true && request.dial < 0;
+    base.push({
       key: 'dial',
       label: 'Modifier',
       value: request.dial,
       category: 'other',
       kind: 'choice',
       scope: 'shot',
-      note: 'Dialled by hand — Aim does not reduce it.',
+      ...(aimable ? { aimable: true } : {}),
+      note: aimable
+        ? 'Dialled by hand, and declared as Range, Cover, a Called Shot, Scale or Speed — so Aim may cancel it.'
+        : 'Dialled by hand — Aim does not reduce it.',
     });
   }
+
+  const aim = applyAim(base, request.aim, request.aimSource ?? 'aim');
+  const mods = aim.mods;
 
   return { mods, total: mods.reduce((sum, mod) => sum + mod.value, 0), aim };
 }

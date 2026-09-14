@@ -33,7 +33,20 @@
    "damage": "Str+d6",
    "minStr": "d6",
    "weight": "3",
-   "cost": "$3"
+   "cost": "$3",
+   "modes": [
+    {
+     "name": "Thrown",
+     "category": "Other Ranged Weapons",
+     "range": "3/6/12",
+     "damage": "Str+d6",
+     "rof": "1",
+     "shots": "1",
+     "minStr": "d6",
+     "weight": "3",
+     "cost": "$3"
+    }
+   ]
   },
   {
    "name": "Club, War (Bladed)",
@@ -50,7 +63,20 @@
    "damage": "Str+d4",
    "minStr": "d4",
    "weight": "1",
-   "cost": "$2"
+   "cost": "$2",
+   "modes": [
+    {
+     "name": "Thrown",
+     "category": "Other Ranged Weapons",
+     "range": "3/6/12",
+     "damage": "Str+d4",
+     "rof": "1",
+     "shots": "1",
+     "minStr": "d4",
+     "weight": "1",
+     "cost": "$2"
+    }
+   ]
   },
   {
    "name": "Knife, Bowie",
@@ -59,7 +85,21 @@
    "minStr": "d4",
    "weight": "2",
    "cost": "$4",
-   "notes": "AP 1"
+   "notes": "AP 1",
+   "modes": [
+    {
+     "name": "Thrown",
+     "category": "Other Ranged Weapons",
+     "range": "2/4/8",
+     "damage": "Str+d4+1",
+     "ap": "1",
+     "rof": "1",
+     "shots": "1",
+     "minStr": "d4",
+     "weight": "2",
+     "cost": "$4"
+    }
+   ]
   },
   {
    "name": "Lance (Plains Indian)",
@@ -68,7 +108,21 @@
    "minStr": "d6",
    "weight": "4",
    "cost": "$20",
-   "notes": "Reach 2, mounted combat only"
+   "notes": "Reach 2, mounted combat only",
+   "modes": [
+    {
+     "name": "Thrown",
+     "category": "Other Ranged Weapons",
+     "range": "2/4/8",
+     "damage": "Str+d6",
+     "rof": "1",
+     "shots": "1",
+     "minStr": "d6",
+     "weight": "4",
+     "cost": "$20",
+     "notes": "Reach 2, mounted combat only, may only be thrown from horseback."
+    }
+   ]
   },
   {
    "name": "Lariat",
@@ -94,7 +148,20 @@
    "minStr": "d6",
    "weight": "5",
    "cost": "$3",
-   "notes": "Parry +1, Reach 1, two hands"
+   "notes": "Parry +1, Reach 1, two hands",
+   "modes": [
+    {
+     "name": "Thrown",
+     "category": "Other Ranged Weapons",
+     "range": "3/6/12",
+     "damage": "Str+d6",
+     "rof": "1",
+     "shots": "1",
+     "minStr": "d6",
+     "weight": "5",
+     "cost": "$3"
+    }
+   ]
   },
   {
    "name": "Tomahawk",
@@ -102,7 +169,20 @@
    "damage": "Str+d6",
    "minStr": "d6",
    "weight": "4",
-   "cost": "$3"
+   "cost": "$3",
+   "modes": [
+    {
+     "name": "Thrown",
+     "category": "Other Ranged Weapons",
+     "range": "3/6/12",
+     "damage": "Str+d6",
+     "rof": "1",
+     "shots": "1",
+     "minStr": "d6",
+     "weight": "3",
+     "cost": "$3"
+    }
+   ]
   },
   {
    "name": "Whip",
@@ -617,74 +697,6 @@
    "cost": "$3"
   },
   {
-   "name": "Knife",
-   "category": "Other Ranged Weapons",
-   "range": "3/6/12",
-   "damage": "Str+d4",
-   "rof": "1",
-   "shots": "1",
-   "minStr": "d4",
-   "weight": "1",
-   "cost": "$2"
-  },
-  {
-   "name": "Knife, Bowie",
-   "category": "Other Ranged Weapons",
-   "range": "2/4/8",
-   "damage": "Str+d4+1",
-   "ap": "1",
-   "rof": "1",
-   "shots": "1",
-   "minStr": "d4",
-   "weight": "2",
-   "cost": "$4"
-  },
-  {
-   "name": "Lance (Plains Indian)",
-   "category": "Other Ranged Weapons",
-   "range": "2/4/8",
-   "damage": "Str+d6",
-   "rof": "1",
-   "shots": "1",
-   "minStr": "d6",
-   "weight": "4",
-   "cost": "$20",
-   "notes": "Reach 2, mounted combat only, may only be thrown from horseback."
-  },
-  {
-   "name": "Spear",
-   "category": "Other Ranged Weapons",
-   "range": "3/6/12",
-   "damage": "Str+d6",
-   "rof": "1",
-   "shots": "1",
-   "minStr": "d6",
-   "weight": "5",
-   "cost": "$3"
-  },
-  {
-   "name": "Tomahawk",
-   "category": "Other Ranged Weapons",
-   "range": "3/6/12",
-   "damage": "Str+d6",
-   "rof": "1",
-   "shots": "1",
-   "minStr": "d6",
-   "weight": "3",
-   "cost": "$3"
-  },
-  {
-   "name": "War Club",
-   "category": "Other Ranged Weapons",
-   "range": "3/6/12",
-   "damage": "Str+d6",
-   "rof": "1",
-   "shots": "1",
-   "minStr": "d6",
-   "weight": "3",
-   "cost": "$3"
-  },
-  {
    "name": "Inventor’s apron",
    "category": "Armor",
    "armor": "+2",
@@ -723,6 +735,561 @@
    "weight": "50",
    "cost": "$3,000",
    "notes": "This is a standard Gatling gun (see page 120) attached to a high-pressure steam boiler."
+  },
+  {
+   "name": "Boots",
+   "category": "Clothes",
+   "cost": "$8",
+   "weight": "4"
+  },
+  {
+   "name": "Chaps",
+   "category": "Clothes",
+   "cost": "$4",
+   "weight": "6",
+   "notes": "Heavy leather, seatless trousers to protect riders’ pants and legs. They grant Armor +1 (legs), and +1 to Riding rolls vs. Fatigue.",
+   "armor": "1"
+  },
+  {
+   "name": "Duster",
+   "category": "Clothes",
+   "cost": "$10",
+   "weight": "4"
+  },
+  {
+   "name": "Longjohns",
+   "category": "Clothes",
+   "cost": "$2",
+   "weight": "2"
+  },
+  {
+   "name": "Native armor",
+   "category": "Clothes",
+   "cost": "$2",
+   "weight": "3",
+   "notes": "Armor +1, Min Str d4. Includes buckskins, soft leather, woven breastplates, etc.",
+   "armor": "1",
+   "minStr": "d4"
+  },
+  {
+   "name": "Native Shield (Medium)",
+   "category": "Clothes",
+   "cost": "$3",
+   "weight": "5",
+   "notes": "A medium shield made from hides. +2 Parry, –2 Cover, Min Str d4, Hardness 8.",
+   "minStr": "d4"
+  },
+  {
+   "name": "Native Shield (Small)",
+   "category": "Clothes",
+   "cost": "$2",
+   "weight": "3",
+   "notes": "A small shield made from hides. +1 Parry, –1 Cover, Min Str d4, Hardness 7.",
+   "minStr": "d4"
+  },
+  {
+   "name": "Shirt/blouse, dress",
+   "category": "Clothes",
+   "cost": "$3",
+   "weight": "1"
+  },
+  {
+   "name": "Shirt/blouse, work",
+   "category": "Clothes",
+   "cost": "$1",
+   "weight": "1"
+  },
+  {
+   "name": "Silk stockings",
+   "category": "Clothes",
+   "cost": "$1"
+  },
+  {
+   "name": "Shoes",
+   "category": "Clothes",
+   "cost": "$2",
+   "weight": "1"
+  },
+  {
+   "name": "Suit/fancy dress",
+   "category": "Clothes",
+   "cost": "$15",
+   "weight": "6"
+  },
+  {
+   "name": "Trousers/skirt",
+   "category": "Clothes",
+   "cost": "$2",
+   "weight": "2"
+  },
+  {
+   "name": "Winter coat",
+   "category": "Clothes",
+   "cost": "$15",
+   "weight": "3"
+  },
+  {
+   "name": "Bacon (per lb.)",
+   "category": "Food & Drink",
+   "cost": "15¢",
+   "weight": "1"
+  },
+  {
+   "name": "Coffee (per lb.)",
+   "category": "Food & Drink",
+   "cost": "25¢",
+   "weight": "1"
+  },
+  {
+   "name": "Breakfast",
+   "category": "Food & Drink",
+   "cost": "50¢"
+  },
+  {
+   "name": "Lunch",
+   "category": "Food & Drink",
+   "cost": "25¢"
+  },
+  {
+   "name": "Dinner",
+   "category": "Food & Drink",
+   "cost": "$1"
+  },
+  {
+   "name": "Restaurant, cheap (any meal)",
+   "category": "Food & Drink",
+   "cost": "25¢"
+  },
+  {
+   "name": "Trail rations (per day)",
+   "category": "Food & Drink",
+   "cost": "50¢",
+   "weight": "3"
+  },
+  {
+   "name": "Ax, wood",
+   "category": "General Equipment",
+   "cost": "$2",
+   "weight": "5",
+   "notes": "Medium Improvised Weapon"
+  },
+  {
+   "name": "Backpack",
+   "category": "General Equipment",
+   "cost": "$2",
+   "weight": "3"
+  },
+  {
+   "name": "Barbed wire (per yard)",
+   "category": "General Equipment",
+   "cost": "5¢",
+   "weight": "5/50 ft."
+  },
+  {
+   "name": "Bedroll",
+   "category": "General Equipment",
+   "cost": "$4",
+   "weight": "10"
+  },
+  {
+   "name": "Camera",
+   "category": "General Equipment",
+   "cost": "$3",
+   "weight": "5",
+   "notes": "A box camera. The subject must sit still for several minutes for a clear picture. A camera takes one photo per photographic plate (which cost $1 each and weigh 1/2)."
+  },
+  {
+   "name": "Canteen",
+   "category": "General Equipment",
+   "cost": "$1",
+   "weight": "5 (full)/1"
+  },
+  {
+   "name": "Cigar",
+   "category": "General Equipment",
+   "cost": "5¢"
+  },
+  {
+   "name": "Disguise kit",
+   "category": "General Equipment",
+   "cost": "$10",
+   "weight": "8",
+   "notes": "Five uses. Can be refilled for $8."
+  },
+  {
+   "name": "Doctor’s Bag",
+   "category": "General Equipment",
+   "cost": "$10",
+   "weight": "6",
+   "notes": "Grants Healing reroll, 5 uses, may be refilled for $8."
+  },
+  {
+   "name": "Drill",
+   "category": "General Equipment",
+   "cost": "$2",
+   "weight": "2"
+  },
+  {
+   "name": "File",
+   "category": "General Equipment",
+   "cost": "25¢",
+   "weight": "1"
+  },
+  {
+   "name": "Guitar",
+   "category": "General Equipment",
+   "cost": "$8",
+   "weight": "6"
+  },
+  {
+   "name": "Hammer",
+   "category": "General Equipment",
+   "cost": "50¢",
+   "weight": "2",
+   "notes": "Light Improvised Weapon"
+  },
+  {
+   "name": "Handcuffs",
+   "category": "General Equipment",
+   "cost": "$3.50",
+   "weight": "3"
+  },
+  {
+   "name": "Harmonica",
+   "category": "General Equipment",
+   "cost": "50¢"
+  },
+  {
+   "name": "Hatchet",
+   "category": "General Equipment",
+   "cost": "$1",
+   "weight": "2.5",
+   "notes": "Light Improvised Weapon"
+  },
+  {
+   "name": "Iron skillet",
+   "category": "General Equipment",
+   "cost": "50¢",
+   "weight": "5",
+   "notes": "Light Improvised Weapon"
+  },
+  {
+   "name": "Lantern",
+   "category": "General Equipment",
+   "cost": "$2.50",
+   "weight": "4",
+   "notes": "Provides light in a 4” radius for three hours per pint of oil. If it’s dropped there’s a 50% chance the lantern breaks, and a 1-in-6 chance it sets normal combustibles alight."
+  },
+  {
+   "name": "Lantern oil (per gallon)",
+   "category": "General Equipment",
+   "cost": "10¢",
+   "weight": "6"
+  },
+  {
+   "name": "Lockpicks",
+   "category": "General Equipment",
+   "cost": "$5",
+   "weight": "1"
+  },
+  {
+   "name": "Matches (box of 100)",
+   "category": "General Equipment",
+   "cost": "50¢",
+   "weight": ".25"
+  },
+  {
+   "name": "Mess kit",
+   "category": "General Equipment",
+   "cost": "$2",
+   "weight": "3"
+  },
+  {
+   "name": "Pick",
+   "category": "General Equipment",
+   "cost": "$2",
+   "weight": "12",
+   "notes": "Medium Improvised Weapon"
+  },
+  {
+   "name": "Playing cards",
+   "category": "General Equipment",
+   "cost": "25¢"
+  },
+  {
+   "name": "Rope (20 yards)",
+   "category": "General Equipment",
+   "cost": "$5",
+   "weight": "8",
+   "notes": "Safely holds 300 lbs. Roll 1d6 per additional 50 lbs each minute or whenever the rope suffers stress. It snaps on any result of 1."
+  },
+  {
+   "name": "Shovel",
+   "category": "General Equipment",
+   "cost": "$1.50",
+   "weight": "5",
+   "notes": "Medium Improvised Weapon"
+  },
+  {
+   "name": "Spectacles",
+   "category": "General Equipment",
+   "cost": "$5"
+  },
+  {
+   "name": "Tool kit",
+   "category": "General Equipment",
+   "cost": "$25",
+   "weight": "5",
+   "notes": "Ignores up to 2 points of penalties."
+  },
+  {
+   "name": "Tool kit (Weird Science)",
+   "category": "General Equipment",
+   "cost": "$50",
+   "weight": "5",
+   "notes": "Ignores up to 4 points of penalties."
+  },
+  {
+   "name": "Watch, standard",
+   "category": "General Equipment",
+   "cost": "$2.50",
+   "weight": ".5"
+  },
+  {
+   "name": "Watch, gold",
+   "category": "General Equipment",
+   "cost": "$10",
+   "weight": ".5"
+  },
+  {
+   "name": "Ghost rock ore (1 oz, but most commonly sold at $100 per pound)",
+   "category": "Fundaments",
+   "cost": "$6.25",
+   "weight": "1 oz"
+  },
+  {
+   "name": "Gold ore (1 oz.)",
+   "category": "Fundaments",
+   "cost": "$20",
+   "weight": "1 oz"
+  },
+  {
+   "name": "Silver ore (1 oz.)",
+   "category": "Fundaments",
+   "cost": "$1.50",
+   "weight": "1 oz"
+  },
+  {
+   "name": "Gun belt",
+   "category": "Gun Accessories",
+   "cost": "$2",
+   "weight": "1"
+  },
+  {
+   "name": "Holster",
+   "category": "Gun Accessories",
+   "cost": "$3",
+   "weight": "1"
+  },
+  {
+   "name": "Quick-draw holster",
+   "category": "Gun Accessories",
+   "cost": "$11",
+   "weight": "1",
+   "notes": "Drawing from a quick-draw holster adds +2 when attempting to interrupt someone and the pistol must be drawn."
+  },
+  {
+   "name": "Rifle boot",
+   "category": "Gun Accessories",
+   "cost": "$3",
+   "weight": ".5"
+  },
+  {
+   "name": "Scope",
+   "category": "Gun Accessories",
+   "cost": "$30",
+   "weight": "2",
+   "notes": "Cancels 2 additional points of penalties when Aiming."
+  },
+  {
+   "name": "Shotgun thong",
+   "category": "Gun Accessories",
+   "cost": "25¢"
+  },
+  {
+   "name": "Speed-load cylinder",
+   "category": "Gun Accessories",
+   "cost": "$3",
+   "weight": ".25",
+   "notes": "Allows the user to reload a six-shooter as one action, provided they pre-loaded the cylinder"
+  },
+  {
+   "name": "Bonnet",
+   "category": "Hats",
+   "cost": "$2"
+  },
+  {
+   "name": "Derby",
+   "category": "Hats",
+   "cost": "$1.50"
+  },
+  {
+   "name": "Fedora",
+   "category": "Hats",
+   "cost": "$3"
+  },
+  {
+   "name": "Sombrero",
+   "category": "Hats",
+   "cost": "$3.50"
+  },
+  {
+   "name": "Stetson",
+   "category": "Hats",
+   "cost": "$5"
+  },
+  {
+   "name": "Bath",
+   "category": "Services",
+   "cost": "$1"
+  },
+  {
+   "name": "Burial",
+   "category": "Services",
+   "cost": "$5"
+  },
+  {
+   "name": "Doctor visit — Office",
+   "category": "Services",
+   "cost": "$3"
+  },
+  {
+   "name": "Doctor visit — House call",
+   "category": "Services",
+   "cost": "$5"
+  },
+  {
+   "name": "Photo",
+   "category": "Services",
+   "cost": "$10"
+  },
+  {
+   "name": "Room (per day) — Boarding house (w/ meals)",
+   "category": "Services",
+   "cost": "$1"
+  },
+  {
+   "name": "Room (per day) — Low-class hotel",
+   "category": "Services",
+   "cost": "$2"
+  },
+  {
+   "name": "Room (per day) — High-class hotel",
+   "category": "Services",
+   "cost": "$10"
+  },
+  {
+   "name": "Shave and a haircut",
+   "category": "Services",
+   "cost": "25¢"
+  },
+  {
+   "name": "Telegram (per word)",
+   "category": "Services",
+   "cost": "5¢"
+  },
+  {
+   "name": "Horse",
+   "category": "Transportation",
+   "cost": "$150"
+  },
+  {
+   "name": "Mule",
+   "category": "Transportation",
+   "cost": "$50"
+  },
+  {
+   "name": "Riverboat (per mile)",
+   "category": "Transportation",
+   "cost": "5¢"
+  },
+  {
+   "name": "Saddle",
+   "category": "Transportation",
+   "cost": "$25",
+   "weight": "30"
+  },
+  {
+   "name": "Saddlebags",
+   "category": "Transportation",
+   "cost": "$5",
+   "weight": "5"
+  },
+  {
+   "name": "Stagecoach (per mile)",
+   "category": "Transportation",
+   "cost": "10¢"
+  },
+  {
+   "name": "Train ticket (per mile)",
+   "category": "Transportation",
+   "cost": "5¢"
+  },
+  {
+   "name": "Arrow",
+   "category": "Ammunition",
+   "cost": "$2/20",
+   "weight": "1/5",
+   "notes": "Arrows for bows"
+  },
+  {
+   "name": "Pistol (Small)",
+   "category": "Ammunition",
+   "cost": "$2/50",
+   "weight": "3/50",
+   "notes": ".22–.38 caliber"
+  },
+  {
+   "name": "Pistol (Large)",
+   "category": "Ammunition",
+   "cost": "$3/50",
+   "weight": "5/50",
+   "notes": ".40–.50 caliber"
+  },
+  {
+   "name": "Rifle (Small)",
+   "category": "Ammunition",
+   "cost": "$4/50",
+   "weight": "6/50",
+   "notes": ".38–44 caliber"
+  },
+  {
+   "name": "Rifle (Large)",
+   "category": "Ammunition",
+   "cost": "$5/50",
+   "weight": "8/50",
+   "notes": ".45 caliber and over"
+  },
+  {
+   "name": "Percussion caps",
+   "category": "Ammunition",
+   "cost": "$.50/60",
+   "weight": "1/60",
+   "notes": "For cap and ball weapons"
+  },
+  {
+   "name": "Shot (w/powder)",
+   "category": "Ammunition",
+   "cost": "$1/20",
+   "weight": "4/20",
+   "notes": "For black powder weapons"
+  },
+  {
+   "name": "Shotgun shells",
+   "category": "Ammunition",
+   "cost": "$2/20",
+   "weight": "2/20",
+   "notes": "Standard buckshot"
   }
  ]
 }

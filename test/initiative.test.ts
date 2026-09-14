@@ -13,8 +13,10 @@ import {
   initiativeEdges,
   isInitiativeState,
   newInitiative,
+  returnToDeck,
   turnOrder,
   type InitiativeEdges,
+  type InitiativeState,
 } from '../src/rules/initiative.js';
 
 const withEdges = (...names: string[]): Sheet => ({
@@ -522,5 +524,55 @@ describe('who is in the turn order', () => {
     const rows = combatants([bound('t1', 'Reggie', 'reggie', 'CHARACTER')], [rider]);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.pc).toBe(true);
+  });
+});
+
+/**
+ * Paul, 2026-09-12: *"possibly have a return-cards-to-deck (specific to a
+ * char/sheet) in case of accidental overdeal."*
+ */
+describe('handing cards back', () => {
+  const deck = (): InitiativeState => ({
+    round: 2,
+    deck: [card('CLUBS', 3), card('HEARTS', 9)],
+    jokerDealt: false,
+  });
+
+  it('puts them under the deck, not on top of it', () => {
+    const after = returnToDeck(deck(), [card('SPADES', 14)]);
+    // Drawn from the end, so the front is the bottom of the pile: a card put back
+    // must not be the very next one dealt.
+    expect(after.deck[0]).toEqual(card('SPADES', 14));
+    expect(after.deck).toHaveLength(3);
+  });
+
+  it('hands a whole hand back at once', () => {
+    const after = returnToDeck(deck(), [card('SPADES', 14), card('DIAMONDS', 5)]);
+    expect(after.deck).toHaveLength(4);
+  });
+
+  /** A gang shares one card between every member; the deck must get one copy. */
+  it('refuses to put a card back that is already in the deck', () => {
+    const after = returnToDeck(deck(), [card('HEARTS', 9)]);
+    expect(after.deck).toEqual(deck().deck);
+  });
+
+  it('drops duplicates within one return as well', () => {
+    const after = returnToDeck(deck(), [card('SPADES', 14), card('SPADES', 14)]);
+    expect(after.deck).toHaveLength(3);
+  });
+
+  /**
+   * The flag says a joker came out this round and the deck owes a reshuffle. This
+   * cannot tell whether the card coming back is the one that set it — somebody
+   * else may hold a joker too — so it does not guess.
+   */
+  it('leaves a pending reshuffle pending', () => {
+    const state = { ...deck(), jokerDealt: true };
+    expect(returnToDeck(state, [card('SPADES', 14)]).jokerDealt).toBe(true);
+  });
+
+  it('changes nothing when there is nothing to hand back', () => {
+    expect(returnToDeck(deck(), [])).toEqual(deck());
   });
 });

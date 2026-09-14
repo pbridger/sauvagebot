@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  attackCanStray,
   skillCanStray,
   spraysLead,
   strayShots,
@@ -167,5 +168,26 @@ describe('what the table is told', () => {
   it('agrees with itself about plurals', () => {
     expect(strayWarning(1, STRAY_ON_MISS)).toContain('1 skill die');
     expect(strayWarning(2, STRAY_ON_MISS)).toContain('2 skill dice');
+  });
+});
+
+/**
+ * Athletics arrives from two unrelated places — a thrown tomahawk and a scramble
+ * over a fence — and only one of them endangers anybody standing nearby.
+ */
+describe('a throw that goes wide', () => {
+  it('travels, now that a thrown weapon rolls Athletics', () => {
+    expect(attackCanStray({ skill: 'Athletics', bands: [3, 6, 12] })).toBe(true);
+  });
+
+  it('does not, when the Athletics roll came off the skills list', () => {
+    expect(attackCanStray({ skill: 'Athletics' })).toBe(false);
+  });
+
+  it('leaves the skills it always covered alone', () => {
+    expect(attackCanStray({ skill: 'Shooting' })).toBe(true);
+    expect(attackCanStray({ skill: 'Throwing' })).toBe(true);
+    expect(attackCanStray({ skill: 'Fighting', bands: [1, 2, 4] })).toBe(false);
+    expect(attackCanStray(undefined)).toBe(false);
   });
 });

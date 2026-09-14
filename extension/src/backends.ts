@@ -38,9 +38,37 @@ import {
 import { JavaRandom } from '../../src/dice/javaRandom.js';
 import type { Card } from '../../src/game/cards.js';
 
+/**
+ * How many times **this client** has written to the room's metadata.
+ *
+ * Every sheet, every Benny and every Power Point goes through here, which makes
+ * this the one place that can answer "was that us?" without each caller having to
+ * remember to say so. `OBR.room.onMetadataChange` fires for our own writes exactly
+ * as it does for everybody else's, and the panel's handler reloads and repaints on
+ * each one — so a client that cannot tell its own echo apart rebuilds its own
+ * screen underneath whoever is using it.
+ *
+ * A counter rather than a flag because writes overlap: a hand-out to the party is
+ * one write per character, and a flag cleared by the first to finish would let the
+ * rest through.
+ */
+let roomWrites = 0;
+
+/** The number of room writes this client has made. See `roomWrites`. */
+export function roomWriteCount(): number {
+  return roomWrites;
+}
+
 const roomBackend: Backend = {
   get: () => OBR.room.getMetadata(),
-  set: (update) => OBR.room.setMetadata(update),
+  async set(update) {
+    // Counted before the await, not after. The point of the count is to let a read
+    // that is already in flight discover that it has been overtaken, and a write
+    // that only announced itself on completion would be invisible for exactly the
+    // window that matters.
+    roomWrites += 1;
+    await OBR.room.setMetadata(update);
+  },
 };
 
 /**

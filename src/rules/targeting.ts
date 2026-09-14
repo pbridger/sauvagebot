@@ -401,3 +401,24 @@ export function verdictIsMeaningless(skill: string | undefined, named = false): 
 export function withoutFlatVerdict(explained: string): string {
   return explained.replace(/\s*\(success(?:;[^)]*)?\)/g, '');
 }
+
+/**
+ * Where a candidate belongs in a target list: 0 for the far side, 1 for your own.
+ *
+ * Paul, 2026-09-12, from the first session: *"in the target list, PCs should be
+ * sorted to the bottom."* Which is right for a player's shot, and would be wrong
+ * for the Marshal's — when a bandit fires, the players are precisely who it is
+ * aimed at, and the bandit's friends are the ones nobody is picking.
+ *
+ * So the rule is the general form of what he asked for: **your own side goes
+ * last**. It reads as "PCs at the bottom" from a player's seat, which is the seat
+ * the complaint came from and the one most shots are fired from, and it does the
+ * same job in reverse for the Marshal without a second decision.
+ *
+ * Friendly fire remains entirely possible — everyone stays on the list, because
+ * shooting your own posse is a thing that happens and the app should not be the
+ * one to argue. It just stops being the first thing you see.
+ */
+export function ownSideLast(shooterIsPc: boolean, targetIsPc: boolean): 0 | 1 {
+  return shooterIsPc === targetIsPc ? 1 : 0;
+}

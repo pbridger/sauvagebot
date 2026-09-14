@@ -331,3 +331,40 @@ export function dealRound(
     jokerDealt,
   };
 }
+
+/**
+ * Put cards back under the deck, undoing a deal nobody meant to make.
+ *
+ * Paul, 2026-09-12: *"possibly have a return-cards-to-deck (specific to a
+ * char/sheet) in case of accidental overdeal."* Dealing one combatant a card is a
+ * single press and there was no way back from it short of ending the fight or
+ * re-dealing the whole round, either of which costs everyone else their hand to
+ * fix one person's misclick.
+ *
+ * **Under**, not on top. `deck` is drawn from the end, so returned cards go to the
+ * front — the bottom of the pile. A card put back on top would be the very next
+ * one dealt, which turns a misclick into a way of choosing your own card.
+ *
+ * `jokerDealt` is deliberately left as it is. It says a joker has come out this
+ * round and the deck owes a reshuffle, and this function cannot know whether the
+ * card being handed back is the one that set it — somebody else may hold a joker
+ * too. Clearing it on a guess would skip a reshuffle the rules require; leaving it
+ * costs at worst one reshuffle that was not strictly needed.
+ */
+export function returnToDeck(state: InitiativeState, cards: readonly Card[]): InitiativeState {
+  if (!cards.length) return state;
+  // Deduplicated against the deck rather than trusted. A gang shares one card
+  // between every member, and a caller that collected hands per token would hand
+  // back six copies of the same king — which would then be dealt to six different
+  // people.
+  const already = new Set(state.deck.map(cardKey));
+  const returning = cards.filter((card) => {
+    const key = cardKey(card);
+    if (already.has(key)) return false;
+    already.add(key);
+    return true;
+  });
+  return { ...state, deck: [...returning, ...state.deck] };
+}
+
+const cardKey = (card: Card): string => `${card.suit}:${card.rank}`;

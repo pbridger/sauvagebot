@@ -268,14 +268,31 @@ export function explodeDice(expression: string): string {
 }
 
 /**
- * Which skill swings this weapon.
+ * Which skill swings, shoots or throws this weapon.
  *
  * A weapon with a range is shot; anything else is swung. Crude, but it matches
  * how the cards are written, and the button says which skill it is rolling so a
  * wrong guess is visible rather than silent.
+ *
+ * ## Throwing was missing, and the book tells you where it is
+ *
+ * *"A weapon with a range is shot"* made a thrown tomahawk roll **Shooting**,
+ * which is wrong on every stat block in Coffin Rock that carries one. The
+ * discriminator is in the book's own convention, quoted in its Gear Notes:
+ * *"Projectile weapons have fixed damage (such as 2d6). Melee weapons have damage
+ * based on the wielder's Strength die."* A thrown weapon keeps its Strength-based
+ * damage — it is your arm that throws it — and gains a range. So **Strength-based
+ * damage plus a range is a throw**, and it is `Athletics`.
+ *
+ * Checked against the catalogue rather than reasoned about alone: every thrown
+ * entry in the book (knife, Bowie knife, spear, tomahawk, lance, war club) is
+ * `Str+…` with a range, and the one Strength-free entry in that same table — the
+ * bow, at 2d6 — is correctly left as Shooting, which is what a bow is.
  */
-export function weaponSkill(weapon: Weapon): 'Shooting' | 'Fighting' {
-  if (weapon.range) return 'Shooting';
+export function weaponSkill(weapon: Weapon): 'Shooting' | 'Fighting' | 'Athletics' {
+  if (weapon.range) {
+    return weapon.damage && /^str/i.test(weapon.damage) ? 'Athletics' : 'Shooting';
+  }
   if (weapon.damage && /^str/i.test(weapon.damage)) return 'Fighting';
   // No leading word boundary: "scattergun" and "handgun" are one word, and a
   // Deadlands gear list is full of them.

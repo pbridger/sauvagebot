@@ -55,19 +55,36 @@ export const STRAY_ON_SPRAY = 2;
  * Throwing is a skill in its own right in Deadlands Reloaded, rolled from the
  * skills list.
  *
- * **Athletics is deliberately not here**, though the targeting table does treat
- * it as a ranged attack. `weaponSkill` only ever returns Shooting or Fighting, so
- * a thrown weapon rolled off the weapons table arrives as Shooting — which means
- * an Athletics roll can only have come from the skills list, where it is a climb
- * or a swim. Including it would buy no real coverage and cost a nonsense warning
- * on one Athletics roll in four.
- *
  * Fighting is absent for a simpler reason: a missed swing does not travel.
+ *
+ * **Athletics is not on this list, and is handled below** — see `attackCanStray`.
  */
 const STRAY_SKILLS = /^(shooting|throwing)\b/i;
 
 export function skillCanStray(skill: string | undefined): boolean {
   return skill !== undefined && STRAY_SKILLS.test(skill.trim());
+}
+
+/**
+ * Whether *this roll* can put a die into a bystander.
+ *
+ * The skill alone used to be the whole answer, and it stopped being one when
+ * `weaponSkill` learned to return `Athletics` for a thrown weapon. In SWADE that
+ * is the throwing skill — so a tomahawk that goes wide now travels, exactly as a
+ * bullet does, and the old list said it did not.
+ *
+ * Athletics cannot simply join the list, though, because it is also a climb and a
+ * swim: it is the one skill here that arrives from two completely different
+ * places. The discriminator is **range bands**, which come off a weapon's own
+ * stats and cannot be produced by the skills list — that button does not know
+ * which weapon you might have swung, and says so in its own comment. So a
+ * bandless Athletics roll is somebody going over a fence, and nobody near them is
+ * in danger from it.
+ */
+export function attackCanStray(attack: { skill?: string; bands?: unknown } | undefined): boolean {
+  if (!attack?.skill) return false;
+  if (skillCanStray(attack.skill)) return true;
+  return /^athletics\b/i.test(attack.skill.trim()) && attack.bands !== undefined;
 }
 
 /**
