@@ -354,14 +354,26 @@ export function rangeMod(band: Band, scoped = false): ShotMod | undefined {
  * Categorised `other`, so Aim cannot spend its budget cancelling a bonus — which
  * `applyAim` refuses anyway, but a bonus filed under `range` would be a trap for
  * whoever next changes that function.
+ *
+ * Asks `firesBuckshot` directly. It used to ask `reachesExtreme`, which is false
+ * for a shotgun — and also for every weapon whose damage starts `Str+`, because
+ * the book bars thrown weapons from Extreme Range too (p146). Two refusals for two
+ * unrelated reasons, and borrowing one function for both handed every knife,
+ * claw and tomahawk the scattergun's +2 from 2026-08-20 until Damian spotted it
+ * on 10-09.
+ *
+ * And not on a melee attack, whatever is in the hand: the bonus is to *Shooting*,
+ * and the spread is what earns it. `firesBuckshot` reads the weapon's name, so it
+ * cannot say that on its own.
  */
 export const SHOTGUN_BONUS = 2;
 
 export function shotgunMod(
   weapon: Pick<Weapon, 'name' | 'damage'>,
   slugs = false,
+  melee = false,
 ): ShotMod | undefined {
-  if (slugs || reachesExtreme(weapon, false)) return undefined;
+  if (slugs || melee || !firesBuckshot(weapon)) return undefined;
   return {
     key: 'shotgun',
     label: 'Shotgun',

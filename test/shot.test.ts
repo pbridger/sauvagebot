@@ -538,6 +538,26 @@ describe('shotguns', () => {
     expect(shotgunMod(peacemaker)).toBeUndefined();
   });
 
+  /**
+   * The bug Damian found on 2026-10-09. A `Str+` weapon cannot reach Extreme
+   * Range either, and the bonus was keyed on that — so every knife and tomahawk
+   * carried a scattergun's +2.
+   */
+  it('say nothing about a knife, a claw or a tomahawk', () => {
+    expect(shotgunMod({ name: 'Bowie knife', damage: 'Str+d4' })).toBeUndefined();
+    expect(shotgunMod({ name: 'Claws', damage: 'Str+d6' })).toBeUndefined();
+    expect(shotgunMod({ name: 'Tomahawk', damage: 'Str+d6' })).toBeUndefined();
+  });
+
+  /** The bonus is to Shooting. Clubbing someone with the stock earns nothing. */
+  it('give nothing to a melee attack, even with a shotgun', () => {
+    expect(shotgunMod(shotgun, false, true)).toBeUndefined();
+  });
+
+  it('still recognise the LeMat barrel by its dice', () => {
+    expect(shotgunMod({ name: 'LeMat Revolver (shotgun)', damage: '1-3d6' })?.value).toBe(SHOTGUN_BONUS);
+  });
+
   /** Aim's budget must never be spent cancelling a bonus. */
   it('are not something aim can touch', () => {
     expect(AIMABLE).not.toContain(shotgunMod(shotgun)!.category);

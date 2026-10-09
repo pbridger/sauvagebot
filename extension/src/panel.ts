@@ -5553,7 +5553,7 @@ function shotAgainst(
 ): { mods: ShotMod[]; total: number; band: Band | undefined } {
   const band = session.rolled ? session.rolled.bands.get(tokenId) : undefined;
   const shot = shotMods(session, band);
-  const gun = shotgunMod(weapon, session.slugs);
+  const gun = shotgunMod(weapon, session.slugs, session.melee);
   return {
     mods: gun ? [...shot.mods, gun] : shot.mods,
     total: shot.total + (gun?.value ?? 0),
@@ -5774,7 +5774,7 @@ function amendShot(
  */
 function shotLevel(session: ShotSession, weapon: Weapon): { mods: ShotMod[]; total: number } {
   const shot = shotMods(session, undefined);
-  const gun = shotgunMod(weapon, session.slugs);
+  const gun = shotgunMod(weapon, session.slugs, session.melee);
   return {
     mods: gun ? [...shot.mods, gun] : shot.mods,
     total: shot.total + (gun?.value ?? 0),
@@ -6349,7 +6349,7 @@ async function fillShotTargets(
         ? bandFor(cells, session.bands, { extreme: reachesExtreme(weapon, session.slugs) })
         : undefined;
     const shot = shotMods(session, band);
-    const shotgun = shotgunMod(weapon, session.slugs);
+    const shotgun = shotgunMod(weapon, session.slugs, session.melee);
     const mods = shotgun ? [...shot.mods, shotgun] : shot.mods;
     const total = shot.total + (shotgun?.value ?? 0);
 

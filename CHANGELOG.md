@@ -10,6 +10,27 @@ reload.
 
 ---
 
+## 2026-10-09 — Knives are not shotguns
+
+**Reload the extension first.**
+
+**Fighting and thrown attacks were getting the shotgun's +2.** Damian spotted it on
+a Fighting roll — `d6+2` against Parry with nothing on the dial — and then on a
+thrown weapon. The bonus was keyed on *"can this weapon reach Extreme Range?"*,
+which is no for a shotgun, but also no for anything with `Str+` damage, because
+thrown weapons can't reach Extreme either. So every knife, claw and tomahawk got
+the scattergun's +2.
+
+- **Thrown weapons have had it since 20 August**, not just since the Fighting
+  dialogue: before throws rolled Athletics they rolled Shooting through the same
+  panel. Any throw from the last seven weeks came out two higher than it should.
+- **Melee attacks have had it since 14 September**, when Fighting moved into the
+  panel.
+- **Shooting is unchanged.** Pistols and rifles never got it; shotguns, and the
+  LeMat's shotgun barrel, still do. Clubbing someone with a shotgun no longer counts.
+
+---
+
 ## 2026-09-14 (later) — The Fighting dialogue, and a catalogue with more than guns in it
 
 **Reload the extension first.**
