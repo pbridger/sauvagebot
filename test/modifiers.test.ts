@@ -8,6 +8,7 @@ import {
   formatMod,
   hasCondition,
   setManualMod,
+  scopeOfSkill,
   situationalMods,
   situationalTotal,
   situationsOf,
@@ -59,7 +60,7 @@ describe('setting conditions', () => {
   it('toggles one on and off', () => {
     const dark = toggleCondition(state(), 'dark');
     expect(hasCondition(dark, 'dark')).toBe(true);
-    expect(situationalTotal(dark)).toBe(-4);
+    expect(situationalTotal(dark, 'ranged')).toBe(-4);
     expect(hasCondition(toggleCondition(dark, 'dark'), 'dark')).toBe(false);
   });
 
@@ -68,12 +69,64 @@ describe('setting conditions', () => {
     // would be a quiet wrong answer.
     const lit = toggleCondition(toggleCondition(state(), 'dim'), 'pitch');
     expect(situationsOf(lit).map((s) => s.key)).toEqual(['pitch']);
-    expect(situationalTotal(lit)).toBe(-6);
+    expect(situationalTotal(lit, 'notice')).toBe(-6);
   });
 
   it('sums across different groups', () => {
-    const rough = toggleCondition(toggleCondition(state(), 'dark'), 'unstable');
-    expect(situationalTotal(rough)).toBe(-6);
+    const rough = toggleCondition(toggleCondition(state(), 'dark'), 'running');
+    expect(situationalTotal(rough, 'melee')).toBe(-6);
+  });
+
+  /**
+   * p165 scopes the platform penalty to *"fire or throw a ranged weapon"*. Until
+   * 2026-10-09 Unstable Platform charged every roll — Notice, Fighting, Soak.
+   */
+  it('keeps the platform conditions off the every-roll track', () => {
+    expect(situationalTotal(toggleCondition(state(), 'unstable'))).toBe(0);
+    expect(situationalTotal(toggleCondition(state(), 'mounted'))).toBe(0);
+    expect(situationalTotal(toggleCondition(toggleCondition(state(), 'dark'), 'unstable'), 'ranged')).toBe(-4);
+  });
+
+  /**
+   * §27 (fff): the book scopes Illumination to *"attacks, Notice rolls, the use of
+   * powers"* (p157), Off-hand to Fighting and Shooting, Improvised to attacks.
+   */
+  it('scopes the dark, the off hand and an improvised weapon to the rolls they reach', () => {
+    const dark = toggleCondition(state(), 'dark');
+    expect(situationalTotal(dark, 'melee')).toBe(-4);
+    expect(situationalTotal(dark, 'ranged')).toBe(-4);
+    expect(situationalTotal(dark, 'notice')).toBe(-4);
+    expect(situationalTotal(dark, 'arcane')).toBe(-4);
+    expect(situationalTotal(dark, 'other')).toBe(0);
+    expect(situationalTotal(dark)).toBe(0);
+    const clumsy = toggleCondition(toggleCondition(state(), 'offhand'), 'improvised');
+    expect(situationalTotal(clumsy, 'melee')).toBe(-4);
+    expect(situationalTotal(clumsy, 'notice')).toBe(0);
+  });
+
+  it('reads the scope off the skill', () => {
+    expect(scopeOfSkill('Fighting')).toBe('melee');
+    expect(scopeOfSkill('Shooting')).toBe('ranged');
+    expect(scopeOfSkill('Notice')).toBe('notice');
+    expect(scopeOfSkill('Faith')).toBe('arcane');
+    expect(scopeOfSkill('Weird Science')).toBe('arcane');
+    // A climb, off the skills list. Only a throw from the weapons table is an attack.
+    expect(scopeOfSkill('Athletics')).toBe('other');
+    expect(scopeOfSkill('Persuasion')).toBe('other');
+  });
+
+  /** Stunned and Bound are Distracted — once, even with Distracted also set. */
+  it('makes Stunned and Bound Distracted, once', () => {
+    expect(situationalTotal(toggleCondition(state(), 'stunned'))).toBe(-2);
+    expect(situationalTotal(toggleCondition(state(), 'bound'))).toBe(-2);
+    expect(situationalTotal(toggleCondition(state(), 'entangled'))).toBe(0);
+    expect(situationalTotal(toggleCondition(toggleCondition(state(), 'stunned'), 'distracted'))).toBe(-2);
+  });
+
+  it('puts a prone character at −2 to their own Fighting only', () => {
+    const down = toggleCondition(state(), 'prone');
+    expect(situationalTotal(down, 'melee')).toBe(-2);
+    expect(situationalTotal(down, 'ranged')).toBe(0);
   });
 
   it('stacks Running with a Multi-Action, which the book does', () => {
@@ -98,7 +151,7 @@ describe('setting conditions', () => {
     expect(setManualMod(state(), 2).mod).toBe(2);
     expect(setManualMod(state(), 99).mod).toBe(MANUAL_RANGE);
     expect(setManualMod(state(), -99).mod).toBe(-MANUAL_RANGE);
-    expect(situationalTotal(setManualMod(toggleCondition(state(), 'dim'), 1))).toBe(-1);
+    expect(situationalTotal(setManualMod(toggleCondition(state(), 'dim'), 1), 'melee')).toBe(-1);
   });
 
   /**
@@ -214,7 +267,7 @@ describe('formatting', () => {
 describe('the whole breakdown', () => {
   it('adds the red half to the green half', () => {
     const hurt = toggleCondition(state({ wounds: 2, fatigue: 1 }), 'dark');
-    const breakdown = rollBreakdown(hurt);
+    const breakdown = rollBreakdown(hurt, 'notice');
     expect(breakdown.status).toBe(-3);
     expect(breakdown.situational).toBe(-4);
     expect(breakdown.total).toBe(-7);
@@ -232,12 +285,12 @@ describe('the whole breakdown', () => {
 
   it('names each part so the sheet and log can colour it', () => {
     const parts = rollBreakdown(
-      setManualMod(toggleCondition(state({ wounds: 1, fatigue: 2 }), 'unstable'), 1),
+      setManualMod(toggleCondition(state({ wounds: 1, fatigue: 2 }), 'distracted'), 1),
     ).parts;
     expect(parts).toEqual([
       { label: '1 wound', value: -1, kind: 'status', short: '1W' },
       { label: 'Exhausted', value: -2, kind: 'status', short: '2F' },
-      { label: 'Unstable Platform', value: -2, kind: 'situational', short: '-2' },
+      { label: 'Distracted', value: -2, kind: 'situational', short: '-2' },
       { label: 'Modifier', value: 1, kind: 'situational', short: '+1' },
     ]);
   });
@@ -324,5 +377,50 @@ describe("a target's own conditions, which change the attacker's roll", () => {
     const both = toggleCondition(state({ conditions: ['prone'] }), 'vulnerable');
     expect(targetPills(both).map((p) => p.letter).sort()).toEqual(['P', 'V']);
     expect(targetTotal(both)).toBe(2);
+  });
+});
+
+/** §27 (ggg), checked against the book: what a target's state gives the attacker. */
+describe('a target that counts as Vulnerable', () => {
+  it('is one +2, however many of the conditions are set', () => {
+    expect(targetTotal(state({ conditions: ['stunned'] }))).toBe(2);
+    expect(targetTotal(state({ conditions: ['entangled'] }))).toBe(2);
+    expect(targetTotal(state({ conditions: ['bound'] }))).toBe(2);
+    expect(targetTotal(state({ conditions: ['stunned', 'vulnerable'] }))).toBe(2);
+    expect(targetTotal(state({ conditions: ['bound', 'vulnerable', 'stunned'] }))).toBe(2);
+  });
+
+  it('says why when it is not Vulnerable itself', () => {
+    expect(targetMods(state({ conditions: ['stunned'] }))[0]?.label).toBe('Vulnerable (Stunned)');
+  });
+});
+
+/** p160: −4 to ranged attacks from 3″ or more, not with cover; Parry −2 in melee. */
+describe('a prone target', () => {
+  const prone = state({ conditions: ['prone'] });
+
+  it('is easier to stab', () => {
+    expect(targetTotal(prone, { melee: true, cells: 1 })).toBe(2);
+  });
+
+  it('is harder to shoot from 3″ or more, and only then', () => {
+    expect(targetTotal(prone, { melee: false, cells: 3 })).toBe(-4);
+    expect(targetTotal(prone, { melee: false, cells: 2.9 })).toBe(0);
+  });
+
+  /** "This does not stack with Cover" — it is Medium Cover, so cover past Medium wins. */
+  it('does not stack with cover', () => {
+    expect(targetTotal(prone, { melee: false, cells: 6, cover: -2 })).toBe(-2);
+    expect(targetTotal(prone, { melee: false, cells: 6, cover: -4 })).toBe(0);
+    expect(targetTotal(prone, { melee: false, cells: 6, cover: -6 })).toBe(0);
+  });
+
+  it('is left alone when the distance was not measured', () => {
+    expect(targetTotal(prone, { melee: false })).toBe(0);
+  });
+
+  it('shows on its pill what it came to', () => {
+    expect(targetPills(prone, { melee: true, cells: 1 })[0]?.value).toBe(2);
+    expect(targetPills(prone, { melee: false, cells: 1 })[0]?.value).toBe(0);
   });
 });

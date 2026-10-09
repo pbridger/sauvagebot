@@ -105,7 +105,13 @@ function traitsIn(sheet: Sheet, text: string): string[] {
   for (const name of names) {
     // Word-bounded, so "Notice" does not match inside another word, and skipped
     // once a longer name has already claimed this stretch of the sentence.
-    const pattern = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    //
+    // The cards abbreviate Common Knowledge and the rules text does not, so the
+    // skill has to answer to both: Scout's *"+2 to Common Knowledge rolls"* was
+    // finding nothing to hang on.
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const spelled = /^com\.?\s*knowledge$/i.test(name) ? `(?:${escaped}|common\\s+knowledge)` : escaped;
+    const pattern = new RegExp(`\\b${spelled}\\b`, 'i');
     if (pattern.test(text) && !found.some((f) => f.toLowerCase().includes(name.toLowerCase()))) {
       found.push(name);
     }
@@ -180,13 +186,28 @@ export function classify(sheet: Sheet, entry: NamedEntry, kind: AbilityNote['kin
   // Read whole, that pairs the +2 with "damage" and offers the Marshal a bonus
   // nobody wrote. Clause by clause it offers nothing, which is right — Construct
   // is precisely what the damage adjustment is for.
+  //
+  // And within a sentence, one refinement, comma by comma. Sir Ed's Scout is the
+  // case: *"You get a Notice roll at -2 to detect traveling encounters…, ignore up
+  // to 2 points of penalties when tracking with Survival, and +2 to Common
+  // Knowledge rolls…"* — read as one sentence, the −2 went to Survival as well,
+  // which is backwards. So a comma-separated part that states its **own** number
+  // uses it, and a part that *ignores* penalties pairs with nothing. Every other
+  // part keeps the sentence's number, as before — lists like *"Smarts, Agility,
+  // and all linked skills suffer a −1 penalty"* name the traits in one part and
+  // the number in another, and splitting them apart (tried first) lost five of
+  // those across the catalogue.
   const effects: AbilityEffect[] = [];
   for (const clause of text.split(/(?<=[.;])\s+/)) {
     const clauseValue = valueIn(clause);
     if (clauseValue === undefined) continue;
-    for (const trait of traitsIn(sheet, clause)) {
-      if (!effects.some((e) => e.trait === trait)) {
-        effects.push({ trait, value: clauseValue, when: clause.trim() });
+    for (const part of clause.split(/,\s+/)) {
+      if (/\bignores?\b/i.test(part)) continue;
+      const value = valueIn(part) ?? clauseValue;
+      for (const trait of traitsIn(sheet, part)) {
+        if (!effects.some((e) => e.trait === trait)) {
+          effects.push({ trait, value, when: clause.trim() });
+        }
       }
     }
   }

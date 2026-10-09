@@ -49,11 +49,8 @@ import {
   swingDamage,
   type Swing,
 } from '../../src/rules/melee.js';
-import {
-  horsemanshipNote,
-  mountedRangedPenalty,
-  rollingSheet,
-} from '../../src/rules/mounted.js';
+import { horsemanshipNote, rollingSheet } from '../../src/rules/mounted.js';
+import { platformPenalty } from '../../src/rules/platform.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
 import { RollInterpreter } from '../../src/dice/interpreter.js';
 import { runningDie, runningExpression } from '../../src/rules/running.js';
@@ -164,6 +161,7 @@ import {
   pacePenalty,
   woundLimit,
   rollBreakdown,
+  soakBreakdown,
   setFatigue,
   setShaken,
   setWounds,
@@ -182,10 +180,14 @@ import {
   situationalMods,
   situationalTotal,
   situationsOf,
+  scopeOfSkill,
+  targetMods,
   targetPills,
   targetTotal,
   toggleCondition,
+  type AttackContext,
   type ModifierState,
+  type RollScope,
 } from '../../src/rules/modifiers.js';
 import { entryDisplayName, findEntry } from '../../src/rules/catalogue.js';
 import { addToHand, chooseFromHand, chosenCard, clearHand, handOf } from '../../src/rules/hand.js';
@@ -194,8 +196,16 @@ import { MARSHAL_BENNIES, BennyBank, type BennyOutcome } from '../../src/obr/ben
 import { PowerBank } from '../../src/obr/powerBank.js';
 import { maxPowerPoints } from '../../src/rules/powers.js';
 import { BENNY_USES, NoBenniesError } from '../../src/rules/bennies.js';
-import { soak, soakedWounds } from '../../src/rules/damage.js';
-import { rollAttribute as rollAttr, rollTrait } from '../../src/rules/traitRoll.js';
+import { resoak, soak, soakedWounds } from '../../src/rules/damage.js';
+import {
+  ELAN_BONUS,
+  criticalFailure,
+  hasElan,
+  markCritical,
+  raisedBy,
+  rollAttribute as rollAttr,
+  rollTrait,
+} from '../../src/rules/traitRoll.js';
 import { renderEditor } from './editor.js';
 import {
   combatants,
@@ -211,6 +221,7 @@ import {
   returnToDeck,
   initiativeEdges,
   isJoker,
+  jokerBonus,
   NO_EDGES,
   type Draw,
   type InitiativeState,
@@ -327,6 +338,23 @@ interface LastTrait {
   expression: string;
   mods: RollBreakdown;
   aimed?: AimedRoll;
+  /**
+   * The last roll was a Critical Failure, which *"cannot be rerolled, even with
+   * Bennies"* (p140). Updated by a reroll as well, so a reroll that comes up snake
+   * eyes cannot itself be rerolled.
+   */
+  critical?: boolean;
+  /**
+   * The shot panel session this roll was taken in, so a Benny reroll can put its
+   * dice back into the panel rather than only into the log. See `rerollLastTrait`.
+   */
+  shot?: { key: string };
+  /**
+   * A Soak, and what it did, so a Benny reroll can replace its result on the
+   * token rather than only republishing dice. `hit` is the token after the damage
+   * and before the Soak; `after` is what the latest Soak left. See `resoak`.
+   */
+  soak?: { tokenId: string; hit: TokenState; after: TokenState; wounds: number };
 }
 const lastTraitRoll = new Map<string, LastTrait>();
 let store = roomStore();
@@ -684,13 +712,18 @@ function publishTrait(
   // request rather than the result: the same expression, the same modifier
   // breakdown, and the same target framing, or the second roll would quietly be
   // a different roll.
+  const critical = criticalFailure(result.dice ?? []);
   if (!isReroll) {
     lastTraitRoll.set(sheet.id, {
       label,
       expression: result.expression,
       mods,
       ...(aimed ? { aimed } : {}),
+      ...(critical ? { critical } : {}),
     });
+  } else {
+    const last = lastTraitRoll.get(sheet.id);
+    if (last) last.critical = critical;
   }
   // Counted here rather than at each call site, so a Benny reroll re-counts its
   // *own* dice against the same weapon's window — the threshold belongs to the
@@ -712,9 +745,16 @@ function publishTrait(
       // The panel that named a target also resolved the roll, and its answer is
       // the one that counts — the engine's is against a flat 4 on a total that
       // may not have had the range taken out of it yet.
-      explained: verdictIsMeaningless(aimed?.skill, aimed?.target !== undefined)
-        ? withoutFlatVerdict(result.explained)
-        : result.explained,
+      //
+      // A Critical Failure overrides both: *"The attempt automatically fails"*
+      // (p140), so it says so on every roll — a Notice that came up snake eyes
+      // must not read "(success)" because the modifiers pushed it past 4.
+      explained: (critical ? markCritical : (text: string) => text)(
+        verdictIsMeaningless(aimed?.skill, aimed?.target !== undefined)
+          ? withoutFlatVerdict(result.explained)
+          : result.explained,
+      ),
+      ...(critical ? { critical } : {}),
       ...(mods.parts.length ? { mods: mods.parts } : {}),
       ...(aimed ? { skill: aimed.skill } : {}),
       ...(aimed?.bands ? { bands: aimed.bands } : {}),
@@ -1159,11 +1199,14 @@ async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
   for (const { token, state, sheet, cells } of await candidateTargets(entry.from)) {
     const bands = entry.bands;
     const band = cells !== undefined && bands ? bandFor(cells, bands) : undefined;
+    // What the attack was, for the target conditions that depend on it — Prone
+    // above all. A roll off the skills list has no declared cover.
+    const against: AttackContext | undefined = isAttack ? { melee, cells } : undefined;
 
     const row: TargetRow = {
       tokenId: token.id,
       name: localName(sheet, mapName(token), isGM),
-      pills: targetPills(state),
+      pills: targetPills(state, against),
       ...(cells === undefined ? {} : { cells }),
       ...(band ? { band } : {}),
     };
@@ -1179,12 +1222,13 @@ async function targetRows(entry: RollEntry): Promise<TargetRow[]> {
       // Range and the target's own conditions both belong to *this* pairing
       // rather than to the roll, so they are applied here — one resolve per
       // candidate off the one rolled total. See `resolveAimedAttack`.
-      const bonus = targetTotal(state);
+      const bonus = targetTotal(state, against);
       const outcome = resolveAimedAttack({
         total: entry.total,
         target,
         ...(band ? { band } : {}),
         targetBonus: bonus,
+        critical: entry.critical === true,
       });
       if (showsParry(entry.skill, cells)) row.parry = parry;
       row.target = target;
@@ -1429,7 +1473,9 @@ async function fillTargets(holder: HTMLElement, entry: RollEntry): Promise<void>
           ? row.raises
             ? `hit, ${row.raises} raise${row.raises === 1 ? '' : 's'}`
             : 'hit'
-          : 'miss';
+          : entry.critical
+            ? 'crit fail'
+            : 'miss';
       result.className = row.hit ? 'num hit' : 'num miss';
       // The whole sum, not just the answer. A range penalty that was shown in one
       // column and silently missing from another is exactly the bug this had.
@@ -3710,12 +3756,12 @@ function activeToken(sheet: Sheet): { token: SceneToken; state: TokenState } | u
  * it rolls come from the same place. They used to come from two, which is the
  * sort of disagreement nobody notices until a roll is wrong.
  */
-function modsFor(sheet: Sheet): RollBreakdown {
+function modsFor(sheet: Sheet, scope?: RollScope): RollBreakdown {
   const active = activeToken(sheet);
-  if (active) return rollBreakdown(active.state);
+  if (active) return rollBreakdown(active.state, scope);
   // No token, so no wounds or Fatigue to carry — but the Marshal's dial still
   // counts. See `looseMods`.
-  return rollBreakdown({ wounds: 0, fatigue: 0, ...(looseMods.get(sheet.id) ?? {}) });
+  return rollBreakdown({ wounds: 0, fatigue: 0, ...(looseMods.get(sheet.id) ?? {}) }, scope);
 }
 
 /**
@@ -4184,6 +4230,23 @@ function bennySteppers(sheet: Sheet, held: number): HTMLElement {
 }
 
 /**
+ * The Joker's +2 to damage — *"all Trait and damage rolls this round"* (p145) —
+ * for whoever is acting on this sheet's token. The trait half is in
+ * `rollBreakdown`; damage is built from the weapon, so it is added where the
+ * damage expression is.
+ */
+function jokerDamage(sheet: Sheet): number {
+  return jokerBonus(activeToken(sheet)?.state.card);
+}
+
+/** What a Soak did, in words, for the end of its log line. */
+function soakResult(total: number, wounds: number, critical: boolean): string {
+  if (critical) return 'a wound added (p150)';
+  const removed = Math.min(soakedWounds(total), wounds);
+  return removed === 0 ? 'no wounds soaked' : `soaked ${removed} of ${wounds}`;
+}
+
+/**
  * Soak: spend a Benny, roll Vigor, remove a wound per success and raise.
  *
  * The Vigor roll deliberately ignores the wounds just taken — "don't count the
@@ -4205,27 +4268,29 @@ async function attemptSoak(
     void returnBenny(sheet.id);
 
     const before = { ...state, wounds: Math.max(0, state.wounds - wounds) };
-    // Situational modifiers ride along with the wound penalty, since the
-    // character is still standing in whatever the Marshal called.
-    const mods = rollBreakdown(before);
-    const { expression, explained } = rollAttr(sheet, 'vigor', mods.total);
+    // Only what a Soak takes: the earlier wounds, Fatigue, Distracted and the hand
+    // dial — not the dark, Running or a Multi-Action. See `soakMods`.
+    const mods = soakBreakdown(before);
+    const { expression, explained, dice } = rollAttr(sheet, 'vigor', mods.total);
     const total = totalOf(explained) ?? 0;
-    const removed = Math.min(soakedWounds(total), wounds);
+    const critical = criticalFailure(dice);
 
     // `soak` closes the window whether or not it worked: the Benny is spent
     // either way, and leaving the button up would sell a second attempt at the
     // same wound.
-    await updateTokenState(tokenId, () => soak(state, total, wounds));
+    const after = soak(state, total, wounds, critical);
+    await updateTokenState(tokenId, () => after);
 
     publishTrait(
       sheet,
       'Soak',
-      {
-        expression,
-        explained: `${explained} — ${removed === 0 ? 'no wounds soaked' : `soaked ${removed} of ${wounds}`}`,
-      },
+      { expression, explained: `${explained} — ${soakResult(total, wounds, critical)}`, dice },
       mods,
     );
+    // So a Benny reroll of this Vigor check replaces its result on the token,
+    // which the book allows (p150) — unless it came up snake eyes (p140).
+    const last = lastTraitRoll.get(sheet.id);
+    if (last) last.soak = { tokenId, hit: state, after, wounds };
     await refreshTokens();
   } catch (error) {
     notify(error instanceof NoBenniesError ? `${sheet.name} has no Bennies left` : describe(error));
@@ -4263,6 +4328,10 @@ async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
   // reroll is the worst outcome available here, and the Benny does not come back.
   if (use === 'Reroll a Trait' && !lastTraitRoll.has(sheet.id)) {
     notify(`${sheet.name} has not rolled anything to reroll`);
+    return;
+  }
+  if (use === 'Reroll a Trait' && lastTraitRoll.get(sheet.id)?.critical) {
+    notify('A Critical Failure cannot be rerolled, even with a Benny (p140)');
     return;
   }
 
@@ -4338,26 +4407,148 @@ async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
  */
 function rerollLastTrait(sheet: Sheet): void {
   const last = lastTraitRoll.get(sheet.id);
-  // `spendBenny` checks this before charging; belt and braces for any other caller.
-  if (!last) return;
+  // `spendBenny` checks both of these before charging; belt and braces for any
+  // other caller. *"Critical Failures cannot be rerolled, even with Bennies"* (p140).
+  if (!last || last.critical) return;
+
+  // Elan: +2 to a Benny reroll, Soak included (§27 (hhh)). Built into a fresh
+  // expression and never written back to `last`, so a second Benny is +2 again
+  // and not +4.
+  const elan = hasElan(sheet.edges) ? raisedBy(last.expression, ELAN_BONUS) : undefined;
+  const expression = elan ?? last.expression;
+  const mods: RollBreakdown = elan
+    ? {
+        ...last.mods,
+        situational: last.mods.situational + ELAN_BONUS,
+        total: last.mods.total + ELAN_BONUS,
+        parts: [
+          ...last.mods.parts,
+          { label: 'Elan', value: ELAN_BONUS, kind: 'situational', short: formatMod(ELAN_BONUS) },
+        ],
+      }
+    : last.mods;
 
   const dice: DieEvent[] = [];
   const explained = new RollInterpreter(
     new CommandContext(new JavaRandom(), (die) => dice.push(die)),
   )
-    .run(parse([last.expression]))
+    .run(parse([expression]))
     .trim();
 
-  publishTrait(
+  if (last.soak) {
+    void rerollSoak(sheet, expression, mods, last.soak, explained, dice);
+    return;
+  }
+
+  const entryId = publishTrait(
     sheet,
     `${last.label} — reroll`,
-    { expression: last.expression, explained, dice },
-    last.mods,
+    { expression, explained, dice },
+    mods,
     last.aimed,
     // Keeps this from replacing what it just redid, so a second Benny rerolls
     // the same trait rather than the reroll.
     true,
   );
+  putBackInThePanel(sheet, last, entryId, explained, dice);
+}
+
+/**
+ * A rerolled shot's dice, back in the shot panel it was taken from.
+ *
+ * Without this a Benny reroll of an attack put a new line in the log and left the
+ * panel showing the old dice, the old verdicts and a damage button carrying the
+ * old raise die — so the attack people reroll most often was the one place the
+ * reroll did not reach.
+ *
+ * Only when that panel is still open on that weapon and still holds the roll, and
+ * only when the reroll produced as many totals as the original; anything else
+ * leaves the log line to speak for itself.
+ *
+ * Replaced: the dice, the stray count, the Critical Failure, and the log entry
+ * corrections now amend. Kept: the modifiers the shot was taken with
+ * (`bakedAt`) and every correction made since (`current`, `total`) — the reroll
+ * replays the same expression, so a Wild Attack declared after the first roll
+ * still counts against the second. Cleared: damage rolled off the old dice, and
+ * for a shot with several dice, which die went to whom, since the dice changed.
+ */
+function putBackInThePanel(
+  sheet: Sheet,
+  last: LastTrait,
+  entryId: string,
+  explained: string,
+  dice: readonly DieEvent[],
+): void {
+  const session = openShot;
+  const rolled = session?.rolled;
+  if (!last.shot || !session || !rolled || session.key !== last.shot.key) return;
+  const values = totalsOf(explained);
+  if (values.length !== rolled.values.length) return;
+  rolled.entryId = entryId;
+  rolled.values = values;
+  rolled.stray = strayShots([...dice], rolled.strayOn);
+  rolled.critical = criticalFailure(dice);
+  if (values.length > 1) rolled.assigned = new Map();
+  session.damageIds = new Map();
+
+  // The new log line replays the original expression, so for a baked shot it
+  // carries none of the corrections made since — the log would say 9 where the
+  // panel says 7. Carry them over as an amendment on the new line, exactly as
+  // `amendShot` would have. A shot at several targets has no single total to
+  // amend; its corrections are applied per target in the panel.
+  const one = rolled.baked && values.length === 1 ? values[0] : undefined;
+  if (one !== undefined && rolled.total !== rolled.bakedAt) {
+    const after = one - rolled.bakedAt + rolled.total;
+    publish({
+      ...named(sheet),
+      label: 'corrections carried over',
+      expression: rolled.expression,
+      explained: `${one} → **${after}**`,
+      total: after,
+      amends: entryId,
+      ...(rolled.current.length ? { mods: asRollMods(rolled.current) } : {}),
+    });
+  }
+  render();
+}
+
+/**
+ * A Benny reroll of a Soak: the Vigor check again, and its result on the token.
+ *
+ * *"Characters can't Soak more than once per attack, but may spend Bennies as
+ * usual to reroll the Vigor check if they aren't satisfied with the results."* —
+ * p150. It used to republish the dice and change no wounds at all. `resoak`
+ * replaces the earlier Soak's effect rather than adding to it.
+ */
+async function rerollSoak(
+  sheet: Sheet,
+  expression: string,
+  mods: RollBreakdown,
+  link: NonNullable<LastTrait['soak']>,
+  explained: string,
+  dice: DieEvent[],
+): Promise<void> {
+  const total = totalOf(explained) ?? 0;
+  const critical = criticalFailure(dice);
+  publishTrait(
+    sheet,
+    'Soak — reroll',
+    {
+      expression,
+      explained: `${explained} — ${soakResult(total, link.wounds, critical)}`,
+      dice,
+    },
+    mods,
+    undefined,
+    true,
+  );
+  let next: TokenState | undefined;
+  await updateTokenState(link.tokenId, (current) => {
+    next = resoak(link.hit, link.after, current, total, link.wounds, critical);
+    return next;
+  });
+  if (next) link.after = next;
+  await refreshTokens();
 }
 
 /**
@@ -5072,25 +5263,32 @@ function render(): void {
   const sheetMods = mods;
   const penalty = mods.total;
 
-  // Mounted, which reaches two skills and no others: Fighting rolls the worse of
-  // Fighting and Riding, and Shooting is at −2 unless Steady Hands. Athletics is
-  // left alone here — off the skills list it is a climb, and only a throw from the
-  // weapons table is penalised. See `mounted.ts`.
+  // The platform conditions reach two skills here and no others. Mounted makes
+  // Fighting roll the worse of Fighting and Riding (`mounted.ts`), and either
+  // platform puts Shooting at −2 unless Steady Hands (`platform.ts`). Athletics
+  // is left alone — off the skills list it is a climb, and only a throw from the
+  // weapons table is penalised.
   const conditions = conditionsFor(sheet);
   const rollAs = rollingSheet(sheet, conditions);
-  const saddle = mountedRangedPenalty(conditions, true, sheet.edges);
-  const modsForSkill = (skill: string): RollBreakdown =>
-    skill === 'Shooting' && saddle
+  const platform = platformPenalty(conditions, true, sheet.edges);
+  //
+  // And each skill takes the conditions that reach its kind of roll: the dark
+  // reaches Fighting, Shooting, Notice and the arcane skills and nothing else, and
+  // Off-hand and Improvised only the two attacks. See `RollScope`.
+  const modsForSkill = (skill: string): RollBreakdown => {
+    const own = modsFor(sheet, scopeOfSkill(skill));
+    return skill === 'Shooting' && platform
       ? {
-          ...mods,
-          situational: mods.situational + saddle,
-          total: mods.total + saddle,
+          ...own,
+          situational: own.situational + platform.value,
+          total: own.total + platform.value,
           parts: [
-            ...mods.parts,
-            { label: 'Mounted', value: saddle, kind: 'situational', short: formatMod(saddle) },
+            ...own.parts,
+            { ...platform, kind: 'situational', short: formatMod(platform.value) },
           ],
         }
-      : mods;
+      : own;
+  };
 
   // Classified once per render rather than per row: `abilityNotes` walks every
   // edge, hindrance and ability on the sheet, and the trait buttons then ask it
@@ -5308,13 +5506,14 @@ interface ShotSession {
   /** A melee weapon in each hand, against a foe with one or none and no shield: +1 (p165). */
   twoWeapons: boolean;
   /**
-   * Shooting or throwing from the saddle, −2 unless Steady Hands (p165).
+   * Shooting or throwing from a horse or an unstable platform, −2 unless Steady
+   * Hands (p165).
    *
-   * Refreshed every time the panel is drawn rather than fixed when it opens:
-   * Mounted is a condition on the token, and the Marshal may set it with the
-   * panel already open.
+   * Refreshed every time the panel is drawn rather than fixed when it opens: both
+   * are conditions on the token, and the Marshal may set one with the panel
+   * already open.
    */
-  mounted: number;
+  platform: { label: string; value: number } | undefined;
   bands?: RangeBands;
   aim: Aim;
   /**
@@ -5485,6 +5684,24 @@ interface ShotSession {
      * is a correction, and is published as one.
      */
     targets: Map<string, number>;
+    /**
+     * The roll was a Critical Failure: every shot misses, whatever its total
+     * (p140), and it cannot be rerolled. Replaced along with the dice by a Benny
+     * reroll — see `rerollLastTrait`.
+     */
+    critical: boolean;
+    /**
+     * The shot modifier total that was baked into `values` when the dice were
+     * thrown — `total` as it stood at the roll, before any correction.
+     *
+     * A correction to a baked shot is the difference between this and the live
+     * total. Found 2026-10-09 while wiring the Benny reroll: `amendShot` overwrote
+     * `total` *before* working out the corrected roll, so `after` always equalled
+     * the roll, and the panel added nothing to a baked value — a cover or Wild
+     * Attack changed after the dice landed published a label and moved no number,
+     * on the commonest shot there is (one die, one target).
+     */
+    bakedAt: number;
   };
   /**
    * The damage roll for each *shot*, once there is one.
@@ -5589,7 +5806,7 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
           swing: 'ordinary',
           unarmedFoe: false,
           twoWeapons: false,
-          mounted: 0,
+          platform: undefined,
           aim: 'off',
           aimSource: 'aim',
           scoped: false,
@@ -5762,7 +5979,7 @@ function shotMods(session: ShotSession, band: Band | undefined): ShotTotal {
     // `negatesRecoil` was written and tested and nothing ever called it, so
     // Reggie — who has the Edge — was paying the −2 the Edge exists to remove.
     steady: session.steady,
-    mounted: session.mounted,
+    platform: session.platform,
   });
 }
 
@@ -5792,13 +6009,15 @@ function amendShot(
   // whatever reads the line next.
   rolled.current = mods;
   rolled.total = modTotal;
+  // Against what the dice were rolled with, not against the previous correction:
+  // the baked value has `bakedAt` inside it and nothing else.
   // A shot at one target has one total, and the correction can say what it
   // became. A shot at several does not: the same click changes a different number
   // for each of them, so the line says what changed and the panel shows what each
   // target's shot now comes to. Publishing one of the totals would be picking a
   // target the correction was not about.
   const one = rolled.baked && rolled.values.length === 1 ? rolled.values[0] : undefined;
-  const after = one === undefined ? undefined : one - rolled.total + modTotal;
+  const after = one === undefined ? undefined : one - rolled.bakedAt + modTotal;
   void sheetTotal;
   // A shot at one target has one total, and the correction can say what it became.
   //
@@ -5885,9 +6104,9 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
   const session = openShot!;
   // Every non-melee session here is a shot or a throw — the weapons table is the
   // only way in, so an Athletics session is always a throw and never a climb.
-  session.mounted = session.melee
-    ? 0
-    : mountedRangedPenalty(conditionsFor(sheet), true, sheet.edges);
+  session.platform = session.melee
+    ? undefined
+    : platformPenalty(conditionsFor(sheet), true, sheet.edges);
   const box = document.createElement('div');
   box.className = 'shot';
   // Every control goes through here: change the session, log the correction if
@@ -6537,7 +6756,7 @@ async function fillShotTargets(
 
     const pills = document.createElement('td');
     pills.className = 'state';
-    for (const pill of targetPills(state)) {
+    for (const pill of targetPills(state, { melee: session.melee, cells, cover: session.cover })) {
       const chip = document.createElement('span');
       chip.className = pill.value ? 'pill applied' : 'pill';
       chip.textContent = pill.letter;
@@ -6798,7 +7017,9 @@ async function fillShotTargets(
         // Baked values already carry this target's range and cover; unbaked ones
         // do not, because one expression could not have carried everyone's. See
         // `rolled.baked`.
-        const effective = raw + (session.rolled.baked ? 0 : against.total);
+        // A correction since the roll moves a baked value by its difference.
+        const effective =
+          raw + against.total - (session.rolled.baked ? session.rolled.bakedAt : 0);
         // The band is deliberately *not* passed. Its penalty is already inside
         // the shot's modifiers and letting `resolveAimedAttack` apply it again
         // would subtract the range twice. Only the refusal is forwarded, for a
@@ -6807,7 +7028,8 @@ async function fillShotTargets(
           total: effective,
           target,
           ...(against.band === 'over' ? { band: 'over' as const } : {}),
-          targetBonus: targetTotal(state),
+          targetBonus: targetTotal(state, { melee: session.melee, cells, cover: session.cover }),
+          critical: session.rolled.critical,
         });
 
         const line = document.createElement('div');
@@ -6834,8 +7056,12 @@ async function fillShotTargets(
             ? resolved.raises
               ? `hit, ${resolved.raises} raise${resolved.raises === 1 ? '' : 's'}`
               : 'hit'
-            : 'miss';
-        verdict.title = `${raw} … = ${resolved.effective} vs ${target}`;
+            : session.rolled.critical
+              ? 'critical failure'
+              : 'miss';
+        verdict.title = session.rolled.critical
+          ? 'Snake eyes: the attempt automatically fails, and cannot be rerolled (p140)'
+          : `${raw} … = ${resolved.effective} vs ${target}`;
         line.append(verdict);
         if (!resolved.hit) missed = true;
 
@@ -6848,9 +7074,13 @@ async function fillShotTargets(
         const parts = [
           String(raw),
           ...(session.rolled.baked
-            ? []
+            ? against.total !== session.rolled.bakedAt
+              ? [`${formatMod(against.total - session.rolled.bakedAt)} corrected`]
+              : []
             : against.mods.map((m) => `${formatMod(m.value)} ${m.label.toLowerCase()}`)),
-          ...(targetTotal(state) ? [`${formatMod(targetTotal(state))} target`] : []),
+          ...targetMods(state, { melee: session.melee, cells, cover: session.cover }).map(
+            (m) => `${formatMod(m.value)} ${m.label.toLowerCase()}`,
+          ),
         ];
         working.textContent = `${parts.join(' ')} = ${resolved.effective} vs ${target}`;
         line.append(working);
@@ -6983,7 +7213,7 @@ function dicePicker(
     die.className = 'shot-die';
     die.textContent = String(value);
     const against = shotAgainst(session, weapon, tokenId);
-    const effective = value + (rolled.baked ? 0 : against.total);
+    const effective = value + against.total - (rolled.baked ? rolled.bakedAt : 0);
     die.title =
       `Give this shot to the target` +
       (rolled.baked || !against.total
@@ -7121,7 +7351,12 @@ function takeTheShot(
     stray: strayShots(result.dice ?? [], strayOn),
     strayOn,
     targets,
+    critical: criticalFailure(result.dice ?? []),
+    bakedAt: modsForLine.total,
   };
+  // So a Benny reroll can find this session again and put its dice back here.
+  const last = lastTraitRoll.get(sheet.id);
+  if (last) last.shot = { key: session.key };
   payForTheSwing(sheet, session);
   render();
 }
@@ -7141,6 +7376,8 @@ function emptyRolled(): NonNullable<ShotSession['rolled']> {
     stray: 0,
     strayOn: STRAY_ON_MISS,
     targets: new Map(),
+    critical: false,
+    bakedAt: 0,
   };
 }
 
@@ -7171,7 +7408,8 @@ function damageButton(
   // Desperate Attack takes back what it gave the attack (p165). So this can now be
   // negative, and is written with `formatMod` below rather than a bare `+`.
   const swung = session.melee ? swingDamage(session.swing) : 0;
-  const bonus = calledShotDamage(session.vitals) + swung;
+  const joker = jokerDamage(sheet);
+  const bonus = calledShotDamage(session.vitals) + swung + joker;
   // A scattergun's dice depend on the range, which the panel now knows — so it
   // picks rather than offering all three and hoping. Slugs are flat at any range.
   const options = weapon.damage ? damageDiceOptions(weapon.damage) : [];
@@ -7180,7 +7418,7 @@ function damageButton(
     : options.length
       ? shotgunDamage(options, band)
       : weapon.damage
-        ? damageExpression(weapon.damage, sheet.attributes.strength?.die)
+        ? damageExpression(weapon.damage, sheet.attributes.strength?.die, sheet.attributes.strength?.mod)
         : undefined;
 
   const button = document.createElement('button');
@@ -7211,6 +7449,7 @@ function damageButton(
     (session.vitals ? ` — +${VITALS_DAMAGE} for a called shot to the head or vitals (p154)` : '') +
     (swung > 0 ? ` — +${swung} for the Wild Attack (p165)` : '') +
     (swung < 0 ? ` — ${swung} for the Desperate Attack (p165)` : '') +
+    (joker ? ` — +${joker} for acting on a Joker (p145)` : '') +
     (session.slugs ? ' — slugs do 2d10 at any range (p161)' : '') +
     (options.length && !session.slugs
       ? ` — buckshot at ${band ?? 'close'} range (p161)`
@@ -7345,6 +7584,7 @@ function amendDamage(entry: RollEntry): void {
 function renderGear(sheet: Sheet, mods: RollBreakdown): void {
   const gear = parseGear(sheet.gear);
   if (!sheet.gear) return;
+  const joker = jokerDamage(sheet);
 
   if (gear.weapons.length) {
     sheetEl.append(section('Weapons'));
@@ -7432,13 +7672,16 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
         const spread = document.createElement('div');
         spread.className = 'dmg-spread';
         for (const option of options) {
+          const rolled = `${option}${formatMod(joker)}`;
           const button = document.createElement('button');
           button.className = 'dmg';
-          button.textContent = option;
-          button.title = `Roll ${option} — dice depend on the range band (${weapon.damage})`;
+          button.textContent = rolled;
+          button.title =
+            `Roll ${rolled} — dice depend on the range band (${weapon.damage})` +
+            (joker ? ` — +${joker} for acting on a Joker (p145)` : '');
           button.addEventListener('click', () =>
             rollFreeform(
-              option,
+              rolled,
               `${weapon.name} damage`,
               rollerName(sheet),
               weapon.ap,
@@ -7454,7 +7697,7 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
         damageCell.title = 'Dice depend on range — roll it in the box below';
       } else if (weapon.damage) {
         // "Str+d4" needs the wielder's Strength die substituted before it parses.
-        const expression = damageExpression(weapon.damage, sheet.attributes.strength?.die);
+        const expression = `${damageExpression(weapon.damage, sheet.attributes.strength?.die, sheet.attributes.strength?.mod)}${formatMod(joker)}`;
         const button = document.createElement('button');
         button.className = 'dmg';
         // The dice it will actually throw, not the book's shorthand for them.
@@ -7463,7 +7706,9 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
         // The exploding marks are dropped: every trait and damage die in Savage
         // Worlds aces, so `!` on every one of them is a character of noise.
         button.textContent = expression.replace(/!/g, '');
-        button.title = `Roll ${expression} — the book writes it ${weapon.damage}`;
+        button.title =
+          `Roll ${expression} — the book writes it ${weapon.damage}` +
+          (joker ? ` — +${joker} for acting on a Joker (p145)` : '');
         button.addEventListener('click', () =>
           rollFreeform(
             expression,
@@ -7506,7 +7751,9 @@ function renderGear(sheet: Sheet, mods: RollBreakdown): void {
         shotRow.className = 'shot-row';
         const td = document.createElement('td');
         td.colSpan = 6;
-        td.append(shotPanel(sheet, weapon, mods));
+        // Scoped to the attack, not the sheet's unscoped `mods`: those leave out
+        // the dark, Off-hand and Improvised, which every attack takes.
+        td.append(shotPanel(sheet, weapon, modsFor(sheet, openShot.melee ? 'melee' : 'ranged')));
         shotRow.append(td);
         table.append(shotRow);
       }

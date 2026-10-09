@@ -12,7 +12,15 @@
  */
 import type { TokenState } from '../obr/binding.js';
 import type { Sheet } from './sheet.js';
-import { situationalMods, type ModifierState, type RollMod } from './modifiers.js';
+import {
+  formatMod,
+  situationalMods,
+  soakMods,
+  type ModifierState,
+  type RollMod,
+  type RollScope,
+} from './modifiers.js';
+import { jokerBonus } from './initiative.js';
 
 /** `"Wild Cards can take three Wounds and still function"` — p148. */
 export const MAX_WOUNDS_WILD_CARD = 3;
@@ -153,11 +161,52 @@ export interface RollBreakdown {
   parts: RollMod[];
 }
 
-export function rollBreakdown(
-  state: (Pick<TokenState, 'wounds' | 'fatigue'> & ModifierState) | undefined,
-): RollBreakdown {
+/** What a breakdown reads off a token: the tracks, the conditions, and the card. */
+type RollingState = Pick<TokenState, 'wounds' | 'fatigue'> &
+  Partial<Pick<TokenState, 'card'>> &
+  ModifierState;
+
+/**
+ * The Joker's +2, as a part of the breakdown, or nothing.
+ *
+ * Here rather than at each roll site because it is *"all Trait… rolls"* (p145) —
+ * every button on the sheet, the shot panel and Soak — and this is the one object
+ * all of them already take their number from. Green, with the Marshal's calls:
+ * it is not something the character is carrying.
+ */
+function jokerMods(state: RollingState): RollMod[] {
+  const bonus = jokerBonus(state.card);
+  return bonus
+    ? [{ label: 'Joker', value: bonus, kind: 'situational', short: `J${formatMod(bonus)}` }]
+    : [];
+}
+
+/**
+ * @param scope what kind of roll this is, for the conditions the book scopes —
+ *              see `RollScope`. Left out, only what reaches every roll is
+ *              counted: the dark does not reach an attribute button.
+ */
+export function rollBreakdown(state: RollingState | undefined, scope?: RollScope): RollBreakdown {
   if (!state) return { status: 0, situational: 0, total: 0, parts: [] };
-  const parts = [...statusMods(state), ...situationalMods(state)];
+  const parts = [...statusMods(state), ...situationalMods(state, scope), ...jokerMods(state)];
+  const status = traitPenalty(state);
+  const situational = parts
+    .filter((mod) => mod.kind === 'situational')
+    .reduce((sum, mod) => sum + mod.value, 0);
+  return { status, situational, total: status + situational, parts };
+}
+
+/**
+ * The breakdown for a Soak roll: wounds and Fatigue as `rollBreakdown` has them,
+ * and only the conditions a Soak takes — see `soakMods`.
+ *
+ * The caller passes the state from *before* the hit: *"Don't count the Wound
+ * modifiers they're about to suffer when making this roll"* (p150).
+ */
+export function soakBreakdown(state: RollingState | undefined): RollBreakdown {
+  if (!state) return { status: 0, situational: 0, total: 0, parts: [] };
+  // A Soak is a Vigor roll, so the Joker's "all Trait rolls" reaches it too.
+  const parts = [...statusMods(state), ...soakMods(state), ...jokerMods(state)];
   const status = traitPenalty(state);
   const situational = parts
     .filter((mod) => mod.kind === 'situational')

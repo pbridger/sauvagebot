@@ -15,8 +15,8 @@
  *
  * ## Two different kinds of effect
  *
- * The ranged half is an ordinary penalty, charged where a shot or a throw is
- * known to be one. The Fighting half is not a modifier at all: it changes **which
+ * The ranged half is the Unstable Platform penalty, and lives with it in
+ * `platform.ts` — one implementation for both conditions. The Fighting half is not a modifier at all: it changes **which
  * die is rolled**. That makes it the first thing in the app to do so, and it has
  * to reach every place a Fighting die is shown as well as every place one is
  * rolled — Paul's rule is that a button says what it will roll (§25.5), and a
@@ -26,26 +26,13 @@
  * (`isTargeted` keys on Fighting) and log the wrong thing; it is a Fighting
  * attack, made with whichever die is worse.
  */
-import { traitDie, type DieSides, type NamedEntry, type Sheet } from './sheet.js';
+import { traitDie, type DieSides, type Sheet } from './sheet.js';
 import { hasCondition, type ModifierState } from './modifiers.js';
 
 export const MOUNTED = 'mounted';
 
-/** `"Athletics (throwing) and Shooting rolls are made at −2"` — p165. */
-export const MOUNTED_RANGED = -2;
-
 export function isMounted(state: ModifierState | undefined): boolean {
   return hasCondition(state, MOUNTED);
-}
-
-/**
- * Steady Hands: *"They ignore the Unstable Platform penalty (page 165)."*
- *
- * Matched on the name, as `negatesRecoil` matches Rock and Roll!: the edge list
- * is what was imported off a card, and the card writes the name.
- */
-export function hasSteadyHands(edges: readonly Pick<NamedEntry, 'name'>[]): boolean {
-  return edges.some((edge) => /^\s*steady\s+hands\b/i.test(edge.name));
 }
 
 /**
@@ -107,20 +94,4 @@ export function horsemanshipNote(sheet: Sheet, state: ModifierState | undefined)
     `Mounted: the lower of Fighting ${show(fighting)} and Riding ${show(riding)} ` +
     `— rolling ${swing.from} (p165)`
   );
-}
-
-/**
- * The −2 for shooting or throwing from the saddle, or nothing.
- *
- * `ranged` is the caller's to say, because the skill name cannot: Athletics is a
- * throw from the weapons table and a climb from the skills list, and only the
- * throw is penalised — the same split `attackCanStray` makes.
- */
-export function mountedRangedPenalty(
-  state: ModifierState | undefined,
-  ranged: boolean,
-  edges: readonly Pick<NamedEntry, 'name'>[],
-): number {
-  if (!ranged || !isMounted(state) || hasSteadyHands(edges)) return 0;
-  return MOUNTED_RANGED;
 }

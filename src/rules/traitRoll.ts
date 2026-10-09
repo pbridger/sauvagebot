@@ -117,3 +117,73 @@ export function rollAttribute(
   const mod = (trait ? (trait.mod ?? 0) : -2) + situational;
   return rollTrait({ die, mod, wildCard: sheet.wildCard }, random ?? new JavaRandom());
 }
+
+/**
+ * Whether these dice are a Critical Failure.
+ *
+ * > *"If a Wild Card rolls a 1 on both their Trait and Wild Die, they suffer a
+ * > Critical Failure… If you're rolling multiple Trait dice… a Critical Failure
+ * > occurs when more than half the die results are 1."* — p6
+ *
+ * > *"Gabe fires a Gatling gun with a Rate of Fire of 3. He rolls three Shooting
+ * > dice and one Wild Die. If three or more of the dice come up 1s, including the
+ * > Wild Die, it's a Critical Failure."* — p140
+ *
+ * So the Wild Die is counted, and one rule covers both cases: a single trait die
+ * needs two ones out of two, RoF 3 needs three out of four.
+ *
+ * Only the first die of each chain is read (`step === 0`). An ace's follow-up die
+ * showing 1 is the end of an exploding die, not a die that came up 1.
+ *
+ * **Wild Cards only**, which is to say: only when there is a Wild Die. For an
+ * Extra the book says *"If an Extra rolls a 1 on a Trait check and only it's
+ * important to know if it's a Critical Failure, such as when casting a spell,
+ * roll a d6"* — a Marshal's call on the occasion, not a property of the dice.
+ */
+export function criticalFailure(dice: readonly Pick<DieEvent, 'value' | 'step' | 'role'>[]): boolean {
+  const faces = dice.filter((die) => die.step === 0 && (die.role === 'trait' || die.role === 'wild'));
+  if (!faces.some((die) => die.role === 'wild')) return false;
+  const ones = faces.filter((die) => die.value === 1).length;
+  return ones * 2 > faces.length;
+}
+
+/**
+ * What a Critical Failure does to the engine's explanation.
+ *
+ * *"The attempt automatically fails"* (p140) — so any `(success…)` the engine
+ * wrote against the flat 4 comes off, whatever the modifiers pushed the total to,
+ * and the marker goes on in plain text. Plain, not bold: `totalOf` and `totalsOf`
+ * read bold numbers, and nothing that parses a total should be able to trip on it.
+ */
+export const CRITICAL_MARK = 'CRITICAL FAILURE';
+
+export function markCritical(explained: string): string {
+  return `${explained.replace(/\s*\(success(?:;[^)]*)?\)/g, '')} — ${CRITICAL_MARK}`;
+}
+
+/**
+ * Elan: *"When you spend a Benny to reroll a Trait, add +2 to the total. The
+ * bonus applies only when rerolling. It doesn't apply to damage rolls… nor does
+ * it apply to Soak rolls unless you're using another Benny to reroll the Vigor
+ * check."* So: every Benny reroll of a trait, Soak included.
+ */
+export const ELAN_BONUS = 2;
+
+export function hasElan(edges: readonly { name: string }[]): boolean {
+  return edges.some((edge) => /^\s*elan\b/i.test(edge.name));
+}
+
+/**
+ * A trait expression with its modifier moved by `by`: `s8-1` → `s8+1`.
+ *
+ * Rebuilt rather than appended to, because the modifier on a multi-die roll
+ * applies to each die's total and an appended `+2` would not mean the same thing.
+ * Only the shape `traitExpression` writes is understood; anything else returns
+ * `undefined` and the caller rolls without the bonus rather than guessing.
+ */
+export function raisedBy(expression: string, by: number): string | undefined {
+  const found = /^(\d*)([se])(\d+)([+-]\d+)?$/.exec(expression.trim());
+  if (!found) return undefined;
+  const mod = Number(found[4] ?? 0) + by;
+  return `${found[1]}${found[2]}${found[3]}${mod === 0 ? '' : mod > 0 ? `+${mod}` : `${mod}`}`;
+}

@@ -189,17 +189,25 @@ export function resolveAimedAttack({
   target,
   band,
   targetBonus = 0,
+  critical = false,
 }: {
   total: number;
   target: number;
   band?: Band;
   targetBonus?: number;
+  /**
+   * A Critical Failure: *"The attempt automatically fails"* (p140), whatever the
+   * total. Without this a snake-eyes swing with Gang Up, a Wild Attack and a
+   * Vulnerable target could be marked a hit.
+   */
+  critical?: boolean;
 }): AimedAttack {
   if (band === 'over') {
     return { target, hit: false, raises: 0, effective: total, outOfRange: true };
   }
   const bandPenalty = band ? BAND_PENALTY[band] : 0;
   const effective = total + targetBonus + bandPenalty;
+  if (critical) return { target, hit: false, raises: 0, effective, outOfRange: false };
   return { ...resolveAttack(effective, target), effective, outOfRange: false };
 }
 

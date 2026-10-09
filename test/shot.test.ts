@@ -782,14 +782,15 @@ describe('a hand-dialled penalty that Aim is allowed to cancel', () => {
 /** Horsemanship, p165: shots and throws from the saddle are at −2. */
 describe('a shot from horseback', () => {
   it('carries the penalty it is handed, and Aim cannot spend on it', () => {
-    const { mods, total } = shotTotal({ rof: 1, aim: 'cancel', mounted: -2 });
-    const mounted = mods.find((mod) => mod.key === 'mounted');
+    const { mods, total } = shotTotal({ rof: 1, aim: 'cancel', platform: { label: 'Mounted', value: -2 } });
+    const mounted = mods.find((mod) => mod.key === 'platform');
+    expect(mounted?.label).toBe('Mounted');
     expect(mounted?.value).toBe(-2);
     expect(AIMABLE).not.toContain(mounted!.category);
     expect(total).toBe(-2);
   });
 
   it('adds nothing when it is handed nothing', () => {
-    expect(shotTotal({ rof: 1, mounted: 0 }).mods.some((mod) => mod.key === 'mounted')).toBe(false);
+    expect(shotTotal({ rof: 1 }).mods.some((mod) => mod.key === 'platform')).toBe(false);
   });
 });

@@ -762,13 +762,14 @@ export interface ShotRequest {
   /** Whether Rock and Roll!, a bipod or a tripod cancels Recoil. */
   steady?: boolean | undefined;
   /**
-   * Shooting or throwing from the saddle: `MOUNTED_RANGED`, or 0 for a rider with
-   * Steady Hands or nobody on a horse. Already worked out by `mountedRangedPenalty`,
-   * which knows the edges; this only puts it on the list.
+   * Shooting or throwing from a horse or an unstable platform, already worked out
+   * by `platformPenalty` — which knows the edges and which condition it was — or
+   * absent. This only puts it on the list.
    */
-  mounted?: number | undefined;
+  platform?: { label: string; value: number } | undefined;
   /**
-   * The persistent track from the token: darkness, Running, an unstable platform.
+   * The persistent track from the token: darkness, Running, Distracted. Not a
+   * platform — that is `platform`, because it reaches shots and throws only.
    *
    * !! Leave this out if the caller already holds a `RollBreakdown`. That carries
    * the same numbers — `rollBreakdown` sums `situationalMods` itself — and
@@ -808,21 +809,21 @@ export function shotTotal(request: ShotRequest): ShotTotal {
   const recoil = recoilFor(request.rof, request.steady ?? false);
   if (recoil) base.push(recoil);
 
-  // Not aimable — it is the Unstable Platform penalty by another name, and that is
-  // one of the things Aim cannot help.
-  if (request.mounted) {
+  // Not aimable: Aim's list is Range, Cover, Called Shot, Scale and Speed, and an
+  // unsteady footing is none of them.
+  if (request.platform?.value) {
     base.push({
-      key: 'mounted',
-      label: 'Mounted',
-      value: request.mounted,
+      key: 'platform',
+      label: request.platform.label,
+      value: request.platform.value,
       category: 'other',
       kind: 'fact',
       scope: 'shot',
-      note: 'Shooting or throwing from horseback, unless Steady Hands (p165).',
+      note: 'Shooting or throwing from a horse or an unstable platform, unless Steady Hands (p165).',
     });
   }
 
-  // The persistent track — wounds, fatigue, the dark, an unstable platform —
+  // The persistent track — wounds, fatigue, the dark —
   // arrives already summed and already filtered to `affects: 'self'`. It is not
   // aimable: Aim's list names Range, Cover, Called Shot, Scale and Speed, and
   // Illumination is conspicuously not among them.
@@ -832,7 +833,8 @@ export function shotTotal(request: ShotRequest): ShotTotal {
   // not any more, because `isAimable` says so per modifier and the dial needs to
   // be able to opt in. One list, one pass, and the exclusion written down where
   // it can be read.
-  const persistent = situationalTotal(request.state);
+  // Ranged: everything priced here is a shot or a throw, so the dark reaches it.
+  const persistent = situationalTotal(request.state, 'ranged');
   if (persistent) {
     base.push({
       key: 'situation',

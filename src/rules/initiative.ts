@@ -105,6 +105,27 @@ export function isJoker(card: Card): boolean {
   return sameCard(card, BLACK_JOKER) || sameCard(card, COLOR_JOKER);
 }
 
+/**
+ * `"Characters (or groups) with a Joker… also add +2 to all Trait and damage
+ * rolls this round!"` — p145.
+ */
+export const JOKER_BONUS = 2;
+
+/**
+ * The Joker's bonus for whoever is acting on this card: +2, or nothing.
+ *
+ * Read off the card the token is **acting on** — `TokenState.card`, the chosen
+ * one — at the moment of the roll, which is what bounds "this round" without a
+ * timer. Dealing the next round replaces every hand and clears the card of anyone
+ * sitting it out; returning cards and resetting the fight clear it too. So the
+ * bonus lasts exactly as long as the purple badge does, a gang sharing one card
+ * all get it (*"Characters (or groups)"*), and a Level Headed character gets it
+ * only if the Joker is the card they kept.
+ */
+export function jokerBonus(card: Card | undefined): number {
+  return card && isJoker(card) ? JOKER_BONUS : 0;
+}
+
 /** How many cards this character draws before choosing. */
 export function drawCount(edges: InitiativeEdges): number {
   if (edges.improvedLevelHeaded) return 3;

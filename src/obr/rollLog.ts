@@ -108,6 +108,13 @@ export interface RollEntry {
   /** The window that count was taken at — 1, or 2 for a weapon that sprays. */
   strayOn?: number;
   /**
+   * A Critical Failure: *"The attempt automatically fails"* (p140). Set by the
+   * publisher from the dice, so every client resolves the targeting table as a
+   * miss without re-deriving it. Survives a correction, because `latest` keeps
+   * the original entry and overrides only `total` and `mods`.
+   */
+  critical?: boolean;
+  /**
    * Who this roll was **declared against**, by name, before the dice were thrown.
    *
    * Its presence changes what the log line is allowed to do, and that is the
@@ -191,6 +198,7 @@ export function isRollEntry(value: unknown): value is RollEntry {
     isOptionalNumber(entry.stray) &&
     isOptionalNumber(entry.strayOn) &&
     (entry.applicable === undefined || typeof entry.applicable === 'boolean') &&
+    (entry.critical === undefined || typeof entry.critical === 'boolean') &&
     (entry.animated === undefined || typeof entry.animated === 'boolean') &&
     (entry.character === undefined || typeof entry.character === 'string') &&
     (entry.label === undefined || typeof entry.label === 'string') &&

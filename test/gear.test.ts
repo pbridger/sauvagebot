@@ -113,6 +113,9 @@ describe('damage expressions', () => {
     // Reggie has Strength d4, so his knife does d4+d4 — not a fixed number.
     expect(damageExpression('Str+d4', 4)).toBe('d4!+d4!');
     expect(damageExpression('Str+d6', 12)).toBe('d12!+d6!');
+    // Elderly: "Strength (including damage)" — Sir Ed's d6−1 goes into his knife.
+    expect(damageExpression('Str+d4', 6, -1)).toBe('d6!-1+d4!');
+    expect(damageExpression('Str+d4', 8, 1)).toBe('d8!+1+d4!');
   });
 
   it('makes every damage die explode, because damage aces', () => {

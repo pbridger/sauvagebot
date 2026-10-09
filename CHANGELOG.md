@@ -10,6 +10,88 @@ reload.
 
 ---
 
+## 2026-10-09 (night) — Modifiers that reach the right rolls, Critical Failures, and the Joker
+
+**Reload the extension first.** This one changes a lot of numbers, almost all of
+them towards what the book says. The rules audit behind it is §27 of the mechanics
+inventory.
+
+### Penalties that only apply to some rolls now only apply to those
+
+The app used to put every condition on every roll. The book doesn't.
+
+- **Dim, Dark and Pitch Dark** now hit **attacks, Notice and powers** (Faith,
+  Focus, Spellcasting, Weird Science) only: *"rolls affected by Illumination, such
+  as attacks, Notice rolls, the use of powers"*. A Persuasion, a Spirit roll
+  against Fear or a climb in the dark is no longer at −4. If you think a roll
+  should be affected, use the hand dial.
+- **Off-hand** and **Improvised weapon** now hit attack rolls only.
+- **Unstable Platform** was taking 2 off every roll. It now hits **shots and
+  throws only**, and **Steady Hands** waives it, which is the Edge's whole job.
+  **Mounted** and Unstable Platform share that one −2, so they can't double up.
+  Mounted still adds the Fighting/Riding swap. A still horse still counts: the
+  book says *"a moving vehicle"* but just *"the back of a horse"*.
+- The sheet's green modifier total now shows only what reaches *every* roll. Each
+  roll button shows its own number, with the condition named on hover.
+
+### Conditions on a target now count
+
+- **Stunned, Entangled and Bound count as Vulnerable**: +2 to anyone attacking
+  them. It's **one** +2 however many are set, so Stunned and Vulnerable together
+  is still +2. Stunned and Bound also make the character **Distracted** (−2 to
+  their own rolls), once.
+- **Prone:** +2 to a melee attacker (their Parry is 2 lower), and −4 to a shot
+  from 3″ or more. That −4 doesn't stack with cover, because the book counts prone
+  as Medium Cover. A prone character is also −2 to their own Fighting.
+
+### Critical Failures
+
+- A Wild Card rolling a 1 on both the trait die and the Wild Die, or more than
+  half ones on a multi-die shot (counting the Wild Die, as the book's Gatling
+  example does), now says **CRITICAL FAILURE**. It misses whatever the modifiers
+  came to.
+- It **can't be rerolled**, even with a Benny (p140). The Benny menu refuses
+  before taking the chip.
+
+### Rerolls and corrections
+
+- **A Benny reroll of an attack now updates the shot panel**: dice, hit or miss,
+  and damage button. Corrections you made after the first roll still count, and
+  damage rolled off the old dice is cleared.
+- **Corrections after the roll now change the result** on a shot at one target
+  with one die, which is most shots. Changing cover or switching to a Wild Attack
+  after the dice landed used to log the label and move no number at all.
+- **Elan** (Sir Ed) now adds its +2 to every Benny reroll, Soak included, and the
+  log shows *Elan +2*.
+
+### Soak
+
+- A **Benny reroll of a Soak now changes the wounds**. It replaces the first
+  Soak's result rather than adding to it, and puts Shaken back if it does worse.
+- A **Critical Failure on Soak adds a wound** (p150).
+- The Soak roll no longer takes the dark, Running, Multi-Action, Off-hand or
+  Improvised weapon penalties. Earlier wounds, Fatigue, Distracted and the hand
+  dial still apply.
+
+### The Joker
+
+- **Acting on a Joker gives +2 to every Trait and damage roll** (p145): skills,
+  attributes, the shot panel, Soak and every damage button. It shows as
+  *Joker +2*, and lasts exactly as long as the purple card badge, so the next deal
+  ends it. A gang sharing the card all get it. With Level Headed, it only counts
+  if the Joker is the card you kept.
+
+### Sir Ed
+
+- **Elderly now takes 1 off his Strength damage.** His knife was rolling `d6+d4`
+  and now rolls `d6-1+d4`. The book: *"−1 penalty to Agility, Strength (including
+  damage)…"*
+- **Scout's note was backwards.** It told him to subtract 2 from Survival, where
+  Scout actually lets him *ignore* 2 points of tracking penalties. It now shows
+  Notice −2, for the encounter roll, and the +2 to Common Knowledge it was missing.
+
+---
+
 ## 2026-10-09 (later) — Desperate Attack, horses, and Reach
 
 **Reload the extension first.**

@@ -210,3 +210,44 @@ describe('what the sheet shows', () => {
     );
   });
 });
+
+/**
+ * Sir Ed's Scout, §27: *"You get a Notice roll at -2 to detect traveling
+ * encounters before they occur, ignore up to 2 points of penalties when tracking
+ * with Survival, and +2 to Common Knowledge rolls…"* Read as one sentence the −2
+ * went to Survival too, and the +2 found no skill — the cards write "Com.".
+ */
+describe('a sentence with more than one number in it', () => {
+  const scout: NamedEntry = {
+    name: 'SCOUT',
+    text:
+      'You can read the land like the back of your hand. You get a Notice roll at -2 to detect ' +
+      'traveling encounters before they occur, ignore up to 2 points of penalties when tracking ' +
+      'with Survival, and +2 to Common Knowledge rolls to recall information about towns.',
+  };
+  const ed: Sheet = {
+    ...emptySheet('ed', 'Sir Ed'),
+    skills: { Notice: { die: 8 }, Survival: { die: 8 }, 'Com. Knowledge': { die: 8 } },
+  };
+
+  it('pairs each part with its own number, and an ignored penalty with none', () => {
+    const effects = classify(ed, scout, 'edge').effects.map((e) => [e.trait, e.value]);
+    expect(effects).toEqual([
+      ['Notice', -2],
+      ['Com. Knowledge', 2],
+    ]);
+  });
+
+  /** A list names its traits in one part and its number in another. */
+  it('still reads a list across its commas', () => {
+    const liquid: NamedEntry = {
+      name: 'LIQUID COURAGE',
+      text: 'Smarts, Agility, and all linked skills suffer a −1 penalty for the duration, however.',
+    };
+    const effects = classify(ed, liquid, 'edge').effects.map((e) => [e.trait, e.value]);
+    expect(effects).toEqual([
+      ['Smarts', -1],
+      ['Agility', -1],
+    ]);
+  });
+});

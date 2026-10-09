@@ -207,7 +207,17 @@ export function closeSoakWindow(state: TokenState): TokenState {
   return rest;
 }
 
-export function soak(state: TokenState, vigorTotal: number, woundsTaken: number): TokenState {
+export function soak(
+  state: TokenState,
+  vigorTotal: number,
+  woundsTaken: number,
+  /**
+   * *"A Critical Failure increases the victim's Wound level by one. Ouch!"* —
+   * p150. Nothing is soaked, a wound is added, and Shaken stays as it was.
+   */
+  critical = false,
+): TokenState {
+  if (critical) return closeSoakWindow({ ...state, wounds: state.wounds + 1 });
   // A failed Soak still spends the Benny and still closes the window: the roll
   // was the attempt, and leaving the button up would offer a second go at the
   // same wound for a second chip.
@@ -226,4 +236,34 @@ export function soak(state: TokenState, vigorTotal: number, woundsTaken: number)
 export function soakedWounds(vigorTotal: number): number {
   if (vigorTotal < SOAK_TARGET) return 0;
   return 1 + Math.floor((vigorTotal - SOAK_TARGET) / RAISE_STEP);
+}
+
+/**
+ * A Benny reroll of the Soak, applied to the token as it stands now.
+ *
+ * *"Characters can't Soak more than once per attack, but may spend Bennies as
+ * usual to reroll the Vigor check if they aren't satisfied with the results."* —
+ * p150. So the reroll **replaces** the first Soak; it does not soak again on top.
+ *
+ * Worked out from `hit` — the token after the damage and before any Soak — and
+ * applied to `current` as the difference from what the first Soak did. Anything
+ * that happened to the token in between (another hit, a Marshal's click) is kept
+ * rather than overwritten. Shaken follows the reroll unless something else has
+ * changed it since.
+ *
+ * Not reachable after a Critical Failure, which *"cannot be rerolled, even with
+ * Bennies"* (p140) — the caller refuses before it gets here.
+ */
+export function resoak(
+  hit: TokenState,
+  first: TokenState,
+  current: TokenState,
+  vigorTotal: number,
+  woundsTaken: number,
+  critical = false,
+): TokenState {
+  const next = soak(hit, vigorTotal, woundsTaken, critical);
+  const wounds = Math.max(0, current.wounds + (next.wounds - first.wounds));
+  const shaken = current.shaken === first.shaken ? next.shaken : current.shaken;
+  return closeSoakWindow({ ...current, wounds, shaken });
 }

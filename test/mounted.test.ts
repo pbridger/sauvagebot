@@ -4,15 +4,7 @@
  * Steady Hands Edge."*
  */
 import { describe, expect, it } from 'vitest';
-import {
-  MOUNTED_RANGED,
-  hasSteadyHands,
-  horsemanship,
-  horsemanshipNote,
-  isMounted,
-  mountedRangedPenalty,
-  rollingSheet,
-} from '../src/rules/mounted.js';
+import { horsemanship, horsemanshipNote, isMounted, rollingSheet } from '../src/rules/mounted.js';
 import { emptySheet, traitDie, type Sheet } from '../src/rules/sheet.js';
 import { situationalMods, toggleCondition } from '../src/rules/modifiers.js';
 
@@ -75,25 +67,6 @@ describe('the sheet a roll is made from', () => {
       'Mounted: the lower of Fighting d8 and Riding d4-2 — rolling Riding (p165)',
     );
     expect(horsemanshipNote(sheet, {})).toBeUndefined();
-  });
-});
-
-describe('shooting and throwing from the saddle', () => {
-  it('costs two', () => {
-    expect(mountedRangedPenalty(onHorse, true, [])).toBe(MOUNTED_RANGED);
-  });
-
-  it('costs nothing that is not a shot or a throw', () => {
-    expect(mountedRangedPenalty(onHorse, false, [])).toBe(0);
-  });
-
-  it('costs nothing with Steady Hands', () => {
-    expect(hasSteadyHands([{ name: 'Steady Hands' }])).toBe(true);
-    expect(mountedRangedPenalty(onHorse, true, [{ name: 'STEADY HANDS' }])).toBe(0);
-  });
-
-  it('costs nothing on foot', () => {
-    expect(mountedRangedPenalty({}, true, [])).toBe(0);
   });
 });
 

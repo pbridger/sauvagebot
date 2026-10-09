@@ -253,12 +253,25 @@ export function parseGear(text: string | undefined): Gear {
  *    card is `2d6!` to the engine. Rolling it unexploded silently caps damage
  *    and quietly removes the best thing about Savage Worlds combat.
  */
-export function damageExpression(damage: string, strengthDie: number | undefined): string {
+export function damageExpression(
+  damage: string,
+  strengthDie: number | undefined,
+  /**
+   * The Strength die's own modifier, which goes with it into the damage.
+   *
+   * Elderly is the case that forced it: *"a −1 penalty to Agility, Strength
+   * (including damage), and Vigor rolls"*. Sir Ed's card already reads Strength
+   * d6−1, and his knife was rolling `d6!+d4!` — the die without its modifier.
+   * §27 (iii), 2026-10-09.
+   */
+  strengthMod = 0,
+): string {
+  const strength = `d${strengthDie}${strengthMod ? (strengthMod > 0 ? `+${strengthMod}` : `${strengthMod}`) : ''}`;
   const withStrength = !/^str\b/i.test(damage)
     ? damage
     : strengthDie === undefined
       ? damage.replace(/^str\s*\+\s*/i, '')
-      : damage.replace(/^str/i, `d${strengthDie}`);
+      : damage.replace(/^str/i, strength);
   return explodeDice(withStrength);
 }
 
