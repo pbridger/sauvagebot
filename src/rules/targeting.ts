@@ -269,6 +269,45 @@ export function isTargeted(skill: string | undefined): boolean {
  */
 export const PARRY_VISIBLE_CELLS = 1.5;
 
+/**
+ * How far a melee attack reaches with no Reach at all: touching.
+ *
+ * The same 1.5 as `PARRY_VISIBLE_CELLS`, for the same geometric reason, and
+ * deliberately **a separate constant**. That one decides when a target's Parry
+ * may be printed beside a *ranged* shot — Paul called anything wider data
+ * leakage — and reach is a property of a weapon. Sharing one number would mean a
+ * spear-carrier's pistol shots showed Parry a cell further out.
+ */
+export const ADJACENT_CELLS = 1.5;
+
+/**
+ * A weapon's Reach, from wherever the line says it.
+ *
+ * The catalogue writes `Reach 2` in a weapon's notes (Lance, Lariat, Spear,
+ * Whip); the bestiary writes `Claws/Bite: Str+d8, Reach 1".` with an inch mark,
+ * straight or curly. Absent means 0 — adjacent only.
+ */
+export function reachOf(weapon: { notes?: string | undefined; name?: string } | undefined): number {
+  const text = `${weapon?.name ?? ''} ${weapon?.notes ?? ''}`;
+  const found = /\breach\s*(\d+)\s*["\u201d\u2033]?/i.exec(text);
+  return found ? Number(found[1]) : 0;
+}
+
+/**
+ * The distance beyond which a swing is out of reach, for a weapon of this Reach.
+ *
+ * Reach counts squares, and a square two away on the diagonal measures 2√2 ≈ 2.83
+ * on a Euclidean grid. So each point of Reach adds √2 rather than 1: Reach 1 gives
+ * 2.91, which takes the far diagonal (2.83) and stops short of three straight
+ * (3.0). From Reach 2 the rings overlap and no single radius separates them; this
+ * errs generous, which for a row that is greyed and not removed is the right way
+ * to be wrong. On a Chebyshev grid every figure here is generous by the same
+ * margin and for the same reason.
+ */
+export function reachCells(reach: number): number {
+  return ADJACENT_CELLS + Math.max(0, reach) * Math.SQRT2;
+}
+
 /** How many decimal places a measured distance is kept — and shown — to. */
 const CELL_PLACES = 1;
 

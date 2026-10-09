@@ -8,13 +8,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   GANG_UP_MAX,
+  SWINGS,
+  TWO_WEAPONS,
   UNARMED_DEFENDER,
   WILD_ATTACK,
+  costsVulnerable,
   gangUpMod,
   meleeTotal,
+  swingDamage,
+  swingMod,
+  twoWeaponsMod,
   unarmedDefenderMod,
-  wildAttackDamage,
-  wildAttackMod,
 } from '../src/rules/melee.js';
 import { calledShotMod } from '../src/rules/shot.js';
 
@@ -40,22 +44,41 @@ describe('ganging up', () => {
 
 describe('a wild attack', () => {
   it('adds to the attack and to the damage, by the same amount', () => {
-    expect(wildAttackMod(true)?.value).toBe(WILD_ATTACK);
-    expect(wildAttackDamage(true)).toBe(WILD_ATTACK);
+    expect(swingMod('wild')?.value).toBe(WILD_ATTACK);
+    expect(swingDamage('wild')).toBe(WILD_ATTACK);
   });
 
   it('does nothing when it is not declared', () => {
-    expect(wildAttackMod(false)).toBeUndefined();
-    expect(wildAttackDamage(false)).toBe(0);
+    expect(swingMod('ordinary')).toBeUndefined();
+    expect(swingDamage('ordinary')).toBe(0);
   });
 
-  /**
-   * Vulnerable is the cost and is deliberately not applied here: it is a
-   * condition on the attacker that outlives the roll, and nothing on this path
-   * edits the attacker.
-   */
-  it('says what it costs rather than charging it', () => {
-    expect(wildAttackMod(true)?.note).toMatch(/Vulnerable until the end of your next turn/);
+  /** Paul, 2026-10-09: the app sets Vulnerable when a Wild Attack is rolled. */
+  it('is the only swing that leaves the attacker Vulnerable', () => {
+    expect(SWINGS.filter(costsVulnerable)).toEqual(['wild']);
+  });
+});
+
+/**
+ * `"The attacker adds +2 or +4 to any Fighting roll and subtracts a like amount
+ * from damage if they hit… and can't be combined with Wild Attack."` — p165.
+ */
+describe('a desperate attack', () => {
+  it('buys accuracy with damage, point for point', () => {
+    expect(swingMod('desperate2')?.value).toBe(2);
+    expect(swingDamage('desperate2')).toBe(-2);
+    expect(swingMod('desperate4')?.value).toBe(4);
+    expect(swingDamage('desperate4')).toBe(-4);
+  });
+
+  /** One union, so a Wild-and-Desperate attack is not a value that exists. */
+  it('cannot be combined with a wild attack', () => {
+    expect(meleeTotal({ swing: 'desperate4' }).mods.map((mod) => mod.key)).toEqual(['desperate']);
+  });
+
+  it('costs no Vulnerable', () => {
+    expect(costsVulnerable('desperate2')).toBe(false);
+    expect(costsVulnerable('desperate4')).toBe(false);
   });
 });
 
@@ -66,9 +89,26 @@ describe('an unarmed defender', () => {
   });
 });
 
+/** `"A character armed with two melee weapons adds +1…"` — p165. */
+describe('two weapons', () => {
+  it("is worth the book's one point", () => {
+    expect(twoWeaponsMod(true)?.value).toBe(TWO_WEAPONS);
+    expect(twoWeaponsMod(false)).toBeUndefined();
+  });
+
+  /** "if the foe has a single weapon **or is unarmed**" — so it stacks with the +2. */
+  it('stacks with an unarmed foe', () => {
+    expect(meleeTotal({ unarmedFoe: true, twoWeapons: true }).total).toBe(UNARMED_DEFENDER + TWO_WEAPONS);
+  });
+
+  it('says natural weapons cancel it, since nothing here can tell', () => {
+    expect(twoWeaponsMod(true)?.note).toMatch(/natural weapons/);
+  });
+});
+
 describe('a whole melee attack', () => {
   it('sums what is declared and nothing that is not', () => {
-    const { total, mods } = meleeTotal({ gangUp: 2, wild: true, unarmedFoe: true });
+    const { total, mods } = meleeTotal({ gangUp: 2, swing: 'wild', unarmedFoe: true });
     expect(total).toBe(2 + WILD_ATTACK + UNARMED_DEFENDER);
     expect(mods.map((mod) => mod.key)).toEqual(['gang-up', 'wild', 'unarmed-foe']);
   });

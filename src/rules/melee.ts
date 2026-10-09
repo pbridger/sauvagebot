@@ -4,7 +4,7 @@
  * Damian and Paul, agreed at the table on 2026-09-12: *"the best way of solving
  * most of the melee issues was just to get the Fighting dialogue to match the
  * Shooting dialogue."* So this is not a second panel. It is the same panel with
- * the ranged half switched off and three melee-only modifiers switched on, and
+ * the ranged half switched off and the melee-only modifiers switched on, and
  * that is why the modifiers here are `ShotMod`s rather than a parallel type.
  *
  * ## What melee does *not* have
@@ -19,9 +19,11 @@
  *
  * ## What it has instead
  *
- * Three things the book gives a melee attacker, none of which existed anywhere in
- * this app before. They are all `'other'` for the same reason the dial is: Aim's
- * category list is exact, and being outside it is the truth about them.
+ * The things the book gives a melee attacker, none of which existed anywhere in
+ * this app before: Gang Up, the way you swing (ordinary, Wild, or Desperate at
+ * either size), an unarmed foe, and Two Weapons. They are all `'other'` for the
+ * same reason the dial is: Aim's category list is exact, and being outside it is
+ * the truth about them.
  */
 import type { ModCategory, ShotMod } from './shot.js';
 
@@ -62,29 +64,85 @@ export function gangUpMod(bonus: number): ShotMod | undefined {
   };
 }
 
+/**
+ * How the attacker swings — one choice, because the book makes it one.
+ *
+ * Wild Attack: *"+2 to the character's Fighting attacks and resulting damage
+ * rolls, but they are Vulnerable until the end of their next turn"* (p165).
+ *
+ * Desperate Attack: *"The attacker adds +2 or +4 to any Fighting roll and
+ * subtracts a like amount from damage if they hit. This can be determined per
+ * attack (before rolling), and can't be combined with Wild Attack."* (p165)
+ *
+ * A union rather than a Wild checkbox beside a Desperate one, so the exclusivity
+ * is a property of the type and not a rule somebody has to remember to enforce.
+ * Damian asked for Desperate twice — 2026-09-14 from memory, 2026-10-09 with the
+ * page photographed — and Paul chose this shape on 10-09.
+ */
+export type Swing = 'ordinary' | 'wild' | 'desperate2' | 'desperate4';
+
+export const SWINGS: readonly Swing[] = ['ordinary', 'wild', 'desperate2', 'desperate4'];
+
 /** `"A Wild Attack adds +2 to the character's Fighting attacks and resulting damage rolls"` — p165. */
 export const WILD_ATTACK = 2;
 
+/** What each swing adds to the attack. Desperate's cost is on the damage — see `swingDamage`. */
+const SWING_ATTACK: Record<Swing, number> = {
+  ordinary: 0,
+  wild: WILD_ATTACK,
+  desperate2: 2,
+  desperate4: 4,
+};
+
 /**
- * The other half of a Wild Attack is a cost, and it is not a modifier.
+ * What a swing adds to the attack roll.
  *
- * *"…but they are Vulnerable until the end of their next turn (not this one)."*
- * Vulnerable is a condition on the attacker, already in `SITUATIONS`, and setting
- * it is a change to a token rather than to a roll. The panel says so where the
- * control is; applying it is the Marshal's, for the same reason nothing else here
- * reaches across and edits the attacker mid-roll.
+ * Wild Attack's other cost is Vulnerable, which is a condition on the attacker
+ * and not a modifier. Paul's call on 2026-10-09 was that the app **sets it** when
+ * the attack is rolled, rather than leaving it in a note for the Marshal — so it
+ * lives with the roll, in the panel, and `costsVulnerable` is how the panel asks.
  */
-export function wildAttackMod(on: boolean): ShotMod | undefined {
-  if (!on) return undefined;
+export function swingMod(swing: Swing): ShotMod | undefined {
+  const value = SWING_ATTACK[swing];
+  if (!value) return undefined;
+  if (swing === 'wild') {
+    return {
+      key: 'wild',
+      label: 'Wild Attack',
+      value,
+      category: 'other',
+      kind: 'choice',
+      scope: 'shot',
+      note: `+${value} to the attack and to damage; you are Vulnerable until the end of your next turn (p165).`,
+    };
+  }
   return {
-    key: 'wild',
-    label: 'Wild Attack',
-    value: WILD_ATTACK,
+    key: 'desperate',
+    label: `Desperate +${value}`,
+    value,
     category: 'other',
     kind: 'choice',
     scope: 'shot',
-    note: `+${WILD_ATTACK} to the attack and to damage; Vulnerable until the end of your next turn (p165).`,
+    note: `+${value} to the attack and −${value} to damage if it hits. Cannot be combined with a Wild Attack (p165).`,
   };
+}
+
+/**
+ * What a swing does to the damage roll: +2 for Wild, −2 or −4 for Desperate.
+ *
+ * Separate from the attack because damage is rolled from a different expression
+ * at a different moment. The first negative number this path has ever carried,
+ * so whoever spends it must write it with `formatMod` and not with a bare `+`.
+ */
+export function swingDamage(swing: Swing): number {
+  if (swing === 'wild') return WILD_ATTACK;
+  if (swing === 'ordinary') return 0;
+  return -SWING_ATTACK[swing];
+}
+
+/** Whether rolling this swing leaves the attacker Vulnerable. */
+export function costsVulnerable(swing: Swing): boolean {
+  return swing === 'wild';
 }
 
 /** `"An attacker armed with a melee weapon adds +2 to their Fighting attacks if their foe has no weapon or shield."` — p165. */
@@ -112,11 +170,42 @@ export function unarmedDefenderMod(on: boolean): ShotMod | undefined {
   };
 }
 
+/**
+ * `"A character armed with two melee weapons adds +1 to their Fighting rolls if
+ * the foe has a single weapon or is unarmed, and has no shield. It adds no bonus
+ * against creatures with Natural Weapons (page 159)."` — p165.
+ *
+ * Damian's half-remembered *"+1 if you're fighting two-handed against a foe with
+ * only one hand weapon"* (2026-09-14). A checkbox, like the unarmed foe, for the
+ * same reason: carrying two knives on a gear line is not the same as holding one
+ * in each hand, and what the defender holds is not on any sheet the app can read.
+ *
+ * It **stacks** with the unarmed foe — "or is unarmed" is in its condition — and
+ * natural weapons cancel it, which is in the note rather than enforced.
+ */
+export const TWO_WEAPONS = 1;
+
+export function twoWeaponsMod(on: boolean): ShotMod | undefined {
+  if (!on) return undefined;
+  return {
+    key: 'two-weapons',
+    label: 'Two weapons',
+    value: TWO_WEAPONS,
+    category: 'other',
+    kind: 'fact',
+    scope: 'shot',
+    note:
+      `A melee weapon in each hand, against a foe with one weapon or none and no shield: ` +
+      `+${TWO_WEAPONS} (p165). Nothing against claws, fangs or other natural weapons.`,
+  };
+}
+
 export interface MeleeRequest {
   /** Points of Gang Up bonus, already netted off against the defender's allies. */
   gangUp?: number | undefined;
-  wild?: boolean | undefined;
+  swing?: Swing | undefined;
   unarmedFoe?: boolean | undefined;
+  twoWeapons?: boolean | undefined;
   /** A called shot, as the Scale of what is aimed at — the same rule as a shot. */
   calledShot?: ShotMod | undefined;
   /** Wounds, Fatigue, the dark: already summed, and none of it melee-specific. */
@@ -143,11 +232,14 @@ export function meleeTotal(request: MeleeRequest): MeleeTotal {
   const gang = gangUpMod(request.gangUp ?? 0);
   if (gang) mods.push(gang);
 
-  const wild = wildAttackMod(request.wild ?? false);
-  if (wild) mods.push(wild);
+  const swing = swingMod(request.swing ?? 'ordinary');
+  if (swing) mods.push(swing);
 
   const unarmed = unarmedDefenderMod(request.unarmedFoe ?? false);
   if (unarmed) mods.push(unarmed);
+
+  const pair = twoWeaponsMod(request.twoWeapons ?? false);
+  if (pair) mods.push(pair);
 
   if (request.calledShot) mods.push(request.calledShot);
 
@@ -176,15 +268,4 @@ export function meleeTotal(request: MeleeRequest): MeleeTotal {
   }
 
   return { mods, total: mods.reduce((sum, mod) => sum + mod.value, 0) };
-}
-
-/**
- * What a Wild Attack adds to the damage roll.
- *
- * Separate from the attack total because damage is rolled from a different
- * expression at a different moment, and the two numbers happen to be the same
- * only by coincidence of the rule's wording.
- */
-export function wildAttackDamage(wild: boolean): number {
-  return wild ? WILD_ATTACK : 0;
 }

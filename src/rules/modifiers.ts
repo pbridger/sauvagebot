@@ -77,7 +77,14 @@ export const SITUATIONS: readonly Situation[] = [
   { key: 'dim', label: 'Dim', value: -2, group: 'light', affects: 'self', note: 'Twilight, light fog, night with a full moon (p157)' },
   { key: 'dark', label: 'Dark', value: -4, group: 'light', affects: 'self', note: 'Typical night with some ambient light; targets invisible beyond 10″ (p157)' },
   { key: 'pitch', label: 'Pitch Dark', value: -6, group: 'light', affects: 'self', note: 'Complete darkness, or the target is hidden or invisible (p157)' },
-  { key: 'unstable', label: 'Unstable Platform', value: -2, group: 'platform', affects: 'self', note: 'Firing or throwing from a horse, a moving vehicle, a rooftop (p165)' },
+  { key: 'unstable', label: 'Unstable Platform', value: -2, group: 'platform', affects: 'self', note: 'Firing or throwing from a moving vehicle, a rooftop, a swaying wagon (p165). On a horse, use Mounted instead' },
+  // On a horse. Shares a group with Unstable Platform because it *is* one, and
+  // being both would charge the −2 twice. Its value is 0 because neither of its
+  // effects is a flat number on every roll: it swaps the Fighting die for the
+  // lower of Fighting and Riding, and charges −2 to shots and throws only, unless
+  // the rider has Steady Hands. Both live in `mounted.ts`. Paul, 2026-10-09: a
+  // condition on the token, applied automatically.
+  { key: 'mounted', label: 'Mounted', value: 0, group: 'platform', affects: 'self', badge: 'MOUNT', note: 'Fighting rolls the lower of Fighting and Riding; Shooting and throws at \u22122 unless Steady Hands (p165)' },
   // Running is its own group, not part of 'action': the book penalises "all
   // actions that turn" for running (p151), and a Multi-Action costs a further −2
   // per extra action. Someone who runs and shoots twice is at −4, so grouping the
@@ -179,7 +186,10 @@ export function clearModifiers<T extends ModifierState>(state: T): T {
  */
 export function situationalMods(state: ModifierState | undefined): RollMod[] {
   const mods: RollMod[] = situationsOf(state)
-    .filter((s) => s.affects === 'self')
+    // Zero-valued self conditions — Mounted is the only one — act on particular
+    // skills rather than on every roll, and are applied where the skill is known.
+    // A `+0` line in every breakdown would say nothing.
+    .filter((s) => s.affects === 'self' && s.value !== 0)
     .map((s) => ({
       label: s.label,
       value: s.value,

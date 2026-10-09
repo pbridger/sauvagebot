@@ -762,6 +762,12 @@ export interface ShotRequest {
   /** Whether Rock and Roll!, a bipod or a tripod cancels Recoil. */
   steady?: boolean | undefined;
   /**
+   * Shooting or throwing from the saddle: `MOUNTED_RANGED`, or 0 for a rider with
+   * Steady Hands or nobody on a horse. Already worked out by `mountedRangedPenalty`,
+   * which knows the edges; this only puts it on the list.
+   */
+  mounted?: number | undefined;
+  /**
    * The persistent track from the token: darkness, Running, an unstable platform.
    *
    * !! Leave this out if the caller already holds a `RollBreakdown`. That carries
@@ -801,6 +807,20 @@ export function shotTotal(request: ShotRequest): ShotTotal {
 
   const recoil = recoilFor(request.rof, request.steady ?? false);
   if (recoil) base.push(recoil);
+
+  // Not aimable — it is the Unstable Platform penalty by another name, and that is
+  // one of the things Aim cannot help.
+  if (request.mounted) {
+    base.push({
+      key: 'mounted',
+      label: 'Mounted',
+      value: request.mounted,
+      category: 'other',
+      kind: 'fact',
+      scope: 'shot',
+      note: 'Shooting or throwing from horseback, unless Steady Hands (p165).',
+    });
+  }
 
   // The persistent track — wounds, fatigue, the dark, an unstable platform —
   // arrives already summed and already filtered to `affects: 'self'`. It is not

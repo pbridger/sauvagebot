@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MANUAL_RANGE } from '../src/rules/modifiers.js';
+import { weaponReach } from '../src/rules/gearCatalogue.js';
 import {
+  ADJACENT_CELLS,
+  PARRY_VISIBLE_CELLS,
+  reachCells,
+  reachOf,
   showsParry,
   formatCells,
   measuredCells,
@@ -470,5 +475,48 @@ describe('where a candidate sits in the target list', () => {
 
   it('puts the bandits below the posse when the Marshal shoots', () => {
     expect(ownSideLast(false, true)).toBeLessThan(ownSideLast(false, false));
+  });
+});
+
+/**
+ * Damian, 2026-09-14: *"It would be good if a weapon or character has Reach that
+ * this would actually be taken into account in the greying."*
+ */
+describe('reach', () => {
+  it('reads the catalogue form and the bestiary form, either inch mark', () => {
+    expect(reachOf({ notes: 'Parry +1, Reach 1, two hands' })).toBe(1);
+    expect(reachOf({ notes: 'Reach 2, mounted combat only' })).toBe(2);
+    expect(reachOf({ notes: 'Str+d8, Reach 1".' })).toBe(1);
+    expect(reachOf({ notes: 'Str+d8, Reach 1”.' })).toBe(1);
+  });
+
+  it('is nothing when the line does not say', () => {
+    expect(reachOf({ notes: 'Str+d4' })).toBe(0);
+    expect(reachOf(undefined)).toBe(0);
+  });
+
+  it('is adjacency with none', () => {
+    expect(reachCells(0)).toBe(ADJACENT_CELLS);
+  });
+
+  /** Reach 1 takes the far diagonal (2√2 ≈ 2.83) and stops short of three straight. */
+  it('takes in the second ring and no more at Reach 1', () => {
+    expect(reachCells(1)).toBeGreaterThan(2 * Math.SQRT2);
+    expect(reachCells(1)).toBeLessThan(3);
+  });
+
+  /**
+   * The privacy constant does not move. Parry beside a ranged shot is the thing
+   * Paul called data leakage, and reach is a property of a weapon.
+   */
+  it('leaves the Parry window where it was', () => {
+    expect(PARRY_VISIBLE_CELLS).toBe(1.5);
+    expect(showsParry('Shooting', 2)).toBe(false);
+  });
+
+  it('fills in from the catalogue when the card just says "spear"', () => {
+    expect(weaponReach({ name: 'Spear' })).toBe(1);
+    expect(weaponReach({ name: 'Whip' })).toBe(2);
+    expect(weaponReach({ name: 'Bowie knife' })).toBe(0);
   });
 });

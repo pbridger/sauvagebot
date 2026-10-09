@@ -9,6 +9,7 @@
  * and anything missing can still be typed by hand.
  */
 import data from './gear-catalogue.json' with { type: 'json' };
+import { reachOf } from './targeting.js';
 
 export interface GearEntry {
   name: string;
@@ -200,4 +201,16 @@ export function gearLine(item: GearEntry): string {
   const name = uncomma(item.name.replace(/\s*\([^)]*\)\s*$/, '').trim() || item.name);
   const bits = stats(item);
   return bits.length ? `${name} (${bits.join(', ')})` : name;
+}
+
+/**
+ * A weapon's Reach: what its own line says, or failing that what the book says.
+ *
+ * A card that writes `Spear (Str+d6, Parry +1, Reach 1, two hands)` carries it;
+ * one that writes just "spear" does not, and the catalogue fills the gap the same
+ * way `weaponModes` fills in a tomahawk's throw. The larger wins, so a sheet that
+ * has deliberately written a longer reach is not overruled.
+ */
+export function weaponReach(weapon: { name: string; notes?: string | undefined }): number {
+  return Math.max(reachOf(weapon), reachOf(findGear(weapon.name)));
 }

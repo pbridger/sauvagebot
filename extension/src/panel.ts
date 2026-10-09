@@ -38,14 +38,22 @@ import {
   weaponSkill,
   type Weapon,
 } from '../../src/rules/gear.js';
-import { weaponModes } from '../../src/rules/gearCatalogue.js';
+import { weaponModes, weaponReach } from '../../src/rules/gearCatalogue.js';
 import {
   GANG_UP_MAX,
+  TWO_WEAPONS,
   UNARMED_DEFENDER,
   WILD_ATTACK,
+  costsVulnerable,
   meleeTotal,
-  wildAttackDamage,
+  swingDamage,
+  type Swing,
 } from '../../src/rules/melee.js';
+import {
+  horsemanshipNote,
+  mountedRangedPenalty,
+  rollingSheet,
+} from '../../src/rules/mounted.js';
 import { CommandContext } from '../../src/dice/evaluator.js';
 import { RollInterpreter } from '../../src/dice/interpreter.js';
 import { runningDie, runningExpression } from '../../src/rules/running.js';
@@ -91,6 +99,7 @@ import {
   targetNumber,
   FLAT_TARGET,
   PARRY_VISIBLE_CELLS,
+  reachCells,
   isTargeted,
   ownSideLast,
   parseRangeBands,
@@ -3910,6 +3919,45 @@ function setModifierState(sheet: Sheet, next: ModifierState): void {
   renderSheetArea();
 }
 
+/** The conditions this sheet rolls under: its token's, or the loose ones when it has none. */
+function conditionsFor(sheet: Sheet): ModifierState | undefined {
+  return activeToken(sheet)?.state ?? looseMods.get(sheet.id);
+}
+
+/**
+ * The sheet to roll from, and to read a button's face off: Fighting becomes the
+ * Riding die when the character is Mounted and rides worse than they fight.
+ *
+ * Never saved, edited or exported — see `rollingSheet`.
+ */
+function rollsAs(sheet: Sheet): Sheet {
+  return rollingSheet(sheet, conditionsFor(sheet));
+}
+
+/** "Fighting", or "Fighting (Riding, mounted)" when the saddle chose the die. */
+function skillLabel(sheet: Sheet, skill: string): string {
+  return rollsAs(sheet) !== sheet && skill === 'Fighting' ? `${skill} (Riding, mounted)` : skill;
+}
+
+/**
+ * Wild Attack's cost, charged as it is rolled: *"they are Vulnerable until the
+ * end of their next turn"* (p165).
+ *
+ * Paul, 2026-10-09 — set automatically, not left in a note. On the attacker's own
+ * token only and not their gang's: Vulnerable is a fact about one body, and six
+ * bandits sharing a stat block did not all swing. Set, never toggled, so an
+ * attacker already Vulnerable is not cleared by attacking again. Clearing it at
+ * the end of their next turn stays with the table, as every condition does.
+ */
+function payForTheSwing(sheet: Sheet, session: ShotSession): void {
+  if (!session.melee || !costsVulnerable(session.swing)) return;
+  const active = activeToken(sheet);
+  if (!active) return;
+  void updateTokenState(active.token.id, (current) =>
+    hasCondition(current, 'vulnerable') ? current : toggleCondition(current, 'vulnerable'),
+  ).then(refreshTokens);
+}
+
 /**
  * The green half of the row: everything the Marshal calls, as opposed to what
  * the character is carrying.
@@ -5021,7 +5069,28 @@ function render(): void {
   // One breakdown for the whole sheet: the label a button shows and the roll it
   // makes are the same number by construction, and the log gets the itemisation.
   const mods = modsFor(sheet);
+  const sheetMods = mods;
   const penalty = mods.total;
+
+  // Mounted, which reaches two skills and no others: Fighting rolls the worse of
+  // Fighting and Riding, and Shooting is at −2 unless Steady Hands. Athletics is
+  // left alone here — off the skills list it is a climb, and only a throw from the
+  // weapons table is penalised. See `mounted.ts`.
+  const conditions = conditionsFor(sheet);
+  const rollAs = rollingSheet(sheet, conditions);
+  const saddle = mountedRangedPenalty(conditions, true, sheet.edges);
+  const modsForSkill = (skill: string): RollBreakdown =>
+    skill === 'Shooting' && saddle
+      ? {
+          ...mods,
+          situational: mods.situational + saddle,
+          total: mods.total + saddle,
+          parts: [
+            ...mods.parts,
+            { label: 'Mounted', value: saddle, kind: 'situational', short: formatMod(saddle) },
+          ],
+        }
+      : mods;
 
   // Classified once per render rather than per row: `abilityNotes` walks every
   // edge, hindrance and ability on the sheet, and the trait buttons then ask it
@@ -5036,7 +5105,7 @@ function render(): void {
    * and hides the question. The colours are the same two used on the pips, the
    * chips and the log.
    */
-  const dieLabel = (base: string, mod: number | undefined): HTMLElement => {
+  const dieLabel = (base: string, mod: number | undefined, mods = sheetMods): HTMLElement => {
     const wrap = document.createElement('span');
     wrap.className = 'die';
     const own = document.createElement('span');
@@ -5101,22 +5170,27 @@ function render(): void {
   const skills = document.createElement('div');
   skills.className = 'traits';
   for (const skill of shown) {
-    const trait = sheet.skills[skill];
+    // The face shows the die that will be thrown, so it is read off the rolling
+    // sheet; whether the skill is *trained* is still a question about the sheet.
+    const trait = rollAs.skills[skill];
+    const own = modsForSkill(skill);
     // Fighting rolled from here is the same roll as Fighting rolled from the
     // weapons table, so it gets the same targeting table. What it cannot carry is
     // range bands — those belong to a weapon, and this button does not know which
     // one you swung. The table copes: it shows the distance in cells and simply
     // no band, which is exactly right for a melee attack anyway.
     const aimed = isTargeted(skill) ? { skill } : undefined;
-    skills.append(
-      traitButton(
-        skill,
-        trait ? dieLabel(`d${trait.die}`, trait.mod) : dieLabel('d4', -2),
-        !trait,
-        () => publishTrait(sheet, skill, rollSkill(sheet, skill, penalty), mods, aimed),
-        notesForTrait(notes, skill),
-      ),
+    const button = traitButton(
+      skill,
+      trait ? dieLabel(`d${trait.die}`, trait.mod, own) : dieLabel('d4', -2, own),
+      !sheet.skills[skill],
+      () =>
+        publishTrait(sheet, skillLabel(sheet, skill), rollSkill(rollAs, skill, own.total), own, aimed),
+      notesForTrait(notes, skill),
     );
+    const riding = skill === 'Fighting' ? horsemanshipNote(sheet, conditions) : undefined;
+    if (riding) button.title = riding;
+    skills.append(button);
   }
 
   // With the untrained hidden there is no button for them, and rolling one is a
@@ -5217,16 +5291,30 @@ interface ShotSession {
    * One panel, not two. Damian and Paul, 2026-09-12: *"the best way of solving
    * most of the melee issues was just to get the Fighting dialogue to match the
    * Shooting dialogue."* Matching it by being it — the ranged half of the panel
-   * is switched off and the three melee modifiers are switched on. See `melee.ts`
+   * is switched off and the melee modifiers are switched on. See `melee.ts`
    * for what is absent and why.
    */
   melee: boolean;
   /** Points of Gang Up, already netted against the defender's allies (p156). */
   gangUp: number;
-  /** +2 to the attack and to damage, Vulnerable afterwards (p165). */
-  wild: boolean;
+  /**
+   * Ordinary, Wild (+2 attack and damage, Vulnerable afterwards), or Desperate
+   * (+2 or +4 to the attack, the same off the damage). One field because the book
+   * makes them one choice — see `Swing`.
+   */
+  swing: Swing;
   /** Their foe has no weapon or shield: +2 (p165). */
   unarmedFoe: boolean;
+  /** A melee weapon in each hand, against a foe with one or none and no shield: +1 (p165). */
+  twoWeapons: boolean;
+  /**
+   * Shooting or throwing from the saddle, −2 unless Steady Hands (p165).
+   *
+   * Refreshed every time the panel is drawn rather than fixed when it opens:
+   * Mounted is a condition on the token, and the Marshal may set it with the
+   * panel already open.
+   */
+  mounted: number;
   bands?: RangeBands;
   aim: Aim;
   /**
@@ -5468,7 +5556,8 @@ let showShotConditions = false;
  * the breakdown is on the panel directly above it.
  */
 function rollFace(sheet: Sheet, skill: string, situational: number): string {
-  const { die, mod } = traitDie(sheet, skill);
+  // The die that will actually be thrown — Riding's, if the saddle chose it.
+  const { die, mod } = traitDie(rollsAs(sheet), skill);
   const total = mod + situational;
   return `d${die}${total ? formatMod(total) : ''}`;
 }
@@ -5497,8 +5586,10 @@ function toggleShot(sheet: Sheet, weapon: Weapon, skill: string, bands?: RangeBa
           ...(bands ? { bands } : {}),
           melee: skill === 'Fighting',
           gangUp: 0,
-          wild: false,
+          swing: 'ordinary',
           unarmedFoe: false,
+          twoWeapons: false,
+          mounted: 0,
           aim: 'off',
           aimSource: 'aim',
           scoped: false,
@@ -5647,8 +5738,9 @@ function shotMods(session: ShotSession, band: Band | undefined): ShotTotal {
   if (session.melee) {
     const { mods, total } = meleeTotal({
       gangUp: session.gangUp,
-      wild: session.wild,
+      swing: session.swing,
       unarmedFoe: session.unarmedFoe,
+      twoWeapons: session.twoWeapons,
       ...(session.scale === undefined ? {} : { calledShot: calledShotMod(session.scale) }),
       dial: session.dial,
     });
@@ -5670,6 +5762,7 @@ function shotMods(session: ShotSession, band: Band | undefined): ShotTotal {
     // `negatesRecoil` was written and tested and nothing ever called it, so
     // Reggie — who has the Edge — was paying the −2 the Edge exists to remove.
     steady: session.steady,
+    mounted: session.mounted,
   });
 }
 
@@ -5790,6 +5883,11 @@ function shotLevel(session: ShotSession, weapon: Weapon): { mods: ShotMod[]; tot
  */
 function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTMLElement {
   const session = openShot!;
+  // Every non-melee session here is a shot or a throw — the weapons table is the
+  // only way in, so an Athletics session is always a throw and never a climb.
+  session.mounted = session.melee
+    ? 0
+    : mountedRangedPenalty(conditionsFor(sheet), true, sheet.edges);
   const box = document.createElement('div');
   box.className = 'shot';
   // Every control goes through here: change the session, log the correction if
@@ -5947,7 +6045,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
     session.aim !== 'off',
   );
 
-  // --- the three a Fighting attack has and a shot does not -----------------
+  // --- what a Fighting attack has and a shot does not ---------------------
   //
   // In `controls` rather than behind the fold for Gang Up, because it is the
   // melee equivalent of Rate of Fire: the number that decides the attack, set
@@ -5973,26 +6071,44 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
       ),
     );
 
+    // Ordinary, Wild or Desperate — one control, because the book says a
+    // Desperate Attack *"can't be combined with Wild Attack"* (p165) and a single
+    // choice cannot contradict itself.
     place(
-      shotChoice(
-        'Wild',
+      shotChoice<Swing>(
+        'Swing',
         [
-          { value: false, text: 'No', title: 'An ordinary swing' },
+          { value: 'ordinary', text: 'No', title: 'An ordinary swing' },
           {
-            value: true,
-            text: `+${WILD_ATTACK}`,
+            value: 'wild',
+            text: `Wild +${WILD_ATTACK}`,
             title:
               `A Wild Attack: +${WILD_ATTACK} to this attack and to its damage, and you are ` +
-              'Vulnerable until the end of your next turn (p165). The condition is yours to set.',
+              'Vulnerable until the end of your next turn (p165). Rolling it sets Vulnerable on ' +
+              'your token.',
+          },
+          {
+            value: 'desperate2',
+            text: 'Desp +2',
+            title: 'A Desperate Attack: +2 to this attack and \u22122 to its damage (p165)',
+          },
+          {
+            value: 'desperate4',
+            text: 'Desp +4',
+            title: 'A Desperate Attack: +4 to this attack and \u22124 to its damage (p165)',
           },
         ],
-        session.wild,
+        session.swing,
         (value) => {
-          session.wild = value;
+          session.swing = value;
+          // Declared after the dice landed is still declared: the correction gives
+          // the +2, so it charges the Vulnerable too. Switching *off* Wild clears
+          // nothing — they may be Vulnerable for some other reason.
+          if (session.rolled) payForTheSwing(sheet, session);
           redraw();
         },
       ),
-      session.wild,
+      session.swing !== 'ordinary',
     );
 
     place(
@@ -6015,6 +6131,29 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
         },
       ),
       session.unarmedFoe,
+    );
+
+    place(
+      shotChoice(
+        'Hands',
+        [
+          { value: false, text: 'One', title: 'One weapon, or a weapon and a shield' },
+          {
+            value: true,
+            text: `Two +${TWO_WEAPONS}`,
+            title:
+              `A melee weapon in each hand: +${TWO_WEAPONS} against a foe with a single weapon or ` +
+              'none, and no shield (p165). Nothing against claws, fangs or other natural weapons. ' +
+              'Stacks with an unarmed foe.',
+          },
+        ],
+        session.twoWeapons,
+        (value) => {
+          session.twoWeapons = value;
+          redraw();
+        },
+      ),
+      session.twoWeapons,
     );
   }
 
@@ -6276,15 +6415,19 @@ function untargeted(
   const button = document.createElement('button');
   button.className = 'shot-roll';
   button.textContent = rollFace(sheet, session.skill, total);
-  button.title = `Roll ${session.skill} with the ${weapon.name} at nothing in particular`;
+  const riding = session.melee ? horsemanshipNote(sheet, conditionsFor(sheet)) : undefined;
+  button.title =
+    `Roll ${session.skill} with the ${weapon.name} at nothing in particular` +
+    (riding ? `\n${riding}` : '');
   button.addEventListener('click', () => {
     publishTrait(
       sheet,
-      `${weapon.name} — ${session.skill}`,
-      rollSkill(sheet, session.skill, total),
+      `${weapon.name} — ${skillLabel(sheet, session.skill)}`,
+      rollSkill(rollsAs(sheet), session.skill, total),
       sheetMods,
       { skill: session.skill, ...(session.bands ? { bands: session.bands } : {}) },
     );
+    payForTheSwing(sheet, session);
   });
   return button;
 }
@@ -6339,6 +6482,9 @@ async function fillShotTargets(
   // whole width and a stale number there misaligns silently.
   const columns = 7;
 
+  // The swing's Reach: off the weapon's line, or the book's when the line is bare.
+  const reach = session.melee ? weaponReach(weapon) : 0;
+
   for (const { token, state, sheet: victim, cells } of shown) {
     const declared = (session.bullets.get(token.id) ?? 0) > 0;
     // Once the shot is taken the band is the one it was taken at, not the one the
@@ -6368,8 +6514,11 @@ async function fillShotTargets(
      * treatment the out-of-range row gets rather than the treatment a rule
      * enforced on their behalf would get.
      */
-    const outOfReach =
-      session.melee && cells !== undefined && cells >= PARRY_VISIBLE_CELLS;
+    //
+    // With the weapon's Reach taken into account — Damian, 2026-09-14. Against
+    // `reachCells`, and deliberately not `PARRY_VISIBLE_CELLS`: that one is the
+    // privacy line for Parry beside a ranged shot, and must not grow with a spear.
+    const outOfReach = session.melee && cells !== undefined && cells >= reachCells(reach);
     if (outOfReach) tr.classList.add('out-of-reach');
     if (declared && !session.rolled) tr.classList.add('declared');
 
@@ -6378,9 +6527,11 @@ async function fillShotTargets(
     // Same rule as the targeting table: an NPC's real name is the Marshal's.
     name.textContent = localName(victim, mapName(token), isGM);
     if (outOfReach) {
-      name.title =
-        `Further than ${PARRY_VISIBLE_CELLS} cells away — too far to swing at, unless the ` +
-        `weapon has Reach or you have closed the distance. Still on the list.`;
+      name.title = reach
+        ? `Beyond Reach ${reach} — too far to swing at with the ${weapon.name}, unless you ` +
+          `have closed the distance. Still on the list.`
+        : `Not adjacent — too far to swing at, unless you have closed the distance. ` +
+          `Still on the list.`;
     }
     tr.append(name);
 
@@ -6551,7 +6702,9 @@ async function fillShotTargets(
         // is the one thing you check before committing.
         roll.textContent = rollFace(sheet, session.skill, sum);
         roll.disabled = band === 'over';
-        roll.title = band === 'over' ? 'Out of range' : `Roll ${priced}`;
+        const riding = session.melee ? horsemanshipNote(sheet, conditionsFor(sheet)) : undefined;
+        roll.title =
+          band === 'over' ? 'Out of range' : `Roll ${priced}${riding ? `\n${riding}` : ''}`;
         roll.addEventListener('click', () => {
           nextShot(session);
           session.bullets = new Map([[token.id, 1]]);
@@ -6913,7 +7066,7 @@ function takeTheShot(
   const modsForLine = perTarget ?? level;
   const situational = sheetMods.total + (perTarget?.total ?? 0);
 
-  const result = rollSkill(sheet, session.skill, situational, undefined, shots);
+  const result = rollSkill(rollsAs(sheet), session.skill, situational, undefined, shots);
   const values = totalsOf(result.explained);
   if (values.length !== shots) {
     notify(`could not read ${shots === 1 ? 'that roll' : 'those rolls'}`);
@@ -6936,7 +7089,7 @@ function takeTheShot(
 
   const entryId = publishTrait(
     sheet,
-    `${weapon.name} — ${session.skill}`,
+    `${weapon.name} — ${skillLabel(sheet, session.skill)}`,
     result,
     // The shot's own modifiers ride alongside the sheet's, so the log line shows
     // the range and the cover next to the wounds rather than as a bare number.
@@ -6969,6 +7122,7 @@ function takeTheShot(
     strayOn,
     targets,
   };
+  payForTheSwing(sheet, session);
   render();
 }
 
@@ -7012,10 +7166,12 @@ function damageButton(
   /** The declared target, so the damage roll names it as the attack did. */
   targetName: string,
 ): HTMLElement {
-  // A called shot to the vitals, and a Wild Attack, which the book gives to the
-  // damage roll as well as to the attack: `"+2 to the character's Fighting
-  // attacks and resulting damage rolls"` (p165).
-  const bonus = calledShotDamage(session.vitals) + wildAttackDamage(session.wild);
+  // A called shot to the vitals, and the swing: a Wild Attack gives the damage
+  // roll its +2 as well (`"…Fighting attacks and resulting damage rolls"`), and a
+  // Desperate Attack takes back what it gave the attack (p165). So this can now be
+  // negative, and is written with `formatMod` below rather than a bare `+`.
+  const swung = session.melee ? swingDamage(session.swing) : 0;
+  const bonus = calledShotDamage(session.vitals) + swung;
   // A scattergun's dice depend on the range, which the panel now knows — so it
   // picks rather than offering all three and hoping. Slugs are flat at any range.
   const options = weapon.damage ? damageDiceOptions(weapon.damage) : [];
@@ -7042,7 +7198,9 @@ function damageButton(
   // Recomputed on every render, so correcting a modifier afterwards adds or drops
   // the die along with everything else that correction changes.
   const raiseDie = raises >= 1 ? `+${RAISE_DIE}` : '';
-  const expression = `${base}${raiseDie}${bonus ? `+${bonus}` : ''}`;
+  // `formatMod` and not a typographic minus: this string is parsed as well as
+  // shown, and the dice parser rejects `−`.
+  const expression = `${base}${raiseDie}${formatMod(bonus)}`;
   // Without the exploding marks. Every damage die in Savage Worlds aces, so a `!`
   // on each of them is a character of noise on a button that has to fit in a
   // panel — and the full expression is one hover away.
@@ -7051,7 +7209,8 @@ function damageButton(
     `Roll ${expression}` +
     (raises ? ` — +${RAISE_DIE} for the raise, one die however many raises (p148)` : '') +
     (session.vitals ? ` — +${VITALS_DAMAGE} for a called shot to the head or vitals (p154)` : '') +
-    (session.wild ? ` — +${WILD_ATTACK} for the Wild Attack (p165)` : '') +
+    (swung > 0 ? ` — +${swung} for the Wild Attack (p165)` : '') +
+    (swung < 0 ? ` — ${swung} for the Desperate Attack (p165)` : '') +
     (session.slugs ? ' — slugs do 2d10 at any range (p161)' : '') +
     (options.length && !session.slugs
       ? ` — buckshot at ${band ?? 'close'} range (p161)`

@@ -10,6 +10,37 @@ reload.
 
 ---
 
+## 2026-10-09 (later) — Desperate Attack, horses, and Reach
+
+**Reload the extension first.**
+
+- **Desperate Attack.** The Fighting panel's *Wild* control is now *Swing*: No,
+  Wild +2, Desperate +2 or Desperate +4. Desperate takes the same amount back off
+  the damage roll, and the book's *"can't be combined with Wild Attack"* is now
+  one control that cannot be both.
+- **A Wild Attack sets Vulnerable** on the attacker's token when it is rolled,
+  instead of reminding you to. Only on that one token, not the rest of the gang.
+  That includes switching to Wild after the roll, since the correction gives the
+  +2. Switching away from Wild doesn't take Vulnerable off, because they might be
+  Vulnerable for another reason. Taking it off at the end of their next turn is
+  still yours.
+- **Two weapons**, +1 when you have a melee weapon in each hand and your foe has
+  one or none and no shield. It stacks with the unarmed-foe +2. Not against claws
+  or fangs: the app can't tell, so that's on you.
+- **Mounted** is a new condition, in the same place as Unstable Platform, and
+  replaces it for anyone on a horse:
+  - **Fighting rolls the lower of Fighting and Riding**, and the button shows the
+    die it will actually roll. Someone with Fighting d8 and no Riding sees `d4-2`.
+    The log says *Fighting (Riding, mounted)*.
+  - **Shooting and throwing are at −2**, unless the character has Steady Hands.
+    Athletics off the skills list isn't, because there it's a climb.
+- **Reach** now counts when the Fighting panel greys out targets that are too far
+  away. A spear reaches one further, a whip two. The weapon's own line is used, or
+  the book's if the sheet just says "spear". Creatures' natural Reach doesn't
+  count yet. Parry still shows beside a shot at exactly the same distance as before.
+
+---
+
 ## 2026-10-09 — Knives are not shotguns
 
 **Reload the extension first.**
