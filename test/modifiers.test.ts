@@ -29,11 +29,11 @@ describe('the condition list', () => {
   it('carries the values the book prints', () => {
     const value = (key: string): number | undefined =>
       SITUATIONS.find((s) => s.key === key)?.value;
-    // Illumination, p157.
+    // Illumination, p158.
     expect(value('dim')).toBe(-2);
     expect(value('dark')).toBe(-4);
     expect(value('pitch')).toBe(-6);
-    // Unstable Platform p165, Distracted p154, Running p151.
+    // Unstable Platform p165, Distracted p155, Running p146.
     expect(value('unstable')).toBe(-2);
     expect(value('distracted')).toBe(-2);
     expect(value('running')).toBe(-2);
@@ -89,7 +89,7 @@ describe('setting conditions', () => {
 
   /**
    * §27 (fff): the book scopes Illumination to *"attacks, Notice rolls, the use of
-   * powers"* (p157), Off-hand to Fighting and Shooting, Improvised to attacks.
+   * powers"* (p158), Off-hand to Fighting and Shooting, Improvised to attacks.
    */
   it('scopes the dark, the off hand and an improvised weapon to the rolls they reach', () => {
     const dark = toggleCondition(state(), 'dark');
@@ -130,7 +130,7 @@ describe('setting conditions', () => {
   });
 
   it('stacks Running with a Multi-Action, which the book does', () => {
-    // Running is −2 to "all actions that turn" (p151); a Multi-Action costs a
+    // Running is −2 to "all actions that turn" (p146); a Multi-Action costs a
     // further −2 per extra action. Someone who runs and shoots twice is at −4.
     const busy = toggleCondition(toggleCondition(state(), 'running'), 'multi2');
     expect(situationsOf(busy).map((s) => s.key).sort()).toEqual(['multi2', 'running']);

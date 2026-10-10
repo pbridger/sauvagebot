@@ -3,7 +3,7 @@
  *
  * `"A hero can choose to 'run,' increasing their Pace for the round by their
  * Running die (a d6 by default) at the cost of a −2 penalty to all actions that
- * turn. Running dice never Ace."` — p151.
+ * turn. Running dice never Ace."` — p146.
  *
  * Three things in that decide this module:
  *

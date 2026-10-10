@@ -10,6 +10,46 @@ reload.
 
 ---
 
+## 2026-10-10 — Rerolls keep the best, and a Soak rule that wasn't
+
+**Reload the extension first.**
+
+**Correction to the last update.** It said *"A Critical Failure on Soak adds a
+wound (p150)."* **That was wrong.** The rule is real but it belongs to
+**Healing**, the next section on the same page. The tool that turned the PDF into
+text read the page's two columns out of order and put Healing's sentence inside
+Soak. Paul caught it from the printed book. The extraction has been rebuilt to
+read columns properly, and every rule the app quotes has been checked against it
+(§28 of the mechanics inventory has the details). What it found is below.
+
+- **A Critical Failure on Soak just fails.** No wounds are soaked, and none are
+  added. It still can't be rerolled.
+- **Rerolls keep the best total.** The book: *"you get to keep the best total
+  from all your rolls"*. A Benny reroll used to **replace** the earlier result,
+  even when it came out worse. Now the better one stands:
+  - The reroll still gets its own line in the log so you see the dice, but if
+    it's worse it says *"keeps the earlier 9"* and the target table works from
+    the 9.
+  - A **Critical Failure on a reroll** is the exception. It becomes the result
+    and ends the rerolling, as the book says.
+  - Same for a shot from the attack panel. A worse reroll leaves the panel's
+    hits and damage as they were.
+  - Same for **Soak**. A worse reroll leaves the better Soak standing, and a
+    Critical Failure on the reroll undoes it.
+  - On a shot with several dice the roll is kept or dropped as a whole, compared
+    from the best die down.
+- **A multi-die Critical Failure needs the Wild Die to be a 1 as well.** Three
+  ones on a Gatling with the Wild Die showing 4 is no longer a Critical Failure.
+- **Aim no longer reduces the Extreme Range penalty.** The book says the Aim you
+  spend to reach Extreme Range *"doesn't reduce any penalties — it simply allows
+  the character to fire at such a great distance"*. So at Extreme there's no
+  cancelling, no +2 and no Marksman: it's −8, or −6 with a scope.
+- **Page numbers fixed in the tooltips.** Desperate Attack is p155, Gang Up
+  p157, Dim/Dark/Pitch p158, Off-hand p160, Running p146, Horsemanship p159 and
+  Distracted p155.
+
+---
+
 ## 2026-10-09 (night) — Modifiers that reach the right rolls, Critical Failures, and the Joker
 
 **Reload the extension first.** This one changes a lot of numbers, almost all of

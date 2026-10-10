@@ -6,7 +6,7 @@
  * > subtracts 2 from the total."* — p165
  *
  * > *"Athletics (throwing) and Shooting rolls are made at −2 unless the rider has
- * > the Steady Hands Edge."* — p165, Mounted Combat
+ * > the Steady Hands Edge."* — p159, Mounted Combat
  *
  * One penalty, reached by either platform condition — Unstable Platform, or
  * Mounted, which is Unstable Platform plus Horsemanship's Fighting die. Paul,

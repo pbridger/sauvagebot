@@ -27,7 +27,7 @@ describe('ganging up', () => {
     expect(gangUpMod(0)).toBeUndefined();
   });
 
-  /** *"If three gremlins attack a single hero, each of them adds +2"* — p156. */
+  /** *"If three gremlins attack a single hero, each of them adds +2"* — p157. */
   it('counts the additional attackers, not the crowd', () => {
     expect(gangUpMod(2)?.value).toBe(2);
   });
@@ -61,7 +61,7 @@ describe('a wild attack', () => {
 
 /**
  * `"The attacker adds +2 or +4 to any Fighting roll and subtracts a like amount
- * from damage if they hit… and can't be combined with Wild Attack."` — p165.
+ * from damage if they hit… and can't be combined with Wild Attack."` — p155.
  */
 describe('a desperate attack', () => {
   it('buys accuracy with damage, point for point', () => {

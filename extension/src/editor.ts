@@ -524,7 +524,7 @@ export function renderEditor(sheet: Sheet, hooks: EditorHooks): DocumentFragment
     change(setRunning(sheet, parseDie(die), parseMod(mod))),
   );
   run.title =
-    'The die added to Pace when running (p151). Leave blank to work it out from ' +
+    'The die added to Pace when running (p146). Leave blank to work it out from ' +
     'this character’s Edges, Hindrances and special abilities — Fleet-Footed, ' +
     'Slow, Obese, Elderly and a stat block that names its own die are all read ' +
     'automatically. Set it only to overrule that.';

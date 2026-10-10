@@ -212,12 +212,16 @@ export function soak(
   vigorTotal: number,
   woundsTaken: number,
   /**
-   * *"A Critical Failure increases the victim's Wound level by one. Ouch!"* —
-   * p150. Nothing is soaked, a wound is added, and Shaken stays as it was.
+   * A Critical Failure, which on a Soak is the general rule and nothing more:
+   * *"The attempt automatically fails"* (p140) — no wounds are soaked, whatever
+   * the total. It does **not** add a wound. That is Healing's rule, the next
+   * paragraph on p150, which an extract that interleaved the page's two columns
+   * put inside Soak Rolls; the app shipped it on 2026-10-09 and Paul caught it
+   * from the printed page on 10-10. MECHANICS-INVENTORY §28.
    */
   critical = false,
 ): TokenState {
-  if (critical) return closeSoakWindow({ ...state, wounds: state.wounds + 1 });
+  if (critical) return closeSoakWindow(state);
   // A failed Soak still spends the Benny and still closes the window: the roll
   // was the attempt, and leaving the button up would offer a second go at the
   // same wound for a second chip.
@@ -243,26 +247,27 @@ export function soakedWounds(vigorTotal: number): number {
  *
  * *"Characters can't Soak more than once per attack, but may spend Bennies as
  * usual to reroll the Vigor check if they aren't satisfied with the results."* —
- * p150. So the reroll **replaces** the first Soak; it does not soak again on top.
+ * p150. "As usual" is the reroll rule: *"you get to keep the best total from all
+ * your rolls"* (p143), unless the reroll is a Critical Failure, which *"ends all
+ * rerolls immediately and becomes the result"* (p141). So this is one Soak whose
+ * result is the **kept** total — never a second Soak on top of the first. The
+ * caller works out which total is kept (`keptRoll`) and passes it here.
  *
  * Worked out from `hit` — the token after the damage and before any Soak — and
- * applied to `current` as the difference from what the first Soak did. Anything
- * that happened to the token in between (another hit, a Marshal's click) is kept
- * rather than overwritten. Shaken follows the reroll unless something else has
- * changed it since.
- *
- * Not reachable after a Critical Failure, which *"cannot be rerolled, even with
- * Bennies"* (p140) — the caller refuses before it gets here.
+ * applied to `current` as the difference from what the previous result did.
+ * Anything that happened to the token in between (another hit, a Marshal's click)
+ * is kept rather than overwritten. Shaken follows the result unless something
+ * else has changed it since.
  */
 export function resoak(
   hit: TokenState,
   first: TokenState,
   current: TokenState,
-  vigorTotal: number,
+  keptTotal: number,
   woundsTaken: number,
   critical = false,
 ): TokenState {
-  const next = soak(hit, vigorTotal, woundsTaken, critical);
+  const next = soak(hit, keptTotal, woundsTaken, critical);
   const wounds = Math.max(0, current.wounds + (next.wounds - first.wounds));
   const shaken = current.shaken === first.shaken ? next.shaken : current.shaken;
   return closeSoakWindow({ ...current, wounds, shaken });

@@ -26,8 +26,8 @@
  * it from their Notice roll and their Soak as well. Those want a modifier box
  * next to the attack, which is a different feature.
  *
- * Values are from the Weird West core rules: Illumination p157, Unstable
- * Platform p165, Distracted p154, Running p151. Multi-Action is the one figure
+ * Values are from the Weird West core rules: Illumination p158, Unstable
+ * Platform p165, Distracted p155, Running p146. Multi-Action is the one figure
  * taken from SWADE rather than the player extract, whose p159 was trimmed.
  */
 
@@ -81,11 +81,11 @@ export interface Situation {
    * (§27 (fff)) — each reaches the rolls in `REACHES` and no others:
    *
    *   - `'attack'` — Off-hand: *"actions that require precise eye-hand
-   *     coordination, such as Fighting or Shooting"* (p158). Improvised weapon:
+   *     coordination, such as Fighting or Shooting"* (p160). Improvised weapon:
    *     *"count as armed but subtract 2 from attack rolls"* (p158).
    *   - `'sight'` — Illumination: *"Subtract the following penalties from rolls
    *     affected by Illumination, such as attacks, Notice rolls, the use of
-   *     powers, etc."* (p157). Read as its examples and no further: a climb, a
+   *     powers, etc."* (p158). Read as its examples and no further: a climb, a
    *     Persuasion or a Spirit roll against Fear in the dark is not penalised. The
    *     "etc." is the Marshal's, through the hand dial.
    */
@@ -102,9 +102,9 @@ export interface Situation {
 }
 
 export const SITUATIONS: readonly Situation[] = [
-  { key: 'dim', label: 'Dim', value: -2, group: 'light', affects: 'self', rolls: 'sight', note: 'Twilight, light fog, night with a full moon. Attacks, Notice and powers only (p157)' },
-  { key: 'dark', label: 'Dark', value: -4, group: 'light', affects: 'self', rolls: 'sight', note: 'Typical night with some ambient light; targets invisible beyond 10″. Attacks, Notice and powers only (p157)' },
-  { key: 'pitch', label: 'Pitch Dark', value: -6, group: 'light', affects: 'self', rolls: 'sight', note: 'Complete darkness, or the target is hidden or invisible. Attacks, Notice and powers only (p157)' },
+  { key: 'dim', label: 'Dim', value: -2, group: 'light', affects: 'self', rolls: 'sight', note: 'Twilight, light fog, night with a full moon. Attacks, Notice and powers only (p158)' },
+  { key: 'dark', label: 'Dark', value: -4, group: 'light', affects: 'self', rolls: 'sight', note: 'Typical night with some ambient light; targets invisible beyond 10″. Attacks, Notice and powers only (p158)' },
+  { key: 'pitch', label: 'Pitch Dark', value: -6, group: 'light', affects: 'self', rolls: 'sight', note: 'Complete darkness, or the target is hidden or invisible. Attacks, Notice and powers only (p158)' },
   { key: 'unstable', label: 'Unstable Platform', value: -2, group: 'platform', affects: 'self', rolls: 'ranged', note: 'Shooting and throwing from a moving vehicle or other unsteady footing: \u22122, unless Steady Hands (p165). Nothing on any other roll. On a horse, use Mounted' },
   // Unstable Platform, plus Horsemanship. Same group, because a horse *is* an
   // unstable platform and holding both would charge the −2 twice; same `value`
@@ -112,16 +112,16 @@ export const SITUATIONS: readonly Situation[] = [
   // restated. What only a horse adds is the Fighting die — the lower of Fighting
   // and Riding — which lives in `mounted.ts`. Paul, 2026-10-09: a condition on
   // the token, applied automatically.
-  { key: 'mounted', label: 'Mounted', value: -2, group: 'platform', affects: 'self', rolls: 'ranged', badge: 'MOUNT', note: 'Unstable Platform \u2014 shooting and throwing at \u22122 unless Steady Hands \u2014 and Fighting rolls the lower of Fighting and Riding (p165). A still horse counts' },
+  { key: 'mounted', label: 'Mounted', value: -2, group: 'platform', affects: 'self', rolls: 'ranged', badge: 'MOUNT', note: 'Unstable Platform \u2014 shooting and throwing at \u22122 unless Steady Hands \u2014 and Fighting rolls the lower of Fighting and Riding (p159). A still horse counts' },
   // Running is its own group, not part of 'action': the book penalises "all
-  // actions that turn" for running (p151), and a Multi-Action costs a further −2
+  // actions that turn" for running (p146), and a Multi-Action costs a further −2
   // per extra action. Someone who runs and shoots twice is at −4, so grouping the
   // two together would have silently thrown one of them away.
-  { key: 'running', label: 'Running', value: -2, group: 'running', affects: 'self', note: 'All actions this turn, when the Running die was added to Pace (p151)' },
+  { key: 'running', label: 'Running', value: -2, group: 'running', affects: 'self', note: 'All actions this turn, when the Running die was added to Pace (p146)' },
   { key: 'multi2', label: 'Multi-Action ×2', value: -2, group: 'action', affects: 'self', note: 'Two actions this turn — each is at −2 (p159)' },
   { key: 'multi3', label: 'Multi-Action ×3', value: -4, group: 'action', affects: 'self', note: 'Three actions this turn — each is at −4 (p159)' },
-  { key: 'distracted', label: 'Distracted', value: -2, group: 'distracted', affects: 'self', badge: 'DISTR', note: 'Subtract 2 from all Trait rolls until the end of their next turn (p154)' },
-  { key: 'offhand', label: 'Off-hand', value: -2, group: 'hand', affects: 'self', rolls: 'attack', note: 'Attacking with the off-hand. Fighting, Shooting and throws only (p158)' },
+  { key: 'distracted', label: 'Distracted', value: -2, group: 'distracted', affects: 'self', badge: 'DISTR', note: 'Subtract 2 from all Trait rolls until the end of their next turn (p155)' },
+  { key: 'offhand', label: 'Off-hand', value: -2, group: 'hand', affects: 'self', rolls: 'attack', note: 'Attacking with the off-hand. Fighting, Shooting and throws only (p160)' },
   { key: 'improvised', label: 'Improvised weapon', value: -2, group: 'weapon', affects: 'self', rolls: 'attack', note: 'A chair, a bottle, a pistol used as a club. Attack rolls only (p158)' },
 
   // ---------------------------------------------------------------------------
@@ -324,8 +324,8 @@ function bodyMods(state: ModifierState | undefined, scope: RollScope | undefined
  * this track is scoped by the book to something it is not:
  *
  *   - Illumination: *"rolls affected by Illumination, such as attacks, Notice
- *     rolls, the use of powers"* (p157). Nobody soaks a bullet worse in the dark.
- *   - Running: *"a −2 penalty to all actions that turn"* (p151), and Multi-Action
+ *     rolls, the use of powers"* (p158). Nobody soaks a bullet worse in the dark.
+ *   - Running: *"a −2 penalty to all actions that turn"* (p146), and Multi-Action
  *     is a penalty per action. A Soak is not an action.
  *   - Off-hand: *"actions that require precise eye-hand coordination, such as
  *     Fighting or Shooting"*. Improvised weapon: *"subtract 2 from attack rolls"*.

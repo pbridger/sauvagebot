@@ -1,5 +1,5 @@
 /**
- * Horsemanship, p165: *"must use the lowest of their Fighting or Riding skills…
+ * Horsemanship, p159: *"must use the lowest of their Fighting or Riding skills…
  * Athletics (throwing) and Shooting rolls are made at −2 unless the rider has the
  * Steady Hands Edge."*
  */
@@ -64,7 +64,7 @@ describe('the sheet a roll is made from', () => {
   it('says why in words', () => {
     const sheet = rider({ Fighting: { die: 8 } });
     expect(horsemanshipNote(sheet, onHorse)).toBe(
-      'Mounted: the lower of Fighting d8 and Riding d4-2 — rolling Riding (p165)',
+      'Mounted: the lower of Fighting d8 and Riding d4-2 — rolling Riding (p159)',
     );
     expect(horsemanshipNote(sheet, {})).toBeUndefined();
   });

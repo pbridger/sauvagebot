@@ -201,6 +201,7 @@ import {
   ELAN_BONUS,
   criticalFailure,
   hasElan,
+  keptRoll,
   markCritical,
   raisedBy,
   rollAttribute as rollAttr,
@@ -354,7 +355,13 @@ interface LastTrait {
    * token rather than only republishing dice. `hit` is the token after the damage
    * and before the Soak; `after` is what the latest Soak left. See `resoak`.
    */
-  soak?: { tokenId: string; hit: TokenState; after: TokenState; wounds: number };
+  soak?: { tokenId: string; hit: TokenState; after: TokenState; wounds: number; kept: number };
+  /**
+   * The roll that stands: the best so far, as the reroll rule keeps it (p143),
+   * with the log entry it came from. Starts as the roll itself; each Benny reroll
+   * either replaces it or leaves it, by `keptRoll`.
+   */
+  kept?: { values: number[]; entryId: string };
 }
 const lastTraitRoll = new Map<string, LastTrait>();
 let store = roomStore();
@@ -698,7 +705,17 @@ function named(sheet: Sheet): { character?: string; secret?: true } {
 function publishTrait(
   sheet: Sheet,
   label: string,
-  result: { expression: string; explained: string; dice?: DieEvent[] },
+  result: {
+    expression: string;
+    explained: string;
+    dice?: DieEvent[];
+    /**
+     * The total that stands, when it is not this roll's own — a Benny reroll that
+     * came out worse keeps the earlier total (p143), and the targeting table has
+     * to resolve against the kept one.
+     */
+    total?: number;
+  },
   mods: RollBreakdown,
   // Only for an attack. Lets any client work the roll out against a named target
   // instead of against the flat 4 the dice engine assumes — see `targeting.ts`.
@@ -731,12 +748,13 @@ function publishTrait(
   const strayOn = attackCanStray(aimed) ? (aimed?.strayOn ?? STRAY_ON_MISS) : undefined;
   const stray = strayOn === undefined ? 0 : strayShots(result.dice ?? [], strayOn);
 
-  return publish(
+  const entryId = publish(
     {
       // `named`, not `who` alone: it carries the "hidden on the map" screen too.
       ...named(sheet),
       label,
       expression: result.expression,
+      ...(result.total !== undefined ? { total: result.total } : {}),
       // A Fighting roll's verdict belongs to the targeting table, which knows
       // what it was aimed at — the engine's "(success; 1 raise)" is against a
       // flat 4 and would contradict it. Everything else keeps its verdict,
@@ -765,6 +783,11 @@ function publishTrait(
     result.dice ?? [],
     diceColourOf(sheet),
   );
+  if (!isReroll) {
+    const last = lastTraitRoll.get(sheet.id);
+    if (last) last.kept = { values: totalsOf(result.explained), entryId };
+  }
+  return entryId;
 }
 
 /**
@@ -968,7 +991,7 @@ const RAISE_DIE = 'd6!';
  *
  * `"A hero can choose to 'run,' increasing their Pace for the round by their
  * Running die (a d6 by default) at the cost of a −2 penalty to all actions that
- * turn. Running dice never Ace."` — p151.
+ * turn. Running dice never Ace."` — p146.
  *
  * Three deliberate omissions, all the same omission really — the app rolls the
  * die and adds the Pace, and stops.
@@ -1002,7 +1025,7 @@ function runButton(sheet: Sheet, pace: number): HTMLElement {
   // it does not say what pressing it means.
   button.textContent = `Run ${expression}`;
   button.title =
-    `Run: roll ${expression} and add it to Pace ${pace} for the round (p151). ` +
+    `Run: roll ${expression} and add it to Pace ${pace} for the round (p146). ` +
     `The die never Aces, so no eleven-inch sprints.\n\n` +
     // The answer to "does it penalise actions?" — yes, and the app does not set
     // it for you. Said here because this button is where the question is asked.
@@ -4241,7 +4264,9 @@ function jokerDamage(sheet: Sheet): number {
 
 /** What a Soak did, in words, for the end of its log line. */
 function soakResult(total: number, wounds: number, critical: boolean): string {
-  if (critical) return 'a wound added (p150)';
+  // The general rule, and only that: the attempt fails (p140). The "+1 wound"
+  // this used to say is Healing's — see `soak`.
+  if (critical) return 'no wounds soaked';
   const removed = Math.min(soakedWounds(total), wounds);
   return removed === 0 ? 'no wounds soaked' : `soaked ${removed} of ${wounds}`;
 }
@@ -4290,7 +4315,7 @@ async function attemptSoak(
     // So a Benny reroll of this Vigor check replaces its result on the token,
     // which the book allows (p150) — unless it came up snake eyes (p140).
     const last = lastTraitRoll.get(sheet.id);
-    if (last) last.soak = { tokenId, hit: state, after, wounds };
+    if (last) last.soak = { tokenId, hit: state, after, wounds, kept: total };
     await refreshTokens();
   } catch (error) {
     notify(error instanceof NoBenniesError ? `${sheet.name} has no Bennies left` : describe(error));
@@ -4398,10 +4423,17 @@ async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
  *
  * The whole roll, not just the die: the same expression, so the wound penalty and
  * whatever the Marshal had called are still in it, and the same target framing,
- * so an attack reroll still expands to the targeting table. In SWADE a reroll
- * replaces the first result outright — there is no keeping the better of the two
- * — so the new line stands on its own and the old one stays in the log as
- * history rather than being edited away.
+ * so an attack reroll still expands to the targeting table.
+ *
+ * **The best total stands.** *"You may keep any of the totals generated, so
+ * rerolls never make things worse unless you roll a Critical Failure"* (p141);
+ * *"you get to keep the best total from all your rolls"* (p143). This said the
+ * opposite until 2026-10-10 — *"In SWADE a reroll replaces the first result
+ * outright"* — written from memory and never checked against the book. Paul's
+ * call: keep the best, by default. A worse reroll still gets its own log line, so
+ * the dice are seen, but it says what it keeps and resolves against the kept
+ * total. A Critical Failure on the reroll becomes the result (p141). See
+ * `keptRoll`.
  *
  * @returns a fragment for the Benny line, since the roll itself publishes separately.
  */
@@ -4440,17 +4472,34 @@ function rerollLastTrait(sheet: Sheet): void {
     return;
   }
 
+  // Keep the best (p143) — or the reroll, if it is a Critical Failure, which
+  // ends the rerolling and becomes the result (p141). See `keptRoll`.
+  const values = totalsOf(explained);
+  const standing = last.kept;
+  const which = standing ? keptRoll(standing.values, values, criticalFailure(dice)) : 'next';
+  const single = standing && standing.values.length === 1 ? standing.values[0] : undefined;
   const entryId = publishTrait(
     sheet,
     `${last.label} — reroll`,
-    { expression, explained, dice },
+    {
+      expression,
+      explained:
+        which === 'previous' && standing
+          ? `${withoutFlatVerdict(explained)} — keeps the earlier ${standing.values.join(', ')}`
+          : explained,
+      dice,
+      ...(which === 'previous' && single !== undefined ? { total: single } : {}),
+    },
     mods,
     last.aimed,
     // Keeps this from replacing what it just redid, so a second Benny rerolls
     // the same trait rather than the reroll.
     true,
   );
-  putBackInThePanel(sheet, last, entryId, explained, dice);
+  if (which === 'next') {
+    last.kept = { values, entryId };
+    putBackInThePanel(sheet, last, entryId, explained, dice);
+  }
 }
 
 /**
@@ -4461,9 +4510,10 @@ function rerollLastTrait(sheet: Sheet): void {
  * old raise die — so the attack people reroll most often was the one place the
  * reroll did not reach.
  *
- * Only when that panel is still open on that weapon and still holds the roll, and
- * only when the reroll produced as many totals as the original; anything else
- * leaves the log line to speak for itself.
+ * Only when the reroll is the roll that stands (`keptRoll` — a worse one leaves
+ * the panel exactly as it was), when that panel is still open on that weapon and
+ * still holds the roll, and when the reroll produced as many totals as the
+ * original; anything else leaves the log line to speak for itself.
  *
  * Replaced: the dice, the stray count, the Critical Failure, and the log entry
  * corrections now amend. Kept: the modifiers the shot was taken with
@@ -4517,8 +4567,10 @@ function putBackInThePanel(
  *
  * *"Characters can't Soak more than once per attack, but may spend Bennies as
  * usual to reroll the Vigor check if they aren't satisfied with the results."* —
- * p150. It used to republish the dice and change no wounds at all. `resoak`
- * replaces the earlier Soak's effect rather than adding to it.
+ * p150. It used to republish the dice and change no wounds at all. "As usual"
+ * keeps the better total (p143), so a worse reroll leaves the Soak as it was; a
+ * Critical Failure on the reroll becomes the result and soaks nothing (p141).
+ * `resoak` replaces the standing result's effect rather than adding to it.
  */
 async function rerollSoak(
   sheet: Sheet,
@@ -4530,13 +4582,22 @@ async function rerollSoak(
 ): Promise<void> {
   const total = totalOf(explained) ?? 0;
   const critical = criticalFailure(dice);
+  // Keep the better Soak (p143), unless this one is a Critical Failure, which
+  // becomes the result: no wounds soaked (p141, p140).
+  const which = keptRoll([link.kept], [total], critical);
+  const kept = which === 'next' ? total : link.kept;
+  const failed = which === 'next' && critical;
   publishTrait(
     sheet,
     'Soak — reroll',
     {
       expression,
-      explained: `${explained} — ${soakResult(total, link.wounds, critical)}`,
+      explained:
+        which === 'previous'
+          ? `${explained} — keeps the earlier ${link.kept}: ${soakResult(kept, link.wounds, false)}`
+          : `${explained} — ${soakResult(kept, link.wounds, failed)}`,
       dice,
+      ...(which === 'previous' ? { total: link.kept } : {}),
     },
     mods,
     undefined,
@@ -4544,10 +4605,11 @@ async function rerollSoak(
   );
   let next: TokenState | undefined;
   await updateTokenState(link.tokenId, (current) => {
-    next = resoak(link.hit, link.after, current, total, link.wounds, critical);
+    next = resoak(link.hit, link.after, current, kept, link.wounds, failed);
     return next;
   });
   if (next) link.after = next;
+  link.kept = kept;
   await refreshTokens();
 }
 
@@ -5493,7 +5555,7 @@ interface ShotSession {
    * for what is absent and why.
    */
   melee: boolean;
-  /** Points of Gang Up, already netted against the defender's allies (p156). */
+  /** Points of Gang Up, already netted against the defender's allies (p157). */
   gangUp: number;
   /**
    * Ordinary, Wild (+2 attack and damage, Vulnerable afterwards), or Desperate
@@ -6280,7 +6342,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
             n === 0
               ? 'No help, or as many allies around the defender as foes around them'
               : `${n} additional adjacent ${n === 1 ? 'foe' : 'foes'}, less one for each ally ` +
-                `adjacent to the defender (p156)`,
+                `adjacent to the defender (p157)`,
         })),
         session.gangUp,
         (value) => {
@@ -6291,7 +6353,7 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
     );
 
     // Ordinary, Wild or Desperate — one control, because the book says a
-    // Desperate Attack *"can't be combined with Wild Attack"* (p165) and a single
+    // Desperate Attack *"can't be combined with Wild Attack"* (p155) and a single
     // choice cannot contradict itself.
     place(
       shotChoice<Swing>(
@@ -6309,12 +6371,12 @@ function shotPanel(sheet: Sheet, weapon: Weapon, sheetMods: RollBreakdown): HTML
           {
             value: 'desperate2',
             text: 'Desp +2',
-            title: 'A Desperate Attack: +2 to this attack and \u22122 to its damage (p165)',
+            title: 'A Desperate Attack: +2 to this attack and \u22122 to its damage (p155)',
           },
           {
             value: 'desperate4',
             text: 'Desp +4',
-            title: 'A Desperate Attack: +4 to this attack and \u22124 to its damage (p165)',
+            title: 'A Desperate Attack: +4 to this attack and \u22124 to its damage (p155)',
           },
         ],
         session.swing,
@@ -7405,7 +7467,7 @@ function damageButton(
 ): HTMLElement {
   // A called shot to the vitals, and the swing: a Wild Attack gives the damage
   // roll its +2 as well (`"…Fighting attacks and resulting damage rolls"`), and a
-  // Desperate Attack takes back what it gave the attack (p165). So this can now be
+  // Desperate Attack takes back what it gave the attack (p155). So this can now be
   // negative, and is written with `formatMod` below rather than a bare `+`.
   const swung = session.melee ? swingDamage(session.swing) : 0;
   const joker = jokerDamage(sheet);
@@ -7448,7 +7510,7 @@ function damageButton(
     (raises ? ` — +${RAISE_DIE} for the raise, one die however many raises (p148)` : '') +
     (session.vitals ? ` — +${VITALS_DAMAGE} for a called shot to the head or vitals (p154)` : '') +
     (swung > 0 ? ` — +${swung} for the Wild Attack (p165)` : '') +
-    (swung < 0 ? ` — ${swung} for the Desperate Attack (p165)` : '') +
+    (swung < 0 ? ` — ${swung} for the Desperate Attack (p155)` : '') +
     (joker ? ` — +${joker} for acting on a Joker (p145)` : '') +
     (session.slugs ? ' — slugs do 2d10 at any range (p161)' : '') +
     (options.length && !session.slugs

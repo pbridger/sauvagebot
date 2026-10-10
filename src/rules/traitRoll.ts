@@ -121,16 +121,22 @@ export function rollAttribute(
 /**
  * Whether these dice are a Critical Failure.
  *
- * > *"If a Wild Card rolls a 1 on both their Trait and Wild Die, they suffer a
- * > Critical Failure… If you're rolling multiple Trait dice… a Critical Failure
- * > occurs when more than half the die results are 1."* — p6
+ * > *"A Critical Failure occurs when a Wild Card rolls a 1 on both the Trait die
+ * > and Wild Die of a Trait roll."* — p140
+ * >
+ * > *"A Critical Failure with multiple dice occurs when more than half the die
+ * > results are a natural 1. If the character is a Wild Card, the Wild Die must be
+ * > a 1 as well."* — p141
  *
  * > *"Gabe fires a Gatling gun with a Rate of Fire of 3. He rolls three Shooting
  * > dice and one Wild Die. If three or more of the dice come up 1s, including the
- * > Wild Die, it's a Critical Failure."* — p140
+ * > Wild Die, it's a Critical Failure."* — p141
  *
- * So the Wild Die is counted, and one rule covers both cases: a single trait die
- * needs two ones out of two, RoF 3 needs three out of four.
+ * So the Wild Die is counted among the ones **and must be one of them**: a single
+ * trait die needs two ones out of two, RoF 3 needs three out of four with the Wild
+ * Die among them. The rule was first taken (2026-10-09) from the book's short
+ * summary on its introductory pages (*"MUTIPLE DICE: … more than half the die
+ * results are 1"*), which leaves the second sentence out.
  *
  * Only the first die of each chain is read (`step === 0`). An ace's follow-up die
  * showing 1 is the end of an exploding die, not a die that came up 1.
@@ -142,9 +148,46 @@ export function rollAttribute(
  */
 export function criticalFailure(dice: readonly Pick<DieEvent, 'value' | 'step' | 'role'>[]): boolean {
   const faces = dice.filter((die) => die.step === 0 && (die.role === 'trait' || die.role === 'wild'));
-  if (!faces.some((die) => die.role === 'wild')) return false;
+  const wild = faces.find((die) => die.role === 'wild');
+  // *"If the character is a Wild Card, the Wild Die must be a 1 as well"* (p141).
+  // Counting it among the ones was not enough: `[1, 1, 1; w4]` is three ones out
+  // of four, and is not a Critical Failure.
+  if (!wild || wild.value !== 1) return false;
   const ones = faces.filter((die) => die.value === 1).length;
   return ones * 2 > faces.length;
+}
+
+/**
+ * Which of two rolls stands after a reroll.
+ *
+ * > *"You may keep any of the totals generated, so rerolls never make things
+ * > worse unless you roll a Critical Failure. This ends all rerolls immediately
+ * > and becomes the result of the attempt."* — p141
+ * >
+ * > *"you get to keep the best total from all your rolls."* — p143
+ *
+ * Paul, 2026-10-10: keep the best, by default. Until then the app replaced the
+ * result, on a comment that said SWADE does — written from memory, and wrong.
+ *
+ * A roll of several dice (a weapon's Rate of Fire) is kept or dropped **whole**,
+ * which is the plain reading of *"roll all the dice again and get a new total"*.
+ * "Best" for a set is compared die by die from the highest down: the set whose
+ * best die is higher, and then the next, and so on. Ties keep what was there.
+ */
+export function keptRoll(
+  previous: readonly number[],
+  next: readonly number[],
+  nextCritical: boolean,
+): 'previous' | 'next' {
+  if (nextCritical) return 'next';
+  const a = [...previous].sort((x, y) => y - x);
+  const b = [...next].sort((x, y) => y - x);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] ?? -Infinity;
+    const y = b[i] ?? -Infinity;
+    if (y !== x) return y > x ? 'next' : 'previous';
+  }
+  return 'previous';
 }
 
 /**

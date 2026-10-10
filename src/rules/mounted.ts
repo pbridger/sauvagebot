@@ -4,7 +4,7 @@
  * > *"**Horsemanship:** Characters who wish to fight from horseback must use the
  * > lowest of their Fighting or Riding skills… Athletics (throwing) and Shooting
  * > rolls are made at −2 unless the rider has the Steady Hands Edge (page 47)."*
- * > — p165
+ * > — p159
  *
  * Damian asked for a toggle on 2026-10-09 (*"automatically picks the minimum out
  * of Fighting and Riding"*), and Paul made it a **condition on the token** and
@@ -92,6 +92,6 @@ export function horsemanshipNote(sheet: Sheet, state: ModifierState | undefined)
   const riding = traitDie(sheet, 'Riding');
   return (
     `Mounted: the lower of Fighting ${show(fighting)} and Riding ${show(riding)} ` +
-    `— rolling ${swing.from} (p165)`
+    `— rolling ${swing.from} (p159)`
   );
 }

@@ -29,7 +29,7 @@ import type { ModCategory, ShotMod } from './shot.js';
 
 /**
  * `"Each additional adjacent foe (who isn't Stunned) adds +1 to all the
- * attackers' Fighting rolls, up to a maximum of +4."` — p156.
+ * attackers' Fighting rolls, up to a maximum of +4."` — p157.
  *
  * The cap is on the bonus, not on the crowd. *"If three gremlins attack a single
  * hero, for example, each of them adds +2"* — three attackers, two of them
@@ -60,7 +60,7 @@ export function gangUpMod(bonus: number): ShotMod | undefined {
     scope: 'shot',
     note:
       'Each additional adjacent foe adds +1, up to +4 — less one for each ally ' +
-      'adjacent to the defender (p156).',
+      'adjacent to the defender (p157).',
   };
 }
 
@@ -72,7 +72,7 @@ export function gangUpMod(bonus: number): ShotMod | undefined {
  *
  * Desperate Attack: *"The attacker adds +2 or +4 to any Fighting roll and
  * subtracts a like amount from damage if they hit. This can be determined per
- * attack (before rolling), and can't be combined with Wild Attack."* (p165)
+ * attack (before rolling), and can't be combined with Wild Attack."* (p155)
  *
  * A union rather than a Wild checkbox beside a Desperate one, so the exclusivity
  * is a property of the type and not a rule somebody has to remember to enforce.
@@ -123,7 +123,7 @@ export function swingMod(swing: Swing): ShotMod | undefined {
     category: 'other',
     kind: 'choice',
     scope: 'shot',
-    note: `+${value} to the attack and −${value} to damage if it hits. Cannot be combined with a Wild Attack (p165).`,
+    note: `+${value} to the attack and −${value} to damage if it hits. Cannot be combined with a Wild Attack (p155).`,
   };
 }
 

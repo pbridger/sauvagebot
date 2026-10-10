@@ -1,12 +1,19 @@
 /**
  * Critical Failure, and the places it changes what the app commits.
  *
- * p6: *"If a Wild Card rolls a 1 on both their Trait and Wild Die, they suffer a
- * Critical Failure."* p140: *"The attempt automatically fails… Critical Failures
- * cannot be rerolled, even with Bennies."*
+ * p140: *"A Critical Failure occurs when a Wild Card rolls a 1 on both the Trait
+ * die and Wild Die of a Trait roll. The attempt automatically fails… Critical
+ * Failures cannot be rerolled, even with Bennies."*
  */
 import { describe, expect, it } from 'vitest';
-import { CRITICAL_MARK, criticalFailure, markCritical, rollTrait, totalsOf } from '../src/rules/traitRoll.js';
+import {
+  CRITICAL_MARK,
+  criticalFailure,
+  keptRoll,
+  markCritical,
+  rollTrait,
+  totalsOf,
+} from '../src/rules/traitRoll.js';
 import { JavaRandom } from '../src/dice/javaRandom.js';
 import { totalOf } from '../src/obr/rollLog.js';
 import { resolveAimedAttack } from '../src/rules/targeting.js';
@@ -34,6 +41,15 @@ describe('spotting a Critical Failure', () => {
   it('takes more than half across several dice, Wild Die included', () => {
     expect(criticalFailure([die(1, 'trait'), die(1, 'trait'), die(6, 'trait'), die(1, 'wild')])).toBe(true);
     expect(criticalFailure([die(1, 'trait'), die(1, 'trait'), die(6, 'trait'), die(3, 'wild')])).toBe(false);
+  });
+
+  /**
+   * p141: *"If the character is a Wild Card, the Wild Die must be a 1 as well."*
+   * Three ones out of four is more than half, and still not a Critical Failure
+   * when the fourth is the Wild Die. This passed as a crit until 2026-10-10.
+   */
+  it('needs the Wild Die among the ones', () => {
+    expect(criticalFailure([die(1, 'trait'), die(1, 'trait'), die(1, 'trait'), die(4, 'wild')])).toBe(false);
   });
 
   /** The 1 an ace bought is the end of a die that exploded, not a die that came up 1. */
@@ -67,32 +83,72 @@ describe('an attack that Critically Fails', () => {
   });
 });
 
+/**
+ * A Soak that Critically Fails simply fails: *"The attempt automatically fails"*
+ * (p140). The "+1 wound" this used to test is the **Healing** rule, the next
+ * paragraph on p150, which an extract that interleaved the page's columns put
+ * inside Soak Rolls. MECHANICS-INVENTORY §28.
+ */
 describe('a Soak that Critically Fails', () => {
-  /** p150: *"A Critical Failure increases the victim's Wound level by one."* */
-  it('adds a wound and closes the window', () => {
+  it('soaks nothing, adds nothing, and closes the window', () => {
     const hit = { ...newTokenState('s'), wounds: 2, shaken: true, soakable: 2 };
     const after = soak(hit, 9, 2, true);
-    expect(after.wounds).toBe(3);
+    expect(after.wounds).toBe(2);
     expect(after.shaken).toBe(true);
     expect(after.soakable).toBeUndefined();
+  });
+});
+
+/**
+ * The reroll rule, p141 and p143: keep the best total, unless the reroll is a
+ * Critical Failure, which becomes the result.
+ */
+describe('which roll stands after a reroll', () => {
+  it('keeps the better of the two', () => {
+    expect(keptRoll([9], [6], false)).toBe('previous');
+    expect(keptRoll([6], [9], false)).toBe('next');
+  });
+
+  it('keeps what was there on a tie', () => {
+    expect(keptRoll([7], [7], false)).toBe('previous');
+  });
+
+  it('takes a Critical Failure, however good the earlier roll', () => {
+    expect(keptRoll([14], [2], true)).toBe('next');
+  });
+
+  /** Several dice are kept or dropped whole, compared from the best die down. */
+  it('compares a multi-die roll from its best die down', () => {
+    expect(keptRoll([3, 4, 9], [7, 8, 2], false)).toBe('previous');
+    expect(keptRoll([3, 4, 9], [2, 5, 9], false)).toBe('next');
   });
 });
 
 describe('rerolling a Soak with a Benny', () => {
   const hit = { ...newTokenState('s'), wounds: 2, shaken: true, soakable: 2 };
 
-  /** It replaces the first Soak rather than soaking a second time on top. */
-  it('replaces the first result', () => {
+  /** One Soak whose result is the kept total — not a second Soak on top. */
+  it('takes the better reroll in place of the first result', () => {
     const first = soak(hit, 2, 2); // failed: 2 wounds stay
-    const second = resoak(hit, first, first, 8, 2); // raise: both soaked
+    const second = resoak(hit, first, first, 8, 2); // raise kept: both soaked
     expect(second.wounds).toBe(0);
     expect(second.shaken).toBe(false);
   });
 
-  it('puts the Shaken back when the reroll does worse', () => {
+  /** A worse reroll leaves the better Soak standing — the caller keeps its total. */
+  it('changes nothing when the earlier total is the one kept', () => {
     const first = soak(hit, 8, 2); // both soaked, Shaken cleared
-    const second = resoak(hit, first, first, 5, 2); // one soaked
-    expect(second.wounds).toBe(1);
+    const kept = keptRoll([8], [5], false) === 'previous' ? 8 : 5;
+    const second = resoak(hit, first, first, kept, 2);
+    expect(second.wounds).toBe(0);
+    expect(second.shaken).toBe(false);
+  });
+
+  /** A Critical Failure on the reroll becomes the result: nothing soaked (p141). */
+  it('undoes the earlier Soak when the reroll Critically Fails', () => {
+    const first = soak(hit, 8, 2); // both soaked
+    const second = resoak(hit, first, first, 3, 2, true);
+    expect(second.wounds).toBe(2);
     expect(second.shaken).toBe(true);
   });
 

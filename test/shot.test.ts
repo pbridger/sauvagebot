@@ -779,7 +779,7 @@ describe('a hand-dialled penalty that Aim is allowed to cancel', () => {
   });
 });
 
-/** Horsemanship, p165: shots and throws from the saddle are at −2. */
+/** Horsemanship, p159: shots and throws from the saddle are at −2. */
 describe('a shot from horseback', () => {
   it('carries the penalty it is handed, and Aim cannot spend on it', () => {
     const { mods, total } = shotTotal({ rof: 1, aim: 'cancel', platform: { label: 'Mounted', value: -2 } });
@@ -792,5 +792,31 @@ describe('a shot from horseback', () => {
 
   it('adds nothing when it is handed nothing', () => {
     expect(shotTotal({ rof: 1 }).mods.some((mod) => mod.key === 'platform')).toBe(false);
+  });
+});
+
+/**
+ * p146: *"you've gotta Aim first… When used in this way, Aim doesn't reduce any
+ * penalties—it simply allows the character to fire at such a great distance."*
+ */
+describe('aiming at Extreme Range', () => {
+  it('reduces nothing — the Aim was spent reaching it', () => {
+    const extreme = shotTotal({ rof: 1, aim: 'cancel', band: 'extreme', cover: -2 });
+    expect(extreme.total).toBe(-8 - 2);
+    expect(extreme.aim.spent).toEqual([]);
+  });
+
+  it('gives no flat +2 either, and no Marksman', () => {
+    expect(shotTotal({ rof: 1, aim: 'bonus', band: 'extreme' }).total).toBe(-8);
+    expect(shotTotal({ rof: 1, aim: 'cancel', aimSource: 'marksman', band: 'extreme' }).total).toBe(-8);
+  });
+
+  it('still cancels at Long Range, as before', () => {
+    // Long −4 and Light cover −2, with Aim's four points spent on them.
+    expect(shotTotal({ rof: 1, aim: 'cancel', band: 'long', cover: -2 }).total).toBe(-2);
+  });
+
+  it('keeps the scope at Extreme: −6', () => {
+    expect(shotTotal({ rof: 1, aim: 'cancel', band: 'extreme', scoped: true }).total).toBe(-6);
   });
 });

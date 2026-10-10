@@ -136,7 +136,7 @@ export function isAimable(mod: ShotMod): boolean {
  * So the weapon's RoF is a ceiling, not a quantity, and the number that matters
  * to every other rule is the one the shooter *declared*. Gatlings are the stated
  * exception: they *"can't fire single shots and must fire their full Rate of
- * Fire"* (p150), which is left to the Marshal rather than enforced — the note is
+ * Fire"* (p120), which is left to the Marshal rather than enforced — the note is
  * on the weapon and a player who dials it down has said something deliberate.
  */
 export function maxRateOfFire(weapon: Pick<Weapon, 'rof'> | undefined): number {
@@ -335,7 +335,11 @@ export function rangeMod(band: Band, scoped = false): ShotMod | undefined {
     kind: 'fact',
     scope: 'target',
     ...(band === 'extreme'
-      ? { note: 'Extreme Range requires the shooter to have spent their last turn Aiming (p146).' }
+      ? {
+          note:
+            'Extreme Range requires the shooter to have spent their last turn Aiming, and that ' +
+            'Aim reduces no penalties — it only makes the shot possible (p146).',
+        }
       : {}),
   };
 }
@@ -866,7 +870,13 @@ export function shotTotal(request: ShotRequest): ShotTotal {
     });
   }
 
-  const aim = applyAim(base, request.aim, request.aimSource ?? 'aim');
+  // At Extreme Range the Aim was spent getting there: *"When used in this way,
+  // Aim doesn't reduce any penalties—it simply allows the character to fire at
+  // such a great distance"* (p146). Until 2026-10-10 the −8 was an ordinary
+  // aimable range penalty, so an aimed Extreme shot could cancel half of it.
+  // Marksman goes too — it does not stack with Aim, and Aim is what Extreme needs.
+  const aimed = request.band === 'extreme' ? 'off' : request.aim;
+  const aim = applyAim(base, aimed, request.aimSource ?? 'aim');
   const mods = aim.mods;
 
   return { mods, total: mods.reduce((sum, mod) => sum + mod.value, 0), aim };
