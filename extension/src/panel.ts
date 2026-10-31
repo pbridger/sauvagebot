@@ -224,6 +224,7 @@ import {
   initiativeEdges,
   isJoker,
   jokerBonus,
+  jokersWildDue,
   NO_EDGES,
   type Draw,
   type InitiativeState,
@@ -3934,7 +3935,10 @@ function statusStrip(sheet: Sheet): HTMLElement {
     button.textContent = `Soak ${soakable}`;
     button.title = `Spend a Benny and roll Vigor to shrug off ${soakable} wound(s)`;
     button.disabled = (bennies.get(sheet.id) ?? 0) === 0;
-    button.addEventListener('click', () => void attemptSoak(sheet, token.id, state, soakable));
+    button.disabled = spending.has(sheet.id);
+    button.addEventListener('click', () =>
+      void oneSpend(sheet, () => attemptSoak(sheet, token.id, state, soakable)),
+    );
     half.append(button);
   }
 
@@ -4191,7 +4195,8 @@ function bennyGroup(sheet: Sheet): HTMLElement {
     // overlap — the same way chips do when you have too many to lay out.
     if (count > 6) token.classList.add('tight');
     token.title = `Spend a Benny — ${count} left`;
-    token.addEventListener('click', () => void spendBenny(sheet));
+    token.disabled = spending.has(sheet.id);
+    token.addEventListener('click', () => void oneSpend(sheet, () => spendBenny(sheet)));
     stack.append(token);
   }
   wrap.append(stack);
@@ -4200,7 +4205,7 @@ function bennyGroup(sheet: Sheet): HTMLElement {
   // interesting part, and it goes in the log where the table can see it.
   const spend = document.createElement('select');
   spend.className = 'spend';
-  spend.disabled = count === 0;
+  spend.disabled = count === 0 || spending.has(sheet.id);
   const first = document.createElement('option');
   first.textContent = 'Spend…';
   first.value = '';
@@ -4214,7 +4219,7 @@ function bennyGroup(sheet: Sheet): HTMLElement {
   spend.addEventListener('change', () => {
     const use = spend.value;
     spend.value = '';
-    if (use) void spendBenny(sheet, use);
+    if (use) void oneSpend(sheet, () => spendBenny(sheet, use));
   });
   wrap.append(spend);
 
@@ -4342,6 +4347,30 @@ async function attemptSoak(
  * nothing to say it was *for*. That is the click-a-chip path, and it is the common
  * case at a real table where the reason is spoken aloud rather than typed.
  */
+/**
+ * Characters with a spend in flight, whose chips, Spend menu and Soak button are
+ * off until it lands.
+ *
+ * A spend is four round trips and the chip stays on screen for all of them, so
+ * a double-click was two spends. `BennyBank` now queues them, which would make
+ * that two *correct* spends — still one more than anybody meant. A deliberate
+ * second spend can wait the half-second for the first. Awards are not gated: the
+ * Marshal pressing + three times means three.
+ */
+const spending = new Set<string>();
+
+async function oneSpend(sheet: Sheet, run: () => Promise<void>): Promise<void> {
+  if (spending.has(sheet.id)) return;
+  spending.add(sheet.id);
+  renderSheetArea();
+  try {
+    await run();
+  } finally {
+    spending.delete(sheet.id);
+    renderSheetArea();
+  }
+}
+
 async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
   const active = activeToken(sheet);
 
@@ -4699,6 +4728,7 @@ async function redrawCard(
     ...result.state,
     round: state.round,
     jokerDealt: state.jokerDealt || result.state.jokerDealt,
+    ...(state.jokersWildPaid === undefined ? {} : { jokersWildPaid: state.jokersWildPaid }),
   };
   await writeInitiative(initiative);
   // Same rule as the round deal: a Joker pays the players, and only when a player
@@ -4718,6 +4748,12 @@ async function redrawCard(
  * Joker reshuffles the deck and says so in the log, but does not pay.
  */
 async function payJokersWild(): Promise<void> {
+  // Once a round, whichever card it was (p142). Marked before paying, so a
+  // second Joker drawn while the first payout is still writing cannot pay too.
+  const state = initiative;
+  if (!state || !jokersWildDue(state)) return;
+  initiative = { ...state, jokersWildPaid: state.round };
+  await writeInitiative(initiative);
   const lucky = await bank.jokersWild(sheets);
   bennies = await bank.all();
   renderMarshal();
@@ -7949,11 +7985,15 @@ async function marshalBenny(delta: 1 | -1): Promise<void> {
   // client, which makes this a guard rail rather than a lock; it still stops the
   // control doing anything on the one screen it should never have been on.
   if (!isGM) return;
-  const count = bennies.get(MARSHAL_BENNIES) ?? 0;
-  const next = Math.max(0, count + delta);
-  if (next === count) return;
+  if (delta === -1 && (bennies.get(MARSHAL_BENNIES) ?? 0) === 0) return;
   try {
-    await bank.set(MARSHAL_BENNIES, next);
+    // Through the bank's queued read-and-add, not `set(count + delta)` from this
+    // screen's copy: two quick presses both read the same copy and wrote the same
+    // number, so the second press did nothing.
+    const next =
+      delta === 1
+        ? await bank.award(MARSHAL_BENNIES)
+        : await bank.spend(MARSHAL_BENNIES, 'the Marshal');
     bennies.set(MARSHAL_BENNIES, next);
     renderMarshal();
     // Only the spend goes to the log. A Marshal topping their stack up is

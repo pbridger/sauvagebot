@@ -292,3 +292,48 @@ describe("the Marshal's own stack", () => {
     expect(MARSHAL_BENNIES).not.toMatch(/^[0-9a-f-]+$/i);
   });
 });
+
+/**
+ * Owlbear answers every read and write a moment later, which is the window two
+ * overlapping changes used to share. 2026-10-31: two spends from 3 left 2, both
+ * logged "2 left"; a spend racing an award left 2 or 4.
+ */
+class SlowBackend extends FakeBackend {
+  private tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, Math.random() * 4));
+  override async get(): Promise<Record<string, unknown>> {
+    await this.tick();
+    return super.get();
+  }
+  override async set(update: Record<string, unknown>): Promise<void> {
+    await this.tick();
+    return super.set(update);
+  }
+}
+
+describe('changes that overlap', () => {
+  const slowBank = (): BennyBank => new BennyBank(new VerifiedStore(new SlowBackend(), { capacity: ROOM_CAPACITY }));
+
+  it('takes off one Benny for each of two spends at once', async () => {
+    const bank = slowBank();
+    await bank.set('s', 3);
+    const left = await Promise.all([bank.spend('s', 'x'), bank.spend('s', 'x')]);
+    expect(left.sort()).toEqual([1, 2]);
+    expect(await bank.get('s')).toBe(1);
+  });
+
+  it('keeps both a spend and an award made together', async () => {
+    const bank = slowBank();
+    await bank.set('s', 3);
+    await Promise.all([bank.spend('s', 'x'), bank.award('s')]);
+    expect(await bank.get('s')).toBe(3);
+  });
+
+  it('carries on after a change that failed', async () => {
+    const bank = slowBank();
+    await bank.set('s', 0);
+    const [spent, awarded] = await Promise.allSettled([bank.spend('s', 'x'), bank.award('s')]);
+    expect(spent.status).toBe('rejected');
+    expect((spent as PromiseRejectedResult).reason).toBeInstanceOf(NoBenniesError);
+    expect(awarded).toMatchObject({ status: 'fulfilled', value: 1 });
+  });
+});

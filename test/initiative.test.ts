@@ -576,3 +576,19 @@ describe('handing cards back', () => {
     expect(returnToDeck(deck(), [])).toEqual(deck());
   });
 });
+
+/** p142: "If two Jokers come up the party still only gets one though!" */
+import { jokersWildDue } from '../src/rules/initiative.js';
+
+describe("Joker's Wild, once a round", () => {
+  const state = { round: 3, deck: [], jokerDealt: true };
+
+  it('is owed until it has paid this round', () => {
+    expect(jokersWildDue(state)).toBe(true);
+    expect(jokersWildDue({ ...state, jokersWildPaid: 2 })).toBe(true);
+  });
+
+  it('is not owed again in the round it paid', () => {
+    expect(jokersWildDue({ ...state, jokersWildPaid: 3 })).toBe(false);
+  });
+});

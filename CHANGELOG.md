@@ -42,6 +42,20 @@ everything that's the same for every target (cover, Aim, Recoil, called shot,
 the hand dial) is in the roll, and the line reads `3s8` for that shot. Only range,
 which differs per target, is still added per target.
 
+**Fixed: Bennies going missing, or turning up twice.**
+- **A quick double-click on a chip** logged two spends but took off one. Now the
+  chips, the Spend menu and Soak are off for the moment a spend takes to land,
+  and one click is one Benny.
+- **Changes from one screen overlapping** (a spend and an award, or the Marshal
+  pressing + twice quickly) could overwrite each other, so one of them vanished.
+  They now go through one at a time.
+- **Joker's Wild paid more than once a round.** A card drawn later in the round
+  (a Benny spent on a new card, or the Marshal's Replace) paid everyone again if
+  it was a Joker. Now it's once a round, whichever card it was (p142).
+- **Still possible:** two *different* people changing the **same** character's
+  count at the same instant can still lose one change. That needs a change to how
+  Bennies are stored, and it's next.
+
 **For dim light,** set **Dim** on the shooter's own token (sheet → Conditions ▾),
 not the dial. It then reaches attacks, Notice and powers, and nothing else
 (p158).

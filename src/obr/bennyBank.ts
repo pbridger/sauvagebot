@@ -60,6 +60,28 @@ export interface BennyOutcome {
 export class BennyBank {
   constructor(private readonly store: VerifiedStore) {}
 
+  /**
+   * Every change this client makes, one after another.
+   *
+   * A change is read, add one, write — four round trips to Owlbear with the
+   * verify — and two of them overlapping both read the same count. Two quick
+   * clicks on a chip logged two spends and took off one; a spend racing the
+   * Marshal's award lost one or the other (2026-10-31, reproduced in
+   * `bennyBank.test.ts`). Queued, a change starts from what the last one wrote.
+   *
+   * This only orders **this** client's changes. Two people changing the same
+   * count at the same moment can still overwrite each other; room metadata has
+   * no compare-and-set to stop that.
+   */
+  private queue: Promise<unknown> = Promise.resolve();
+
+  private serial<T>(change: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(change, change);
+    // A failed change must not jam the ones queued behind it.
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
   private key(sheetId: string): string {
     return `${BENNY_PREFIX}${sheetId}`;
   }
@@ -81,22 +103,30 @@ export class BennyBank {
     return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0;
   }
 
-  async set(sheetId: string, count: number): Promise<void> {
+  set(sheetId: string, count: number): Promise<void> {
+    return this.serial(() => this.write(sheetId, count));
+  }
+
+  private async write(sheetId: string, count: number): Promise<void> {
     await this.store.write(this.key(sheetId), Math.max(0, Math.trunc(count)));
   }
 
   /** @throws NoBenniesError when there is nothing to spend. */
-  async spend(sheetId: string, use: BennyUse | string): Promise<number> {
-    const next = spend(await this.get(sheetId));
-    await this.set(sheetId, next);
+  spend(sheetId: string, use: BennyUse | string): Promise<number> {
     void use;
-    return next;
+    return this.serial(async () => {
+      const next = spend(await this.get(sheetId));
+      await this.write(sheetId, next);
+      return next;
+    });
   }
 
-  async award(sheetId: string, count = 1): Promise<number> {
-    const next = award(await this.get(sheetId), count);
-    await this.set(sheetId, next);
-    return next;
+  award(sheetId: string, count = 1): Promise<number> {
+    return this.serial(async () => {
+      const next = award(await this.get(sheetId), count);
+      await this.write(sheetId, next);
+      return next;
+    });
   }
 
   /**
@@ -111,7 +141,7 @@ export class BennyBank {
    * looked exactly like "that character just didn't get any". Failures are
    * collected and handed back so somebody can say so.
    */
-  async newSession(sheets: readonly Sheet[]): Promise<BennyOutcome> {
+  newSession(sheets: readonly Sheet[]): Promise<BennyOutcome> {
     return this.applyAll(sheets, (sheet) => (sheet.wildCard && sheet.pc ? startOfSession() : 0), {
       includeExtras: true,
     });
@@ -125,17 +155,19 @@ export class BennyBank {
    * "+1 Benny to all" button does three times, and a button that both wipes and
    * refills is two decisions on one press.
    */
-  async clearAll(sheets: readonly Sheet[]): Promise<BennyOutcome> {
-    const outcome = await this.applyAll(sheets, () => 0, { includeExtras: true });
-    // The Marshal's stack too. The button says "every Benny in the room" and
-    // leaving one count standing would make that a lie — and it is the Marshal's
-    // own button, so there is nobody else to surprise.
-    try {
-      await this.set(MARSHAL_BENNIES, 0);
-    } catch (error) {
-      outcome.failed.push({ name: 'the Marshal', error: error as Error });
-    }
-    return outcome;
+  clearAll(sheets: readonly Sheet[]): Promise<BennyOutcome> {
+    return this.serial(async () => {
+      const outcome = await this.writeAll(sheets, () => 0, { includeExtras: true });
+      // The Marshal's stack too. The button says "every Benny in the room" and
+      // leaving one count standing would make that a lie — and it is the Marshal's
+      // own button, so there is nobody else to surprise.
+      try {
+        await this.write(MARSHAL_BENNIES, 0);
+      } catch (error) {
+        outcome.failed.push({ name: 'the Marshal', error: error as Error });
+      }
+      return outcome;
+    });
   }
 
   /**
@@ -146,7 +178,7 @@ export class BennyBank {
    * Joker handed the Marshal's own villains a Benny apiece — reported from the
    * table as "it's giving one to everyone".
    */
-  async awardAll(sheets: readonly Sheet[], count = 1): Promise<BennyOutcome> {
+  awardAll(sheets: readonly Sheet[], count = 1): Promise<BennyOutcome> {
     return this.applyAll(
       sheets.filter((sheet) => sheet.pc),
       async (sheet) => award(await this.get(sheet.id), count),
@@ -163,7 +195,15 @@ export class BennyBank {
    * see, another client's write landing on top), the honest thing is to look at
    * the store afterwards rather than to trust the report.
    */
-  private async applyAll(
+  private applyAll(
+    sheets: readonly Sheet[],
+    target: (sheet: Sheet) => number | Promise<number>,
+    options: { includeExtras?: boolean } = {},
+  ): Promise<BennyOutcome> {
+    return this.serial(() => this.writeAll(sheets, target, options));
+  }
+
+  private async writeAll(
     sheets: readonly Sheet[],
     target: (sheet: Sheet) => number | Promise<number>,
     options: { includeExtras?: boolean } = {},
@@ -177,7 +217,7 @@ export class BennyBank {
       // An Extra with no entry needs no write to stay at nothing.
       if (!sheet.wildCard && (await this.get(sheet.id)) === count) continue;
       try {
-        await this.set(sheet.id, count);
+        await this.write(sheet.id, count);
         if (sheet.wildCard) expected.set(sheet.id, { name: sheet.name, count });
       } catch (error) {
         outcome.failed.push({ name: sheet.name, error: error as Error });
@@ -209,7 +249,7 @@ export class BennyBank {
     return (await this.awardAll(sheets)).done;
   }
 
-  async clear(sheetId: string): Promise<void> {
-    await this.store.remove(this.key(sheetId));
+  clear(sheetId: string): Promise<void> {
+    return this.serial(() => this.store.remove(this.key(sheetId)));
   }
 }

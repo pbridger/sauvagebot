@@ -251,6 +251,20 @@ export interface InitiativeState {
   deck: Card[];
   /** Set when a joker has been dealt; the deck is reshuffled after the round. */
   jokerDealt: boolean;
+  /**
+   * The round Joker's Wild last paid the party in.
+   *
+   * *"If two Jokers come up the party still only gets one though!"* (p142). The
+   * round deal paid once however many Jokers it dealt, but a card drawn later in
+   * the same round — a Benny spent on a new card, or the Marshal's Replace —
+   * paid again. Optional, so a fight saved before this field existed still loads.
+   */
+  jokersWildPaid?: number;
+}
+
+/** Whether a player's Joker in this round still owes the party a Benny each. */
+export function jokersWildDue(state: InitiativeState): boolean {
+  return state.jokersWildPaid !== state.round;
 }
 
 export function newInitiative(random: JavaRandom): InitiativeState {
