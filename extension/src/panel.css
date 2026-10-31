@@ -1619,3 +1619,36 @@ dl.claims { margin: 0; }
    than the name, because it qualifies it rather than being part of it. */
 .entry-choice { color: var(--muted); font-weight: 400; }
 .edit-choice { grid-column: 1 / -1; }
+
+/* The Tactics tab. One row per manoeuvre, closed: the name, who it helps and
+   when it fits are what you scan for mid-fight, and the rule is a tap away. */
+.tactics-intro, .tactics-credit { color: var(--muted); margin: 8px 0; }
+.tactics-credit { font-size: 11px; margin-top: 16px; }
+.tactic { border-bottom: 1px solid color-mix(in srgb, var(--rule) 50%, transparent); }
+.tactic summary {
+  cursor: pointer;
+  padding: 4px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+.tactic summary:hover b { color: var(--accent); }
+.tactic-when { color: var(--muted); flex-basis: 100%; padding-left: 14px; font-size: 12px; }
+.tactic-helps {
+  font-size: 10px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 0 4px;
+  color: var(--muted);
+}
+.tactic-helps.team { color: var(--env-ink); border-color: currentColor; }
+.tactic-helps.ally { color: var(--accent); border-color: currentColor; }
+.tactic p { margin: 2px 0 6px 14px; }
+.tactic-app { color: var(--muted); font-style: italic; }
+.tactic-page { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.tactic-conditions { margin: 4px 0; }
+.tactic-conditions dt { font-weight: 700; margin-top: 6px; }
+.tactic-conditions dd { margin: 0 0 0 14px; }

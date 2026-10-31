@@ -10,9 +10,30 @@ reload.
 
 ---
 
-## 2026-10-10 — Rerolls keep the best, and a Soak rule that wasn't
+## 2026-10-31 — A Tactics tab, rerolls keep the best, and a Soak rule that wasn't
 
 **Reload the extension first.**
+
+**New: a Tactics tab**, for everyone, beside Initiative. It's for when a fight is
+going badly: find your problem ("they parry everything", "the penalties are too
+steep", "I hit but they shrug it off", "I'm going down"), then tap a manoeuvre to
+see what it does, who it helps, the page, and where it lives in the app. Shake
+it off, Soak, and the conditions (Shaken, Distracted, Vulnerable, Entangled,
+Bound, Stunned, Prone, The Drop) are at the bottom.
+
+It's laid out after the *Unofficial Combat Survival Guide* (u/anri11) that's been
+passed around for SWADE. Every line was rewritten from the Deadlands book,
+though, and in a few places the two disagree. Where they do, the tab follows the
+book:
+- **Cover counts in melee too** (p154). The guide says closing to Fighting gets
+  round it. It doesn't, although it does get round a Prone target's −4.
+- **Entangled makes you Vulnerable**, not Distracted (p153).
+- **Stunned gives no Drop.** Recovering leaves you Vulnerable until the end of
+  your next turn, and a raise clears that too (p162).
+- **Shooting while in melee** is a pistol at most, against Parry (p160).
+- **Push** gets +2 only if you *ran* 2″ first (p160).
+
+The rest of this entry was written on 10-10 and is going out in the same deploy.
 
 **Correction to the last update.** It said *"A Critical Failure on Soak adds a
 wound (p150)."* **That was wrong.** The rule is real but it belongs to

@@ -216,6 +216,7 @@ import {
   renderInitiative,
   type Combatant,
 } from './initiativePanel.js';
+import { renderTactics } from './tacticsPanel.js';
 import {
   compareNames,
   dealRound,
@@ -391,7 +392,7 @@ let me = 'someone';
 /** Set only for the duration of one roll, by the Secret button. */
 let secretRolls = false;
 let editing = false;
-type Tab = 'sheet' | 'initiative' | 'table' | 'storage';
+type Tab = 'sheet' | 'initiative' | 'tactics' | 'table' | 'storage';
 let tab: Tab = 'sheet';
 let isGM = false;
 let initiative: InitiativeState | undefined;
@@ -2225,6 +2226,10 @@ function paintSheetArea(): void {
     sheetEl.replaceChildren(renderStorage());
     return;
   }
+  if (tab === 'tactics') {
+    sheetEl.replaceChildren(renderTactics());
+    return;
+  }
   if (tab === 'initiative') {
     sheetEl.replaceChildren(
       renderInitiative(initiative, combatants(tokens, sheets), {
@@ -2414,7 +2419,7 @@ function setTab(next: Tab): void {
   // A notice is about what just happened here; leaving it up on another tab is
   // stale by definition.
   notify(undefined);
-  for (const name of ['sheet', 'initiative', 'table', 'storage'] as const) {
+  for (const name of ['sheet', 'initiative', 'tactics', 'table', 'storage'] as const) {
     el(`tab-${name}`).setAttribute('aria-selected', String(name === next));
   }
   // The picker and Edit are character-scoped; on the other tabs they are a row
@@ -8563,6 +8568,7 @@ OBR.onReady(async () => {
   el('edit').addEventListener('click', () => setEditing(!editing));
   el('tab-sheet').addEventListener('click', () => setTab('sheet'));
   el('tab-initiative').addEventListener('click', () => setTab('initiative'));
+  el('tab-tactics').addEventListener('click', () => setTab('tactics'));
   el('tab-table').addEventListener('click', () => setTab('table'));
   el('tab-storage').addEventListener('click', () => setTab('storage'));
   OBR.scene.onMetadataChange(() => {
