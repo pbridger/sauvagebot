@@ -52,6 +52,12 @@ which differs per target, is still added per target.
 - **Joker's Wild paid more than once a round.** A card drawn later in the round
   (a Benny spent on a new card, or the Marshal's Replace) paid everyone again if
   it was a Joker. Now it's once a round, whichever card it was (p142).
+- **A Benny count that changes back is now reported.** Two seconds after any
+  spend, Soak, award or take-back, the panel looks at the count again. If it has
+  moved, the log says so: "*Spending a Benny (Reroll a Trait) left 3, but
+  storage now says 4.*" It doesn't fix it for you, because a lost spend and a
+  spend followed by someone else's award leave the same number. If nobody else
+  touched it, press − or +.
 - **Still possible:** two *different* people changing the **same** character's
   count at the same instant can still lose one change. That needs a change to how
   Bennies are stored, and it's next.

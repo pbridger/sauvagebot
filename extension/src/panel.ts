@@ -4297,6 +4297,7 @@ async function attemptSoak(
   try {
     const left = await bank.spend(sheet.id, 'Soak Rolls');
     bennies.set(sheet.id, left);
+    recheckBennies(sheet, left, 'Spending a Benny to Soak');
     // Paul, 2026-09-12: *"spending bennies via any means should animate."* Soak has
     // its own path — it needs to know what hit you — and it was the one spend that
     // took a chip off a player without one crossing the table.
@@ -4371,6 +4372,54 @@ async function oneSpend(sheet: Sheet, run: () => Promise<void>): Promise<void> {
   }
 }
 
+/**
+ * Look at a Benny count again a moment after changing it, and say so if it moved.
+ *
+ * 2026-10-31: Reggie's reroll logged "3 left" — read back from storage after the
+ * write — and a reopened panel showed 4. Something put the count back, and nobody
+ * found out until the chips looked wrong. Either another screen wrote over it
+ * (each change is read, add, write, and room metadata has no compare-and-set) or
+ * Owlbear accepted the write and later lost it, which `BennyBank.applyAll` has
+ * seen before.
+ *
+ * **Reported, not repaired.** A lost spend (4 → 3, back to 4) and a spend
+ * followed by someone else's award (4 → 3 → 4) leave the same number behind, so a
+ * correction would be a guess, and the wrong guess costs somebody a Benny. The
+ * line goes to the log, where the table can see it and press − or + to settle it.
+ *
+ * Skipped if this screen has changed the same count again since: the next check
+ * covers it.
+ */
+const BENNY_RECHECK_MS = 2000;
+const bennyChanges = new Map<string, number>();
+
+function recheckBennies(sheet: Sheet, expected: number, what: string): void {
+  const generation = (bennyChanges.get(sheet.id) ?? 0) + 1;
+  bennyChanges.set(sheet.id, generation);
+  window.setTimeout(() => {
+    void (async () => {
+      if (bennyChanges.get(sheet.id) !== generation) return;
+      let stored: number;
+      try {
+        stored = await bank.get(sheet.id);
+      } catch {
+        return;
+      }
+      if (stored === expected || bennyChanges.get(sheet.id) !== generation) return;
+      bennies.set(sheet.id, stored);
+      renderSheetArea();
+      publish({
+        ...named(sheet),
+        label: 'Bennies changed underneath',
+        expression: 'benny',
+        explained:
+          `${what} left **${expected}**, but storage now says **${stored}**. ` +
+          `If nobody else changed it, use − or + to put it right.`,
+      });
+    })();
+  }, BENNY_RECHECK_MS);
+}
+
 async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
   const active = activeToken(sheet);
 
@@ -4397,6 +4446,7 @@ async function spendBenny(sheet: Sheet, use?: string): Promise<void> {
   try {
     const left = await bank.spend(sheet.id, use ?? 'a Benny');
     bennies.set(sheet.id, left);
+    recheckBennies(sheet, left, use ? `Spending a Benny (${use})` : 'Spending a Benny');
 
     let effect = '';
     if (use === 'Remove Shaken' && active) {
@@ -4865,6 +4915,7 @@ async function returnCards(tokenId: string): Promise<void> {
 async function awardBenny(sheet: Sheet): Promise<void> {
   const total = await bank.award(sheet.id);
   bennies.set(sheet.id, total);
+  recheckBennies(sheet, total, 'A Benny awarded');
   renderSheetArea();
   publish({
     ...named(sheet),
@@ -4913,6 +4964,7 @@ async function takeBenny(sheet: Sheet): Promise<void> {
     return;
   }
   bennies.set(sheet.id, left);
+  recheckBennies(sheet, left, 'Taking a Benny back');
   renderSheetArea();
   // Only for a claimed character, which `returnBenny` checks: the Marshal
   // trimming an NPC's stack on the roster has no chair to send a chip from.
