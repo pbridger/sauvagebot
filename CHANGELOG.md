@@ -33,6 +33,19 @@ book:
 - **Shooting while in melee** is a pistol at most, against Parry (p160).
 - **Push** gets +2 only if you *ran* 2″ first (p160).
 
+**Fixed: a shot at several targets left modifiers out of its log line.** Reggie's
+Gatling at three dead men printed `3s8+2 = 4, 5, 6` beside a J+2 pill and a −2
+pill. The +2 was the Joker, and the −2 (a modifier set for the whole shot) was in
+none of the numbers. The panel did apply it when each shot was given to a
+target, so hits and misses came out right, but the log line said otherwise. Now
+everything that's the same for every target (cover, Aim, Recoil, called shot,
+the hand dial) is in the roll, and the line reads `3s8` for that shot. Only range,
+which differs per target, is still added per target.
+
+**For dim light,** set **Dim** on the shooter's own token (sheet → Conditions ▾),
+not the dial. It then reaches attacks, Notice and powers, and nothing else
+(p158).
+
 The rest of this entry was written on 10-10 and is going out in the same deploy.
 
 **Correction to the last update.** It said *"A Critical Failure on Soak adds a

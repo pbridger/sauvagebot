@@ -5702,9 +5702,14 @@ interface ShotSession {
      * True for a shot at a single target, where range and cover are unambiguous
      * and can ride in the rolled expression — which keeps the log line reading
      * `s8-2 … = 13` as it does today. False the moment there is more than one
-     * target, because one expression cannot carry two different range penalties;
-     * there the values are raw and each target's modifiers are applied to its own
-     * assigned shot at resolution.
+     * target, because one expression cannot carry two different range penalties.
+     *
+     * Not baked does not mean bare. The shot-level half — Aim, Recoil, cover, the
+     * called shot, the dial — is the same for every target and is in `values`
+     * either way (`bakedAt`); only what differs per target, which is the range,
+     * is applied to each assigned shot at resolution. Until 2026-10-31 a shot at
+     * several targets rolled with the sheet's modifiers alone, so Reggie's Gatling
+     * printed `3s8+2 = 4, 5, 6` beside a −2 pill that was in none of them.
      */
     baked: boolean;
     /**
@@ -5759,7 +5764,10 @@ interface ShotSession {
     critical: boolean;
     /**
      * The shot modifier total that was baked into `values` when the dice were
-     * thrown — `total` as it stood at the roll, before any correction.
+     * thrown — `total` as it stood at the roll, before any correction. For a shot
+     * at several targets, the shot-level half; see `baked`.
+     *
+     * So every shot resolves the same way: `value + against.total − bakedAt`.
      *
      * A correction to a baked shot is the difference between this and the live
      * total. Found 2026-10-09 while wiring the Benny reroll: `amendShot` overwrote
@@ -5769,6 +5777,8 @@ interface ShotSession {
      * on the commonest shot there is (one die, one target).
      */
     bakedAt: number;
+    /** The modifiers that `bakedAt` sums, for saying what is left to apply per target. */
+    bakedMods: ShotMod[];
   };
   /**
    * The damage roll for each *shot*, once there is one.
@@ -6134,6 +6144,28 @@ function amendShot(
   const first = [...session.bullets.keys()][0];
   const next = rolled.baked && first ? shotAgainst(session, weapon, first) : shotLevel(session, weapon);
   amendShot(sheet, session, next.mods, next.total, sheetMods.total);
+}
+
+/**
+ * What a rolled value still needs at one target, as words for the working line.
+ *
+ * The modifiers this target has that were not in the roll — the range, for a
+ * shot at several — by name. Anything that cannot be put that way (a correction
+ * since the roll, or Aim spending its points differently against a nearer
+ * target) is shown as the one number it comes to.
+ */
+function stillToApply(
+  against: { mods: ShotMod[]; total: number },
+  rolled: { bakedAt: number; bakedMods: ShotMod[] },
+): string[] {
+  const delta = against.total - rolled.bakedAt;
+  if (!delta) return [];
+  const inRoll = new Set(rolled.bakedMods.map((m) => `${m.key}:${m.value}`));
+  const extra = against.mods.filter((m) => !inRoll.has(`${m.key}:${m.value}`));
+  const named = extra.reduce((sum, m) => sum + m.value, 0) === delta;
+  return named
+    ? extra.map((m) => `${formatMod(m.value)} ${m.label.toLowerCase()}`)
+    : [`${formatMod(delta)} corrected`];
 }
 
 /**
@@ -7081,12 +7113,10 @@ async function fillShotTargets(
 
       for (const index of mine) {
         const raw = session.rolled.values[index] ?? 0;
-        // Baked values already carry this target's range and cover; unbaked ones
-        // do not, because one expression could not have carried everyone's. See
-        // `rolled.baked`.
-        // A correction since the roll moves a baked value by its difference.
-        const effective =
-          raw + against.total - (session.rolled.baked ? session.rolled.bakedAt : 0);
+        // Every value carries what was baked into it (`rolled.bakedAt`): this
+        // target's whole set for a baked shot, the shot-level half otherwise. What
+        // is left is the range, for an unbaked one, and any correction since.
+        const effective = raw + against.total - session.rolled.bakedAt;
         // The band is deliberately *not* passed. Its penalty is already inside
         // the shot's modifiers and letting `resolveAimedAttack` apply it again
         // would subtract the range twice. Only the refusal is forwarded, for a
@@ -7140,11 +7170,7 @@ async function fillShotTargets(
         working.className = 'shot-working';
         const parts = [
           String(raw),
-          ...(session.rolled.baked
-            ? against.total !== session.rolled.bakedAt
-              ? [`${formatMod(against.total - session.rolled.bakedAt)} corrected`]
-              : []
-            : against.mods.map((m) => `${formatMod(m.value)} ${m.label.toLowerCase()}`)),
+          ...stillToApply(against, session.rolled),
           ...targetMods(state, { melee: session.melee, cells, cover: session.cover }).map(
             (m) => `${formatMod(m.value)} ${m.label.toLowerCase()}`,
           ),
@@ -7280,12 +7306,10 @@ function dicePicker(
     die.className = 'shot-die';
     die.textContent = String(value);
     const against = shotAgainst(session, weapon, tokenId);
-    const effective = value + against.total - (rolled.baked ? rolled.bakedAt : 0);
+    const effective = value + against.total - rolled.bakedAt;
     die.title =
       `Give this shot to the target` +
-      (rolled.baked || !against.total
-        ? ''
-        : ` — ${value} ${formatMod(against.total)} = ${effective} here`);
+      (effective === value ? '' : ` — ${value} ${formatMod(effective - value)} = ${effective} here`);
     die.addEventListener('click', () => {
       rolled.assigned.set(index, tokenId);
       render();
@@ -7355,13 +7379,15 @@ function takeTheShot(
   // One target's modifiers can ride in the expression; several targets' cannot,
   // because one roll cannot carry two different range penalties. So a single
   // target keeps the log line reading `s8-2 … = 13`, and a shot at several rolls
-  // bare and has each target's modifiers applied to its own assigned shot.
+  // with the shot-level half in it — the same for everyone — and has each
+  // target's range applied to its own assigned shot. Either way, what is in the
+  // expression is what the log line's pills say.
   const baked = bakesModifiers(session.rof, session.bullets);
   const stub: ShotSession = { ...session, rolled: { ...emptyRolled(), bands, baked } };
   const perTarget = baked && single ? shotAgainst(stub, weapon, single) : undefined;
   const level = shotLevel(session, weapon);
   const modsForLine = perTarget ?? level;
-  const situational = sheetMods.total + (perTarget?.total ?? 0);
+  const situational = sheetMods.total + modsForLine.total;
 
   const result = rollSkill(rollsAs(sheet), session.skill, situational, undefined, shots);
   const values = totalsOf(result.explained);
@@ -7420,6 +7446,7 @@ function takeTheShot(
     targets,
     critical: criticalFailure(result.dice ?? []),
     bakedAt: modsForLine.total,
+    bakedMods: modsForLine.mods,
   };
   // So a Benny reroll can find this session again and put its dice back here.
   const last = lastTraitRoll.get(sheet.id);
@@ -7445,6 +7472,7 @@ function emptyRolled(): NonNullable<ShotSession['rolled']> {
     targets: new Map(),
     critical: false,
     bakedAt: 0,
+    bakedMods: [],
   };
 }
 
